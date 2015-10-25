@@ -4,6 +4,7 @@ type Twitter struct {
 	Id              string
 	RetweetsPerPost int
 	Followers       int
+	LastLocation    string //TBD
 }
 
 func New(id, endpoint string) (*Twitter, error) {
@@ -15,6 +16,7 @@ func New(id, endpoint string) (*Twitter, error) {
 }
 
 func (tw *Twitter) UpdateData(endpoint string) error {
+	// Used by an eventual ticker to update stats
 	if tw.Id != "" {
 		if rt, err := getRetweets(tw.Id, endpoint); err == nil {
 			tw.RetweetsPerPost = rt

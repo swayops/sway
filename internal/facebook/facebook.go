@@ -5,6 +5,7 @@ type Facebook struct {
 	LikesPerPost    int
 	CommentsPerPost int
 	Followers       int
+	LastLocation    string //TBD
 }
 
 func New(id, endpoint string) (*Facebook, error) {
@@ -16,6 +17,7 @@ func New(id, endpoint string) (*Facebook, error) {
 }
 
 func (fb *Facebook) UpdateData(endpoint string) error {
+	// Used by an eventual ticker to update stats
 	if fb.Id != "" {
 		if likes, err := getLikes(fb.Id, endpoint); err == nil {
 			fb.LikesPerPost = likes

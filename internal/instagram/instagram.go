@@ -5,6 +5,7 @@ type Instagram struct {
 	LikesPerPost    int
 	CommentsPerPost int
 	Followers       int
+	LastLocation    string //TBD
 }
 
 func New(id, endpoint string) (*Instagram, error) {
@@ -16,6 +17,7 @@ func New(id, endpoint string) (*Instagram, error) {
 }
 
 func (in *Instagram) UpdateData(endpoint string) error {
+	// Used by an eventual ticker to update stats
 	if in.Id != "" {
 		if likes, err := getLikes(in.Id, endpoint); err == nil {
 			in.LikesPerPost = likes
