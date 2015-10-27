@@ -8,6 +8,8 @@ import (
 )
 
 func TestInstagram(t *testing.T) {
+	// Complete once API has been built out
+
 	cfg, _ := config.New("./config.sample.json")
 
 	// Initialize Influencer
