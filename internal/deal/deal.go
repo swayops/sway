@@ -7,7 +7,8 @@ type Deal struct {
 	Id         string
 	CampaignId string // Campaign this deal belongs to
 	Influencer string // Influencer ID that has taken on the deal
-	Completed  bool   // Has the deal been completed/audited?
+	Audited    bool   // Has the deal been audited by the advertiser?
+	Completed  bool   // True if the influencer has marked the deal as completed
 
 	Price float64 // Price determined for this influencer using our algo
 
