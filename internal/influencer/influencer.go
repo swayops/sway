@@ -42,6 +42,8 @@ func New(twitterId, instaId, fbId string, cfg *config.Config) (*Influencer, erro
 	return inf, nil
 }
 
+// New functions can be re-used later if an influencer
+// adds a new social media account
 func (inf *Influencer) NewFb(id string, cfg *config.Config) error {
 	if len(id) > 0 {
 		fb, err := facebook.New(id, cfg.FbEndpoint)
@@ -55,7 +57,7 @@ func (inf *Influencer) NewFb(id string, cfg *config.Config) error {
 
 func (inf *Influencer) NewInsta(id string, cfg *config.Config) error {
 	if len(id) > 0 {
-		insta, err := instagram.New(id, cfg.InstaEndpoint)
+		insta, err := instagram.New(id, cfg)
 		if err != nil {
 			return err
 		}

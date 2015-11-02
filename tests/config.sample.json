@@ -1,0 +1,8 @@
+{
+	"twitterEndpoint": "google.com",
+	"fbEndpoint": "google.com",
+	"instagram": {
+		"endpoint": "https://api.instagram.com/v1/",
+		"clientId": "5941ed0c28874764a5d86fb47984aceb"
+	}
+}
