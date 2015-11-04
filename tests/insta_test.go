@@ -13,29 +13,30 @@ func TestInstagram(t *testing.T) {
 
 	cfg, err := config.New("./config.sample.json")
 	if err != nil {
-		log.Println("ERROR", err)
+		log.Println("Config error", err)
 	}
 
 	// Initialize Influencer test
-	inf, err := influencer.New("", "kimkardashian", "", cfg)
+	instaId := "kimkardashian"
+	inf, err := influencer.New("", instaId, "", cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}
 
-	if inf.Instagram.UserId != "18428658" {
-		t.Error("Incorrect user id for", inf.Instagram.UserName)
-	}
-
 	if inf.Instagram.Followers < 1000000 {
-		t.Error("Followers not retrieved", inf.Instagram.UserName)
+		t.Error("Followers don't match! Expected > 1000000.. Got: ", inf.Instagram.Followers)
 	}
 
 	if inf.Instagram.AvgComments < 100 {
-		t.Error("Comments not retrieved", inf.Instagram.UserName)
+		t.Error("Comments don't match! Expected > 100.. Got: ", inf.Instagram.AvgComments)
 	}
 
 	if inf.Instagram.AvgLikes < 100 {
-		t.Error("Likes not retrieved", inf.Instagram.UserName)
+		t.Error("Likes don't match! Expected > 100.. Got: ", inf.Instagram.AvgLikes)
+	}
+
+	if inf.Instagram.UserId != "18428658" {
+		t.Error("Incorrect user id. Expected: 18428658.. Got:", inf.Instagram.UserId)
 	}
 
 	// Update Influencer
