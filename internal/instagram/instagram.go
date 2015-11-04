@@ -29,35 +29,18 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 func (in *Instagram) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
 	if in.UserId != "" {
-		if likes, err := getAvgLikes(in.UserId, cfg); err == nil {
-			in.AvgLikes = likes
-		} else {
-			return err
-		}
-
-		if cm, err := getAvgComments(in.UserId, cfg); err == nil {
-			in.AvgComments = cm
-		} else {
-			return err
-		}
-
 		if fl, err := getFollowers(in.UserId, cfg); err == nil {
 			in.Followers = fl
 		} else {
 			return err
 		}
+
+		if likes, cm, err := getPostInfo(in.UserId, cfg); err == nil {
+			in.AvgLikes = likes
+			in.AvgComments = cm
+		} else {
+			return err
+		}
 	}
 	return nil
-}
-
-func getAvgLikes(id string, cfg *config.Config) (int, error) {
-	return 0, nil
-}
-
-func getAvgComments(id string, cfg *config.Config) (int, error) {
-	return 0, nil
-}
-
-func getFollowers(id string, cfg *config.Config) (int, error) {
-	return 0, nil
 }

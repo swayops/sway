@@ -23,12 +23,12 @@ func New(twitterId, instaId, fbId string, cfg *config.Config) (*Influencer, erro
 		Id: pseudoUUID(), // Possible change to standard numbering?
 	}
 
-	err := inf.NewFb(fbId, cfg)
+	err := inf.NewInsta(instaId, cfg)
 	if err != nil {
 		return inf, err
 	}
 
-	err = inf.NewInsta(instaId, cfg)
+	err = inf.NewFb(fbId, cfg)
 	if err != nil {
 		return inf, err
 	}

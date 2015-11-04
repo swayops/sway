@@ -9,23 +9,28 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+type Meta struct {
+	Code int `json:"code"`
+}
+
 const (
-	searchesUrl = "%susers/search?q=%s&client_id=%s"
+	postCount    = 30
+	searchesUrl  = "%susers/search?q=%s&client_id=%s"
+	followersUrl = "%susers/%s/?client_id=%s"
+	postUrl      = "%susers/%s/media/recent/?client_id=%s&count=%s"
 )
 
 var (
 	ErrCode    = errors.New(`Non-200 Instagram Status Code`)
-	ErrUnknown = errors.New(`User not found!`)
+	ErrUnknown = errors.New(`Data not found!`)
 )
 
 type UserSearch struct {
-	Meta struct {
-		Code int `json:"code"`
-	} `json:"meta"`
-	Data []*Data `json:"data"`
+	Meta *Meta         `json:"meta"`
+	Data []*SearchData `json:"data"`
 }
 
-type Data struct {
+type SearchData struct {
 	Name string `json:"username"`
 	Id   string `json:"id"`
 }
@@ -54,8 +59,91 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 	return "", ErrUnknown
 }
 
-func getLikes(id string, cfg *config.Config) (int, error) {
+type UserPost struct {
+	Meta *Meta       `json:"meta"`
+	Data []*PostData `json:"data"`
+}
+
+type PostData struct {
+	// Location string `json:"location"` TBD.. Store as last location
+	Comments *Comments `json:"comments"`
+	Likes    *Likes    `json:"likes"`
+}
+
+type Comments struct {
+	Count int `json:"count"`
+}
+
+type Likes struct {
+	Count int `json:"count"`
+}
+
+func getPostInfo(id string, cfg *config.Config) (int, int, error) {
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=20
+	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId, postCount)
+
+	var media UserPost
+	err := misc.Request("GET", endpoint, "", &media)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if media.Meta.Code != 200 {
+		return 0, 0, ErrCode
+	}
+
+	if media.Data == nil || len(media.Data) == 0 {
+		return 0, 0, ErrUnknown
+	}
+
+	var (
+		likes, comments int
+	)
+
+	for _, post := range media.Data {
+		if post.Comments != nil {
+			comments += post.Comments.Count
+		}
+
+		if post.Likes != nil {
+			likes += post.Likes.Count
+		}
+	}
+
+	return likes / postCount, comments / postCount, nil
+}
+
+type BasicUser struct {
+	Meta *Meta     `json:"meta"`
+	Data *UserData `json:"data"`
+}
+
+type UserData struct {
+	Name   string  `json:"username"`
+	Id     string  `json:"id"`
+	Counts *Counts `json:"counts"`
+}
+
+type Counts struct {
+	Followers int `json:"followed_by"`
+}
+
+func getFollowers(id string, cfg *config.Config) (flw int, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
-	return 0, nil
+	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
+	var user BasicUser
+	err = misc.Request("GET", endpoint, "", &user)
+	if err != nil {
+		return
+	}
+
+	if user.Meta.Code != 200 {
+		return
+	}
+
+	if user.Data.Counts != nil {
+		flw = user.Data.Counts.Followers
+	}
+
+	return
 }
