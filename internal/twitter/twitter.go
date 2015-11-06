@@ -1,10 +1,13 @@
 package twitter
 
 type Twitter struct {
-	Id              string
+	Id string
+
 	RetweetsPerPost float32
 	Followers       float32
-	LastLocation    string //TBD
+	FollowerDelta   float32 // Follower delta since last UpdateData run
+
+	LastLocation string //TBD
 }
 
 func New(id, endpoint string) (*Twitter, error) {
