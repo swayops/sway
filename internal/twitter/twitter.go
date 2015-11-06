@@ -2,8 +2,8 @@ package twitter
 
 type Twitter struct {
 	Id              string
-	RetweetsPerPost int
-	Followers       int
+	RetweetsPerPost float32
+	Followers       float32
 	LastLocation    string //TBD
 }
 

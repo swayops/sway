@@ -14,7 +14,7 @@ type Meta struct {
 }
 
 const (
-	postCount    = 30
+	postCount    = 30.0
 	searchesUrl  = "%susers/search?q=%s&client_id=%s"
 	followersUrl = "%susers/%s/?client_id=%s"
 	postUrl      = "%susers/%s/media/recent/?client_id=%s&count=%s"
@@ -71,14 +71,14 @@ type PostData struct {
 }
 
 type Comments struct {
-	Count int `json:"count"`
+	Count float32 `json:"count"`
 }
 
 type Likes struct {
-	Count int `json:"count"`
+	Count float32 `json:"count"`
 }
 
-func getPostInfo(id string, cfg *config.Config) (int, int, error) {
+func getPostInfo(id string, cfg *config.Config) (float32, float32, error) {
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=20
 	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId, postCount)
 
@@ -97,7 +97,7 @@ func getPostInfo(id string, cfg *config.Config) (int, int, error) {
 	}
 
 	var (
-		likes, comments int
+		likes, comments float32
 	)
 
 	for _, post := range media.Data {
@@ -109,7 +109,6 @@ func getPostInfo(id string, cfg *config.Config) (int, int, error) {
 			likes += post.Likes.Count
 		}
 	}
-
 	return likes / postCount, comments / postCount, nil
 }
 
@@ -125,10 +124,10 @@ type UserData struct {
 }
 
 type Counts struct {
-	Followers int `json:"followed_by"`
+	Followers float32 `json:"followed_by"`
 }
 
-func getFollowers(id string, cfg *config.Config) (flw int, err error) {
+func getFollowers(id string, cfg *config.Config) (flw float32, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
 	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
 	var user BasicUser
@@ -142,7 +141,7 @@ func getFollowers(id string, cfg *config.Config) (flw int, err error) {
 	}
 
 	if user.Data.Counts != nil {
-		flw = user.Data.Counts.Followers
+		flw = float32(user.Data.Counts.Followers)
 	}
 
 	return

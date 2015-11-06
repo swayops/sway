@@ -3,12 +3,17 @@ package instagram
 import "github.com/swayops/sway/internal/config"
 
 type Instagram struct {
-	UserName     string
-	UserId       string
-	AvgLikes     int
-	AvgComments  int
-	Followers    int
+	UserName    string
+	UserId      string
+	AvgLikes    float32 // Per post
+	AvgComments float32 // Per post
+
+	Followers     float32
+	FollowerDelta float32 // Follower delta since last UpdateData run
+
 	LastLocation string //TBD
+
+	Score float32
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
@@ -30,6 +35,10 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
 	if in.UserId != "" {
 		if fl, err := getFollowers(in.UserId, cfg); err == nil {
+			if in.Followers > 0 {
+				// Make sure this isn't first run
+				in.FollowerDelta = (in.Followers - fl)
+			}
 			in.Followers = fl
 		} else {
 			return err
@@ -41,6 +50,12 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		} else {
 			return err
 		}
+
+		in.Score = in.GetScore()
 	}
 	return nil
+}
+
+func (in *Instagram) GetScore() float32 {
+	return (in.Followers * 3) + (in.FollowerDelta * 2) + (in.AvgComments * 2) + (in.AvgLikes)
 }

@@ -1,11 +1,13 @@
 package facebook
 
 type Facebook struct {
-	Id              string
-	LikesPerPost    int
-	CommentsPerPost int
-	Followers       int
-	LastLocation    string //TBD
+	Id string
+
+	AvgLikes    float32
+	AvgComments float32
+	Followers   float32
+
+	LastLocation string //TBD
 }
 
 func New(id, endpoint string) (*Facebook, error) {
