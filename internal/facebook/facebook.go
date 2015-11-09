@@ -1,20 +1,45 @@
 package facebook
 
+import (
+	"time"
+
+	"github.com/swayops/sway/internal/config"
+	"github.com/swayops/sway/misc"
+)
+
 type Facebook struct {
 	Id string
 
-	AvgLikes    float32
-	AvgComments float32
-	Followers   float32
+	LikesPerPost    float32
+	CommentsPerPost float32
+	Followers       float32 // float32 for GetScore equation
+	FollowerDelta   float32 // Follower delta since last UpdateData run
 
-	LastLocation string //TBD
+	LastLocation misc.GeoRecord
+
+	LastUpdated int64   // Epoch timestamp in seconds
+	PostsSince  []*Post // Posts since last update.. will later check these for deal satisfaction
+
+	Score float32
 }
 
-func New(id, endpoint string) (*Facebook, error) {
+type Post struct {
+	Id        string
+	Content   string
+	Mentions  []string
+	Timestamp int32
+
+	// Stats
+	Likes    int32
+	Shares   int32
+	Comments int32
+}
+
+func New(id string, cfg *config.Config) (*Facebook, error) {
 	fb := &Facebook{
 		Id: id,
 	}
-	err := fb.UpdateData(endpoint)
+	err := fb.UpdateData(cfg.FbEndpoint)
 	return fb, err
 }
 
@@ -38,18 +63,19 @@ func (fb *Facebook) UpdateData(endpoint string) error {
 		} else {
 			return err
 		}
+		fb.LastUpdated = time.Now().Unix()
 	}
 	return nil
 }
 
-func getLikes(id, endpoint string) (int, error) {
+func getLikes(id, endpoint string) (float32, error) {
 	return 0, nil
 }
 
-func getComments(id, endpoint string) (int, error) {
+func getComments(id, endpoint string) (float32, error) {
 	return 0, nil
 }
 
-func getFollowers(id, endpoint string) (int, error) {
+func getFollowers(id, endpoint string) (float32, error) {
 	return 0, nil
 }

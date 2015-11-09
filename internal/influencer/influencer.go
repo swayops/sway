@@ -68,7 +68,7 @@ func (inf *Influencer) NewInsta(id string, cfg *config.Config) error {
 
 func (inf *Influencer) NewTwitter(id string, cfg *config.Config) error {
 	if len(id) > 0 {
-		tw, err := twitter.New(id, cfg.TwitterEndpoint)
+		tw, err := twitter.New(id, cfg)
 		if err != nil {
 			return err
 		}
