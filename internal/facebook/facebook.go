@@ -63,6 +63,7 @@ func (fb *Facebook) UpdateData(endpoint string) error {
 		} else {
 			return err
 		}
+		fb.PostsSince = getPosts(fb.LastUpdated)
 		fb.LastUpdated = time.Now().Unix()
 	}
 	return nil
@@ -78,4 +79,8 @@ func getComments(id, endpoint string) (float32, error) {
 
 func getFollowers(id, endpoint string) (float32, error) {
 	return 0, nil
+}
+
+func getPosts(last int64) []*Post {
+	return nil
 }

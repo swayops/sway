@@ -54,6 +54,7 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 		} else {
 			return err
 		}
+		tw.PostsSince = getPosts(tw.LastUpdated)
 		tw.LastUpdated = time.Now().Unix()
 	}
 	return nil
@@ -65,4 +66,8 @@ func getRetweets(id, endpoint string) (float32, error) {
 
 func getFollowers(id, endpoint string) (float32, error) {
 	return 0, nil
+}
+
+func getPosts(last int64) []*Post {
+	return nil
 }

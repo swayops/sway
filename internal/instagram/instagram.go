@@ -70,6 +70,8 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		}
 
 		in.Score = in.GetScore()
+		in.PostsSince = getPosts(in.LastUpdated)
+
 		in.LastUpdated = time.Now().Unix()
 	}
 	return nil
@@ -77,4 +79,8 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 
 func (in *Instagram) GetScore() float32 {
 	return (in.Followers * 3) + (in.FollowerDelta * 2) + (in.AvgComments * 2) + (in.AvgLikes)
+}
+
+func getPosts(last int64) []*Post {
+	return nil
 }
