@@ -79,3 +79,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 	yt.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
+
+func (yt *YouTube) GetScore() float32 {
+	return ((yt.Subscribers * 3) + (yt.AvgViews * 3) + (yt.AvgComments * 2) + (yt.AvgLikes)) / yt.AvgDislikes
+}
