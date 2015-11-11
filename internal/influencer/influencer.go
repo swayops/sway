@@ -6,19 +6,25 @@ import (
 	"github.com/swayops/sway/internal/facebook"
 	"github.com/swayops/sway/internal/instagram"
 	"github.com/swayops/sway/internal/twitter"
+	"github.com/swayops/sway/internal/youtube"
 )
 
 type Influencer struct {
 	Id         string
-	CategoryId string // Each influencer will be put into a category
-	Facebook   *facebook.Facebook
-	Instagram  *instagram.Instagram
-	Twitter    *twitter.Twitter
-	Active     []*deal.Deal // Accepted pending deals to be completed
-	Historic   []*deal.Deal // Contains historic deals completed
+	CategoryId string  // Each influencer will be put into a category
+	AgencyId   string  // Groups this influencer belongs to (agencies, brands view invites)
+	FloorPrice float32 // Price per engagement set by agency
+
+	Facebook  *facebook.Facebook
+	Instagram *instagram.Instagram
+	Twitter   *twitter.Twitter
+	YouTube   *youtube.YouTube
+
+	Active   []*deal.Deal // Accepted pending deals to be completed
+	Historic []*deal.Deal // Contains historic deals completed
 }
 
-func New(twitterId, instaId, fbId string, cfg *config.Config) (*Influencer, error) {
+func New(twitterId, instaId, fbId, ytId string, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id: pseudoUUID(), // Possible change to standard numbering?
 	}
@@ -38,6 +44,11 @@ func New(twitterId, instaId, fbId string, cfg *config.Config) (*Influencer, erro
 		return inf, err
 	}
 
+	err = inf.NewYouTube(ytId, cfg)
+	if err != nil {
+		return inf, err
+	}
+
 	// Saving to db functionality TBD.. iodb?
 	return inf, nil
 }
@@ -46,7 +57,7 @@ func New(twitterId, instaId, fbId string, cfg *config.Config) (*Influencer, erro
 // adds a new social media account
 func (inf *Influencer) NewFb(id string, cfg *config.Config) error {
 	if len(id) > 0 {
-		fb, err := facebook.New(id, cfg.FbEndpoint)
+		fb, err := facebook.New(id, cfg)
 		if err != nil {
 			return err
 		}
@@ -73,6 +84,17 @@ func (inf *Influencer) NewTwitter(id string, cfg *config.Config) error {
 			return err
 		}
 		inf.Twitter = tw
+	}
+	return nil
+}
+
+func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
+	if len(id) > 0 {
+		yt, err := youtube.New(id, cfg)
+		if err != nil {
+			return err
+		}
+		inf.YouTube = yt
 	}
 	return nil
 }

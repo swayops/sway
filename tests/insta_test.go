@@ -18,7 +18,7 @@ func TestInstagram(t *testing.T) {
 
 	// Initialize Influencer test
 	instaId := "kimkardashian"
-	inf, err := influencer.New("", instaId, "", cfg)
+	inf, err := influencer.New("", instaId, "", "", cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}
@@ -40,6 +40,15 @@ func TestInstagram(t *testing.T) {
 	}
 
 	// Update Influencer
+	err = inf.Instagram.UpdateData(cfg)
+	if err != nil {
+		t.Error("Failed to update data")
+	}
+
+	if len(inf.Instagram.LatestPosts) != 0 {
+		t.Error("Got new posts within a second.. not right!")
+	}
+
 	err = inf.NewInsta("randomdudewhodoesnthaveinsta123", cfg)
 	if err == nil {
 		t.Error("Expected error for randomdudewhodoesnthaveinsta123")

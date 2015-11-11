@@ -18,7 +18,7 @@ type Instagram struct {
 	LastLocation misc.GeoRecord
 
 	LastUpdated int64   // Epoch timestamp in seconds
-	PostsSince  []*Post // Posts since last update.. will later check these for deal satisfaction
+	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32
 }
@@ -51,29 +51,27 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 
 func (in *Instagram) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
-	if in.UserId != "" {
-		if fl, err := getFollowers(in.UserId, cfg); err == nil {
-			if in.Followers > 0 {
-				// Make sure this isn't first run
-				in.FollowerDelta = (in.Followers - fl)
-			}
-			in.Followers = fl
-		} else {
-			return err
+	if fl, err := getFollowers(in.UserId, cfg); err == nil {
+		if in.Followers > 0 {
+			// Make sure this isn't first run
+			in.FollowerDelta = (in.Followers - fl)
 		}
-
-		if likes, cm, err := getPostInfo(in.UserId, cfg); err == nil {
-			in.AvgLikes = likes
-			in.AvgComments = cm
-		} else {
-			return err
-		}
-
-		in.Score = in.GetScore()
-		in.PostsSince = getPosts(in.LastUpdated)
-
-		in.LastUpdated = time.Now().Unix()
+		in.Followers = fl
+	} else {
+		return err
 	}
+
+	if likes, cm, err := getPostInfo(in.UserId, cfg); err == nil {
+		in.AvgLikes = likes
+		in.AvgComments = cm
+	} else {
+		return err
+	}
+
+	in.Score = in.GetScore()
+	in.PostsSince = getPosts(in.LastUpdated)
+
+	in.LastUpdated = time.Now().Unix()
 	return nil
 }
 

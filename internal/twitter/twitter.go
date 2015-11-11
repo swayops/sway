@@ -10,14 +10,14 @@ import (
 type Twitter struct {
 	Id string
 
-	RetweetsPerPost float32
-	Followers       float32 // float32 for GetScore equation
-	FollowerDelta   float32 // Follower delta since last UpdateData run
+	AvgRetweets   float32
+	Followers     float32 // float32 for GetScore equation
+	FollowerDelta float32 // Follower delta since last UpdateData run
 
 	LastLocation misc.GeoRecord
 
 	LastUpdated int64   // Epoch timestamp in seconds
-	PostsSince  []*Post // Posts since last update.. will later check these for deal satisfaction
+	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32
 }
@@ -44,7 +44,7 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 	// Used by an eventual ticker to update stats
 	if tw.Id != "" {
 		if rt, err := getRetweets(tw.Id, endpoint); err == nil {
-			tw.RetweetsPerPost = rt
+			tw.AvgRetweets = rt
 		} else {
 			return err
 		}
@@ -54,7 +54,7 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 		} else {
 			return err
 		}
-		tw.PostsSince = getPosts(tw.LastUpdated)
+		tw.LatestPosts = getPosts(tw.LastUpdated) // All posts newer than last updated
 		tw.LastUpdated = time.Now().Unix()
 	}
 	return nil

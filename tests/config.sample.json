@@ -1,6 +1,12 @@
 {
 	"twitterEndpoint": "google.com",
 	"fbEndpoint": "google.com",
+
+	"youtube": {
+		"endpoint": "https://www.googleapis.com/youtube/v3/",
+		"clientId": "AIzaSyA_RFUvI5hxseLWniqEjFtzH-0h_A57Igg"
+	},
+
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
 		"clientId": "5941ed0c28874764a5d86fb47984aceb"
