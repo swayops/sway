@@ -25,7 +25,8 @@ type Post struct {
 	Id        string
 	Content   string
 	Mentions  []string
-	Timestamp int32
+	Hashtags  []string
+	Published int32 // epoch ts
 
 	// Stats
 	Retweets int32
