@@ -14,10 +14,9 @@ type Twitter struct {
 	Followers     float32 // float32 for GetScore equation
 	FollowerDelta float32 // Follower delta since last UpdateData run
 
-	LastLocation misc.GeoRecord
-
-	LastUpdated int64   // Epoch timestamp in seconds
-	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
+	LastLocation []misc.GeoRecord // All locations since last update
+	LastUpdated  int64            // Epoch timestamp in seconds
+	LatestPosts  []*Post          // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32
 }
