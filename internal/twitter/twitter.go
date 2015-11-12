@@ -28,8 +28,7 @@ type Post struct {
 	Hashtags  []string
 	Published int32 // epoch ts
 
-	VideoURL string // URL for video if there is one
-	ImageURL string // URL for image if there is one
+	PostURL string // Link to the twitter post
 
 	// Stats
 	Retweets int32
