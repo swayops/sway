@@ -6,6 +6,6 @@ type GeoRecord struct {
 	Country string
 	Zip     string
 
-	Lat  float64
-	Long float64
+	Latitude   float64
+	Longtitude float64
 }
