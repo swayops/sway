@@ -15,23 +15,28 @@ type Instagram struct {
 	Followers     float32
 	FollowerDelta float32 // Follower delta since last UpdateData run
 
-	LastLocation misc.GeoRecord
+	LastLocation []*misc.GeoRecord // All locations since last update
 
-	LastUpdated int64   // Epoch timestamp in seconds
+	LastUpdated int32   // Epoch timestamp in seconds
 	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32
 }
 
 type Post struct {
-	Id        string
-	Content   string
-	Mentions  []string
-	Timestamp int32
+	Id       string
+	Caption  string
+	Hashtags []string
+
+	PostURL string // Link to the post
+
+	Published int32 //epoch ts
+
+	Location *misc.GeoRecord
 
 	// Stats
-	Likes    int32
-	Comments int32
+	Likes    float32
+	Comments float32
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
@@ -61,17 +66,17 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		return err
 	}
 
-	if likes, cm, err := getPostInfo(in.UserId, cfg); err == nil {
+	if likes, cm, posts, geos, err := getPostInfo(in.UserId, in.LastUpdated, cfg); err == nil {
 		in.AvgLikes = likes
 		in.AvgComments = cm
+		in.LatestPosts = posts
+		in.LastLocation = geos
 	} else {
 		return err
 	}
 
 	in.Score = in.GetScore()
-	in.PostsSince = getPosts(in.LastUpdated)
-
-	in.LastUpdated = time.Now().Unix()
+	in.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
 

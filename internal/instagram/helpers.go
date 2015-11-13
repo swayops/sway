@@ -3,6 +3,7 @@ package instagram
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/swayops/sway/internal/config"
@@ -17,7 +18,7 @@ const (
 	postCount    = 30.0
 	searchesUrl  = "%susers/search?q=%s&client_id=%s"
 	followersUrl = "%susers/%s/?client_id=%s"
-	postUrl      = "%susers/%s/media/recent/?client_id=%s&count=%s"
+	postUrl      = "%susers/%s/media/recent/?client_id=%s&count=30"
 )
 
 var (
@@ -65,9 +66,21 @@ type UserPost struct {
 }
 
 type PostData struct {
-	// Location string `json:"location"` TBD.. Store as last location
+	Id        string   `json:"id"`
+	Tags      []string `json:"tags"`
+	Published string   `json:"created_time"`
+	URL       string   `json:"link"`
+
 	Comments *Comments `json:"comments"`
 	Likes    *Likes    `json:"likes"`
+	Location *Location `json:"location"`
+	Caption  *Caption  `json:"caption"`
+}
+
+type Location struct {
+	Latitude   float64 `json:"latitude"`
+	Longtitude float64 `json:"longitude"`
+	Name       string  `json:"name"`
 }
 
 type Comments struct {
@@ -78,38 +91,80 @@ type Likes struct {
 	Count float32 `json:"count"`
 }
 
-func getPostInfo(id string, cfg *config.Config) (float32, float32, error) {
+type Caption struct {
+	Msg string `json:"text"`
+}
+
+func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, float32, []*Post, []*misc.GeoRecord, error) {
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=20
-	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId, postCount)
+	geos := []*misc.GeoRecord{}
+	posts := []*Post{}
+
+	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
 
 	var media UserPost
 	err := misc.Request("GET", endpoint, "", &media)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, posts, geos, err
 	}
 
 	if media.Meta.Code != 200 {
-		return 0, 0, ErrCode
+		return 0, 0, posts, geos, ErrCode
 	}
 
 	if media.Data == nil || len(media.Data) == 0 {
-		return 0, 0, ErrUnknown
+		return 0, 0, posts, geos, ErrUnknown
 	}
 
 	var (
 		likes, comments float32
+		published       int64
 	)
 
 	for _, post := range media.Data {
+		published, err = strconv.ParseInt(post.Published, 10, 64)
+		if err != nil {
+			continue
+		}
+
+		p := &Post{
+			Id:        post.Id,
+			Published: int32(published),
+			Hashtags:  post.Tags,
+			PostURL:   post.URL,
+		}
+
 		if post.Comments != nil {
 			comments += post.Comments.Count
+			p.Comments = post.Comments.Count
 		}
 
 		if post.Likes != nil {
 			likes += post.Likes.Count
+			p.Likes = post.Likes.Count
 		}
+
+		if lastUpdate >= p.Published {
+			continue
+		}
+
+		if post.Location != nil {
+			geo := &misc.GeoRecord{
+				Latitude:   post.Location.Latitude,
+				Longtitude: post.Location.Longtitude,
+			}
+			p.Location = geo
+			geos = append(geos, geo)
+		}
+
+		if post.Caption != nil {
+			p.Caption = post.Caption.Msg
+		}
+
+		posts = append(posts, p)
 	}
-	return likes / postCount, comments / postCount, nil
+
+	return likes / postCount, comments / postCount, posts, geos, nil
 }
 
 type BasicUser struct {

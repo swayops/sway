@@ -39,6 +39,10 @@ func TestInstagram(t *testing.T) {
 		t.Error("Incorrect user id. Expected: 18428658.. Got:", inf.Instagram.UserId)
 	}
 
+	if len(inf.Instagram.LatestPosts) == 0 {
+		t.Error("Empty number of posts")
+	}
+
 	// Update Influencer
 	err = inf.Instagram.UpdateData(cfg)
 	if err != nil {

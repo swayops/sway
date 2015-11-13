@@ -121,7 +121,6 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 	var data Data
 	err := misc.Request("GET", endpoint, "", &data)
 	if err != nil || data.Error != nil {
-		log.Println("TESTING", err, data.Error)
 		return 0, 0, 0, err
 	}
 
@@ -204,6 +203,7 @@ func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts 
 				Published:   pub,
 			}
 			endpoint = fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, v.Snippet.Resource.VideoId, cfg.YouTube.ClientId)
+
 			var vData Data
 			err = misc.Request("GET", endpoint, "", &vData)
 			if err != nil || vData.Error != nil || len(vData.Items) == 0 {

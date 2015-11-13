@@ -33,6 +33,8 @@ type Post struct {
 	Description string
 	Published   int32 // Epoch ts
 
+	PostURL string // Link to the post
+
 	// Stats
 	Views    float32
 	Likes    float32
@@ -81,5 +83,5 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 }
 
 func (yt *YouTube) GetScore() float32 {
-	return ((yt.AvgComments * 4) + (yt.AvgLikes * 3) + (yt.AvgViews * 2) + (yt.Subscribers)) / yt.AvgDislikes
+	return ((yt.AvgComments * 4) + (yt.AvgLikes * 3) + (yt.Subscribers * 2) + (yt.AvgViews)) / yt.AvgDislikes
 }
