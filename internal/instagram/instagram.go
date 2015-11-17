@@ -84,6 +84,8 @@ func (in *Instagram) GetScore() float32 {
 	return (in.Followers * 3) + (in.FollowerDelta * 2) + (in.AvgComments * 2) + (in.AvgLikes)
 }
 
-func getPosts(last int64) []*Post {
+func GetStatsByPost(id string) *Post {
+	// Each package has this function.. so we can update stats for deal posts
+	// Should take in a post Id and return all post stats
 	return nil
 }

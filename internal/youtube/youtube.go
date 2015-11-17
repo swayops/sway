@@ -85,3 +85,9 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 func (yt *YouTube) GetScore() float32 {
 	return ((yt.AvgComments * 4) + (yt.AvgLikes * 3) + (yt.Subscribers * 2) + (yt.AvgViews)) / yt.AvgDislikes
 }
+
+func GetStatsByPost(id string) *Post {
+	// Each package has this function.. so we can update stats for deal posts
+	// Should take in a post Id and return all post stats
+	return nil
+}

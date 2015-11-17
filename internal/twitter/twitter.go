@@ -73,3 +73,9 @@ func getFollowers(id, endpoint string) (float32, error) {
 func getPosts(last int64) []*Post {
 	return nil
 }
+
+func GetStatsByPost(id string) *Post {
+	// Each package has this function.. so we can update stats for deal posts
+	// Should take in a post Id and return all post stats
+	return nil
+}
