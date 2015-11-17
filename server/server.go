@@ -1,6 +1,6 @@
 package server
 
-import "github.com/swayops/internal/config"
+import "github.com/swayops/sway/internal/config"
 
 type Server struct {
 	Cfg *config.Config
@@ -13,6 +13,7 @@ func New(cfg *config.Config) (*Server, error) {
 	}
 	srv.InitializeInfluencers()
 	srv.InitializeCampaigns()
+	return srv, nil
 }
 
 func (srv *Server) InitializeInfluencers() {
