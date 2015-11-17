@@ -1,13 +1,21 @@
 package twitter
 
 import (
-	"time"
+	"github.com/mrjones/oauth"
 
 	"github.com/swayops/sway/internal/config"
 	"github.com/swayops/sway/misc"
 )
 
 const timelineUrl = `https://api.twitter.com/1.1/statuses/user_timeline.json?exclude_replies=true&screen_name=%s`
+
+var (
+	serviceProvider = oauth.ServiceProvider{
+		RequestTokenUrl:   "https://api.twitter.com/oauth/request_token",
+		AuthorizeTokenUrl: "https://api.twitter.com/oauth/authorize",
+		AccessTokenUrl:    "https://api.twitter.com/oauth/access_token",
+	}
+)
 
 type Twitter struct {
 	Id string
@@ -17,10 +25,12 @@ type Twitter struct {
 	FollowerDelta float32 // Follower delta since last UpdateData run
 
 	LastLocation []misc.GeoRecord // All locations since last update
-	LastUpdated  int64            // Epoch timestamp in seconds
+	LastTweetId  string           // the id of the last tweet
 	LatestPosts  []*Post          // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32
+
+	o *oauth.Consumer
 }
 
 type Post struct {
@@ -39,13 +49,13 @@ type Post struct {
 func New(id string, cfg *config.Config) (*Twitter, error) {
 	tw := &Twitter{
 		Id: id,
+		o:  oauth.NewConsumer(cfg.Twitter.Key, cfg.Twitter.Secret, serviceProvider),
 	}
-	err := tw.UpdateData(cfg)
+	err := tw.UpdateData(cfg.Twitter.Endpoint)
 	return tw, err
 }
 
-func (tw *Twitter) UpdateData(cfg *config.Config) error {
-	endpoint := cfg.Twitter.Endpoint
+func (tw *Twitter) UpdateData(endpoint string) error {
 	// Used by an eventual ticker to update stats
 	if tw.Id != "" {
 		if rt, err := getRetweets(tw.Id, endpoint); err == nil {
@@ -59,9 +69,13 @@ func (tw *Twitter) UpdateData(cfg *config.Config) error {
 		} else {
 			return err
 		}
-		tw.LatestPosts = getPosts(tw.LastUpdated) // All posts newer than last updated
-		tw.LastUpdated = time.Now().Unix()
+		//	tw.LatestPosts = getPosts(tw.LastUpdated) // All posts newer than last updated
+		//	tw.LastUpdated = time.Now().Unix()
 	}
+	return nil
+}
+
+func (tw *Twitter) GetTweets() Tweets {
 	return nil
 }
 

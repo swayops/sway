@@ -10,12 +10,27 @@ import (
 
 type Tweets []*Tweet
 
-func (tws Tweets) AvgRetweets() float32 {
-	var n float32
+func (tws Tweets) Retweets() (n float32) {
 	for _, t := range tws {
-		n += float32(t.RetweetCount)
+		n += float32(t.Retweets)
 	}
-	return n / float32(len(tws))
+	return
+}
+
+func (tws Tweets) AvgRetweets() float32 {
+	return tws.Retweets() / float32(len(tws))
+}
+
+// likes == favorites
+func (tws Tweets) Likes() (n float32) {
+	for _, t := range tws {
+		n += float32(t.Favorites)
+	}
+	return
+}
+
+func (tws Tweets) AvgLikes() float32 {
+	return tws.Likes() / float32(len(tws))
 }
 
 func (tws Tweets) Followers() (f float32) {
@@ -40,10 +55,10 @@ func (tws Tweets) LastId() (id string) {
 }
 
 type Tweet struct {
-	Id            string      `json:"id_str"`
-	RetweetCount  uint32      `json:"retweet_count"`
-	FavoriteCount uint32      `json:"favorite_count"`
-	CreatedAt     TwitterTime `json:"created_at"`
+	Id        string      `json:"id_str"`
+	Retweets  uint32      `json:"retweet_count"`
+	Favorites uint32      `json:"favorite_count"`
+	CreatedAt TwitterTime `json:"created_at"`
 
 	User *User `json:"user,omitempty"`
 
