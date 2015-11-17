@@ -7,6 +7,8 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+const timelineUrl = `https://api.twitter.com/1.1/statuses/user_timeline.json?exclude_replies=true&screen_name=%s`
+
 type Twitter struct {
 	Id string
 
@@ -26,7 +28,7 @@ type Post struct {
 	Content   string
 	Mentions  []string
 	Hashtags  []string
-	Published int32 // epoch ts
+	Published int64 // epoch ts
 
 	PostURL string // Link to the twitter post
 
@@ -38,11 +40,12 @@ func New(id string, cfg *config.Config) (*Twitter, error) {
 	tw := &Twitter{
 		Id: id,
 	}
-	err := tw.UpdateData(cfg.TwitterEndpoint)
+	err := tw.UpdateData(cfg)
 	return tw, err
 }
 
-func (tw *Twitter) UpdateData(endpoint string) error {
+func (tw *Twitter) UpdateData(cfg *config.Config) error {
+	endpoint := cfg.Twitter.Endpoint
 	// Used by an eventual ticker to update stats
 	if tw.Id != "" {
 		if rt, err := getRetweets(tw.Id, endpoint); err == nil {

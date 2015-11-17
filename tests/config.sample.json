@@ -10,5 +10,12 @@
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
 		"clientId": "5941ed0c28874764a5d86fb47984aceb"
+	},
+
+	"twitter": {
+		"endpoint": "https://api.twitter.com/1.1/",
+		"key": "bezvz2gfOfIaZmAdaKI9qVqLh",
+		"secret": "XT9xLJ7YarGLVuqQ8TySaT0cgau27jEqNt3kWNPNUBACbZPe3U"
 	}
 }
+
