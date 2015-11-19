@@ -1,8 +1,6 @@
 package twitter
 
 import (
-	"math/big"
-
 	"github.com/swayops/sway/misc"
 
 	"time"
@@ -40,18 +38,11 @@ func (tws Tweets) Followers() (f float32) {
 	return
 }
 
-func (tws Tweets) LastId() (id string) {
-	var max *big.Int
-	for _, t := range tws {
-		n := strToNum(t.Id)
-		if n == nil {
-			continue
-		}
-		if max == nil || n.Cmp(max) > 1 {
-			id, max = t.Id, n
-		}
+func (tws Tweets) LastId() string {
+	if len(tws) > 0 && tws[0].User != nil {
+		return tws[0].Id
 	}
-	return
+	return ""
 }
 
 type Tweet struct {
@@ -117,9 +108,4 @@ type User struct {
 	Followers     uint32 `json:"followers_count"`
 	Friends       uint32 `json:"friends_count"`
 	StatusesCount uint32 `json:"statuses_count"`
-}
-
-func strToNum(s string) *big.Int {
-	n, _ := new(big.Int).SetString(s, 10)
-	return n
 }
