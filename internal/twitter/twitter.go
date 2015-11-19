@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/mrjones/oauth"
 
@@ -37,8 +38,8 @@ type Twitter struct {
 	LastLocation []misc.GeoRecord // All locations since last update
 	LastTweetId  string           // the id of the last tweet
 	LatestTweets Tweets           // Posts since last update.. will later check these for deal satisfaction
-
-	Score float32
+	LastUpdated  int32            // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score        float32
 
 	client *http.Client
 }
@@ -76,6 +77,7 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 
 	tw.LatestTweets = tws
 	tw.LastTweetId = tws.LastId()
+	tw.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
 
