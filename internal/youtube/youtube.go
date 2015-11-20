@@ -61,7 +61,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
 	if views, comments, subs, err := getUserStats(yt.UserId, cfg); err == nil {
 		if yt.Subscribers > 0 {
-			yt.SubscriberDelta = (yt.Subscribers - subs)
+			yt.SubscriberDelta = (subs - yt.Subscribers)
 		}
 		yt.AvgViews = views
 		yt.AvgComments = comments

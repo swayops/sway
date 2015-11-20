@@ -59,7 +59,7 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 	if fl, err := getFollowers(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
-			in.FollowerDelta = (in.Followers - fl)
+			in.FollowerDelta = (fl - in.Followers)
 		}
 		in.Followers = fl
 	} else {
@@ -82,10 +82,4 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 
 func (in *Instagram) GetScore() float32 {
 	return (in.Followers * 3) + (in.FollowerDelta * 2) + (in.AvgComments * 2) + (in.AvgLikes)
-}
-
-func GetStatsByPost(id string) *Post {
-	// Each package has this function.. so we can update stats for deal posts
-	// Should take in a post Id and return all post stats
-	return nil
 }
