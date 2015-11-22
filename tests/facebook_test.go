@@ -50,10 +50,11 @@ func TestFacebook(t *testing.T) {
 		t.Error("Empty number of posts")
 	}
 
+	// Hacky test
 	old := inf.Facebook.LatestPosts[0].Likes
-	log.Println("OLD", old, inf.Facebook.LatestPosts[1].Likes)
-	time.Sleep(2 * time.Minute)
+	time.Sleep(20 * time.Second)
 	inf.Facebook.LatestPosts[0].UpdateData(cfg)
-	log.Println("NEW", inf.Facebook.LatestPosts[0].Likes, inf.Facebook.LatestPosts[1].Likes)
-	// look into failed shares..
+	if old == inf.Facebook.LatestPosts[0].Likes {
+		t.Error("Should have new likes data!")
+	}
 }
