@@ -207,16 +207,3 @@ type PostById struct {
 	Meta *Meta     `json:"meta"`
 	Data *PostData `json:"data"`
 }
-
-// func GetStatsByPost(id string) *Post {
-// 	// Each package has this function.. so we can update stats for deal posts
-// 	// Should take in a post Id and return all post stats
-
-// 	//https://api.instagram.com/v1/media/{media-id}?client_id=ACCESS-TOKEN
-
-// 	endpoint := fmt.Sprintf(postIdUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
-// 	var postById PostById
-// 	err = misc.Request("GET", endpoint, "", &postById)
-
-// 	return nil
-// }

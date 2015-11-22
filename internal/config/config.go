@@ -25,7 +25,6 @@ func New(loc string) (*Config, error) {
 
 type Config struct {
 	TwitterEndpoint string `json:"twitterEndpoint"`
-	FbEndpoint      string `json:"fbEndpoint"`
 
 	YouTube struct {
 		Endpoint string `json:"endpoint"`
@@ -36,4 +35,10 @@ type Config struct {
 		Endpoint string `json:"endpoint"`
 		ClientId string `json:"clientId"`
 	} `json:"instagram"`
+
+	Facebook struct {
+		Endpoint string `json:"endpoint"`
+		Id       string `json:"id"`
+		Secret   string `json:"secret"`
+	} `json:"facebook"`
 }

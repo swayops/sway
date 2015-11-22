@@ -10,5 +10,11 @@
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
 		"clientId": "5941ed0c28874764a5d86fb47984aceb"
+	},
+
+	"facebook": {
+		"endpoint": "https://graph.facebook.com/",
+		"id": "160153604335761",
+		"secret": "d306e3e3bbf5995f18b8ff8507ff4cc0"
 	}
 }

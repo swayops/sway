@@ -23,22 +23,6 @@ type Instagram struct {
 	Score float32
 }
 
-type Post struct {
-	Id       string
-	Caption  string
-	Hashtags []string
-
-	PostURL string // Link to the post
-
-	Published int32 //epoch ts
-
-	Location *misc.GeoRecord
-
-	// Stats
-	Likes    float32
-	Comments float32
-}
-
 func New(name string, cfg *config.Config) (*Instagram, error) {
 	userId, err := getUserIdFromName(name, cfg)
 	if err != nil {
