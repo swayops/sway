@@ -143,7 +143,7 @@ type FanData struct {
 }
 
 type Value struct {
-	Countries map[string]int `json:"value"`
+	Countries map[string]float32 `json:"value"`
 }
 
 func getFollowers(id string, cfg *config.Config) (fl float32, err error) {
@@ -157,7 +157,7 @@ func getFollowers(id string, cfg *config.Config) (fl float32, err error) {
 	}
 
 	for _, val := range data.Data[0].Values[0].Countries {
-		fl += float32(val)
+		fl += val
 	}
 	return
 }
