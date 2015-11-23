@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -14,8 +15,9 @@ import (
 )
 
 const (
-	timelineUrl = `https://api.twitter.com/1.1/statuses/user_timeline.json?exclude_replies=true&screen_name=`
-	tweetUrl    = `https://api.twitter.com/1.1/statuses/show.json?include_entities=false&trim_user=true&id=`
+	timelineUrl        = `%sstatuses/user_timeline.json?exclude_replies=true&screen_name=%s`
+	timelineSinceIdUrl = `%sstatuses/user_timeline.json?exclude_replies=true&screen_name=%s&since_id=%s`
+	tweetUrl           = `%sstatuses/show.json?include_entities=false&trim_user=true&id=%s`
 )
 
 var (
@@ -53,12 +55,8 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 		return nil, config.ErrInvalidConfig
 	}
 
-	oc := oauth.NewConsumer(tCfg.Key, tCfg.Secret, serviceProvider)
 	tw = &Twitter{Id: id}
-	if tw.client, err = oc.MakeHttpClient(&oauth.AccessToken{
-		Token:  tCfg.AccessToken,
-		Secret: tCfg.AccessSecret,
-	}); err != nil {
+	if tw.client, err = getClient(cfg); err != nil {
 		return
 	}
 	err = tw.UpdateData(tCfg.Endpoint)
@@ -66,7 +64,7 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 }
 
 func (tw *Twitter) UpdateData(endpoint string) error {
-	tws, err := tw.GetTweets(tw.LastTweetId)
+	tws, err := tw.getTweets(endpoint, tw.LastTweetId)
 	if err != nil {
 		return err
 	}
@@ -86,17 +84,16 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 	return nil
 }
 
-func (tw *Twitter) GetTweets(lastTweetId string) (tws Tweets, err error) {
-	url := timelineUrl + tw.Id
+func (tw *Twitter) getTweets(endpoint, lastTweetId string) (tws Tweets, err error) {
 	if len(lastTweetId) > 0 {
-		url += "&since_id=" + lastTweetId
+		endpoint = fmt.Sprintf(timelineSinceIdUrl, endpoint, tw.Id, lastTweetId)
+	} else {
+		endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id)
 	}
-	//log.Println(url)
 	var resp *http.Response
-	if resp, err = tw.client.Get(url); err != nil {
+	if resp, err = tw.client.Get(endpoint); err != nil {
 		return
 	}
-	defer resp.Body.Close()
 	var gr *gzip.Reader
 	if gr, err = gzip.NewReader(resp.Body); err != nil {
 		return
@@ -106,21 +103,18 @@ func (tw *Twitter) GetTweets(lastTweetId string) (tws Tweets, err error) {
 	return
 }
 
-func (tw *Twitter) GetTweet(id string) (t *Tweet, err error) {
-	var resp *http.Response
-	if resp, err = tw.client.Get(tweetUrl + id); err != nil {
-		return
-	}
-	defer resp.Body.Close()
-	var gr *gzip.Reader
-	if gr, err = gzip.NewReader(resp.Body); err != nil {
-		return
-	}
-	err = json.NewDecoder(gr).Decode(&t)
-	gr.Close()
-	return
-}
-
 func (tw *Twitter) GetScore() float32 {
 	return (tw.Followers * 3) + (tw.FollowerDelta * 2) + (tw.AvgRetweets * 2) + (tw.AvgLikes)
+}
+
+func getClient(cfg *config.Config) (*http.Client, error) {
+	c := cfg.Twitter
+	if len(c.Key) == 0 || len(c.Secret) == 0 || len(c.AccessToken) == 0 || len(c.AccessSecret) == 0 || len(c.Endpoint) == 0 {
+		return nil, config.ErrInvalidConfig
+	}
+	oc := oauth.NewConsumer(c.Key, c.Secret, serviceProvider)
+	return oc.MakeHttpClient(&oauth.AccessToken{
+		Token:  c.AccessToken,
+		Secret: c.AccessSecret,
+	})
 }

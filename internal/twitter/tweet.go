@@ -1,6 +1,13 @@
 package twitter
 
 import (
+	"compress/gzip"
+	"encoding/json"
+	"fmt"
+	"net/http"
+
+	"github.com/swayops/sway/internal/config"
+
 	"github.com/swayops/sway/misc"
 
 	"time"
@@ -88,11 +95,27 @@ func (t *Tweet) Hashtags() (out []string) {
 	return
 }
 
-func (t *Tweet) UpdateStats(tw *Twitter) (err error) {
-	var tmp *Tweet
-	if tmp, err = tw.GetTweet(t.Id); err == nil && tmp.Id == t.Id {
-		*t = *tmp
+func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
+	var (
+		resp   *http.Response
+		client *http.Client
+	)
+	if client, err = getClient(cfg); err != nil {
+		return
 	}
+	if resp, err = client.Get(fmt.Sprintf(tweetUrl, cfg.Twitter.Endpoint, t.Id)); err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	var gr *gzip.Reader
+	if gr, err = gzip.NewReader(resp.Body); err != nil {
+		return
+	}
+	var tmp Tweet
+	if err = json.NewDecoder(gr).Decode(&tmp); err == nil {
+		*t = tmp
+	}
+	gr.Close()
 	return
 }
 
