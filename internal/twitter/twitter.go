@@ -72,11 +72,16 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 	}
 	tw.AvgRetweets = tws.AvgRetweets()
 	tw.AvgLikes = tws.AvgLikes()
-	tw.Followers = tws.Followers()
-	tw.FollowerDelta = 0 // well?
+	nf := tws.Followers()
+	if tw.Followers > 0 {
+		tw.FollowerDelta = nf - tw.Followers
+	}
+	tw.Followers = nf
 
 	tw.LatestTweets = tws
 	tw.LastTweetId = tws.LastId()
+	tw.Score = tw.GetScore()
+
 	tw.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
@@ -100,4 +105,8 @@ func (tw *Twitter) GetTweets(lastTweetId string) (tws Tweets, err error) {
 	gr.Close()
 	resp.Body.Close()
 	return
+}
+
+func (tw *Twitter) GetScore() float32 {
+	return (tw.Followers * 3) + (tw.FollowerDelta * 2) + (tw.AvgRetweets * 2) + (tw.AvgLikes)
 }
