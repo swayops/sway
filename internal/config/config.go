@@ -37,8 +37,6 @@ type Config struct {
 		AccessSecret string `json:"accessSecret"`
 	} `json:"twitter"`
 
-	FbEndpoint string `json:"fbEndpoint"`
-
 	YouTube struct {
 		Endpoint string `json:"endpoint"`
 		ClientId string `json:"clientId"`
@@ -48,4 +46,10 @@ type Config struct {
 		Endpoint string `json:"endpoint"`
 		ClientId string `json:"clientId"`
 	} `json:"instagram"`
+
+	Facebook struct {
+		Endpoint string `json:"endpoint"`
+		Id       string `json:"id"`
+		Secret   string `json:"secret"`
+	} `json:"facebook"`
 }

@@ -19,6 +19,7 @@ const (
 	searchesUrl  = "%susers/search?q=%s&client_id=%s"
 	followersUrl = "%susers/%s/?client_id=%s"
 	postUrl      = "%susers/%s/media/recent/?client_id=%s&count=30"
+	postIdUrl    = "%smedia/%s?client_id=%s"
 )
 
 var (
@@ -200,4 +201,9 @@ func getFollowers(id string, cfg *config.Config) (flw float32, err error) {
 	}
 
 	return
+}
+
+type PostById struct {
+	Meta *Meta     `json:"meta"`
+	Data *PostData `json:"data"`
 }

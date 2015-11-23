@@ -23,22 +23,6 @@ type Instagram struct {
 	Score float32
 }
 
-type Post struct {
-	Id       string
-	Caption  string
-	Hashtags []string
-
-	PostURL string // Link to the post
-
-	Published int32 //epoch ts
-
-	Location *misc.GeoRecord
-
-	// Stats
-	Likes    float32
-	Comments float32
-}
-
 func New(name string, cfg *config.Config) (*Instagram, error) {
 	userId, err := getUserIdFromName(name, cfg)
 	if err != nil {
@@ -59,7 +43,7 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 	if fl, err := getFollowers(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
-			in.FollowerDelta = (in.Followers - fl)
+			in.FollowerDelta = (fl - in.Followers)
 		}
 		in.Followers = fl
 	} else {
@@ -82,10 +66,4 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 
 func (in *Instagram) GetScore() float32 {
 	return (in.Followers * 3) + (in.FollowerDelta * 2) + (in.AvgComments * 2) + (in.AvgLikes)
-}
-
-func GetStatsByPost(id string) *Post {
-	// Each package has this function.. so we can update stats for deal posts
-	// Should take in a post Id and return all post stats
-	return nil
 }
