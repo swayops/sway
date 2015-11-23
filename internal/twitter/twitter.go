@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 
 const (
 	timelineUrl = `https://api.twitter.com/1.1/statuses/user_timeline.json?exclude_replies=true&screen_name=`
+	tweetUrl    = `https://api.twitter.com/1.1/statuses/show.json?include_entities=false&trim_user=true&id=`
 )
 
 var (
@@ -91,7 +91,7 @@ func (tw *Twitter) GetTweets(lastTweetId string) (tws Tweets, err error) {
 	if len(lastTweetId) > 0 {
 		url += "&since_id=" + lastTweetId
 	}
-	log.Println(url)
+	//log.Println(url)
 	var resp *http.Response
 	if resp, err = tw.client.Get(url); err != nil {
 		return
@@ -103,7 +103,21 @@ func (tw *Twitter) GetTweets(lastTweetId string) (tws Tweets, err error) {
 	}
 	err = json.NewDecoder(gr).Decode(&tws)
 	gr.Close()
-	resp.Body.Close()
+	return
+}
+
+func (tw *Twitter) GetTweet(id string) (t *Tweet, err error) {
+	var resp *http.Response
+	if resp, err = tw.client.Get(tweetUrl + id); err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	var gr *gzip.Reader
+	if gr, err = gzip.NewReader(resp.Body); err != nil {
+		return
+	}
+	err = json.NewDecoder(gr).Decode(&t)
+	gr.Close()
 	return
 }
 

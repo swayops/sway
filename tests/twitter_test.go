@@ -20,22 +20,30 @@ func TestTwitter(t *testing.T) {
 	twId := "kimkardashian" // I may hate the bitch but sadly she's a huge star :(
 	inf, err := influencer.New(twId, "", "", "", cfg)
 	if err != nil {
-		t.Error("Error when initializing insta", err)
+		t.Fatal("Error when initializing insta", err)
 	}
 
 	tw := inf.Twitter
 	t.Logf("AvgRetweets: %v, AvgLikes: %v, Followers: %v, LatestPosts: %v", tw.AvgRetweets, tw.AvgLikes, uint(tw.Followers), len(tw.LatestTweets))
 
-	if v := tw.AvgRetweets; v < 800 {
-		t.Error("AvgRetweets don't match! Expected > 800.. Got: ", v)
+	if v := tw.AvgRetweets; v < 500 {
+		t.Fatal("AvgRetweets don't match! Expected > 500.. Got: ", v)
 	}
 
-	if v := tw.AvgLikes; v < 3000 {
-		t.Error("AvgLikes don't match! Expected > 3000.. Got: ", v)
+	if v := tw.AvgLikes; v < 2000 {
+		t.Fatal("AvgLikes don't match! Expected > 2000.. Got: ", v)
 	}
 
 	if v := tw.Followers; v < 36e6 {
-		t.Error("Followers don't match! Expected > 3mil, because the world is broken.. Got: ", uint(v))
+		t.Fatal("Followers don't match! Expected > 3mil, because the world is broken.. Got: ", uint(v))
 	}
 
+	tweet, err := tw.GetTweet(tw.LastTweetId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tweet.Id != tw.LastTweetId {
+		t.Fatalf("expected tweet id %s, got %s", tw.LastTweetId, tweet.Id)
+	}
+	t.Logf("%+v", tweet)
 }
