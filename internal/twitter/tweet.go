@@ -88,6 +88,14 @@ func (t *Tweet) Hashtags() (out []string) {
 	return
 }
 
+func (t *Tweet) UpdateStats(tw *Twitter) (err error) {
+	var tmp *Tweet
+	if tmp, err = tw.GetTweet(t.Id); err == nil && tmp.Id == t.Id {
+		*t = *tmp
+	}
+	return
+}
+
 const TwitterTimeLayout = `"Mon Jan 02 15:04:05 -0700 2006"`
 
 type TwitterTime struct {
