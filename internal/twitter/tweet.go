@@ -107,15 +107,21 @@ func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
 		return
 	}
 	defer resp.Body.Close()
-	var gr *gzip.Reader
-	if gr, err = gzip.NewReader(resp.Body); err != nil {
-		return
+
+	r := resp.Body
+	if resp.Header.Get("Content-Encoding") != "" {
+		var gr *gzip.Reader
+		if gr, err = gzip.NewReader(resp.Body); err != nil {
+			return
+		}
+		defer gr.Close()
+		r = gr
 	}
+
 	var tmp Tweet
-	if err = json.NewDecoder(gr).Decode(&tmp); err == nil {
+	if err = json.NewDecoder(r).Decode(&tmp); err == nil {
 		*t = tmp
 	}
-	gr.Close()
 	return
 }
 

@@ -50,16 +50,12 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 	if len(id) == 0 {
 		return nil, ErrMissingId
 	}
-	tCfg := cfg.Twitter
-	if len(tCfg.Key) == 0 || len(tCfg.Secret) == 0 || len(tCfg.AccessToken) == 0 || len(tCfg.AccessSecret) == 0 || len(tCfg.Endpoint) == 0 {
-		return nil, config.ErrInvalidConfig
-	}
 
 	tw = &Twitter{Id: id}
 	if tw.client, err = getClient(cfg); err != nil {
 		return
 	}
-	err = tw.UpdateData(tCfg.Endpoint)
+	err = tw.UpdateData(cfg.Twitter.Endpoint)
 	return
 }
 
@@ -94,12 +90,19 @@ func (tw *Twitter) getTweets(endpoint, lastTweetId string) (tws Tweets, err erro
 	if resp, err = tw.client.Get(endpoint); err != nil {
 		return
 	}
-	var gr *gzip.Reader
-	if gr, err = gzip.NewReader(resp.Body); err != nil {
-		return
+	defer resp.Body.Close()
+
+	r := resp.Body
+	if resp.Header.Get("Content-Encoding") != "" {
+		var gr *gzip.Reader
+		if gr, err = gzip.NewReader(resp.Body); err != nil {
+			return
+		}
+		defer gr.Close()
+		r = gr
 	}
-	err = json.NewDecoder(gr).Decode(&tws)
-	gr.Close()
+
+	err = json.NewDecoder(r).Decode(&tws)
 	return
 }
 
