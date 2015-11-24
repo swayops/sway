@@ -2,8 +2,13 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"os"
+)
+
+var (
+	ErrInvalidConfig = errors.New("invalid config")
 )
 
 func New(loc string) (*Config, error) {
@@ -24,7 +29,13 @@ func New(loc string) (*Config, error) {
 }
 
 type Config struct {
-	TwitterEndpoint string `json:"twitterEndpoint"`
+	Twitter struct {
+		Endpoint     string `json:"endpoint"`
+		Key          string `json:"key"`
+		Secret       string `json:"secret"`
+		AccessToken  string `json:"accessToken"`
+		AccessSecret string `json:"accessSecret"`
+	} `json:"twitter"`
 
 	YouTube struct {
 		Endpoint string `json:"endpoint"`

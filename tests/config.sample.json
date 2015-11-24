@@ -12,9 +12,17 @@
 		"clientId": "5941ed0c28874764a5d86fb47984aceb"
 	},
 
+	"twitter": {
+		"endpoint": "https://api.twitter.com/1.1/",
+		"key": "HwmrtQmbRlPFoEjYttFhxIYjS",
+		"secret": "ndoInLw8vcg36hr2yUYHTp7iJIHppDo2bgdkab9kvfUCMeAP8M",
+		"accessToken": "4148312354-KAyugxUF1oTbV6jPJ17Bf9SHmGDvUtoExWhYPzF",
+		"accessSecret": "wTWeltKgC96VufFUFfYKflv76FzJFZ7UDYm1Hgj0U17gr"
+	},
 	"facebook": {
 		"endpoint": "https://graph.facebook.com/",
 		"id": "160153604335761",
 		"secret": "d306e3e3bbf5995f18b8ff8507ff4cc0"
 	}
 }
+
