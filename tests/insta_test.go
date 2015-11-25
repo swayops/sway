@@ -3,6 +3,7 @@ package tests
 import (
 	"log"
 	"testing"
+	"time"
 
 	"github.com/swayops/sway/internal/config"
 	"github.com/swayops/sway/internal/influencer"
@@ -43,6 +44,14 @@ func TestInstagram(t *testing.T) {
 		t.Error("Empty number of posts")
 	}
 
+	// Hacky test
+	old := inf.Instagram.LatestPosts[0].Likes
+	time.Sleep(20 * time.Second)
+	inf.Instagram.LatestPosts[0].UpdateData(cfg)
+	if old == inf.Instagram.LatestPosts[0].Likes {
+		t.Error("Should have new likes data!")
+	}
+
 	// Update Influencer
 	err = inf.Instagram.UpdateData(cfg)
 	if err != nil {
@@ -61,4 +70,5 @@ func TestInstagram(t *testing.T) {
 	if inf.Instagram.UserName != "kimkardashian" {
 		t.Error("Insta changed on bad user name")
 	}
+
 }

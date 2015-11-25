@@ -18,9 +18,14 @@ type Post struct {
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
-	pt.Likes = 0
-	pt.Dislikes = 0
-	pt.Views = 0
-	pt.Comments = 0
+	views, likes, dislikes, comments, err := getVideoStats(pt.Id, cfg)
+	if err != nil {
+		return err
+	}
+
+	pt.Likes = likes
+	pt.Dislikes = dislikes
+	pt.Views = views
+	pt.Comments = comments
 	return nil
 }

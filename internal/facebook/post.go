@@ -11,6 +11,9 @@ type Post struct {
 	Likes    float32
 	Shares   float32
 	Comments float32
+
+	// Type
+	Type string // "video", "photo", "shared_story", "link"
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
@@ -26,7 +29,7 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 		return err
 	}
 
-	if sh, err := getShares(pt.Id, cfg); err == nil {
+	if sh, _, err := getShares(pt.Id, cfg); err == nil {
 		pt.Shares = sh
 	} else {
 		return err

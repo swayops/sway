@@ -3,6 +3,7 @@ package tests
 import (
 	"log"
 	"testing"
+	"time"
 
 	"github.com/swayops/sway/internal/config"
 	"github.com/swayops/sway/internal/influencer"
@@ -47,6 +48,16 @@ func TestYouTube(t *testing.T) {
 
 	if inf.YouTube.LatestPosts[0].Likes == 0 {
 		t.Error("Video likes don't match! Expected > 0.. Got: ", inf.YouTube.LatestPosts[0].Likes)
+	}
+
+	// Hacky test
+	old := inf.YouTube.LatestPosts[0].Views
+	log.Println(inf.YouTube.LatestPosts[0].Views)
+
+	time.Sleep(10 * time.Minute)
+	inf.YouTube.LatestPosts[0].UpdateData(cfg)
+	if old == inf.YouTube.LatestPosts[0].Views {
+		t.Error("Should have new likes data!")
 	}
 
 	err = inf.YouTube.UpdateData(cfg)

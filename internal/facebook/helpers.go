@@ -35,6 +35,7 @@ type Summary struct {
 
 type SharesData struct {
 	Shares *Share `json:"shares"`
+	Type   string `json:"type"`
 }
 
 type Share struct {
@@ -75,8 +76,9 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float3
 			continue
 		}
 
-		if sh, err := getShares(p.Id, cfg); err == nil {
+		if sh, pType, err := getShares(p.Id, cfg); err == nil {
 			fbPost.Shares = sh
+			fbPost.Type = pType
 			shares += sh
 		} else {
 			continue
@@ -113,7 +115,7 @@ func getComments(id string, cfg *config.Config) (cm float32, err error) {
 	var comments PostData
 	err = misc.Request("GET", endpoint, "", &comments)
 	if err != nil || comments.Summary == nil {
-		log.Println("Error extracting likes", err)
+		log.Println("Error extracting comments", err)
 		return
 	}
 
@@ -121,16 +123,20 @@ func getComments(id string, cfg *config.Config) (cm float32, err error) {
 	return
 }
 
-func getShares(id string, cfg *config.Config) (shares float32, err error) {
+func getShares(id string, cfg *config.Config) (shares float32, pType string, err error) {
 	// https://graph.facebook.com/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
 	endpoint := fmt.Sprintf(sharesUrl, cfg.Facebook.Endpoint, id)
 	var post SharesData
 	err = misc.Request("GET", endpoint, "", &post)
-	if err != nil || post.Shares == nil {
+	if err != nil {
 		log.Println("Error extracting shares", err, endpoint)
 		return
 	}
-	shares = post.Shares.Count
+	pType = post.Type
+	if post.Shares != nil {
+		// Some post types do not have shares.. i.e. "link" and "shared_story"
+		shares = post.Shares.Count
+	}
 	return
 }
 

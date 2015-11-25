@@ -202,41 +202,9 @@ func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts 
 				Description: v.Snippet.Description,
 				Published:   pub,
 			}
-			endpoint = fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, v.Snippet.Resource.VideoId, cfg.YouTube.ClientId)
 
-			var vData Data
-			err = misc.Request("GET", endpoint, "", &vData)
-			if err != nil || vData.Error != nil || len(vData.Items) == 0 {
-				log.Println("Error extracting video data", endpoint, err)
-				continue
-			}
-			i := vData.Items[0]
-			if i.Stats == nil {
-				log.Println("Error extracting stats data", endpoint, err)
-				continue
-			}
-
-			p.Views, err = getCount(i.Stats.Views)
+			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)
 			if err != nil {
-				log.Println("Error extracting views data", endpoint)
-				continue
-			}
-
-			p.Likes, err = getCount(i.Stats.Likes)
-			if err != nil {
-				log.Println("Error extracting likes data", endpoint)
-				continue
-			}
-
-			p.Dislikes, err = getCount(i.Stats.Dislikes)
-			if err != nil {
-				log.Println("Error extracting dislikes data", endpoint)
-				continue
-			}
-
-			p.Comments, err = getCount(i.Stats.Comments)
-			if err != nil {
-				log.Println("Error extracting comments data", endpoint)
 				continue
 			}
 
@@ -250,6 +218,57 @@ func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts 
 	length := float32(len(posts))
 	avgLikes = avgLikes / length
 	avgDislikes = avgDislikes / length
+
+	return
+}
+
+var ErrStats = errors.New("Unable to retrieve video stats")
+
+func getVideoStats(videoId string, cfg *config.Config) (views, likes, dislikes, comments float32, err error) {
+	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
+
+	var vData Data
+	err = misc.Request("GET", endpoint, "", &vData)
+	if err != nil || vData.Error != nil || len(vData.Items) == 0 {
+		log.Println("Error extracting video data", endpoint, err)
+		err = ErrStats
+		return
+	}
+
+	i := vData.Items[0]
+	if i.Stats == nil {
+		log.Println("Error extracting stats data", endpoint, err)
+		err = ErrStats
+		return
+	}
+
+	views, err = getCount(i.Stats.Views)
+	if err != nil {
+		log.Println("Error extracting views data", endpoint)
+		err = ErrStats
+		return
+	}
+
+	likes, err = getCount(i.Stats.Likes)
+	if err != nil {
+		log.Println("Error extracting likes data", endpoint)
+		err = ErrStats
+		return
+	}
+
+	dislikes, err = getCount(i.Stats.Dislikes)
+	if err != nil {
+		log.Println("Error extracting dislikes data", endpoint)
+		err = ErrStats
+		return
+	}
+
+	comments, err = getCount(i.Stats.Comments)
+	if err != nil {
+		log.Println("Error extracting comments data", endpoint)
+		err = ErrStats
+		return
+	}
 
 	return
 }
