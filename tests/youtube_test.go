@@ -52,8 +52,6 @@ func TestYouTube(t *testing.T) {
 
 	// Hacky test
 	old := inf.YouTube.LatestPosts[0].Views
-	log.Println(inf.YouTube.LatestPosts[0].Views)
-
 	time.Sleep(10 * time.Minute)
 	inf.YouTube.LatestPosts[0].UpdateData(cfg)
 	if old == inf.YouTube.LatestPosts[0].Views {
