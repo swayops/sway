@@ -1,69 +1,41 @@
 package tumblr
 
 import (
-	"log"
-	"math/big"
 	"net/http"
-	"time"
 
 	"github.com/mrjones/oauth"
 	"github.com/swayops/sway/internal/config"
+	"github.com/swayops/sway/misc"
 )
 
-var (
-	serviceProvider = oauth.ServiceProvider{
-		RequestTokenUrl:   "https://www.tumblr.com/oauth/request_token",
-		AuthorizeTokenUrl: "https://www.tumblr.com/oauth/authorize",
-		AccessTokenUrl:    "https://www.tumblr.com/oauth/access_token",
+type Tumblr struct {
+	Id string
+
+	AvgReblogs    float32
+	AvgLikes      float32
+	Followers     float32 // float32 for GetScore equation
+	FollowerDelta float32 // Follower delta since last UpdateData run
+
+	LastLocation []misc.GeoRecord // All locations since last update
+	LastTweetId  string           // the id of the last tweet
+	LatestTweets Posts            // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated  int32            // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score        float32
+
+	client *http.Client
+}
+
+func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
+	if len(id) == 0 {
+		return nil, ErrMissingId
 	}
-)
 
-type Timestamp int64
-
-func (ts Timestamp) Time() time.Time {
-	return time.Unix(int64(ts), 0)
-}
-
-type Post struct {
-	ID        big.Int   `json:"id"`
-	Slug      string    `json:"slug"`
-	Type      string    `json:"type"`
-	TS        Timestamp `json:"timestamp"`
-	NoteCount uint32    `json:"note_count"`
-	Tags      []string  `json:"tags"`
-	Notes     []Note    `json:"notes"`
-}
-
-type Note struct {
-	Type string `json:"type"`
-	// TS   Timestamp `json:"timestamp"` // is this even needed?
-}
-
-// Counts returns the number of reblogs/likes of the most recent 50 notes, API limitation. :(
-func (p *Post) Counts() (reblog, likes int) {
-	for i := range p.Notes {
-		switch p.Notes[i].Type {
-		case "like":
-			likes++
-		case "reblog", "posted":
-			reblog++
-		default:
-			log.Printf("unknown type: %s", p.Notes[i].Type)
-		}
+	tr = &Tumblr{Id: id}
+	if tr.client, err = getClient(cfg); err != nil {
+		return
 	}
+	//err = tw.UpdateData(cfg.Twitter.Endpoint)
 	return
-}
-
-type apiResponse struct {
-	Meta struct {
-		Status  int    `json:"status"`
-		Message string `json:"msg"`
-	}
-	Blog struct {
-		Title    string `json:"title"`
-		NumPosts int    `json:"posts"`
-	}
-	Posts []*Post `json:"posts"`
 }
 
 func getClient(cfg *config.Config) (*http.Client, error) {
