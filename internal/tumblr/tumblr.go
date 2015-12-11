@@ -2,6 +2,7 @@ package tumblr
 
 import (
 	"net/http"
+	"path"
 
 	"github.com/mrjones/oauth"
 	"github.com/swayops/sway/internal/config"
@@ -27,7 +28,7 @@ type Tumblr struct {
 
 func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 	if len(id) == 0 {
-		return nil, ErrMissingId
+		return nil, misc.ErrMissingId
 	}
 
 	tr = &Tumblr{Id: id}
@@ -36,6 +37,10 @@ func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 	}
 	//err = tw.UpdateData(cfg.Twitter.Endpoint)
 	return
+}
+
+func (tr *Tumblr) UpdateData(ep string) error {
+	u := path.Join(ep, "blog", tr.Id, "posts")
 }
 
 func getClient(cfg *config.Config) (*http.Client, error) {

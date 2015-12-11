@@ -3,7 +3,6 @@ package twitter
 import (
 	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -21,7 +20,6 @@ const (
 )
 
 var (
-	ErrMissingId    = errors.New("missing id")
 	serviceProvider = oauth.ServiceProvider{
 		RequestTokenUrl:   "https://api.twitter.com/oauth/request_token",
 		AuthorizeTokenUrl: "https://api.twitter.com/oauth/authorize",
@@ -48,7 +46,7 @@ type Twitter struct {
 
 func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 	if len(id) == 0 {
-		return nil, ErrMissingId
+		return nil, misc.ErrMissingId
 	}
 
 	tw = &Twitter{Id: id}

@@ -1,7 +1,6 @@
 package tumblr
 
 import (
-	"errors"
 	"log"
 	"math/big"
 	"time"
@@ -10,8 +9,6 @@ import (
 )
 
 var (
-	ErrMissingId = errors.New("missing id")
-
 	serviceProvider = oauth.ServiceProvider{
 		RequestTokenUrl:   "https://www.tumblr.com/oauth/request_token",
 		AuthorizeTokenUrl: "https://www.tumblr.com/oauth/authorize",
