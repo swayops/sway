@@ -77,7 +77,9 @@ func (p *Post) UpdateData(tr *Tumblr, cfg *config.Config) (err error) {
 	if resp.Meta.Status != 200 {
 		return errors.New(resp.Meta.Message)
 	}
-	*p = *resp.Response.Posts[0]
+	if len(resp.Response.Posts) == 1 { // should never be more or less than 1
+		*p = *resp.Response.Posts[0]
+	}
 	return
 }
 
