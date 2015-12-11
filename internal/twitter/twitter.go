@@ -1,8 +1,6 @@
 package twitter
 
 import (
-	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -84,23 +82,8 @@ func (tw *Twitter) getTweets(endpoint, lastTweetId string) (tws Tweets, err erro
 	} else {
 		endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id)
 	}
-	var resp *http.Response
-	if resp, err = tw.client.Get(endpoint); err != nil {
-		return
-	}
-	defer resp.Body.Close()
 
-	r := resp.Body
-	if resp.Header.Get("Content-Encoding") != "" {
-		var gr *gzip.Reader
-		if gr, err = gzip.NewReader(resp.Body); err != nil {
-			return
-		}
-		defer gr.Close()
-		r = gr
-	}
-
-	err = json.NewDecoder(r).Decode(&tws)
+	err = misc.HttpGetJson(tw.client, endpoint, &tws)
 	return
 }
 

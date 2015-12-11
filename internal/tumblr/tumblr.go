@@ -1,12 +1,18 @@
 package tumblr
 
 import (
+	"fmt"
 	"net/http"
-	"path"
 
 	"github.com/mrjones/oauth"
 	"github.com/swayops/sway/internal/config"
 	"github.com/swayops/sway/misc"
+)
+
+const (
+	allPostsUrl       = `%s/blog/%s/posts?notes_info=true&limit=100`
+	allPostsUrlOffset = `%s/blog/%s/posts?notes_info=true&limit=100&offset=%d`
+	singlePostUrl     = `%s/blog/%s/posts?notes_info=true&id=%s`
 )
 
 type Tumblr struct {
@@ -18,8 +24,8 @@ type Tumblr struct {
 	FollowerDelta float32 // Follower delta since last UpdateData run
 
 	LastLocation []misc.GeoRecord // All locations since last update
-	LastTweetId  string           // the id of the last tweet
-	LatestTweets Posts            // Posts since last update.. will later check these for deal satisfaction
+	LastPostId   string           // the id of the last tweet
+	LatestPosts  Posts            // Posts since last update.. will later check these for deal satisfaction
 	LastUpdated  int32            // If you see this on year 2038 and wonder why it broke, find Shahzil.
 	Score        float32
 
@@ -35,12 +41,30 @@ func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 	if tr.client, err = getClient(cfg); err != nil {
 		return
 	}
-	//err = tw.UpdateData(cfg.Twitter.Endpoint)
+	err = tr.UpdateData(cfg.Twitter.Endpoint, 0)
 	return
 }
 
-func (tr *Tumblr) UpdateData(ep string) error {
-	u := path.Join(ep, "blog", tr.Id, "posts")
+func (tr *Tumblr) UpdateData(ep string, offset int) error {
+	posts, err := tr.getPosts(ep, "", offset)
+	if err != nil {
+		return err
+	}
+	tr.LatestPosts = posts
+	return nil
+}
+
+func (tr *Tumblr) getPosts(endpoint, pid string, offset int) (posts Posts, err error) {
+	if offset > 0 {
+		endpoint = fmt.Sprintf(allPostsUrlOffset, endpoint, tr.Id, offset)
+	} else if len(pid) > 0 {
+		endpoint = fmt.Sprintf(singlePostUrl, endpoint, tr.Id, pid)
+	} else {
+		endpoint = fmt.Sprintf(allPostsUrl, endpoint, tr.Id)
+	}
+
+	err = misc.HttpGetJson(tr.client, endpoint, &posts)
+	return
 }
 
 func getClient(cfg *config.Config) (*http.Client, error) {
