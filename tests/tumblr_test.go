@@ -20,25 +20,26 @@ func TestTumblr(t *testing.T) {
 	id := "kropotkindersurprise.tumblr.com" // I may hate the bitch but sadly she's a huge star :(
 	inf, err := influencer.New("", "", "", "", id, cfg)
 	if err != nil {
-		t.Fatal("Error when initializing twitter", err)
+		t.Fatal("Error when initializing tumblr", err)
 	}
 
-	tw := inf.Twitter
-	t.Logf("AvgRetweets: %v, AvgLikes: %v, Followers: %v, LatestPosts: %v", tw.AvgRetweets, tw.AvgLikes, uint(tw.Followers), len(tw.LatestTweets))
+	tr := inf.Tumblr
+	t.Logf("AvgReblogs: %v, AvgLikes: %v, LatestPosts: %v", tr.AvgReblogs, tr.AvgLikes, len(tr.LatestPosts))
 
-	if v := tw.AvgRetweets; v < 500 {
-		t.Fatal("AvgRetweets don't match! Expected > 500.. Got: ", v)
-	}
+	log.Println(tr.LatestPosts[0].UpdateData(tr, cfg))
+	// if v := tw.AvgRetweets; v < 500 {
+	// 	t.Fatal("AvgRetweets don't match! Expected > 500.. Got: ", v)
+	// }
 
-	if v := tw.AvgLikes; v < 2000 {
-		t.Fatal("AvgLikes don't match! Expected > 2000.. Got: ", v)
-	}
+	// if v := tw.AvgLikes; v < 2000 {
+	// 	t.Fatal("AvgLikes don't match! Expected > 2000.. Got: ", v)
+	// }
 
-	if v := tw.Followers; v < 36e6 {
-		t.Fatal("Followers don't match! Expected > 3mil, because the world is broken.. Got: ", uint(v))
-	}
+	// if v := tw.Followers; v < 36e6 {
+	// 	t.Fatal("Followers don't match! Expected > 3mil, because the world is broken.. Got: ", uint(v))
+	// }
 
-	if err = tw.LatestTweets[0].UpdateData(cfg); err != nil {
-		t.Fatal(err)
-	}
+	// if err = tw.LatestTweets[0].UpdateData(cfg); err != nil {
+	// 	t.Fatal(err)
+	// }
 }

@@ -1,8 +1,10 @@
 package tumblr
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/mrjones/oauth"
 	"github.com/swayops/sway/internal/config"
@@ -10,24 +12,22 @@ import (
 )
 
 const (
-	allPostsUrl       = `%s/blog/%s/posts?notes_info=true&limit=100`
-	allPostsUrlOffset = `%s/blog/%s/posts?notes_info=true&limit=100&offset=%d`
-	singlePostUrl     = `%s/blog/%s/posts?notes_info=true&id=%s`
+	allPostsUrl       = `%sblog/%s/posts?notes_info=true&limit=20` // 20 is the max....
+	allPostsUrlOffset = `%sblog/%s/posts?notes_info=true&limit=20&offset=%d`
+	singlePostUrl     = `%sblog/%s/posts?notes_info=true&id=%s`
 )
 
 type Tumblr struct {
 	Id string
 
-	AvgReblogs    float32
-	AvgLikes      float32
-	Followers     float32 // float32 for GetScore equation
-	FollowerDelta float32 // Follower delta since last UpdateData run
+	AvgReblogs     float32
+	AvgLikes       float32
+	AvgInteraction float32
 
-	LastLocation []misc.GeoRecord // All locations since last update
-	LastPostId   string           // the id of the last tweet
-	LatestPosts  Posts            // Posts since last update.. will later check these for deal satisfaction
-	LastUpdated  int32            // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float32
+	LastPostId  string // the id of the last tweet
+	LatestPosts Posts  // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32  // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score       float32
 
 	client *http.Client
 }
@@ -41,7 +41,7 @@ func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 	if tr.client, err = getClient(cfg); err != nil {
 		return
 	}
-	err = tr.UpdateData(cfg.Twitter.Endpoint, 0)
+	err = tr.UpdateData(cfg.Tumblr.Endpoint, 0)
 	return
 }
 
@@ -51,6 +51,8 @@ func (tr *Tumblr) UpdateData(ep string, offset int) error {
 		return err
 	}
 	tr.LatestPosts = posts
+	tr.AvgLikes, tr.AvgReblogs, tr.AvgInteraction = posts.Avgs()
+	tr.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
 
@@ -63,8 +65,18 @@ func (tr *Tumblr) getPosts(endpoint, pid string, offset int) (posts Posts, err e
 		endpoint = fmt.Sprintf(allPostsUrl, endpoint, tr.Id)
 	}
 
-	err = misc.HttpGetJson(tr.client, endpoint, &posts)
-	return
+	var resp apiResponse
+	if err = misc.HttpGetJson(tr.client, endpoint, &resp); err != nil {
+		return
+	}
+	if resp.Meta.Status != 200 {
+		return nil, errors.New(resp.Meta.Message)
+	}
+	return resp.Response.Posts, nil
+}
+
+func (tr *Tumblr) GetScore() float32 {
+	return (tr.AvgReblogs * 2) + (tr.AvgLikes * 2) + tr.AvgInteraction
 }
 
 func getClient(cfg *config.Config) (*http.Client, error) {

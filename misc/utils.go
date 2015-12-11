@@ -1,6 +1,7 @@
 package misc
 
 import (
+	"compress/flate"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
@@ -18,15 +19,21 @@ func HttpGetJson(c *http.Client, endpoint string, out interface{}) (err error) {
 	}
 	defer resp.Body.Close()
 
-	r := resp.Body
-	if resp.Header.Get("Content-Encoding") != "" {
-		var gr *gzip.Reader
-		if gr, err = gzip.NewReader(resp.Body); err != nil {
+	switch resp.Header.Get("Content-Encoding") {
+	case "":
+		err = json.NewDecoder(resp.Body).Decode(out)
+	case "gzip":
+		var r *gzip.Reader
+		if r, err = gzip.NewReader(resp.Body); err != nil {
 			return
 		}
-		defer gr.Close()
-		r = gr
+		err = json.NewDecoder(r).Decode(out)
+		r.Close()
+	case "deflate":
+		r := flate.NewReader(resp.Body)
+		err = json.NewDecoder(r).Decode(out)
+		r.Close()
 	}
 
-	return json.NewDecoder(r).Decode(out)
+	return
 }
