@@ -19,7 +19,7 @@ func TestFacebook(t *testing.T) {
 
 	// Initialize Influencer test
 	fbId := "KimKardashian"
-	inf, err := influencer.New("", "", fbId, "", cfg)
+	inf, err := influencer.New("", "", fbId, "", "", cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}

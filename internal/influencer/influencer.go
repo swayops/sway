@@ -5,6 +5,7 @@ import (
 	"github.com/swayops/sway/internal/deal"
 	"github.com/swayops/sway/internal/facebook"
 	"github.com/swayops/sway/internal/instagram"
+	"github.com/swayops/sway/internal/tumblr"
 	"github.com/swayops/sway/internal/twitter"
 	"github.com/swayops/sway/internal/youtube"
 )
@@ -19,12 +20,13 @@ type Influencer struct {
 	Instagram *instagram.Instagram
 	Twitter   *twitter.Twitter
 	YouTube   *youtube.YouTube
+	Tumblr    *tumblr.Tumblr
 
 	Active   []*deal.Deal // Accepted pending deals to be completed
 	Historic []*deal.Deal // Contains historic deals completed
 }
 
-func New(twitterId, instaId, fbId, ytId string, cfg *config.Config) (*Influencer, error) {
+func New(twitterId, instaId, fbId, ytId, tumblrId string, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id: pseudoUUID(), // Possible change to standard numbering?
 	}
@@ -46,6 +48,10 @@ func New(twitterId, instaId, fbId, ytId string, cfg *config.Config) (*Influencer
 
 	err = inf.NewYouTube(ytId, cfg)
 	if err != nil {
+		return inf, err
+	}
+
+	if err = inf.NewTumblr(tumblrId, cfg); err != nil {
 		return inf, err
 	}
 
@@ -95,6 +101,17 @@ func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
 			return err
 		}
 		inf.YouTube = yt
+	}
+	return nil
+}
+
+func (inf *Influencer) NewTumblr(id string, cfg *config.Config) error {
+	if len(id) > 0 {
+		tr, err := tumblr.New(id, cfg)
+		if err != nil {
+			return err
+		}
+		inf.Tumblr = tr
 	}
 	return nil
 }
