@@ -43,7 +43,7 @@ type Config struct {
 		Secret       string `json:"secret"`
 		AccessToken  string `json:"accessToken"`
 		AccessSecret string `json:"accessSecret"`
-	} `json:"Tumblr"`
+	} `json:"tumblr"`
 
 	YouTube struct {
 		Endpoint string `json:"endpoint"`

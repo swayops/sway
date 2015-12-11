@@ -41,7 +41,6 @@ func (posts Posts) Avgs() (reblog, likes, total float32) {
 
 type Post struct {
 	ID        big.Int   `json:"id"`
-	Slug      string    `json:"slug"`
 	Type      string    `json:"type"`
 	TS        Timestamp `json:"timestamp"`
 	NoteCount uint32    `json:"note_count"`
@@ -51,7 +50,6 @@ type Post struct {
 
 type Note struct {
 	Type string `json:"type"`
-	// TS   Timestamp `json:"timestamp"` // is this even needed?
 }
 
 // Counts returns the number of reblogs/likes of the most recent 50 notes, API limitation. :(
