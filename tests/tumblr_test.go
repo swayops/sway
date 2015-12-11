@@ -8,7 +8,7 @@ import (
 	"github.com/swayops/sway/internal/influencer"
 )
 
-func TestTwitter(t *testing.T) {
+func TestTumblr(t *testing.T) {
 	// Complete once API has been built out
 
 	cfg, err := config.New("./config.sample.json")
@@ -17,8 +17,8 @@ func TestTwitter(t *testing.T) {
 	}
 
 	// Initialize Influencer test
-	twId := "kimkardashian" // I may hate the bitch but sadly she's a huge star :(
-	inf, err := influencer.New(twId, "", "", "", "", cfg)
+	id := "kropotkindersurprise.tumblr.com" // I may hate the bitch but sadly she's a huge star :(
+	inf, err := influencer.New("", "", "", "", id, cfg)
 	if err != nil {
 		t.Fatal("Error when initializing twitter", err)
 	}
