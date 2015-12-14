@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/swayops/sway/internal/config"
+	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/influencer"
 )
 

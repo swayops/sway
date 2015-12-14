@@ -29,6 +29,14 @@ func New(loc string) (*Config, error) {
 }
 
 type Config struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+
+	DBPath string `json:"dbPath"`
+	DBName string `json:"dbName"`
+
+	Buckets []string `json:"buckets"`
+
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`
 		Key          string `json:"key"`
