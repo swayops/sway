@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	AGENCY_BUCKET = "agency"
-	GROUP_BUCKET  = "group"
+	AGENCY_BUCKET     = "agency"
+	GROUP_BUCKET      = "group"
+	ADVERTISER_BUCKET = "advertiser"
 )
 
 ///////// Agencies /////////

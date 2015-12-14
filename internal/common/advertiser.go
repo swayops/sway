@@ -1,6 +1,6 @@
 package common
 
-type Advertser struct {
+type Advertiser struct {
 	Id       string `json:"id,omitempty"`
 	AgencyId string `json:"agencyId"`
 

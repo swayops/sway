@@ -20,6 +20,13 @@
 		"endpoint": "https://graph.facebook.com/",
 		"id": "160153604335761",
 		"secret": "d306e3e3bbf5995f18b8ff8507ff4cc0"
+	},
+	"tumblr": {
+		"endpoint": "https://api.tumblr.com/v2/",
+		"key": "wqqoRuxBDR7cVhik5YjCQJ5rJpgCNz9EBo0R8MakY2DyH0OjS6",
+		"secret": "I14CBMmHPAPlnKXpgd7LQtb4OcTdWJDWeRE0Mzusjumt41uhPx",
+		"accessToken": "bs6HXJRhj4253EJCJNIpz013iA4TxmvIYzeLWszoEYoIZYB8b2",
+  		"accessSecret": "wFZkVcPmMrL7yWrguxbkRIBrGkOiGa4nJbYGNbKMmbma0ZVP6A"
 	}
 }
 

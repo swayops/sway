@@ -45,6 +45,14 @@ type Config struct {
 		AccessSecret string `json:"accessSecret"`
 	} `json:"twitter"`
 
+	Tumblr struct {
+		Endpoint     string `json:"endpoint"`
+		Key          string `json:"key"`
+		Secret       string `json:"secret"`
+		AccessToken  string `json:"accessToken"`
+		AccessSecret string `json:"accessSecret"`
+	} `json:"tumblr"`
+
 	YouTube struct {
 		Endpoint string `json:"endpoint"`
 		ClientId string `json:"clientId"`
