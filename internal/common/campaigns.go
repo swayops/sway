@@ -1,9 +1,11 @@
 package common
 
 type Campaign struct {
-	Id     string  `json:"id"`
-	Name   string  `json:"name"`
-	Budget float64 `json:"budget"` // Weekly.. monthly?
+	Id           string  `json:"id"`
+	Name         string  `json:"name"`
+	Budget       float64 `json:"budget"` // Weekly.. monthly?
+	AdvertiserId string  `json:"advertiserId"`
+	AgencyId     string  `json:"agencyId"`
 
 	// Filters from Advertiser
 	Tag        string   `json:"tag"`

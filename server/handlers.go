@@ -14,6 +14,9 @@ const (
 	AGENCY_BUCKET     = "agency"
 	GROUP_BUCKET      = "group"
 	ADVERTISER_BUCKET = "advertiser"
+	CAMPAIGN_BUCKET   = "campaign"
+	INFLUENCER_BUCKET = "influencer"
+	DEAL_BUCKET       = "deal"
 )
 
 ///////// Agencies /////////
@@ -249,14 +252,60 @@ func getAllGroups(s *Server) gin.HandlerFunc {
 ///////// Advertisers /////////
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		var (
+			adv common.Advertiser
+			b   []byte
+			err error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&adv); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			if adv.Id, err = misc.GetNextIndex(tx, ADVERTISER_BUCKET); err != nil {
+				c.JSON(500, misc.StatusErr("Internal index error"))
+				return
+			}
+
+			if b, err = json.Marshal(adv); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+			return misc.PutBucketBytes(tx, ADVERTISER_BUCKET, adv.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(adv.Id))
 	}
 }
 
 func getAdvertiser(s *Server) gin.HandlerFunc {
-	// Replace with an advertiser json struct
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		gId := c.Params.ByName("id")
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			var g *common.Advertiser
+			err = json.Unmarshal(tx.Bucket([]byte(ADVERTISER_BUCKET)).Get([]byte(gId)), &g)
+			if err != nil {
+				return err
+			}
+
+			err = misc.DelBucketBytes(tx, ADVERTISER_BUCKET, gId)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(gId))
 	}
 }
 
@@ -284,96 +333,184 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 
 func delAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		gId := c.Params.ByName("id")
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			var g *common.Advertiser
+			err = json.Unmarshal(tx.Bucket([]byte(ADVERTISER_BUCKET)).Get([]byte(gId)), &g)
+			if err != nil {
+				return err
+			}
+
+			err = misc.DelBucketBytes(tx, ADVERTISER_BUCKET, gId)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(gId))
 	}
 }
 
 ///////// Campaigns /////////
 func putCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		var (
+			cmp common.Campaign
+			b   []byte
+			err error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			if cmp.Id, err = misc.GetNextIndex(tx, CAMPAIGN_BUCKET); err != nil {
+				c.JSON(500, misc.StatusErr("Internal index error"))
+				return
+			}
+
+			if b, err = json.Marshal(cmp); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+			return misc.PutBucketBytes(tx, CAMPAIGN_BUCKET, cmp.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(cmp.Id))
 	}
 }
 
 func getCampaign(s *Server) gin.HandlerFunc {
-	// Replace with an advertiser json struct
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		id := c.Params.ByName("id")
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			var g *common.Campaign
+			err = json.Unmarshal(tx.Bucket([]byte(CAMPAIGN_BUCKET)).Get([]byte(id)), &g)
+			if err != nil {
+				return err
+			}
+
+			err = misc.DelBucketBytes(tx, CAMPAIGN_BUCKET, id)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(id))
 	}
 }
 
-func updateCampaign(s *Server) gin.HandlerFunc {
+func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		targetAdv := c.Params.ByName("id")
+		advertisers := make([]*common.Advertiser, 0, 512)
+		s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(ADVERTISER_BUCKET)).ForEach(func(k, v []byte) (err error) {
+				adv := &common.Advertiser{}
+				if err := json.Unmarshal(v, adv); err != nil {
+					log.Println("error when unmarshalling group", string(v))
+					return nil
+				}
+				if adv.AgencyId == targetAdv {
+					advertisers = append(advertisers, adv)
+				}
+				return
+			})
+			return nil
+		})
+		c.JSON(200, advertisers)
 	}
 }
 
 func delCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
+		id := c.Params.ByName("id")
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			var g *common.Campaign
+			err = json.Unmarshal(tx.Bucket([]byte(CAMPAIGN_BUCKET)).Get([]byte(id)), &g)
+			if err != nil {
+				return err
+			}
+
+			err = misc.DelBucketBytes(tx, CAMPAIGN_BUCKET, id)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(id))
 	}
 }
 
 ///////// Deals /////////
-func putDeal(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func putDeal(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("getallgrop"))
+// 	}
+// }
 
-func getDeal(s *Server) gin.HandlerFunc {
-	// Replace with an advertiser json struct
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func getDeal(s *Server) gin.HandlerFunc {
+// 	// Replace with an advertiser json struct
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("getallgrop"))
+// 	}
+// }
 
-func updateDeal(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
-
-func delDeal(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func delDeal(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("getallgrop"))
+// 	}
+// }
 
 ///////// Influencers /////////
-func putInfluencer(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func putInfluencer(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("TBD"))
+// 	}
+// }
 
-func getInfluencer(s *Server) gin.HandlerFunc {
-	// Replace with an advertiser json struct
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func getInfluencer(s *Server) gin.HandlerFunc {
+// 	// Replace with an advertiser json struct
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("TBD"))
+// 	}
+// }
 
-func updateInfluencer(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func delInfluencer(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("TBD"))
+// 	}
+// }
 
-func delInfluencer(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func getInfluencerByAgency(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("TBD"))
+// 	}
+// }
 
-func getInfluencerByAgency(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
-
-func getInfluencerByGroup(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(200, misc.StatusOK("getallgrop"))
-	}
-}
+// func getInfluencerByGroup(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.JSON(200, misc.StatusOK("TBD"))
+// 	}
+// }
