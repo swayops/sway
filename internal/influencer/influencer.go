@@ -2,7 +2,7 @@ package influencer
 
 import (
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/internal/rtb"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/tumblr"
@@ -22,8 +22,8 @@ type Influencer struct {
 	YouTube   *youtube.YouTube
 	Tumblr    *tumblr.Tumblr
 
-	Active   []*rtb.Deal // Accepted pending deals to be completed
-	Historic []*rtb.Deal // Contains historic deals completed
+	Active   []*common.Deal // Accepted pending deals to be completed
+	Historic []*common.Deal // Contains historic deals completed
 }
 
 func New(twitterId, instaId, fbId, ytId, tumblrId string, cfg *config.Config) (*Influencer, error) {
