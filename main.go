@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"runtime"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
@@ -10,8 +9,6 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	cfg, err := config.New("config/config.json")
 	if err != nil {
 		log.Fatal(err)
@@ -29,5 +26,7 @@ func main() {
 	}
 
 	// Listen and Serve
-	srv.Run()
+	if err = srv.Run(); err != nil {
+		log.Fatalf("Failed to listen:", err)
+	}
 }

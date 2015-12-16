@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	AGENCY_BUCKET     = "agency"
-	GROUP_BUCKET      = "group"
-	ADVERTISER_BUCKET = "advertiser"
-	CAMPAIGN_BUCKET   = "campaign"
-	INFLUENCER_BUCKET = "influencer"
-	DEAL_BUCKET       = "deal"
+	agency_bucket     = "agency"
+	group_bucket      = "group"
+	advertiser_bucket = "advertiser"
+	campaign_bucket   = "campaign"
+	influencer_bucket = "influencer"
+	deal_bucket       = "deal"
 )
 
 ///////// Agencies /////////
@@ -35,7 +35,7 @@ func putAgency(s *Server) gin.HandlerFunc {
 		}
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if ag.Id, err = misc.GetNextIndex(tx, AGENCY_BUCKET); err != nil {
+			if ag.Id, err = misc.GetNextIndex(tx, agency_bucket); err != nil {
 				c.JSON(500, misc.StatusErr("Internal index error"))
 				return
 			}
@@ -43,7 +43,7 @@ func putAgency(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
-			return misc.PutBucketBytes(tx, AGENCY_BUCKET, ag.Id, b)
+			return misc.PutBucketBytes(tx, agency_bucket, ag.Id, b)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -62,7 +62,7 @@ func getAgency(s *Server) gin.HandlerFunc {
 		)
 
 		s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(AGENCY_BUCKET)).Get([]byte(c.Params.ByName("id")))
+			v = tx.Bucket([]byte(agency_bucket)).Get([]byte(c.Params.ByName("id")))
 			return nil
 		})
 
@@ -79,7 +79,7 @@ func getAllAgencies(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		agenciesAll := make([]*common.Agency, 0, 512)
 		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(AGENCY_BUCKET)).ForEach(func(k, v []byte) (err error) {
+			tx.Bucket([]byte(agency_bucket)).ForEach(func(k, v []byte) (err error) {
 				ag := &common.Agency{}
 				if err := json.Unmarshal(v, ag); err != nil {
 					log.Println("error when unmarshalling agency", string(v))
@@ -100,12 +100,12 @@ func delAgency(s *Server) gin.HandlerFunc {
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var ag *common.Agency
 
-			err = json.Unmarshal(tx.Bucket([]byte(AGENCY_BUCKET)).Get([]byte(agId)), &ag)
+			err = json.Unmarshal(tx.Bucket([]byte(agency_bucket)).Get([]byte(agId)), &ag)
 			if err != nil {
 				return err
 			}
 
-			err = misc.DelBucketBytes(tx, AGENCY_BUCKET, agId)
+			err = misc.DelBucketBytes(tx, agency_bucket, agId)
 			if err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ func putGroup(s *Server) gin.HandlerFunc {
 		}
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if g.Id, err = misc.GetNextIndex(tx, GROUP_BUCKET); err != nil {
+			if g.Id, err = misc.GetNextIndex(tx, group_bucket); err != nil {
 				c.JSON(500, misc.StatusErr("Internal index error"))
 				return
 			}
@@ -150,7 +150,7 @@ func putGroup(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			return misc.PutBucketBytes(tx, GROUP_BUCKET, g.Id, b)
+			return misc.PutBucketBytes(tx, group_bucket, g.Id, b)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -169,7 +169,7 @@ func getGroup(s *Server) gin.HandlerFunc {
 		)
 
 		s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(GROUP_BUCKET)).Get([]byte(c.Params.ByName("id")))
+			v = tx.Bucket([]byte(group_bucket)).Get([]byte(c.Params.ByName("id")))
 			return nil
 		})
 
@@ -187,12 +187,12 @@ func delGroup(s *Server) gin.HandlerFunc {
 		gId := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Group
-			err = json.Unmarshal(tx.Bucket([]byte(GROUP_BUCKET)).Get([]byte(gId)), &g)
+			err = json.Unmarshal(tx.Bucket([]byte(group_bucket)).Get([]byte(gId)), &g)
 			if err != nil {
 				return err
 			}
 
-			err = misc.DelBucketBytes(tx, GROUP_BUCKET, gId)
+			err = misc.DelBucketBytes(tx, group_bucket, gId)
 			if err != nil {
 				return err
 			}
@@ -212,7 +212,7 @@ func getGroupByAgency(s *Server) gin.HandlerFunc {
 		targetAgency := c.Params.ByName("id")
 		groups := make([]*common.Group, 0, 512)
 		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(GROUP_BUCKET)).ForEach(func(k, v []byte) (err error) {
+			tx.Bucket([]byte(group_bucket)).ForEach(func(k, v []byte) (err error) {
 				ag := &common.Group{}
 				if err := json.Unmarshal(v, ag); err != nil {
 					log.Println("error when unmarshalling group", string(v))
@@ -233,7 +233,7 @@ func getAllGroups(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		groups := make([]*common.Group, 0, 512)
 		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(GROUP_BUCKET)).ForEach(func(k, v []byte) (err error) {
+			tx.Bucket([]byte(group_bucket)).ForEach(func(k, v []byte) (err error) {
 				ag := &common.Group{}
 				if err := json.Unmarshal(v, ag); err != nil {
 					log.Println("error when unmarshalling group", string(v))
@@ -264,7 +264,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 		}
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if adv.Id, err = misc.GetNextIndex(tx, ADVERTISER_BUCKET); err != nil {
+			if adv.Id, err = misc.GetNextIndex(tx, advertiser_bucket); err != nil {
 				c.JSON(500, misc.StatusErr("Internal index error"))
 				return
 			}
@@ -273,7 +273,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
-			return misc.PutBucketBytes(tx, ADVERTISER_BUCKET, adv.Id, b)
+			return misc.PutBucketBytes(tx, advertiser_bucket, adv.Id, b)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -288,12 +288,12 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 		gId := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Advertiser
-			err = json.Unmarshal(tx.Bucket([]byte(ADVERTISER_BUCKET)).Get([]byte(gId)), &g)
+			err = json.Unmarshal(tx.Bucket([]byte(advertiser_bucket)).Get([]byte(gId)), &g)
 			if err != nil {
 				return err
 			}
 
-			err = misc.DelBucketBytes(tx, ADVERTISER_BUCKET, gId)
+			err = misc.DelBucketBytes(tx, advertiser_bucket, gId)
 			if err != nil {
 				return err
 			}
@@ -313,7 +313,7 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 		targetAgency := c.Params.ByName("id")
 		advertisers := make([]*common.Advertiser, 0, 512)
 		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(ADVERTISER_BUCKET)).ForEach(func(k, v []byte) (err error) {
+			tx.Bucket([]byte(advertiser_bucket)).ForEach(func(k, v []byte) (err error) {
 				adv := &common.Advertiser{}
 				if err := json.Unmarshal(v, adv); err != nil {
 					log.Println("error when unmarshalling group", string(v))
@@ -335,12 +335,12 @@ func delAdvertiser(s *Server) gin.HandlerFunc {
 		gId := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Advertiser
-			err = json.Unmarshal(tx.Bucket([]byte(ADVERTISER_BUCKET)).Get([]byte(gId)), &g)
+			err = json.Unmarshal(tx.Bucket([]byte(advertiser_bucket)).Get([]byte(gId)), &g)
 			if err != nil {
 				return err
 			}
 
-			err = misc.DelBucketBytes(tx, ADVERTISER_BUCKET, gId)
+			err = misc.DelBucketBytes(tx, advertiser_bucket, gId)
 			if err != nil {
 				return err
 			}
@@ -371,7 +371,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if cmp.Id, err = misc.GetNextIndex(tx, CAMPAIGN_BUCKET); err != nil {
+			if cmp.Id, err = misc.GetNextIndex(tx, campaign_bucket); err != nil {
 				c.JSON(500, misc.StatusErr("Internal index error"))
 				return
 			}
@@ -380,7 +380,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
-			return misc.PutBucketBytes(tx, CAMPAIGN_BUCKET, cmp.Id, b)
+			return misc.PutBucketBytes(tx, campaign_bucket, cmp.Id, b)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -395,12 +395,12 @@ func getCampaign(s *Server) gin.HandlerFunc {
 		id := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Campaign
-			err = json.Unmarshal(tx.Bucket([]byte(CAMPAIGN_BUCKET)).Get([]byte(id)), &g)
+			err = json.Unmarshal(tx.Bucket([]byte(campaign_bucket)).Get([]byte(id)), &g)
 			if err != nil {
 				return err
 			}
 
-			err = misc.DelBucketBytes(tx, CAMPAIGN_BUCKET, id)
+			err = misc.DelBucketBytes(tx, campaign_bucket, id)
 			if err != nil {
 				return err
 			}
@@ -420,13 +420,13 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 		targetAdv := c.Params.ByName("id")
 		campaigns := make([]*common.Campaign, 0, 512)
 		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(CAMPAIGN_BUCKET)).ForEach(func(k, v []byte) (err error) {
+			tx.Bucket([]byte(campaign_bucket)).ForEach(func(k, v []byte) (err error) {
 				cmp := &common.Campaign{}
 				if err := json.Unmarshal(v, cmp); err != nil {
 					log.Println("error when unmarshalling group", string(v))
 					return nil
 				}
-				if cmp.Adv == targetAdv {
+				if cmp.AdvertiserId == targetAdv {
 					campaigns = append(campaigns, cmp)
 				}
 				return
@@ -442,12 +442,12 @@ func delCampaign(s *Server) gin.HandlerFunc {
 		id := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Campaign
-			err = json.Unmarshal(tx.Bucket([]byte(CAMPAIGN_BUCKET)).Get([]byte(id)), &g)
+			err = json.Unmarshal(tx.Bucket([]byte(campaign_bucket)).Get([]byte(id)), &g)
 			if err != nil {
 				return err
 			}
 
-			err = misc.DelBucketBytes(tx, CAMPAIGN_BUCKET, id)
+			err = misc.DelBucketBytes(tx, campaign_bucket, id)
 			if err != nil {
 				return err
 			}

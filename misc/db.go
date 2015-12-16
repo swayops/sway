@@ -3,6 +3,7 @@ package misc
 import (
 	"encoding/json"
 	"log"
+	"math/big"
 	"strconv"
 
 	"github.com/boltdb/bolt"
@@ -49,16 +50,15 @@ func PutTxJson(tx *bolt.Tx, bucketName, key string, val interface{}) error {
 	return tx.Bucket([]byte(bucketName)).Put([]byte(key), b)
 }
 
+var one = new(big.Int).SetUint64(1)
+
 // increments index for the specified bucket using the given R/W transaction.
 func GetNextIndex(tx *bolt.Tx, bucket string) (string, error) {
-	var id uint64
 	key := []byte(bucket)
-
+	// note that using SetBytes is pure bytes not  the string rep of the number.
 	b := tx.Bucket([]byte("index"))
-	s := string(b.Get(key))
 
-	id, _ = strconv.ParseUint(s, 10, 64)
-	b.Put(key, []byte(strconv.FormatUint(id+1, 10)))
-
-	return strconv.FormatUint(id, 10), nil
+	n := new(big.Int).SetBytes(b.Get(key))
+	b.Put(key, new(big.Int).Add(n, one).Bytes())
+	return n.String(), nil
 }

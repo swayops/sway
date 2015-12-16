@@ -36,12 +36,10 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 func (srv *Server) InitializeDB(buckets []string) error {
 	return srv.db.Update(func(tx *bolt.Tx) error {
 		for _, val := range buckets {
-			_, err := tx.CreateBucketIfNotExists([]byte(val))
-			if err != nil {
+			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
 			}
-			err = misc.InitIndex(tx, val, 1)
-			if err != nil {
+			if err := misc.InitIndex(tx, val, 1); err != nil {
 				return err
 			}
 		}
@@ -76,15 +74,16 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	// r.GET("/getInfluencersByGroup/:id", getInfluencerByGroup(srv))
 }
 
-func (srv *Server) Run() {
+func (srv *Server) Run() (err error) {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 
 	go func() {
-		srv.r.Run(":" + srv.cfg.Port)
+		err = srv.r.Run(":" + srv.cfg.Port)
 		wg.Done()
 	}()
 
 	wg.Wait()
+	return
 }
