@@ -39,7 +39,6 @@ func putAgency(s *Server) gin.HandlerFunc {
 				c.JSON(500, misc.StatusErr("Internal index error"))
 				return
 			}
-			log.Println("OUR NEXT INDEX", ag.Id)
 			if b, err = json.Marshal(ag); err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
@@ -419,22 +418,22 @@ func getCampaign(s *Server) gin.HandlerFunc {
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAdv := c.Params.ByName("id")
-		advertisers := make([]*common.Advertiser, 0, 512)
+		campaigns := make([]*common.Campaign, 0, 512)
 		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(ADVERTISER_BUCKET)).ForEach(func(k, v []byte) (err error) {
-				adv := &common.Advertiser{}
-				if err := json.Unmarshal(v, adv); err != nil {
+			tx.Bucket([]byte(CAMPAIGN_BUCKET)).ForEach(func(k, v []byte) (err error) {
+				cmp := &common.Campaign{}
+				if err := json.Unmarshal(v, cmp); err != nil {
 					log.Println("error when unmarshalling group", string(v))
 					return nil
 				}
-				if adv.AgencyId == targetAdv {
-					advertisers = append(advertisers, adv)
+				if cmp.Adv == targetAdv {
+					campaigns = append(campaigns, cmp)
 				}
 				return
 			})
 			return nil
 		})
-		c.JSON(200, advertisers)
+		c.JSON(200, campaigns)
 	}
 }
 
