@@ -1,6 +1,6 @@
 package facebook
 
-import "github.com/swayops/sway/internal/config"
+import "github.com/swayops/sway/config"
 
 type Post struct {
 	Id        string

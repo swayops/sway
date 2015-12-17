@@ -1,13 +1,13 @@
 package influencer
 
 import (
-	"github.com/swayops/sway/internal/config"
-	"github.com/swayops/sway/internal/deal"
-	"github.com/swayops/sway/internal/facebook"
-	"github.com/swayops/sway/internal/instagram"
-	"github.com/swayops/sway/internal/tumblr"
-	"github.com/swayops/sway/internal/twitter"
-	"github.com/swayops/sway/internal/youtube"
+	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/platforms/facebook"
+	"github.com/swayops/sway/platforms/instagram"
+	"github.com/swayops/sway/platforms/tumblr"
+	"github.com/swayops/sway/platforms/twitter"
+	"github.com/swayops/sway/platforms/youtube"
 )
 
 type Influencer struct {
@@ -22,8 +22,8 @@ type Influencer struct {
 	YouTube   *youtube.YouTube
 	Tumblr    *tumblr.Tumblr
 
-	Active   []*deal.Deal // Accepted pending deals to be completed
-	Historic []*deal.Deal // Contains historic deals completed
+	Active   []*common.Deal // Accepted pending deals to be completed
+	Historic []*common.Deal // Contains historic deals completed
 }
 
 func New(twitterId, instaId, fbId, ytId, tumblrId string, cfg *config.Config) (*Influencer, error) {

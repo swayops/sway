@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 func Request(method, endpoint, reqData string, respData interface{}) error {
@@ -31,4 +33,12 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func StatusOK(id string) gin.H {
+	return gin.H{"status": "success", "id": id}
+}
+
+func StatusErr(msg string) gin.H {
+	return gin.H{"status": "error", "msg": msg}
 }

@@ -4,7 +4,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/swayops/sway/internal/config"
+	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/influencer"
 )
 

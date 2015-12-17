@@ -1,4 +1,8 @@
 {
+	"port": "8080",
+	"dbPath": "data/",
+	"dbName": "sway",
+	"buckets": ["agency", "advertiser", "campaign", "deal", "group", "influencer"],
 	"youtube": {
 		"endpoint": "https://www.googleapis.com/youtube/v3/",
 		"clientId": "AIzaSyA_RFUvI5hxseLWniqEjFtzH-0h_A57Igg"

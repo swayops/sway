@@ -1,10 +1,10 @@
 package audit
 
-import "github.com/swayops/sway/internal/deal"
+import "github.com/swayops/sway/internal/rtb"
 
 // Package used for auditing
 
-func Audit(d *deal.Deal) *deal.Deal {
+func Audit(d *rtb.Deal) *rtb.Deal {
 	// Needs to be further specced out
 	// Function should mark the deal as audited after some logic
 	if d.Completed && !d.Audited {

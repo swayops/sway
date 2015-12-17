@@ -1,27 +1,28 @@
-package campaigns
-
-import "github.com/swayops/sway/internal/deal"
+package common
 
 type Campaign struct {
-	Id     string
-	Name   string
-	Budget float64 // Weekly.. monthly?
+	Id           string  `json:"id"`
+	Name         string  `json:"name"`
+	Budget       float64 `json:"budget"` // Weekly.. monthly?
+	AdvertiserId string  `json:"advertiserId"`
+	AgencyId     string  `json:"agencyId"`
 
 	// Filters from Advertiser
-	Tag        string
-	Mention    string
-	Link       string
-	Categories []string // Influencer categories client would like to use
+	Tag        string   `json:"tag"`
+	Mention    string   `json:"mention"`
+	Link       string   `json:"link"`
+	Categories []string `json:"cats"` // Influencer categories client would like to use
 
 	// Inventory Types Campaign is Targeting
-	Twitter   bool
-	Facebook  bool
-	Instagram bool
+	Twitter   bool `json:"twitter"`
+	Facebook  bool `json:"fb"`
+	Instagram bool `json:"insta"`
+	YouTube   bool `json:"yt"`
 
-	Perks string // Perks need to be specced out
+	Perks string `json:"perks"` // Perks need to be specced out
 }
 
-func (cmp *Campaign) GetActiveDeals() []*deal.Deal {
+func (cmp *Campaign) GetActiveDeals() []*Deal {
 	// Look at:
 	// - currently accepted deals by influencers (and their timeouts)
 	// - budget
@@ -39,14 +40,14 @@ func (cmp *Campaign) GetActiveDeals() []*deal.Deal {
 	return nil
 }
 
-func (cmp *Campaign) GetCompletedDeals() []*deal.Deal {
+func (cmp *Campaign) GetCompletedDeals() []*Deal {
 	// Return all deals that have been completed
 	// and audited
 
 	return nil
 }
 
-func (cmp *Campaign) ReserveDeal() []*deal.Deal {
+func (cmp *Campaign) ReserveDeal() []*Deal {
 	// Track:
 	// - all influencers who have previously been notified of a deal and accepted
 

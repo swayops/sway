@@ -1,4 +1,4 @@
-package deal
+package common
 
 // This deal represents an outgoing bid
 // for an influencer. Do NOT confuse this
