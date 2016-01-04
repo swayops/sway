@@ -1,6 +1,7 @@
 package influencer
 
 import (
+	"github.com/missionMeteora/iodb"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/platforms/facebook"
@@ -24,11 +25,14 @@ type Influencer struct {
 
 	Active   []*common.Deal // Accepted pending deals to be completed
 	Historic []*common.Deal // Contains historic deals completed
+
+	db *iodb.DB
 }
 
-func New(twitterId, instaId, fbId, ytId, tumblrId string, cfg *config.Config) (*Influencer, error) {
+func New(db *iodb.DB, twitterId, instaId, fbId, ytId, tumblrId string, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id: pseudoUUID(), // Possible change to standard numbering?
+		db: db,
 	}
 
 	err := inf.NewInsta(instaId, cfg)
@@ -55,7 +59,6 @@ func New(twitterId, instaId, fbId, ytId, tumblrId string, cfg *config.Config) (*
 		return inf, err
 	}
 
-	// Saving to db functionality TBD.. iodb?
 	return inf, nil
 }
 

@@ -4,8 +4,11 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
+	"github.com/missionMeteora/iodb"
 	"github.com/swayops/sway/config"
 
 	"github.com/swayops/sway/misc"
@@ -95,11 +98,25 @@ func (t *Tweet) Hashtags() (out []string) {
 	return
 }
 
-func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
+func (t *Tweet) UpdateData(db *iodb.DB, cfg *config.Config) (err error) {
+	var (
+		tmp Tweet
+		rc  io.ReadCloser
+	)
+	if rc = misc.GetPlatformCache(db, misc.PlatformTwitter, t.Id); rc != nil {
+		if err = json.NewDecoder(rc).Decode(&tmp); err == nil {
+			*t = tmp
+		}
+		rc.Close()
+		return err
+	}
+
 	var (
 		resp   *http.Response
 		client *http.Client
+		j      []byte
 	)
+
 	if client, err = getClient(cfg); err != nil {
 		return
 	}
@@ -117,9 +134,13 @@ func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
 		defer gr.Close()
 		r = gr
 	}
-
-	var tmp Tweet
-	if err = json.NewDecoder(r).Decode(&tmp); err == nil {
+	if j, err = ioutil.ReadAll(r); err != nil {
+		return
+	}
+	if err = misc.PutPlatformCache(db, misc.PlatformTwitter, t.Id, j, misc.DefaultCacheDuration); err != nil {
+		return
+	}
+	if err = json.Unmarshal(j, &tmp); err == nil {
 		*t = tmp
 	}
 	return

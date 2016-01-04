@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
+	"path/filepath"
 	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/missionMeteora/iodb"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
 )
@@ -13,19 +15,25 @@ import (
 var buckets = []string{"test"}
 
 type Server struct {
-	cfg *config.Config
-	r   *gin.Engine
-	db  *bolt.DB
+	cfg  *config.Config
+	r    *gin.Engine
+	db   *bolt.DB
+	iodb *iodb.DB
 	// Db
 }
 
-func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
+func New(cfg *config.Config, r *gin.Engine) (_ *Server, err error) {
+	var idb *iodb.DB
+	if idb, err = iodb.New(filepath.Join(cfg.DBPath, "cache.iodb"), nil); err != nil {
+		return
+	}
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 
 	srv := &Server{
-		cfg: cfg,
-		r:   r,
-		db:  db,
+		cfg:  cfg,
+		r:    r,
+		db:   db,
+		iodb: idb,
 	}
 
 	srv.InitializeDB(cfg.Buckets)

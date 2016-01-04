@@ -17,7 +17,7 @@ func TestYouTube(t *testing.T) {
 
 	// Initialize Influencer test
 	ytId := "JennaMarbles"
-	inf, err := influencer.New("", "", "", ytId, "", cfg)
+	inf, err := influencer.New(db, "", "", "", ytId, "", cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}
@@ -53,7 +53,7 @@ func TestYouTube(t *testing.T) {
 	// Hacky test
 	old := inf.YouTube.LatestPosts[0].Views
 	time.Sleep(10 * time.Minute)
-	inf.YouTube.LatestPosts[0].UpdateData(cfg)
+	inf.YouTube.LatestPosts[0].UpdateData(db, cfg)
 	if old == inf.YouTube.LatestPosts[0].Views {
 		t.Error("Should have new likes data!")
 	}
