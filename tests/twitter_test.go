@@ -18,7 +18,7 @@ func TestTwitter(t *testing.T) {
 
 	// Initialize Influencer test
 	twId := "kimkardashian" // I may hate the bitch but sadly she's a huge star :(
-	inf, err := influencer.New(twId, "", "", "", "", cfg)
+	inf, err := influencer.New(db, twId, "", "", "", "", cfg)
 	if err != nil {
 		t.Fatal("Error when initializing twitter", err)
 	}
@@ -38,7 +38,7 @@ func TestTwitter(t *testing.T) {
 		t.Fatal("Followers don't match! Expected > 3mil, because the world is broken.. Got: ", uint(v))
 	}
 
-	if err = tw.LatestTweets[0].UpdateData(cfg); err != nil {
+	if err = tw.LatestTweets[0].UpdateData(db, cfg); err != nil {
 		t.Fatal(err)
 	}
 }

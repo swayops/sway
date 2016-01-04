@@ -1,9 +1,11 @@
 package instagram
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/missionMeteora/iodb"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
 )
@@ -52,17 +54,26 @@ type PostLikes struct {
 	Count float32 `json:"count"`
 }
 
-func (pt *Post) UpdateData(cfg *config.Config) error {
-	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.ClientId)
-
+func (pt *Post) UpdateData(db *iodb.DB, cfg *config.Config) (err error) {
 	var post DataByPost
-	err := misc.Request("GET", endpoint, "", &post)
-	if err != nil {
-		return err
-	}
+	if rc := misc.GetPlatformCache(db, misc.PlatformInstagram, pt.Id); rc != nil {
+		defer rc.Close()
+		if err = json.NewDecoder(rc).Decode(&post); err != nil {
+			return
+		}
+	} else {
+		endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.ClientId)
 
-	if post.Data == nil {
-		return ErrBadResponse
+		if err = misc.Request("GET", endpoint, "", &post); err != nil {
+			return err
+		}
+		if post.Data == nil {
+			return ErrBadResponse
+		}
+		j, _ := json.Marshal(&post)
+		if err = misc.PutPlatformCache(db, misc.PlatformInstagram, pt.Id, j, misc.DefaultCacheDuration); err != nil {
+			return
+		}
 	}
 
 	if post.Data.Comments != nil {
@@ -73,5 +84,5 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 		pt.Likes = post.Data.Likes.Count
 	}
 
-	return nil
+	return
 }

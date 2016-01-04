@@ -1,12 +1,14 @@
 package tumblr
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"time"
 
+	"github.com/missionMeteora/iodb"
 	"github.com/mrjones/oauth"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
@@ -18,6 +20,8 @@ var (
 		AuthorizeTokenUrl: "https://www.tumblr.com/oauth/authorize",
 		AccessTokenUrl:    "https://www.tumblr.com/oauth/access_token",
 	}
+
+	ErrBadResponse = errors.New(`Empty data response from insta post!`)
 )
 
 type Timestamp int64
@@ -40,7 +44,7 @@ func (posts Posts) Avgs() (reblog, likes, total float32) {
 }
 
 type Post struct {
-	ID        big.Int   `json:"id"`
+	Id        big.Int   `json:"id"`
 	Type      string    `json:"type"`
 	TS        Timestamp `json:"timestamp"`
 	NoteCount uint32    `json:"note_count"`
@@ -69,18 +73,32 @@ func (p *Post) Counts() (reblog, likes, total float32) {
 }
 
 // UpdateData needs the parent tumblr call because it needs the blog id
-func (p *Post) UpdateData(tr *Tumblr, cfg *config.Config) (err error) {
+func (p *Post) UpdateData(db *iodb.DB, tr *Tumblr, cfg *config.Config) (err error) {
+	id := p.Id.String()
+	if rc := misc.GetPlatformCache(db, misc.PlatformTumblr, id); rc != nil {
+		defer rc.Close()
+		var post Post
+		if err = json.NewDecoder(rc).Decode(&post); err != nil {
+			return
+		}
+		*p = post
+		return
+	}
 	var resp apiResponse
-	if err = misc.HttpGetJson(tr.client, fmt.Sprintf(singlePostUrl, cfg.Tumblr.Endpoint, tr.Id, p.ID.String()), &resp); err != nil {
+	if err = misc.HttpGetJson(tr.client, fmt.Sprintf(singlePostUrl, cfg.Tumblr.Endpoint, tr.Id, id), &resp); err != nil {
 		return
 	}
 	if resp.Meta.Status != 200 {
 		return errors.New(resp.Meta.Message)
 	}
-	if len(resp.Response.Posts) == 1 { // should never be more or less than 1
-		*p = *resp.Response.Posts[0]
+	if len(resp.Response.Posts) != 1 { // should never be more or less than 1
+		return ErrBadResponse
 	}
-	return
+
+	*p = *resp.Response.Posts[0]
+
+	j, _ := json.Marshal(p)
+	return misc.PutPlatformCache(db, misc.PlatformTumblr, id, j, misc.DefaultCacheDuration)
 }
 
 type apiResponse struct {

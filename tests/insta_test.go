@@ -19,7 +19,7 @@ func TestInstagram(t *testing.T) {
 
 	// Initialize Influencer test
 	instaId := "kimkardashian"
-	inf, err := influencer.New("", instaId, "", "", "", cfg)
+	inf, err := influencer.New(db, "", instaId, "", "", "", cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}
@@ -47,7 +47,7 @@ func TestInstagram(t *testing.T) {
 	// Hacky test
 	old := inf.Instagram.LatestPosts[0].Likes
 	time.Sleep(20 * time.Second)
-	inf.Instagram.LatestPosts[0].UpdateData(cfg)
+	inf.Instagram.LatestPosts[0].UpdateData(db, cfg)
 	if old == inf.Instagram.LatestPosts[0].Likes {
 		t.Error("Should have new likes data!")
 	}
