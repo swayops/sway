@@ -8,6 +8,8 @@ import (
 	"net/http"
 )
 
+const StandardTimestamp = `20050102`
+
 var (
 	ErrMissingId = errors.New("missing id")
 )
