@@ -60,6 +60,9 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	// Campaigns
 	createRoutes(r, srv, "/campaign", getCampaign, putCampaign, delCampaign)
 	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
+	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
+	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
+	r.GET("/getCampaignAuditedDeals/:campaignId", getCampaignAuditedDeals(srv))
 
 	// Groups
 	createRoutes(r, srv, "/group", getGroup, putGroup, delGroup)

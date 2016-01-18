@@ -21,7 +21,7 @@ type Campaign struct {
 	Facebook  bool `json:"facebook"`
 	Instagram bool `json:"instagram"`
 	YouTube   bool `json:"youtube"`
-	Tumblr    bool `json:"tmblr"`
+	Tumblr    bool `json:"tumblr"`
 
 	Perks string `json:"perks"` // Perks need to be specced out
 
@@ -37,18 +37,5 @@ func (cmp *Campaign) GetCompletedDeals() []*Deal {
 	// Return all deals that have been completed
 	// and audited for this campaign
 
-	return nil
-}
-
-func (cmp *Campaign) CreateDeal() []*Deal {
-	return nil
-}
-
-func (cmp *Campaign) DeleteDeal() []*Deal {
-	// Remove from bucket AND
-	return nil
-}
-
-func (cmp *Campaign) UpdateDeal() []*Deal {
 	return nil
 }

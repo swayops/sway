@@ -201,7 +201,7 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, cfg *config.Config
 				}
 			}
 
-			// Insert Geo Checks here
+			// Insert Geo Checks here //
 
 			// Social Media Checks
 			if cmp.Twitter && inf.Twitter != nil {

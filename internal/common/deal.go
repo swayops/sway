@@ -13,12 +13,13 @@ type Deal struct {
 
 	InfluencerId string `json:"infId, omitempty"` // Influencer this deal has been assigned to
 
-	Platforms map[string]float32 `json:"platforms"` // Tmp platform determined by GetAvailableDeals with value as potential pricepoint
+	Platforms map[string]float32 `json:"platforms, omitempty"` // Tmp platform determined by GetAvailableDeals with value as potential pricepoint
 
 	// Requirements added by GetAvailableDeals temporarily for json response
-	Tag     string `json:"tag"`
-	Mention string `json:"mention"`
-	Link    string `json:"link"`
-	Task    string `json:"task"`
-	Perks   string `json:"perks"` // Perks need to be specced out
+	// for get deals accessed by influencers (so they know requirements)
+	Tag     string `json:"tag, omitempty"`
+	Mention string `json:"mention, omitempty"`
+	Link    string `json:"link, omitempty"`
+	Task    string `json:"task, omitempty"`
+	Perks   string `json:"perks, omitempty"` // Perks need to be specced out
 }

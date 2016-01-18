@@ -430,7 +430,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				cmp := &common.Campaign{}
 				if err := json.Unmarshal(v, cmp); err != nil {
-					log.Println("error when unmarshalling group", string(v))
+					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
 				if cmp.AdvertiserId == targetAdv {
@@ -441,6 +441,93 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 			return nil
 		})
 		c.JSON(200, campaigns)
+	}
+}
+
+func getCampaignAssignedDeals(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			v   []byte
+			err error
+			cmp common.Campaign
+		)
+
+		s.db.View(func(tx *bolt.Tx) error {
+			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
+			return nil
+		})
+
+		if err = json.Unmarshal(v, &cmp); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		deals := make([]*common.Deal, 0, 512)
+		for _, d := range cmp.Deals {
+			if d.Assigned > 0 && d.InfluencerId != "" && d.Completed == 0 && d.Audited == 0 {
+				deals = append(deals, d)
+			}
+		}
+
+		c.JSON(200, deals)
+	}
+}
+
+func getCampaignCompletedDeals(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			v   []byte
+			err error
+			cmp common.Campaign
+		)
+
+		s.db.View(func(tx *bolt.Tx) error {
+			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
+			return nil
+		})
+
+		if err = json.Unmarshal(v, &cmp); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		deals := make([]*common.Deal, 0, 512)
+		for _, d := range cmp.Deals {
+			if d.Completed > 0 && d.InfluencerId != "" && d.Audited == 0 {
+				deals = append(deals, d)
+			}
+		}
+
+		c.JSON(200, deals)
+	}
+}
+
+func getCampaignAuditedDeals(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			v   []byte
+			err error
+			cmp common.Campaign
+		)
+
+		s.db.View(func(tx *bolt.Tx) error {
+			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
+			return nil
+		})
+
+		if err = json.Unmarshal(v, &cmp); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		deals := make([]*common.Deal, 0, 512)
+		for _, d := range cmp.Deals {
+			if d.Audited > 0 && d.InfluencerId != "" {
+				deals = append(deals, d)
+			}
+		}
+
+		c.JSON(200, deals)
 	}
 }
 
