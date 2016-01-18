@@ -17,22 +17,22 @@ var (
 )
 
 type Post struct {
-	Id       string
-	Caption  string
-	Hashtags []string
+	Id       string   `json:"id"`
+	Caption  string   `json:"caption, omitempty"`
+	Hashtags []string `json:"hashtags, omitempty"`
 
-	PostURL string // Link to the post
+	PostURL string `json:"postUrl, omitempty"` // Link to the post
 
-	Published int32 //epoch ts
+	Published int32 `json:"published, omitempty"` //epoch ts
 
-	Location *misc.GeoRecord
+	Location *misc.GeoRecord `json:"location, omitempty"`
 
 	// Stats
-	Likes    float32
-	Comments float32
+	Likes    float32 `json:"likes, omitempty"`
+	Comments float32 `json:"comments, omitempty"`
 
 	// Type
-	Type string // "photo" or "video"
+	Type string `json:"type, omitempty"` // "photo" or "video"
 }
 
 type DataByPost struct {

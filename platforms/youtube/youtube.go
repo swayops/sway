@@ -8,23 +8,23 @@ import (
 )
 
 type YouTube struct {
-	UserName string
-	UserId   string
+	UserName string `json:"name"`
+	UserId   string `json:"id"`
 
-	AvgLikes    float32
-	AvgDislikes float32
+	AvgLikes    float32 `json:"avgLikes, omitempty"`
+	AvgDislikes float32 `json:"avgDislikes, omitempty"`
 
-	AvgViews        float32
-	AvgComments     float32
-	Subscribers     float32 // float32 for GetScore equation
-	SubscriberDelta float32 // Follower delta since last UpdateData run
+	AvgViews        float32 `json:"avgViews, omitempty"`
+	AvgComments     float32 `json:"avgComments, omitempty"`
+	Subscribers     float32 `json:"avgSub, omitempty"`   // float32 for GetScore equation
+	SubscriberDelta float32 `json:"subDelta, omitempty"` // Follower delta since last UpdateData run
 
-	LastLocation misc.GeoRecord
+	LastLocation misc.GeoRecord `json:"geo, omitempty"`
 
-	LastUpdated int32   // Epoch timestamp in seconds
-	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32   `json:"lastUpdate, omitempty"` // Epoch timestamp in seconds
+	LatestPosts []*Post `json:"posts, omitempty"`      // Posts since last update.. will later check these for deal satisfaction
 
-	Score float32
+	Score float32 `json:"score, omitempty"`
 }
 
 func New(name string, cfg *config.Config) (*YouTube, error) {
