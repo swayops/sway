@@ -18,33 +18,33 @@ import (
 
 type InfluencerLoad struct {
 	InstagramId string `json:"instagram,omitempty"`
-	FbId        string `json:"facebook, omitempty"`
+	FbId        string `json:"facebook,omitempty"`
 	TwitterId   string `json:"twitter,omitempty"`
-	YouTubeId   string `json:"youtube, omitempty"`
-	TumblrId    string `json:"tumblr, omitempty"`
+	YouTubeId   string `json:"youtube,omitempty"`
+	TumblrId    string `json:"tumblr,omitempty"`
 
-	CategoryId string `json:"cat, omitempty"`
-	AgencyId   string `json:"agency, omitempty"` // Agency this influencer belongs to
+	CategoryId string `json:"cat,omitempty"`
+	AgencyId   string `json:"agency,omitempty"` // Agency this influencer belongs to
 
-	FloorPrice float32 `json:"floor, omitempty"` // Price per engagement set by agency
+	FloorPrice float32 `json:"floor,omitempty"` // Price per engagement set by agency
 }
 
 type Influencer struct {
 	Id         string  `json:"id"`
-	CategoryId string  `json:"cat, omitempty"`    // Each influencer will be put into a category
-	AgencyId   string  `json:"agency, omitempty"` // Group this influencer belongs to (agencies, brands view invites)
-	FloorPrice float32 `json:"floor, omitempty"`  // Price per engagement set by agency
+	CategoryId string  `json:"cat,omitempty"`    // Each influencer will be put into a category
+	AgencyId   string  `json:"agency,omitempty"` // Group this influencer belongs to (agencies, brands view invites)
+	FloorPrice float32 `json:"floor,omitempty"`  // Price per engagement set by agency
 
-	Facebook  *facebook.Facebook   `json:"facebook, omitempty"`
-	Instagram *instagram.Instagram `json:"instagram, omitempty"`
-	Twitter   *twitter.Twitter     `json:"twitter, omitempty"`
-	YouTube   *youtube.YouTube     `json:"youtube, omitempty"`
-	Tumblr    *tumblr.Tumblr       `json:"tumblr, omitempty"`
+	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
+	Instagram *instagram.Instagram `json:"instagram,omitempty"`
+	Twitter   *twitter.Twitter     `json:"twitter,omitempty"`
+	YouTube   *youtube.YouTube     `json:"youtube,omitempty"`
+	Tumblr    *tumblr.Tumblr       `json:"tumblr,omitempty"`
 
-	ActiveDeals   []*common.Deal `json:"activeDeals, omitempty"`   // Accepted pending deals to be completed
-	HistoricDeals []*common.Deal `json:"historicDeals, omitempty"` // Contains historic deals completed
+	ActiveDeals   []*common.Deal `json:"activeDeals,omitempty"`   // Accepted pending deals to be completed
+	HistoricDeals []*common.Deal `json:"historicDeals,omitempty"` // Contains historic deals completed
 
-	Cancellations int32 `json:"cancel, omitempty"` // How many times has this influencer cancelled a deal? Should affect sway score
+	Cancellations int32 `json:"cancel,omitempty"` // How many times has this influencer cancelled a deal? Should affect sway score
 }
 
 func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency string, floorPrice float32, cfg *config.Config) (*Influencer, error) {

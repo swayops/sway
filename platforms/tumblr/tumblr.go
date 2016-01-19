@@ -20,16 +20,16 @@ const (
 type Tumblr struct {
 	Id string `json:"id"`
 
-	AvgReblogs     float32 `json:"avgRb, omitempty"`
-	AvgLikes       float32 `json:"avgLikes, omitempty"`
-	AvgInteraction float32 `json:"avgInt, omitempty"`
+	AvgReblogs     float32 `json:"avgRb,omitempty"`
+	AvgLikes       float32 `json:"avgLikes,omitempty"`
+	AvgInteraction float32 `json:"avgInt,omitempty"`
 
-	LastPostId  string  `json:"lastPost, omitempty"`    // the id of the last tweet
-	LatestPosts Posts   `json:"posts, omitempty"`       // Posts since last update.. will later check these for deal satisfaction
-	LastUpdated int32   `json:"lastUpdated, omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score       float32 `json:"score, omitempty"`
+	LastPostId  string  `json:"lastPost,omitempty"`    // the id of the last tweet
+	LatestPosts Posts   `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32   `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score       float32 `json:"score,omitempty"`
 
-	client *http.Client `json:"client, omitempty"`
+	client *http.Client `json:"client,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
