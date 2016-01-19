@@ -10,22 +10,22 @@ type Campaign struct {
 	Active bool `json:"active"`
 
 	// Filters from Advertiser
-	Tag        string   `json:"tag"`
-	Mention    string   `json:"mention"`
-	Link       string   `json:"link"`
-	Task       string   `json:"task"`
-	Categories []string `json:"cats"` // Influencer categories client would like to use
+	Tag        string   `json:"tag,omitempty"`
+	Mention    string   `json:"mention,omitempty"`
+	Link       string   `json:"link,omitempty"`
+	Task       string   `json:"task,omitempty"`
+	Categories []string `json:"cats,omitempty"` // Influencer categories client would like to use
 
 	// Inventory Types Campaign is Targeting
-	Twitter   bool `json:"twitter"`
-	Facebook  bool `json:"facebook"`
-	Instagram bool `json:"instagram"`
-	YouTube   bool `json:"youtube"`
-	Tumblr    bool `json:"tumblr"`
+	Twitter   bool `json:"twitter,omitempty"`
+	Facebook  bool `json:"facebook,omitempty"`
+	Instagram bool `json:"instagram,omitempty"`
+	YouTube   bool `json:"youtube,omitempty"`
+	Tumblr    bool `json:"tumblr,omitempty"`
 
-	Perks string `json:"perks"` // Perks need to be specced out
+	Perks string `json:"perks,omitempty"` // Perks need to be specced out
 
-	Deals map[string]*Deal `json:"deals"`
+	Deals map[string]*Deal `json:"deals,omitempty"`
 }
 
 func (cmp *Campaign) GetAllActiveDeals() []*Deal {
