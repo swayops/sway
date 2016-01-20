@@ -3,7 +3,7 @@ package common
 type Campaign struct {
 	Id           string  `json:"id"` // Do not pass in a campaign
 	Name         string  `json:"name"`
-	Budget       float64 `json:"budget"` // Monthly
+	Budget       float64 `json:"budget"` // Daily
 	AdvertiserId string  `json:"advertiserId"`
 	AgencyId     string  `json:"agencyId"`
 
