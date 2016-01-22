@@ -2,7 +2,14 @@
 	"port": "8080",
 	"dbPath": "data/",
 	"dbName": "sway",
-	"buckets": ["agency", "advertiser", "campaign", "deal", "group", "influencer"],
+	"bucket": {
+		"agency": "agency",
+		"group": "group",
+		"advertiser": "advertiser",
+		"campaign": "campaign",
+		"influencer": "influencer",
+		"all": ["agency", "group", "advertiser", "campaign", "influencer"]
+	},
 	"youtube": {
 		"endpoint": "https://www.googleapis.com/youtube/v3/",
 		"clientId": "AIzaSyA_RFUvI5hxseLWniqEjFtzH-0h_A57Igg"

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -10,10 +11,8 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
-var buckets = []string{"test"}
-
 type Server struct {
-	cfg *config.Config
+	Cfg *config.Config
 	r   *gin.Engine
 	db  *bolt.DB
 	// Db
@@ -23,19 +22,20 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 
 	srv := &Server{
-		cfg: cfg,
+		Cfg: cfg,
 		r:   r,
 		db:  db,
 	}
 
-	srv.InitializeDB(cfg.Buckets)
+	srv.InitializeDB(cfg)
 	srv.InitializeRoutes(r)
 	return srv, nil
 }
 
-func (srv *Server) InitializeDB(buckets []string) error {
+func (srv *Server) InitializeDB(cfg *config.Config) error {
 	return srv.db.Update(func(tx *bolt.Tx) error {
-		for _, val := range buckets {
+		for _, val := range cfg.Bucket.All {
+			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
 			}
@@ -60,9 +60,9 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	// Campaigns
 	createRoutes(r, srv, "/campaign", getCampaign, putCampaign, delCampaign)
 	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
-
-	// Deal
-	// createRoutes(r, srv, "/deal", getDeal, putDeal, delDeal)
+	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
+	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
+	r.GET("/getCampaignAuditedDeals/:campaignId", getCampaignAuditedDeals(srv))
 
 	// Groups
 	createRoutes(r, srv, "/group", getGroup, putGroup, delGroup)
@@ -70,8 +70,15 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/getAllGroups", getAllGroups(srv))
 
 	// Influencers
-	// r.GET("/getInfluencerByAgency/:id", getInfluencerByAgency(srv))
-	// r.GET("/getInfluencersByGroup/:id", getInfluencerByGroup(srv))
+	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
+	r.GET("/getInfluencerByAgency/:id", getInfluencerByAgency(srv))
+	r.GET("/getInfluencersByCategory/:id", getInfluencerByCategory(srv))
+
+	// Deal
+	r.GET("/getDealsForInfluencer/:influencerId", getDealsByInfluencer(srv))
+	r.GET("/assignDeal/:influencerId/:campaignId/:dealId", assignDeal(srv))
+	r.GET("/getDealsAssignedToInfluencer/:influencerId", getDealsAssignedToInfluencer(srv))
+	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
 }
 
 func (srv *Server) Run() (err error) {
@@ -80,7 +87,7 @@ func (srv *Server) Run() (err error) {
 	wg.Add(1)
 
 	go func() {
-		err = srv.r.Run(":" + srv.cfg.Port)
+		err = srv.r.Run(":" + srv.Cfg.Port)
 		wg.Done()
 	}()
 

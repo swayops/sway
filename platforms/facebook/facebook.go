@@ -8,21 +8,21 @@ import (
 )
 
 type Facebook struct {
-	Id string
+	Id string `json:"id"`
 
-	AvgLikes    float32
-	AvgComments float32
-	AvgShares   float32
+	AvgLikes    float32 `json:"avgLikes,omitempty"`
+	AvgComments float32 `json:"avgCom,omitempty"`
+	AvgShares   float32 `json:"avgSh,omitempty"`
 
-	Followers     float32 // float32 for GetScore equation
-	FollowerDelta float32 // Follower delta since last UpdateData run
+	Followers     float32 `json:"followers,omitempty"` // float32 for GetScore equation
+	FollowerDelta float32 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
 
-	LastLocation misc.GeoRecord
+	LastLocation misc.GeoRecord `json:"lastLoc,omitempty"`
 
-	LastUpdated int32   // Epoch timestamp in seconds
-	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
+	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
-	Score float32
+	Score float32 `json:"score,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (*Facebook, error) {

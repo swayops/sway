@@ -3,17 +3,17 @@ package facebook
 import "github.com/swayops/sway/config"
 
 type Post struct {
-	Id        string
-	Caption   string
-	Published FbTime
+	Id        string `json:"id"`
+	Caption   string `json:"caption,omitempty"`
+	Published FbTime `json:"published,omitempty"`
 
 	// Stats
-	Likes    float32
-	Shares   float32
-	Comments float32
+	Likes    float32 `json:"likes,omitempty"`
+	Shares   float32 `json:"shares,omitempty"`
+	Comments float32 `json:"comments,omitempty"`
 
 	// Type
-	Type string // "video", "photo", "shared_story", "link"
+	Type string `json:"type,omitempty"` // "video", "photo", "shared_story", "link"
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
