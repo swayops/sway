@@ -8,17 +8,17 @@ import (
 )
 
 type Instagram struct {
-	UserName      string
-	UserId        string
-	AvgLikes      float32 // Per post
-	AvgComments   float32 // Per post
-	Followers     float32
-	FollowerDelta float32 // Follower delta since last UpdateData run
+	UserName      string  `json:"userName"`
+	UserId        string  `json:"userId"`
+	AvgLikes      float32 `json:"avgLikes,omitempty"` // Per post
+	AvgComments   float32 `json:"avgComm,omitempty"`  // Per post
+	Followers     float32 `json:"followers,omitempty"`
+	FollowerDelta float32 `json:"fDelta,omitempty"` // Follower delta since last UpdateData run
 
-	LastLocation []*misc.GeoRecord // All locations since last update
+	LastLocation []*misc.GeoRecord `json:"geo,omitempty"` // All locations since last update
 
-	LastUpdated int32   // Epoch timestamp in seconds
-	LatestPosts []*Post // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32   `json:"lastUpdate,omitempty"` // Epoch timestamp in seconds
+	LatestPosts []*Post `json:"posts,omitempty"`      // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32
 }

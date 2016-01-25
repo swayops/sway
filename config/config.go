@@ -35,8 +35,6 @@ type Config struct {
 	DBPath string `json:"dbPath"`
 	DBName string `json:"dbName"`
 
-	Buckets []string `json:"buckets"`
-
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`
 		Key          string `json:"key"`
@@ -68,4 +66,13 @@ type Config struct {
 		Id       string `json:"id"`
 		Secret   string `json:"secret"`
 	} `json:"facebook"`
+
+	Bucket struct {
+		Agency     string   `json:"agency"`
+		Group      string   `json:"group"`
+		Advertiser string   `json:"advertiser"`
+		Campaign   string   `json:"campaign"`
+		Influencer string   `json:"influencer"`
+		All        []string `json:"all"`
+	} `json:"bucket"`
 }

@@ -4,22 +4,22 @@ package common
 // for an influencer. Do NOT confuse this
 // with a Campaign
 type Deal struct {
-	Id         string
-	CampaignId string // Campaign this deal belongs to
-	Influencer string // Influencer ID that has taken on the deal
-	Audited    bool   // Has the deal been audited by the advertiser?
-	Completed  bool   // True if the influencer has marked the deal as completed
+	Id         string `json:"id"`
+	CampaignId string `json:"campaignId"`
 
-	Price float64 // Price determined for this influencer using our algo
+	Assigned  int32 `json:"assigned,omitempty"`  // Timestamp for when the deal was picked up
+	Completed int32 `json:"completed,omitempty"` // Timestamp for when the deal was completed
+	Audited   int32 `json:"audited,omitempty"`   // Timestamp for when the deal was audited
 
-	// Requirements from advertiser
-	Tag     string
-	Mention string
-	Link    string
-	Task    string
+	InfluencerId string `json:"influencerId,omitempty"` // Influencer this deal has been assigned to
 
-	// Only one of these should be true
-	Twitter   bool
-	Facebook  bool
-	Instagram bool
+	Platforms map[string]float32 `json:"platforms,omitempty"` // Tmp platform determined by GetAvailableDeals with value as potential pricepoint
+
+	// Requirements added by GetAvailableDeals temporarily for json response
+	// for get deals accessed by influencers (so they know requirements)
+	Tag     string `json:"tag,omitempty"`
+	Mention string `json:"mention,omitempty"`
+	Link    string `json:"link,omitempty"`
+	Task    string `json:"task,omitempty"`
+	Perks   string `json:"perks,omitempty"` // Perks need to be specced out
 }

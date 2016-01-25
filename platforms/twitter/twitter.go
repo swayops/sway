@@ -26,20 +26,20 @@ var (
 )
 
 type Twitter struct {
-	Id string
+	Id string `json:"id"`
 
-	AvgRetweets   float32
-	AvgLikes      float32
-	Followers     float32 // float32 for GetScore equation
-	FollowerDelta float32 // Follower delta since last UpdateData run
+	AvgRetweets   float32 `json:"avgRt,omitempty"`
+	AvgLikes      float32 `json:"avgLikes,omitempty"`
+	Followers     float32 `json:"followers,omitempty"` // float32 for GetScore equation
+	FollowerDelta float32 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
 
-	LastLocation []misc.GeoRecord // All locations since last update
-	LastTweetId  string           // the id of the last tweet
-	LatestTweets Tweets           // Posts since last update.. will later check these for deal satisfaction
-	LastUpdated  int32            // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float32
+	LastLocation []misc.GeoRecord `json:"geo,omitempty"`        // All locations since last update
+	LastTweetId  string           `json:"lastTw,omitempty"`     // the id of the last tweet
+	LatestTweets Tweets           `json:"latestTw,omitempty"`   // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated  int32            `json:"lastUpdate,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score        float32          `json:"score,omitempty"`
 
-	client *http.Client
+	client *http.Client `json:"client,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (tw *Twitter, err error) {

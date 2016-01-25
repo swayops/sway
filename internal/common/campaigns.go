@@ -1,57 +1,41 @@
 package common
 
 type Campaign struct {
-	Id           string  `json:"id"`
+	Id           string  `json:"id"` // Do not pass in a campaign
 	Name         string  `json:"name"`
-	Budget       float64 `json:"budget"` // Weekly.. monthly?
+	Budget       float64 `json:"budget"` // Daily
 	AdvertiserId string  `json:"advertiserId"`
 	AgencyId     string  `json:"agencyId"`
 
+	Active bool `json:"active"`
+
 	// Filters from Advertiser
-	Tag        string   `json:"tag"`
-	Mention    string   `json:"mention"`
-	Link       string   `json:"link"`
-	Categories []string `json:"cats"` // Influencer categories client would like to use
+	Tag        string   `json:"tag,omitempty"`
+	Mention    string   `json:"mention,omitempty"`
+	Link       string   `json:"link,omitempty"`
+	Task       string   `json:"task,omitempty"`
+	Categories []string `json:"cats,omitempty"` // Influencer categories client would like to use
 
 	// Inventory Types Campaign is Targeting
-	Twitter   bool `json:"twitter"`
-	Facebook  bool `json:"fb"`
-	Instagram bool `json:"insta"`
-	YouTube   bool `json:"yt"`
+	Twitter   bool `json:"twitter,omitempty"`
+	Facebook  bool `json:"facebook,omitempty"`
+	Instagram bool `json:"instagram,omitempty"`
+	YouTube   bool `json:"youtube,omitempty"`
+	Tumblr    bool `json:"tumblr,omitempty"`
 
-	Perks string `json:"perks"` // Perks need to be specced out
+	Perks string `json:"perks,omitempty"` // Perks need to be specced out
+
+	Deals map[string]*Deal `json:"deals,omitempty"`
 }
 
-func (cmp *Campaign) GetActiveDeals() []*Deal {
-	// Look at:
-	// - currently accepted deals by influencers (and their timeouts)
-	// - budget
-	// - available influencers
-	// - campagin (gender, category, geo) filters
-	// - stats for each influencer using stores social media stats (to determine deal price)
-	// and return optimized deals for this campaign
-
-	// A ticker should regularly call this function. For any
-	// influencers who have fallen out of deal requirements OR
-	// hit the post timeout (post must be made within 1 day) will be notified that
-	// they are no longer eligible. Also, new influencers who are eligible
-	// (assuming campaign has budget), will be notified that a new deal is available
-
+func (cmp *Campaign) GetAllActiveDeals() []*Deal {
+	// Get all deals that are currently assigned to an influencer
 	return nil
 }
 
 func (cmp *Campaign) GetCompletedDeals() []*Deal {
 	// Return all deals that have been completed
-	// and audited
+	// and audited for this campaign
 
-	return nil
-}
-
-func (cmp *Campaign) ReserveDeal() []*Deal {
-	// Track:
-	// - all influencers who have previously been notified of a deal and accepted
-
-	// This function should have a corresponding handler
-	// which allows for ingesting a newly approved deal from the app
 	return nil
 }

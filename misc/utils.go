@@ -3,9 +3,14 @@ package misc
 import (
 	"compress/flate"
 	"compress/gzip"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
+	"unsafe"
 )
 
 const StandardTimestamp = `20050102`
@@ -38,4 +43,24 @@ func HttpGetJson(c *http.Client, endpoint string, out interface{}) (err error) {
 	}
 
 	return
+}
+
+// 9 bytes of unixnano and 7 random bytes
+func PseudoUUID() string {
+	now := time.Now().UnixNano()
+	randPart := make([]byte, 7)
+	if _, err := rand.Read(randPart); err != nil {
+		copy(randPart, (*(*[8]byte)(unsafe.Pointer(&now)))[:7])
+	}
+	return strconv.FormatInt(now, 10)[1:] + hex.EncodeToString(randPart)
+}
+
+func ListContains(opts []string, tg string) bool {
+	for _, val := range opts {
+		if tg == val {
+			return true
+		}
+	}
+
+	return false
 }

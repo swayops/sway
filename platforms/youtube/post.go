@@ -3,18 +3,18 @@ package youtube
 import "github.com/swayops/sway/config"
 
 type Post struct {
-	Id          string
-	Title       string
-	Description string
-	Published   int32 // Epoch ts
+	Id          string `json:"id"`
+	Title       string `json:"title,omitempty"`
+	Description string `json:"desc,omitempty"`
+	Published   int32  `json:"published,omitempty"` // Epoch ts
 
-	PostURL string // Link to the post
+	PostURL string `json:"url,omitempty"` // Link to the post
 
 	// Stats
-	Views    float32
-	Likes    float32
-	Dislikes float32
-	Comments float32
+	Views    float32 `json:"views,omitempty"`
+	Likes    float32 `json:"likes,omitempty"`
+	Dislikes float32 `json:"dislikes,omitempty"`
+	Comments float32 `json:"comments,omitempty"`
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
