@@ -23,17 +23,17 @@ type InfluencerLoad struct {
 	YouTubeId   string `json:"youtube,omitempty"`
 	TumblrId    string `json:"tumblr,omitempty"`
 
-	CategoryId string `json:"cat,omitempty"`
-	AgencyId   string `json:"agency,omitempty"` // Agency this influencer belongs to
+	CategoryIds []string `json:"cats,omitempty"`
+	GroupId     string   `json:"groupId,omitempty"` // Agency/group this influencer belongs to
 
 	FloorPrice float32 `json:"floor,omitempty"` // Price per engagement set by agency
 }
 
 type Influencer struct {
-	Id         string  `json:"id"`
-	CategoryId string  `json:"cat,omitempty"`    // Each influencer will be put into a category
-	AgencyId   string  `json:"agency,omitempty"` // Group this influencer belongs to (agencies, brands view invites)
-	FloorPrice float32 `json:"floor,omitempty"`  // Price per engagement set by agency
+	Id          string   `json:"id"`
+	CategoryIds []string `json:"cats,omitempty"`    // Each influencer will be put into a category
+	GroupId     string   `json:"groupId,omitempty"` // Group this influencer belongs to (agencies, brands view invites)
+	FloorPrice  float32  `json:"floor,omitempty"`   // Price per engagement set by agency
 
 	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
 	Instagram *instagram.Instagram `json:"instagram,omitempty"`
@@ -47,12 +47,12 @@ type Influencer struct {
 	Cancellations int32 `json:"cancel,omitempty"` // How many times has this influencer cancelled a deal? Should affect sway score
 }
 
-func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency string, floorPrice float32, cfg *config.Config) (*Influencer, error) {
+func New(twitterId, instaId, fbId, ytId, tumblrId, group string, cats []string, floorPrice float32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
-		Id:         misc.PseudoUUID(), // Possible change to standard numbering?
-		CategoryId: category,
-		AgencyId:   agency,
-		FloorPrice: floorPrice,
+		Id:          misc.PseudoUUID(), // Possible change to standard numbering?
+		CategoryIds: cats,
+		GroupId:     group,
+		FloorPrice:  floorPrice,
 	}
 
 	err := inf.NewInsta(instaId, cfg)
@@ -190,7 +190,7 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, cfg *config.Config
 			}
 
 			// Filter Checks
-			if len(cmp.Categories) > 0 && !misc.ListContains(cmp.Categories, inf.CategoryId) {
+			if len(cmp.Categories) > 0 && !misc.DoesIntersect(cmp.Categories, inf.CategoryIds) {
 				return nil
 			}
 

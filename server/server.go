@@ -63,6 +63,7 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
 	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
 	r.GET("/getCampaignAuditedDeals/:campaignId", getCampaignAuditedDeals(srv))
+	r.GET("/campaignStatus/:campaignId/:status", toggleCampaignStatus(srv))
 
 	// Groups
 	createRoutes(r, srv, "/group", getGroup, putGroup, delGroup)
@@ -71,8 +72,9 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
-	r.GET("/getInfluencerByAgency/:id", getInfluencerByAgency(srv))
+	r.GET("/getInfluencerByGroup/:id", getInfluencerByGroup(srv))
 	r.GET("/getInfluencersByCategory/:id", getInfluencerByCategory(srv))
+	r.GET("/addInfluencerToGroup/:influencerId/:groupId", addInfluencerToGroup(srv))
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId", getDealsByInfluencer(srv))
