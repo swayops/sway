@@ -26,10 +26,6 @@ func TestTwitter(t *testing.T) {
 	tw := inf.Twitter
 	t.Logf("AvgRetweets: %v, AvgLikes: %v, Followers: %v, LatestPosts: %v", tw.AvgRetweets, tw.AvgLikes, uint(tw.Followers), len(tw.LatestTweets))
 
-	for _, v := range tw.LastLocation {
-		log.Println("TEST", v)
-	}
-
 	if v := tw.AvgRetweets; v < 500 {
 		t.Fatal("AvgRetweets don't match! Expected > 500.. Got: ", v)
 	}
