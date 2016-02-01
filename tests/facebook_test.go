@@ -7,7 +7,10 @@ import (
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/misc"
 )
+
+var DefaultGeo = &misc.GeoRecord{City: "Toronto", Country: "Canada"}
 
 func TestFacebook(t *testing.T) {
 	// Complete once API has been built out
@@ -19,7 +22,7 @@ func TestFacebook(t *testing.T) {
 
 	// Initialize Influencer test
 	fbId := "KimKardashian"
-	inf, err := influencer.New("", "", fbId, "", "", "CAT1", "FAKEAGENCY", "m", 0, nil, cfg)
+	inf, err := influencer.New("", "", fbId, "", "", "CAT1", "FAKEAGENCY", "m", 0, DefaultGeo, cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}
