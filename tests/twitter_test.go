@@ -18,13 +18,17 @@ func TestTwitter(t *testing.T) {
 
 	// Initialize Influencer test
 	twId := "kimkardashian" // I may hate the bitch but sadly she's a huge star :(
-	inf, err := influencer.New(twId, "", "", "", "", cfg)
+	inf, err := influencer.New(twId, "", "", "", "", "CAT1", "FAKEAGENCY", "m", 0, nil, cfg)
 	if err != nil {
 		t.Fatal("Error when initializing twitter", err)
 	}
 
 	tw := inf.Twitter
 	t.Logf("AvgRetweets: %v, AvgLikes: %v, Followers: %v, LatestPosts: %v", tw.AvgRetweets, tw.AvgLikes, uint(tw.Followers), len(tw.LatestTweets))
+
+	for _, v := range tw.LastLocation {
+		log.Println("TEST", v)
+	}
 
 	if v := tw.AvgRetweets; v < 500 {
 		t.Fatal("AvgRetweets don't match! Expected > 500.. Got: ", v)

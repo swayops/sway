@@ -117,7 +117,7 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 
 func getUserStats(id string, cfg *config.Config) (float32, float32, float32, error) {
 	endpoint := fmt.Sprintf(dataUrl, cfg.YouTube.Endpoint, id, cfg.YouTube.ClientId)
-
+	log.Println("Hitting", endpoint)
 	var data Data
 	err := misc.Request("GET", endpoint, "", &data)
 	if err != nil || data.Error != nil {
@@ -158,6 +158,7 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 
 func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
 	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
+	log.Println("Hitting post", endpoint)
 	var list Data
 	err = misc.Request("GET", endpoint, "", &list)
 	if err != nil || list.Error != nil {
@@ -226,7 +227,7 @@ var ErrStats = errors.New("Unable to retrieve video stats")
 
 func getVideoStats(videoId string, cfg *config.Config) (views, likes, dislikes, comments float32, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
-
+	log.Println("VIDEO STATS", endpoint)
 	var vData Data
 	err = misc.Request("GET", endpoint, "", &vData)
 	if err != nil || vData.Error != nil || len(vData.Items) == 0 {

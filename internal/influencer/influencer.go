@@ -2,6 +2,7 @@ package influencer
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/boltdb/bolt"
@@ -16,6 +17,13 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+var (
+	ErrBadGender = errors.New("Please provide a gender ('m' or 'f')")
+	ErrNoAgency  = errors.New("Please provide an agency id")
+	ErrNoGeo     = errors.New("Please provide a geo")
+	ErrNoCat     = errors.New("Please provide a category")
+)
+
 type InfluencerLoad struct {
 	InstagramId string `json:"instagram,omitempty"`
 	FbId        string `json:"facebook,omitempty"`
@@ -27,6 +35,10 @@ type InfluencerLoad struct {
 	AgencyId   string `json:"agency,omitempty"` // Agency this influencer belongs to
 
 	FloorPrice float32 `json:"floor,omitempty"` // Price per engagement set by agency
+
+	Geo *misc.GeoRecord `json:"geo,omitempty"` // User inputted geo via app
+
+	Gender string `json:"gender,omitempty"`
 }
 
 type Influencer struct {
@@ -41,18 +53,41 @@ type Influencer struct {
 	YouTube   *youtube.YouTube     `json:"youtube,omitempty"`
 	Tumblr    *tumblr.Tumblr       `json:"tumblr,omitempty"`
 
+	Geo *misc.GeoRecord `json:"geo,omitempty"` // User inputted geo via app
+
+	// Gender
+	Gender string `json:"gender,omitempty"` // "m" or "f"
+
 	ActiveDeals   []*common.Deal `json:"activeDeals,omitempty"`   // Accepted pending deals to be completed
 	HistoricDeals []*common.Deal `json:"historicDeals,omitempty"` // Contains historic deals completed
 
 	Cancellations int32 `json:"cancel,omitempty"` // How many times has this influencer cancelled a deal? Should affect sway score
 }
 
-func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency string, floorPrice float32, cfg *config.Config) (*Influencer, error) {
+func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency, gender string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+	if gender != "m" && gender != "f" {
+		return nil, ErrBadGender
+	}
+
+	if agency == "" {
+		return nil, ErrNoAgency
+	}
+
+	if geo == nil {
+		return nil, ErrNoGeo
+	}
+
+	if category == "" {
+		return nil, ErrNoCat
+	}
+
 	inf := &Influencer{
 		Id:         misc.PseudoUUID(), // Possible change to standard numbering?
 		CategoryId: category,
 		AgencyId:   agency,
 		FloorPrice: floorPrice,
+		Geo:        geo,
+		Gender:     gender,
 	}
 
 	err := inf.NewInsta(instaId, cfg)
@@ -140,7 +175,7 @@ func (inf *Influencer) NewTumblr(id string, cfg *config.Config) error {
 	return nil
 }
 
-func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, cfg *config.Config) []*common.Deal {
+func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	var (
 		v   []byte
 		err error
@@ -156,6 +191,19 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, cfg *config.Config
 	if err = json.Unmarshal(v, &inf); err != nil {
 		log.Println("Error unmarshalling influencer", err)
 		return infDeals
+	}
+
+	if geo == nil && !skipGeo {
+		if inf.Geo != nil {
+			geo = inf.Geo
+		} else {
+			if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
+				geo = inf.Instagram.LastLocation
+			} else if inf.Twitter != nil && inf.Twitter.LastLocation != nil {
+				geo = inf.Twitter.LastLocation
+			}
+		}
+
 	}
 
 	db.View(func(tx *bolt.Tx) error {
@@ -201,8 +249,22 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, cfg *config.Config
 				}
 			}
 
-			// Insert Geo Checks here //
-			// Insert Gender Check here//
+			// Match Campaign Geo Targeting with Influencer Geo //
+			if !misc.IsGeoMatch(cmp.Geos, geo) {
+				return nil
+			}
+
+			// Gender check
+			if cmp.Gender == "m" {
+				if inf.Gender == "f" {
+					return nil
+				}
+			} else if cmp.Gender == "f" {
+				if inf.Gender == "m" {
+					return nil
+				}
+			}
+
 			// Insert Age Check here//
 			// Insert Follower Check here //
 

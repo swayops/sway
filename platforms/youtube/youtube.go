@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/misc"
 )
 
 type YouTube struct {
@@ -18,8 +17,6 @@ type YouTube struct {
 	AvgComments     float32 `json:"avgComments,omitempty"`
 	Subscribers     float32 `json:"avgSub,omitempty"`   // float32 for GetScore equation
 	SubscriberDelta float32 `json:"subDelta,omitempty"` // Follower delta since last UpdateData run
-
-	LastLocation misc.GeoRecord `json:"geo,omitempty"`
 
 	LastUpdated int32   `json:"lastUpdate,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`      // Posts since last update.. will later check these for deal satisfaction
