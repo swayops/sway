@@ -425,23 +425,12 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 func toggleCampaignStatus(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			cmp common.Campaign
-			b   []byte
-			err error
-		)
+		var cmp common.Campaign
 
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if err := s.db.View(func(tx *bolt.Tx) error {
-				b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-				return nil
-			}); err != nil {
-				c.JSON(500, misc.StatusErr("Internal error"))
-				return err
-			}
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
 
 			if err = json.Unmarshal(b, &cmp); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
 
@@ -454,7 +443,6 @@ func toggleCampaignStatus(s *Server) gin.HandlerFunc {
 			}
 
 			if b, err = json.Marshal(&cmp); err != nil {
-				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
 			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
@@ -690,13 +678,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		if inf.GroupId != "" { // 1 = Sway
 			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 				var g common.Group
-				if err := s.db.View(func(tx *bolt.Tx) error {
-					b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
-					return nil
-				}); err != nil {
-					c.JSON(500, misc.StatusErr("Internal error"))
-					return err
-				}
+				b := tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
 
 				if err = json.Unmarshal(b, &g); err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
@@ -830,19 +812,12 @@ func addInfluencerToGroup(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Alter influencer bucket
 		var (
-			b   []byte
 			err error
 			inf influencer.Influencer
 		)
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if err := s.db.View(func(tx *bolt.Tx) error {
-				b = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
-				return nil
-			}); err != nil {
-				c.JSON(500, misc.StatusErr("Internal error"))
-				return err
-			}
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
 
 			if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("groupId") == "" {
 				c.JSON(500, misc.StatusErr(err.Error()))
@@ -865,13 +840,7 @@ func addInfluencerToGroup(s *Server) gin.HandlerFunc {
 		if inf.GroupId != "" { // 1 = Sway
 			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 				var g common.Group
-				if err := s.db.View(func(tx *bolt.Tx) error {
-					b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
-					return nil
-				}); err != nil {
-					c.JSON(500, misc.StatusErr("Internal error"))
-					return err
-				}
+				b := tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
 
 				if err = json.Unmarshal(b, &g); err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
