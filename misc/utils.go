@@ -53,10 +53,12 @@ func PseudoUUID() string {
 	return strconv.FormatInt(now, 10)[1:] + hex.EncodeToString(randPart)
 }
 
-func ListContains(opts []string, tg string) bool {
-	for _, val := range opts {
-		if tg == val {
-			return true
+func DoesIntersect(opts []string, tg []string) bool {
+	for _, o := range opts {
+		for _, t := range tg {
+			if t == o {
+				return true
+			}
 		}
 	}
 
