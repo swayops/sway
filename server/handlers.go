@@ -431,30 +431,29 @@ func toggleCampaignStatus(s *Server) gin.HandlerFunc {
 			err error
 		)
 
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		if err = json.Unmarshal(b, &cmp); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		status := c.Params.ByName("status")
-
-		if status == "true" || status == "t" {
-			cmp.Active = true
-		} else if status == "false" || status == "f" {
-			cmp.Active = false
-		}
-
-		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if b, err = json.Marshal(cmp); err != nil {
+			if err := s.db.View(func(tx *bolt.Tx) error {
+				b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
+				return nil
+			}); err != nil {
+				c.JSON(500, misc.StatusErr("Internal error"))
+				return err
+			}
+
+			if err = json.Unmarshal(b, &cmp); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			status := c.Params.ByName("status")
+
+			if status == "true" || status == "t" {
+				cmp.Active = true
+			} else if status == "false" || status == "f" {
+				cmp.Active = false
+			}
+
+			if b, err = json.Marshal(&cmp); err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
@@ -689,27 +688,27 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 		// Add to Group Bucket
 		if inf.GroupId != "" { // 1 = Sway
-			var g common.Group
-			if err := s.db.View(func(tx *bolt.Tx) error {
-				b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
-				return nil
-			}); err != nil {
-				c.JSON(500, misc.StatusErr("Internal error"))
-				return
-			}
-
-			if err = json.Unmarshal(b, &g); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			if g.Influencers == nil || len(g.Influencers) == 0 {
-				g.Influencers = []string{inf.Id}
-			} else {
-				g.Influencers = append(g.Influencers, inf.Id)
-			}
-
 			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				var g common.Group
+				if err := s.db.View(func(tx *bolt.Tx) error {
+					b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
+					return nil
+				}); err != nil {
+					c.JSON(500, misc.StatusErr("Internal error"))
+					return err
+				}
+
+				if err = json.Unmarshal(b, &g); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+
+				if g.Influencers == nil || len(g.Influencers) == 0 {
+					g.Influencers = []string{inf.Id}
+				} else {
+					g.Influencers = append(g.Influencers, inf.Id)
+				}
+
 				if b, err = json.Marshal(g); err != nil {
 					c.JSON(400, misc.StatusErr(err.Error()))
 					return
@@ -836,22 +835,22 @@ func addInfluencerToGroup(s *Server) gin.HandlerFunc {
 			inf influencer.Influencer
 		)
 
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			b = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("groupId") == "" {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		inf.GroupId = c.Params.ByName("groupId")
-
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			if err := s.db.View(func(tx *bolt.Tx) error {
+				b = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
+				return nil
+			}); err != nil {
+				c.JSON(500, misc.StatusErr("Internal error"))
+				return err
+			}
+
+			if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("groupId") == "" {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			inf.GroupId = c.Params.ByName("groupId")
+
 			if b, err = json.Marshal(inf); err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
@@ -864,27 +863,27 @@ func addInfluencerToGroup(s *Server) gin.HandlerFunc {
 
 		// Add to Group Bucket
 		if inf.GroupId != "" { // 1 = Sway
-			var g common.Group
-			if err := s.db.View(func(tx *bolt.Tx) error {
-				b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
-				return nil
-			}); err != nil {
-				c.JSON(500, misc.StatusErr("Internal error"))
-				return
-			}
-
-			if err = json.Unmarshal(b, &g); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			if g.Influencers == nil || len(g.Influencers) == 0 {
-				g.Influencers = []string{inf.Id}
-			} else {
-				g.Influencers = append(g.Influencers, inf.Id)
-			}
-
 			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				var g common.Group
+				if err := s.db.View(func(tx *bolt.Tx) error {
+					b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(inf.GroupId))
+					return nil
+				}); err != nil {
+					c.JSON(500, misc.StatusErr("Internal error"))
+					return err
+				}
+
+				if err = json.Unmarshal(b, &g); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+
+				if g.Influencers == nil || len(g.Influencers) == 0 {
+					g.Influencers = []string{inf.Id}
+				} else {
+					g.Influencers = append(g.Influencers, inf.Id)
+				}
+
 				if b, err = json.Marshal(g); err != nil {
 					c.JSON(400, misc.StatusErr(err.Error()))
 					return
