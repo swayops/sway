@@ -12,14 +12,13 @@ type Campaign struct {
 	Active bool `json:"active"`
 
 	// Filters from Advertiser
-	Tag        string            `json:"tag,omitempty"`
-	Mention    string            `json:"mention,omitempty"`
-	Link       string            `json:"link,omitempty"`
-	Task       string            `json:"task,omitempty"`
-	Categories []string          `json:"cats,omitempty"`     // Influencer categories client would like to use
-	GroupIds   []string          `json:"groupIds,omitempty"` // Influencer groups the client is targeting
-	Geos       []*misc.GeoRecord `json:"geos,omitempty"`     // Geos the campaign is targeting
-	Gender     string            `json:"gender,omitempty"`   // "m" or "f" or "mf"
+	Tag      string            `json:"tag,omitempty"`
+	Mention  string            `json:"mention,omitempty"`
+	Link     string            `json:"link,omitempty"`
+	Task     string            `json:"task,omitempty"`
+	GroupIds []string          `json:"groupIds,omitempty"` // Influencer groups the client is targeting
+	Geos     []*misc.GeoRecord `json:"geos,omitempty"`     // Geos the campaign is targeting
+	Gender   string            `json:"gender,omitempty"`   // "m" or "f" or "mf"
 
 	// Inventory Types Campaign is Targeting
 	Twitter   bool `json:"twitter,omitempty"`

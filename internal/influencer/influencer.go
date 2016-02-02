@@ -21,7 +21,6 @@ var (
 	ErrBadGender = errors.New("Please provide a gender ('m' or 'f')")
 	ErrNoAgency  = errors.New("Please provide an agency id")
 	ErrNoGeo     = errors.New("Please provide a geo")
-	ErrNoCat     = errors.New("Please provide a category")
 )
 
 type InfluencerLoad struct {
@@ -31,8 +30,8 @@ type InfluencerLoad struct {
 	YouTubeId   string `json:"youtube,omitempty"`
 	TumblrId    string `json:"tumblr,omitempty"`
 
-	CategoryId string `json:"cat,omitempty"`
-	AgencyId   string `json:"agency,omitempty"` // Agency this influencer belongs to
+	GroupIds []string `json:"groupIds,omitempty"` // Groups this influencer belongs to
+	AgencyId string   `json:"agencyId,omitempty"` // Agency this influencer belongs to
 
 	FloorPrice float32 `json:"floor,omitempty"` // Price per engagement set by agency
 
@@ -42,10 +41,10 @@ type InfluencerLoad struct {
 }
 
 type Influencer struct {
-	Id         string  `json:"id"`
-	CategoryId string  `json:"cat,omitempty"`    // Each influencer will be put into a category
-	AgencyId   string  `json:"agency,omitempty"` // Group this influencer belongs to (agencies, brands view invites)
-	FloorPrice float32 `json:"floor,omitempty"`  // Price per engagement set by agency
+	Id         string   `json:"id"`
+	GroupIds   []string `json:"groupIds,omitempty"` // Each influencer will be put into multiple groups (owned by agencies)
+	AgencyId   string   `json:"agencyId,omitempty"` // agency this influencer belongs to
+	FloorPrice float32  `json:"floor,omitempty"`    // Price per engagement set by agency
 
 	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
 	Instagram *instagram.Instagram `json:"instagram,omitempty"`
@@ -64,7 +63,8 @@ type Influencer struct {
 	Cancellations int32 `json:"cancel,omitempty"` // How many times has this influencer cancelled a deal? Should affect sway score
 }
 
-func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency, gender string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(twitterId, instaId, fbId, ytId, tumblrId, gender, agency string, groupIds []string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+
 	if gender != "m" && gender != "f" {
 		return nil, ErrBadGender
 	}
@@ -77,14 +77,10 @@ func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency, gender stri
 		return nil, ErrNoGeo
 	}
 
-	if category == "" {
-		return nil, ErrNoCat
-	}
-
 	inf := &Influencer{
 		Id:         misc.PseudoUUID(), // Possible change to standard numbering?
-		CategoryId: category,
 		AgencyId:   agency,
+		GroupIds:   groupIds,
 		FloorPrice: floorPrice,
 		Geo:        geo,
 		Gender:     gender,
@@ -114,7 +110,6 @@ func New(twitterId, instaId, fbId, ytId, tumblrId, category, agency, gender stri
 		return inf, err
 	}
 
-	// Saving to db functionality TBD.. iodb?
 	return inf, nil
 }
 
@@ -238,7 +233,7 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecor
 			}
 
 			// Filter Checks
-			if len(cmp.Categories) > 0 && !misc.ListContains(cmp.Categories, inf.CategoryId) {
+			if len(cmp.GroupIds) > 0 && !misc.DoesIntersect(cmp.GroupIds, inf.GroupIds) {
 				return nil
 			}
 

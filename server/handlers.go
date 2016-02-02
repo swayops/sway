@@ -56,10 +56,13 @@ func getAgency(s *Server) gin.HandlerFunc {
 			ag  common.Agency
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Agency)).Get([]byte(c.Params.ByName("id")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &ag); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -73,7 +76,7 @@ func getAgency(s *Server) gin.HandlerFunc {
 func getAllAgencies(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		agenciesAll := make([]*common.Agency, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Agency)).ForEach(func(k, v []byte) (err error) {
 				ag := &common.Agency{}
 				if err := json.Unmarshal(v, ag); err != nil {
@@ -84,7 +87,11 @@ func getAllAgencies(s *Server) gin.HandlerFunc {
 				return
 			})
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
 		c.JSON(200, agenciesAll)
 	}
 }
@@ -163,10 +170,13 @@ func getGroup(s *Server) gin.HandlerFunc {
 			g   common.Group
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(c.Params.ByName("id")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &g); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -206,7 +216,7 @@ func getGroupByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAgency := c.Params.ByName("id")
 		groups := make([]*common.Group, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Group)).ForEach(func(k, v []byte) (err error) {
 				ag := &common.Group{}
 				if err := json.Unmarshal(v, ag); err != nil {
@@ -219,7 +229,10 @@ func getGroupByAgency(s *Server) gin.HandlerFunc {
 				return
 			})
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 		c.JSON(200, groups)
 	}
 }
@@ -227,7 +240,7 @@ func getGroupByAgency(s *Server) gin.HandlerFunc {
 func getAllGroups(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		groups := make([]*common.Group, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Group)).ForEach(func(k, v []byte) (err error) {
 				ag := &common.Group{}
 				if err := json.Unmarshal(v, ag); err != nil {
@@ -238,7 +251,10 @@ func getAllGroups(s *Server) gin.HandlerFunc {
 				return
 			})
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 		c.JSON(200, groups)
 	}
 }
@@ -286,10 +302,13 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 			g   common.Advertiser
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(c.Params.ByName("id")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &g); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -304,7 +323,7 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAgency := c.Params.ByName("id")
 		advertisers := make([]*common.Advertiser, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).ForEach(func(k, v []byte) (err error) {
 				adv := &common.Advertiser{}
 				if err := json.Unmarshal(v, adv); err != nil {
@@ -317,7 +336,11 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 				return
 			})
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
 		c.JSON(200, advertisers)
 	}
 }
@@ -426,6 +449,38 @@ func putCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+func toggleCampaignStatus(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var cmp common.Campaign
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
+
+			if err = json.Unmarshal(b, &cmp); err != nil {
+				return
+			}
+
+			status := c.Params.ByName("status")
+
+			if status == "true" || status == "t" {
+				cmp.Active = true
+			} else if status == "false" || status == "f" {
+				cmp.Active = false
+			}
+
+			if b, err = json.Marshal(&cmp); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(cmp.Id))
+	}
+}
+
 func getCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -434,10 +489,13 @@ func getCampaign(s *Server) gin.HandlerFunc {
 			g   common.Campaign
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("id")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &g); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -452,7 +510,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAdv := c.Params.ByName("id")
 		campaigns := make([]*common.Campaign, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				cmp := &common.Campaign{}
 				if err := json.Unmarshal(v, cmp); err != nil {
@@ -465,7 +523,10 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 				return
 			})
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 		c.JSON(200, campaigns)
 	}
 }
@@ -478,10 +539,13 @@ func getCampaignAssignedDeals(s *Server) gin.HandlerFunc {
 			cmp common.Campaign
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &cmp); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -507,10 +571,13 @@ func getCampaignCompletedDeals(s *Server) gin.HandlerFunc {
 			cmp common.Campaign
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &cmp); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -536,10 +603,13 @@ func getCampaignAuditedDeals(s *Server) gin.HandlerFunc {
 			cmp common.Campaign
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &cmp); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -647,9 +717,9 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			load.FbId,
 			load.YouTubeId,
 			load.TumblrId,
-			load.CategoryId,
-			load.AgencyId,
 			load.Gender,
+			load.AgencyId,
+			load.GroupIds,
 			load.FloorPrice,
 			load.Geo,
 			s.Cfg)
@@ -676,6 +746,40 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Add to Each Group Bucket
+		if inf.GroupIds != nil && len(inf.GroupIds) > 0 { // 1 = Sway
+			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				for _, targetGr := range inf.GroupIds {
+					var g common.Group
+					b := tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(targetGr))
+
+					if err = json.Unmarshal(b, &g); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+
+					if g.Influencers == nil || len(g.Influencers) == 0 {
+						g.Influencers = []string{inf.Id}
+					} else {
+						g.Influencers = append(g.Influencers, inf.Id)
+					}
+
+					if b, err = json.Marshal(g); err != nil {
+						c.JSON(400, misc.StatusErr(err.Error()))
+						return
+					}
+					if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Group, g.Id, b); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+				return
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+		}
+
 		c.JSON(200, misc.StatusOK(inf.Id))
 	}
 }
@@ -688,10 +792,13 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 			g   influencer.Influencer
 		)
 
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("id")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &g); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -727,47 +834,100 @@ func delInfluencer(s *Server) gin.HandlerFunc {
 	}
 }
 
-func getInfluencerByAgency(s *Server) gin.HandlerFunc {
+func getInfluencerByGroup(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		targetAg := c.Params.ByName("id")
+		targetG := c.Params.ByName("id")
 		influencers := make([]*influencer.Influencer, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
 				inf := &influencer.Influencer{}
 				if err := json.Unmarshal(v, inf); err != nil {
 					log.Println("error when unmarshalling influencer", string(v))
 					return nil
 				}
-				if inf.AgencyId == targetAg {
-					influencers = append(influencers, inf)
+				for _, gId := range inf.GroupIds {
+					if gId == targetG {
+						influencers = append(influencers, inf)
+					}
 				}
 				return
 			})
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 		c.JSON(200, influencers)
 	}
 }
 
-func getInfluencerByCategory(s *Server) gin.HandlerFunc {
+func addInfluencerToGroup(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		target := c.Params.ByName("id")
-		influencers := make([]*influencer.Influencer, 0, 512)
-		s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
-				inf := &influencer.Influencer{}
-				if err := json.Unmarshal(v, inf); err != nil {
-					log.Println("error when unmarshalling influencer", string(v))
-					return nil
-				}
-				if inf.CategoryId == target {
-					influencers = append(influencers, inf)
+		// Alter influencer bucket
+		var (
+			err error
+			inf influencer.Influencer
+		)
+
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
+
+			if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("groupId") == "" {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if inf.GroupIds == nil || len(inf.GroupIds) == 0 {
+				inf.GroupIds = []string{c.Params.ByName("groupId")}
+			} else {
+				inf.GroupIds = append(inf.GroupIds, c.Params.ByName("groupId"))
+			}
+
+			if b, err = json.Marshal(inf); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		// Add to Group Bucket
+		if inf.GroupIds != nil && len(inf.GroupIds) > 0 { // 1 = Sway
+			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				for _, infGr := range inf.GroupIds {
+					var g common.Group
+					b := tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(infGr))
+
+					if err = json.Unmarshal(b, &g); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+
+					if g.Influencers == nil || len(g.Influencers) == 0 {
+						g.Influencers = []string{inf.Id}
+					} else {
+						g.Influencers = append(g.Influencers, inf.Id)
+					}
+
+					if b, err = json.Marshal(g); err != nil {
+						c.JSON(400, misc.StatusErr(err.Error()))
+						return
+					}
+
+					if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Group, g.Id, b); err != nil {
+						c.JSON(400, misc.StatusErr(err.Error()))
+						return
+					}
 				}
 				return
-			})
-			return nil
-		})
-		c.JSON(200, influencers)
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+		}
+		c.JSON(200, misc.StatusOK(inf.Id))
 	}
 }
 
@@ -888,10 +1048,13 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			v   []byte
 			g   influencer.Influencer
 		)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
 			return nil
-		})
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 
 		if err = json.Unmarshal(v, &g); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))

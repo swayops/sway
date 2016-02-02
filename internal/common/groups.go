@@ -6,5 +6,5 @@ type Group struct {
 	AgencyId string `json:"agencyId"`
 	Name     string `json:"name"`
 
-	Influencers []string `json:"influencers"` // Array of influencers in this group
+	Influencers []string `json:"influencers"` // Array of influencer IDs in this group
 }

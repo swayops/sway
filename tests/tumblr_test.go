@@ -18,7 +18,7 @@ func TestTumblr(t *testing.T) {
 
 	// Initialize Influencer test
 	id := "kropotkindersurprise.tumblr.com" // I may hate the bitch but sadly she's a huge star :(
-	inf, err := influencer.New("", "", "", "", id, "CAT1", "FAKEAGENCY", "m", 0, DefaultGeo, cfg)
+	inf, err := influencer.New("", "", "", "", id, "m", "FAKEAGENCY", []string{"groupId"}, 0, DefaultGeo, cfg)
 	if err != nil {
 		t.Fatal("Error when initializing tumblr", err)
 	}
