@@ -658,7 +658,6 @@ func updateCampaignGeo(s *Server) gin.HandlerFunc {
 		var (
 			cmp  common.Campaign
 			geos []*misc.GeoRecord // Only expose city and country for now
-			b    []byte
 			err  error
 		)
 
@@ -668,20 +667,15 @@ func updateCampaignGeo(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		s.db.View(func(tx *bolt.Tx) error {
-			b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-			return nil
-		})
-
-		if err = json.Unmarshal(b, &cmp); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		cmp.Geos = geos
-
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
+			if err = json.Unmarshal(b, &cmp); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			cmp.Geos = geos
 			if b, err = json.Marshal(cmp); err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return

@@ -227,7 +227,7 @@ var ErrStats = errors.New("Unable to retrieve video stats")
 
 func getVideoStats(videoId string, cfg *config.Config) (views, likes, dislikes, comments float32, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
-	log.Println("VIDEO STATS", endpoint)
+
 	var vData Data
 	err = misc.Request("GET", endpoint, "", &vData)
 	if err != nil || vData.Error != nil || len(vData.Items) == 0 {
