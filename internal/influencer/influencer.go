@@ -55,7 +55,7 @@ type Influencer struct {
 	Geo *misc.GeoRecord `json:"geo,omitempty"` // User inputted geo via app
 
 	// Gender
-	Gender string `json:"gender,omitempty"` // "m" or "f"
+	Gender string `json:"gender,omitempty"` // "m" or "f" or "unicorn" lol
 
 	ActiveDeals   []*common.Deal `json:"activeDeals,omitempty"`   // Accepted pending deals to be completed
 	HistoricDeals []*common.Deal `json:"historicDeals,omitempty"` // Contains historic deals completed
@@ -65,7 +65,7 @@ type Influencer struct {
 
 func New(twitterId, instaId, fbId, ytId, tumblrId, gender, agency string, groupIds []string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 
-	if gender != "m" && gender != "f" {
+	if gender != "m" && gender != "f" && gender != "unicorn" {
 		return nil, ErrBadGender
 	}
 
