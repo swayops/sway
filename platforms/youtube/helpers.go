@@ -117,7 +117,7 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 
 func getUserStats(id string, cfg *config.Config) (float32, float32, float32, error) {
 	endpoint := fmt.Sprintf(dataUrl, cfg.YouTube.Endpoint, id, cfg.YouTube.ClientId)
-	log.Println("Hitting", endpoint)
+
 	var data Data
 	err := misc.Request("GET", endpoint, "", &data)
 	if err != nil || data.Error != nil {
@@ -158,7 +158,7 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 
 func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
 	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
-	log.Println("Hitting post", endpoint)
+
 	var list Data
 	err = misc.Request("GET", endpoint, "", &list)
 	if err != nil || list.Error != nil {
