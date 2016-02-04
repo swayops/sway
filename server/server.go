@@ -73,8 +73,9 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
-	r.GET("/getInfluencerByGroup/:id", getInfluencerByGroup(srv))
+	r.GET("/getInfluencersByGroup/:id", getInfluencersByGroup(srv))
 	r.GET("/addInfluencerToGroup/:influencerId/:groupId", addInfluencerToGroup(srv))
+	r.GET("/delInfluencerFromGroup/:influencerId/:groupId", delInfluencerFromGroup(srv))
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
