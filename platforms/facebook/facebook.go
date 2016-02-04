@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/misc"
 )
 
 type Facebook struct {
@@ -16,8 +15,6 @@ type Facebook struct {
 
 	Followers     float32 `json:"followers,omitempty"` // float32 for GetScore equation
 	FollowerDelta float32 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
-
-	LastLocation misc.GeoRecord `json:"lastLoc,omitempty"`
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction

@@ -1,5 +1,6 @@
 package common
 
+// Influencer groups belong to an agency!
 type Group struct {
 	Id       string `json:"id,omitempty"`
 	AgencyId string `json:"agencyId"`

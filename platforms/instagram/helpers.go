@@ -96,9 +96,11 @@ type Caption struct {
 	Msg string `json:"text"`
 }
 
-func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, float32, []*Post, []*misc.GeoRecord, error) {
+func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, float32, []*Post, *misc.GeoRecord, error) {
+	// Info for last 30 posts
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=20
-	geos := []*misc.GeoRecord{}
+	var latestGeo *misc.GeoRecord
+
 	posts := []*Post{}
 
 	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
@@ -106,15 +108,15 @@ func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, floa
 	var media UserPost
 	err := misc.Request("GET", endpoint, "", &media)
 	if err != nil {
-		return 0, 0, posts, geos, err
+		return 0, 0, posts, latestGeo, err
 	}
 
 	if media.Meta.Code != 200 {
-		return 0, 0, posts, geos, ErrCode
+		return 0, 0, posts, latestGeo, ErrCode
 	}
 
 	if media.Data == nil || len(media.Data) == 0 {
-		return 0, 0, posts, geos, ErrUnknown
+		return 0, 0, posts, latestGeo, ErrUnknown
 	}
 
 	var (
@@ -122,6 +124,7 @@ func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, floa
 		published       int64
 	)
 
+	// Last 30 posts
 	for _, post := range media.Data {
 		published, err = strconv.ParseInt(post.Published, 10, 64)
 		if err != nil {
@@ -149,13 +152,12 @@ func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, floa
 			continue
 		}
 
-		if post.Location != nil {
-			geo := &misc.GeoRecord{
-				Latitude:   post.Location.Latitude,
-				Longtitude: post.Location.Longtitude,
-			}
+		if post.Location != nil && post.Location.Latitude != 0 && post.Location.Longtitude != 0 {
+			geo := misc.GetGeoFromCoords(post.Location.Latitude, post.Location.Longtitude, published)
 			p.Location = geo
-			geos = append(geos, geo)
+			if latestGeo == nil || published > latestGeo.Timestamp {
+				latestGeo = geo
+			}
 		}
 
 		if post.Caption != nil {
@@ -165,7 +167,7 @@ func getPostInfo(id string, lastUpdate int32, cfg *config.Config) (float32, floa
 		posts = append(posts, p)
 	}
 
-	return likes / postCount, comments / postCount, posts, geos, nil
+	return likes / postCount, comments / postCount, posts, latestGeo, nil
 }
 
 type BasicUser struct {

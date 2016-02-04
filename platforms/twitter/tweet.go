@@ -52,6 +52,18 @@ func (tws Tweets) LastId() string {
 	return ""
 }
 
+func (tws Tweets) LatestLocation() *misc.GeoRecord {
+	var latest *misc.GeoRecord
+	for _, t := range tws {
+		if l := t.Location(); l != nil {
+			if latest == nil || l.Timestamp > latest.Timestamp {
+				latest = l
+			}
+		}
+	}
+	return latest
+}
+
 type Tweet struct {
 	Id        string      `json:"id_str"`
 	Retweets  uint32      `json:"retweet_count"`
@@ -78,10 +90,7 @@ func (t *Tweet) Location() *misc.GeoRecord {
 		return nil
 	}
 	c := t.Coords.Coords
-	return &misc.GeoRecord{
-		Longtitude: c[0],
-		Latitude:   c[1],
-	}
+	return misc.GetGeoFromCoords(c[1], c[0], t.CreatedAt.Unix())
 }
 
 func (t *Tweet) Hashtags() (out []string) {
