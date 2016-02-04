@@ -828,7 +828,7 @@ func delInfluencer(s *Server) gin.HandlerFunc {
 	}
 }
 
-func getInfluencerByGroup(s *Server) gin.HandlerFunc {
+func getInfluencersByGroup(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetG := c.Params.ByName("id")
 		influencers := make([]*influencer.Influencer, 0, 512)
@@ -881,46 +881,127 @@ func addInfluencerToGroup(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b)
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			// Add to Group Bucket
+			var g common.Group
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(c.Params.ByName("groupId")))
+			if err = json.Unmarshal(b, &g); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if g.Influencers == nil || len(g.Influencers) == 0 {
+				g.Influencers = []string{inf.Id}
+			} else {
+				g.Influencers = append(g.Influencers, inf.Id)
+			}
+
+			if b, err = json.Marshal(g); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Group, g.Id, b); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+			return
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		// Add to Group Bucket
-		if inf.GroupIds != nil && len(inf.GroupIds) > 0 { // 1 = Sway
-			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-				for _, infGr := range inf.GroupIds {
-					var g common.Group
-					b := tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(infGr))
+		c.JSON(200, misc.StatusOK(inf.Id))
+	}
+}
 
-					if err = json.Unmarshal(b, &g); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
-						return
-					}
+func delInfluencerFromGroup(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Alter influencer bucket
+		var (
+			err error
+			inf influencer.Influencer
+		)
 
-					if g.Influencers == nil || len(g.Influencers) == 0 {
-						g.Influencers = []string{inf.Id}
-					} else {
-						g.Influencers = append(g.Influencers, inf.Id)
-					}
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
 
-					if b, err = json.Marshal(g); err != nil {
-						c.JSON(400, misc.StatusErr(err.Error()))
-						return
-					}
-
-					if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Group, g.Id, b); err != nil {
-						c.JSON(400, misc.StatusErr(err.Error()))
-						return
-					}
-				}
-				return
-			}); err != nil {
+			if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("groupId") == "" {
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
+
+			if inf.GroupIds == nil || len(inf.GroupIds) == 0 {
+				c.JSON(500, misc.StatusErr("No such group ID assigned to Influencer!"))
+				return
+			} else {
+				filtered := []string{}
+				found := false
+				for _, gId := range inf.GroupIds {
+					if gId != c.Params.ByName("groupId") {
+						filtered = append(filtered, gId)
+					} else {
+						found = true
+					}
+				}
+
+				if !found {
+					c.JSON(500, misc.StatusErr("No such group ID assigned to Influencer!"))
+					return
+				}
+
+				inf.GroupIds = filtered
+			}
+
+			if b, err = json.Marshal(inf); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			// del from Group Bucket
+			var g common.Group
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Group)).Get([]byte(c.Params.ByName("groupId")))
+			if err = json.Unmarshal(b, &g); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if g.Influencers != nil && len(g.Influencers) > 0 {
+				filtered := []string{}
+				for _, infId := range g.Influencers {
+					if infId != c.Params.ByName("influencerId") {
+						filtered = append(filtered, infId)
+					}
+				}
+				g.Influencers = filtered
+			}
+
+			if b, err = json.Marshal(g); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Group, g.Id, b); err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+			return
+
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
 		}
+
 		c.JSON(200, misc.StatusOK(inf.Id))
 	}
 }

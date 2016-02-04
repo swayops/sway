@@ -50,7 +50,7 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		return err
 	}
 
-	if likes, cm, posts, geo, err := getPostInfo(in.UserId, in.LastUpdated, cfg); err == nil {
+	if likes, cm, posts, geo, err := getPostInfo(in.UserId, cfg); err == nil {
 		in.AvgLikes = likes
 		in.AvgComments = cm
 		in.LatestPosts = posts
