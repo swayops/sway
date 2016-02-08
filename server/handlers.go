@@ -30,12 +30,13 @@ func putAgency(s *Server) gin.HandlerFunc {
 		}
 
 		if ag.UserId == "" {
-			// Insert a check for this user ID in the User Bucket as well
 			c.JSON(400, misc.StatusErr("Please provide a valid user ID"))
 			return
 		}
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Insert a check for whether the user id exists in the "User" bucket here
+
 			if ag.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Agency); err != nil {
 				c.JSON(500, misc.StatusErr("Internal index error"))
 				return

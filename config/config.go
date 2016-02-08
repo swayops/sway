@@ -68,6 +68,7 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
+		User       string   `json:"user"`
 		Agency     string   `json:"agency"`
 		Group      string   `json:"group"`
 		Advertiser string   `json:"advertiser"`
