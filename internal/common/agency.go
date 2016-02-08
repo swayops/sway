@@ -7,6 +7,8 @@ type Agency struct {
 	Id   string `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
 
+	UserId string `json:"userId,omitempty"` // User this belongs to
+
 	Type             string   `json:"type,omitempty"` // Either "group" OR "rtb"
 	RTB              *RTB     `json:"rtb,omitempty"`
 	InfluencerGroups []string `json:"influencerGroups,omitempty"`
