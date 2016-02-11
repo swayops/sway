@@ -1033,7 +1033,7 @@ func setPlatform(s *Server) gin.HandlerFunc {
 				return ErrPlatform
 			}
 
-			if b, err = json.Marshal(inf); err != nil {
+			if b, err = json.Marshal(&inf); err != nil {
 				return
 			}
 
