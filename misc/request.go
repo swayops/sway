@@ -36,6 +36,9 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 }
 
 func StatusOK(id string) gin.H {
+	if len(id) == 0 {
+		return gin.H{"status": "success"}
+	}
 	return gin.H{"status": "success", "id": id}
 }
 
