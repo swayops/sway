@@ -35,6 +35,8 @@ type Config struct {
 	DBPath string `json:"dbPath"`
 	DBName string `json:"dbName"`
 
+	BackupDuration string `json:"backupDuration"`
+
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`
 		Key          string `json:"key"`

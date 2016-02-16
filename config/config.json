@@ -2,6 +2,8 @@
 	"port": "8080",
 	"dbPath": "data/",
 	"dbName": "sway",
+	"backupDuration": "1h",
+
 	"bucket": {
 		"user": "user",
 		"agency": "agency",
