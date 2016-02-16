@@ -18,7 +18,7 @@ func TestTwitter(t *testing.T) {
 
 	// Initialize Influencer test
 	twId := "kimkardashian" // I may hate the bitch but sadly she's a huge star :(
-	inf, err := influencer.New(twId, "", "", "", "", cfg)
+	inf, err := influencer.New(twId, "", "", "", "", "m", "FAKEAGENCY", []string{"groupId"}, 0, DefaultGeo, cfg)
 	if err != nil {
 		t.Fatal("Error when initializing twitter", err)
 	}

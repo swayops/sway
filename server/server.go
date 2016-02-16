@@ -63,6 +63,8 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
 	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
 	r.GET("/getCampaignAuditedDeals/:campaignId", getCampaignAuditedDeals(srv))
+	r.GET("/campaignStatus/:campaignId/:status", toggleCampaignStatus(srv))
+	r.POST("/updateCampaignGeo/:campaignId", updateCampaignGeo(srv))
 
 	// Groups
 	createRoutes(r, srv, "/group", getGroup, putGroup, delGroup)
@@ -71,11 +73,13 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
-	r.GET("/getInfluencerByAgency/:id", getInfluencerByAgency(srv))
-	r.GET("/getInfluencersByCategory/:id", getInfluencerByCategory(srv))
+	r.GET("/getInfluencersByGroup/:id", getInfluencersByGroup(srv))
+	r.GET("/addInfluencerToGroup/:influencerId/:groupId", addInfluencerToGroup(srv))
+	r.GET("/delInfluencerFromGroup/:influencerId/:groupId", delInfluencerFromGroup(srv))
+	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 
 	// Deal
-	r.GET("/getDealsForInfluencer/:influencerId", getDealsByInfluencer(srv))
+	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
 	r.GET("/assignDeal/:influencerId/:campaignId/:dealId", assignDeal(srv))
 	r.GET("/getDealsAssignedToInfluencer/:influencerId", getDealsAssignedToInfluencer(srv))
 	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))

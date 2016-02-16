@@ -33,11 +33,11 @@ type Twitter struct {
 	Followers     float32 `json:"followers,omitempty"` // float32 for GetScore equation
 	FollowerDelta float32 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
 
-	LastLocation []misc.GeoRecord `json:"geo,omitempty"`        // All locations since last update
-	LastTweetId  string           `json:"lastTw,omitempty"`     // the id of the last tweet
-	LatestTweets Tweets           `json:"latestTw,omitempty"`   // Posts since last update.. will later check these for deal satisfaction
-	LastUpdated  int32            `json:"lastUpdate,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float32          `json:"score,omitempty"`
+	LastLocation *misc.GeoRecord `json:"geo,omitempty"`
+	LastTweetId  string          `json:"lastTw,omitempty"`     // the id of the last tweet
+	LatestTweets Tweets          `json:"latestTw,omitempty"`   // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated  int32           `json:"lastUpdate,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score        float32         `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
 }
@@ -71,6 +71,7 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 	tw.LatestTweets = tws
 	tw.LastTweetId = tws.LastId()
 	tw.Score = tw.GetScore()
+	tw.LastLocation = tws.LatestLocation()
 
 	tw.LastUpdated = int32(time.Now().Unix())
 	return nil

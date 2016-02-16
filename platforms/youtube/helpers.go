@@ -158,6 +158,7 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 
 func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
 	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
+
 	var list Data
 	err = misc.Request("GET", endpoint, "", &list)
 	if err != nil || list.Error != nil {

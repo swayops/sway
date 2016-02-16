@@ -15,7 +15,7 @@ type Instagram struct {
 	Followers     float32 `json:"followers,omitempty"`
 	FollowerDelta float32 `json:"fDelta,omitempty"` // Follower delta since last UpdateData run
 
-	LastLocation []*misc.GeoRecord `json:"geo,omitempty"` // All locations since last update
+	LastLocation *misc.GeoRecord `json:"geo,omitempty"` // All locations since last update
 
 	LastUpdated int32   `json:"lastUpdate,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`      // Posts since last update.. will later check these for deal satisfaction
@@ -50,11 +50,11 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		return err
 	}
 
-	if likes, cm, posts, geos, err := getPostInfo(in.UserId, in.LastUpdated, cfg); err == nil {
+	if likes, cm, posts, geo, err := getPostInfo(in.UserId, cfg); err == nil {
 		in.AvgLikes = likes
 		in.AvgComments = cm
 		in.LatestPosts = posts
-		in.LastLocation = geos
+		in.LastLocation = geo
 	} else {
 		return err
 	}
