@@ -23,18 +23,20 @@ type Auth struct {
 }
 
 func New(db *bolt.DB, cfg *config.Config, loginUrl string) *Auth {
-	return &Auth{
+	a := &Auth{
 		db:       db,
 		cfg:      cfg,
 		loginUrl: loginUrl,
 	}
+	go a.purgeInvalidTokens()
+	return a
 }
 
-func (a *Auth) purgeTokens() {
+func (a *Auth) purgeInvalidTokens() {
 	a.db.Update(func(tx *bolt.Tx) error {
+		var tok Token
 		b := misc.GetBucket(tx, a.cfg.Bucket.Token)
 		return b.ForEach(func(k, v []byte) error {
-			var tok Token
 			if json.Unmarshal(v, &tok) != nil || !tok.Valid() {
 				b.Delete(k)
 			}

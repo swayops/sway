@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"strings"
 	"time"
 
@@ -89,5 +90,23 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	if err = misc.PutTxJson(tx, a.cfg.Bucket.Login, strings.ToLower(u.Email), login); err != nil {
 		return
 	}
+	return
+}
+
+func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
+	user := a.GetUserTx(tx, userId)
+	if user == nil {
+		return ErrInvalidUserId
+	}
+	uid := []byte(userId)
+	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
+	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(strings.ToLower(user.Email)))
+	os := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
+	os.ForEach(func(k, v []byte) error {
+		if bytes.Compare(v, uid) == 0 {
+			os.Delete(k)
+		}
+		return nil
+	})
 	return
 }

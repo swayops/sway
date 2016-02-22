@@ -45,3 +45,11 @@ func getCookie(r *http.Request, name string) string {
 		return c.Value
 	}
 }
+
+func getOwnersKey(itemType, itemId string) []byte {
+	key := make([]byte, 0, len(itemType)+1+len(itemId))
+	key = append(key, itemType...)
+	key = append(key, ':')
+	key = append(key, itemId...)
+	return key
+}
