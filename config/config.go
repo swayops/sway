@@ -69,6 +69,8 @@ type Config struct {
 
 	Bucket struct {
 		User       string   `json:"user"`
+		Login      string   `json:"login"`
+		Token      string   `json:"Token"`
 		Agency     string   `json:"agency"`
 		Group      string   `json:"group"`
 		Advertiser string   `json:"advertiser"`

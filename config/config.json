@@ -4,12 +4,14 @@
 	"dbName": "sway",
 	"bucket": {
 		"user": "user",
+		"login": "login",
+		"token": "token",
 		"agency": "agency",
 		"group": "group",
 		"advertiser": "advertiser",
 		"campaign": "campaign",
 		"influencer": "influencer",
-		"all": ["agency", "group", "advertiser", "campaign", "influencer", "user"]
+		"all": ["agency", "group", "advertiser", "campaign", "influencer", "user", "login", "token"]
 	},
 	"youtube": {
 		"endpoint": "https://www.googleapis.com/youtube/v3/",
