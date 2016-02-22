@@ -9,20 +9,31 @@ import (
 )
 
 func (a *Auth) VerifyUser(c *gin.Context) {
-	var oldKey, userId, hashedPass, stoken, apiKey string
+	var (
+		oldMac, hashedPass, stoken string
+
+		isApiKey bool
+		user     *User
+	)
 	a.db.View(func(tx *bolt.Tx) error {
-		oldKey, userId, hashedPass, stoken, apiKey = a.getReqInfoTx(tx, c.Request)
+		oldMac, hashedPass, stoken, user, isApiKey = a.getReqInfoTx(tx, c.Request)
 		return nil
 	})
-	if len(hashedPass) == 0 || !VerifyMac(oldKey, hashedPass, stoken, apiKey) {
-		if a.loginUrl != "" {
+	w, r := c.Writer, c.Request
+	if len(hashedPass) == 0 || !VerifyMac(oldMac, hashedPass, stoken, user.Salt) {
+		if a.loginUrl != "" && r.Method == "GET" && r.Header.Get("X-Requested-With") == "" {
 			c.Redirect(302, a.loginUrl)
 		} else {
 			misc.AbortWithErr(c, 401, ErrUnauthorized)
 		}
 		return
 	}
-	c.Set(gin.AuthUserKey, userId)
+	c.Set(gin.AuthUserKey, user)
+	if !isApiKey {
+		refreshCookie(w, r, "token", TokenAge)
+		refreshCookie(w, r, "key", TokenAge)
+		a.refreshToken(stoken, TokenAge)
+	}
 }
 
 func (a *Auth) SignInHandler(c *gin.Context) {
@@ -35,10 +46,10 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 		return
 	}
 	var (
-		login  *Login
-		apiKey string
-		tok    string
-		err    error
+		login *Login
+		salt  string
+		tok   string
+		err   error
 	)
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
 		if login, tok, err = a.SignInTx(tx, li.Email, li.Password); err != nil {
@@ -49,16 +60,16 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 			err = ErrInvalidRequest // this should never ever ever happen
 			return
 		}
-		apiKey = u.APIKey
+		salt = u.Salt
 		return
 	})
 
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, misc.StatusErr(err.Error()))
+		misc.AbortWithErr(c, 401, err)
 		return
 	}
 
-	mac := CreateMAC(login.Password, tok, apiKey)
+	mac := CreateMAC(login.Password, tok, salt)
 	w := c.Writer
 	setCookie(w, "token", tok, TokenAge)
 	setCookie(w, "key", mac, TokenAge)

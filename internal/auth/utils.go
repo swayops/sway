@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -18,12 +20,23 @@ var (
 	ErrUnauthorized     = errors.New("unauthorized")
 )
 
+func GetCtxUser(c *gin.Context) *User {
+	if u, ok := c.Get(gin.AuthUserKey); ok {
+		if u, ok := u.(*User); ok {
+			return u
+		}
+	}
+	return nil
+}
+
 func setCookie(w http.ResponseWriter, name, value string, dur time.Duration) {
 	cookie := &http.Cookie{
-		Path:    "/",
-		Name:    name,
-		Value:   value,
-		Expires: time.Now().Add(dur),
+		Path:     "/",
+		Name:     name,
+		Value:    value,
+		Expires:  time.Now().Add(dur),
+		HttpOnly: true,
+		Secure:   true,
 	}
 	http.SetCookie(w, cookie)
 }
@@ -34,7 +47,6 @@ func refreshCookie(w http.ResponseWriter, r *http.Request, name string, dur time
 		return
 	}
 	cookie.Expires = time.Now().Add(dur)
-	cookie.Path = "/"
 	http.SetCookie(w, cookie)
 }
 
@@ -52,4 +64,15 @@ func getOwnersKey(itemType, itemId string) []byte {
 	key = append(key, ':')
 	key = append(key, itemId...)
 	return key
+}
+
+func getCreds(req *http.Request) (token, key string, isApiKey bool) {
+	if token, key = getCookie(req, "token"), getCookie(req, "key"); len(token) > 0 && len(key) > 0 {
+		return
+	}
+	apiKey := req.Header.Get(ApiKeyHeader)
+	if len(apiKey) != TokenStringLen+MacStringLen {
+		return "", "", false
+	}
+	return apiKey[:TokenStringLen], apiKey[TokenStringLen:], true
 }

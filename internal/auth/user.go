@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"encoding/hex"
 	"strings"
 	"time"
 
@@ -25,7 +26,8 @@ type User struct {
 	CreatedAt int64    `json:"createdAt,omitempty"`
 	UpdatedAt int64    `json:"updatedAt,omitempty"`
 	Agencies  []string `json:"agencies,omitempty"`
-	APIKey    string   `json:"apiKey,omitempty"` // pretty much a cooler name for crypto salt
+	APIKeys   []string `json:"apiKeys,omitempty"`
+	Salt      string   `json:"apiKey,omitempty"` // pretty much a cooler name for crypto salt
 }
 
 // Update fills the updatable fields in the struct, fields like Created and Id should never be blindly set.
@@ -68,7 +70,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 
 	u.CreatedAt = time.Now().UnixNano()
 	u.UpdatedAt = u.CreatedAt
-	u.APIKey = misc.PseudoUUID()
+	u.Salt = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
 
 	if password, err = HashPassword(password); err != nil {
 		return

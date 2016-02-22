@@ -13,7 +13,14 @@ import (
 )
 
 const (
-	TokenAge = time.Hour * 6
+	TokenAge       = time.Hour * 6
+	TokenLen       = 16
+	TokenStringLen = TokenLen * 2
+	SaltLen        = 16
+	SaltStringLen  = TokenLen * 2
+	MacLen         = 32
+	MacStringLen   = MacLen * 2
+	ApiKeyHeader   = `x-apikey`
 )
 
 type Auth struct {
@@ -56,7 +63,7 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 
 func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
 	var u User
-	if misc.GetTxJson(tx, a.cfg.Bucket.Login, userId, &u) == nil && len(u.APIKey) > 0 {
+	if misc.GetTxJson(tx, a.cfg.Bucket.Login, userId, &u) == nil && len(u.Salt) > 0 {
 		return &u
 	}
 	return nil
@@ -69,30 +76,24 @@ func (a *Auth) GetUserByEmailTx(tx *bolt.Tx, email string) *User {
 	return nil
 }
 
-func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) (oldKey, userId, hashedPass, stoken, apiKey string) {
-	var (
-		token     Token
-		user      *User
-		login     *Login
-		stok, key = getCookie(req, "token"), getCookie(req, "key")
-	)
-	if len(stok) == 0 || len(key) == 0 {
-		parts := strings.Split(req.Header.Get("auth"), "|")
-		if len(parts) != 2 || len(parts[0]) == 0 || len(parts[1]) == 0 {
-			return
-		}
-		stok, key = parts[0], parts[1]
+func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) (oldMac, hashedPass, stoken string, user *User, isApiKey bool) {
+	if stoken, oldMac, isApiKey = getCreds(req); len(stoken) == 0 || len(oldMac) == 0 {
+		return
 	}
-	if misc.GetTxJson(tx, a.cfg.Bucket.Token, stok, &token) != nil || !token.Valid() {
+
+	var token Token
+	if misc.GetTxJson(tx, a.cfg.Bucket.Token, stoken, &token) != nil || !token.Valid() {
 		return
 	}
 	if user = a.GetUserTx(tx, token.UserId); user == nil {
 		return
 	}
-	if login = a.GetLoginTx(tx, user.Email); login == nil {
-		return
+	if l := a.GetLoginTx(tx, user.Email); l != nil {
+		hashedPass = l.Password
+	} else {
+		user = nil
 	}
-	return key, user.Id, login.Password, stok, user.APIKey
+	return
 }
 
 func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string, err error) {
@@ -102,7 +103,7 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 	if !CheckPassword(l.Password, pass) {
 		return nil, "", ErrInvalidPass
 	}
-	stok = hex.EncodeToString(misc.CreateToken(8))
+	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8)) // -8 because CreateToken adds 8 bytes
 	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, &Token{l.UserId, time.Now().Add(TokenAge).UnixNano()})
 	return
 }
@@ -121,10 +122,22 @@ type Token struct {
 }
 
 func (t *Token) Valid() bool {
-	return t.UserId != "" && t.Expires > time.Now().UnixNano()
+	return t.UserId != "" && t.Expires == -1 || t.Expires > time.Now().UnixNano()
 }
 
 func (t *Token) Refresh(dur time.Duration) *Token {
-	t.Expires = time.Now().Add(dur).UnixNano()
+	if t.Expires != -1 {
+		t.Expires = time.Now().Add(dur).UnixNano()
+	}
 	return t
+}
+
+func (a *Auth) refreshToken(stok string, dur time.Duration) {
+	a.db.Update(func(tx *bolt.Tx) (_ error) {
+		var token Token
+		if misc.GetTxJson(tx, a.cfg.Bucket.Token, stok, &token) != nil || !token.Valid() {
+			return
+		}
+		return misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, token.Refresh(dur))
+	})
 }
