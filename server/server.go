@@ -8,13 +8,15 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/misc"
 )
 
 type Server struct {
-	Cfg *config.Config
-	r   *gin.Engine
-	db  *bolt.DB
+	Cfg  *config.Config
+	r    *gin.Engine
+	db   *bolt.DB
+	auth *auth.Auth
 	// Db
 }
 
@@ -22,9 +24,10 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 
 	srv := &Server{
-		Cfg: cfg,
-		r:   r,
-		db:  db,
+		Cfg:  cfg,
+		r:    r,
+		db:   db,
+		auth: auth.New(db, cfg, "/login"),
 	}
 
 	srv.InitializeDB(cfg)

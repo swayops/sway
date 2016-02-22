@@ -45,3 +45,8 @@ func StatusOK(id string) gin.H {
 func StatusErr(msg string) gin.H {
 	return gin.H{"status": "error", "msg": msg}
 }
+
+func AbortWithErr(c *gin.Context, code int, err error) {
+	c.JSON(code, StatusErr(err.Error()))
+	c.Abort()
+}

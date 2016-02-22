@@ -8,6 +8,23 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+func (a *Auth) VerifyUser(c *gin.Context) {
+	var oldKey, userId, hashedPass, stoken, apiKey string
+	a.db.View(func(tx *bolt.Tx) error {
+		oldKey, userId, hashedPass, stoken, apiKey = a.getReqInfoTx(tx, c.Request)
+		return nil
+	})
+	if len(hashedPass) == 0 || !VerifyMac(oldKey, hashedPass, stoken, apiKey) {
+		if a.loginUrl != "" {
+			c.Redirect(302, a.loginUrl)
+		} else {
+			misc.AbortWithErr(c, 401, ErrUnauthorized)
+		}
+		return
+	}
+	c.Set(gin.AuthUserKey, userId)
+}
+
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`
@@ -55,21 +72,21 @@ func (a *Auth) SignupHandler(c *gin.Context) {
 		Password2 string `json:"pass2"`
 	}
 	if err := c.BindJSON(&uwp); err != nil {
-		c.JSON(400, misc.StatusErr(err.Error()))
+		misc.AbortWithErr(c, 400, err)
 		return
 	}
 	if uwp.Password != uwp.Password2 {
-		c.JSON(400, misc.StatusErr(ErrPasswordMismatch.Error()))
+		misc.AbortWithErr(c, 400, ErrPasswordMismatch)
 		return
 	}
 	if len(uwp.Password) < 8 {
-		c.JSON(400, misc.StatusErr(ErrShortPass.Error()))
+		misc.AbortWithErr(c, 400, ErrShortPass)
 		return
 	}
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		return a.CreateUserTx(tx, &uwp.User, uwp.Password)
 	}); err != nil {
-		c.JSON(400, misc.StatusErr(err.Error()))
+		misc.AbortWithErr(c, 400, err)
 		return
 	}
 	c.JSON(200, misc.StatusOK(uwp.Id))

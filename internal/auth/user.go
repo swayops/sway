@@ -1,24 +1,12 @@
 package auth
 
 import (
-	"errors"
 	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
-)
-
-var (
-	ErrInvalidRequest   = errors.New("invalid request")
-	ErrInvalidUserId    = errors.New("invalid user id, hax0r")
-	ErrInvalidName      = errors.New("invalid or missing name")
-	ErrInvalidEmail     = errors.New("invalid or missing email")
-	ErrInvalidPass      = errors.New("invalid or missing password")
-	ErrEmailExists      = errors.New("email is already registered")
-	ErrShortPass        = errors.New("password can't be less than 8 characters")
-	ErrPasswordMismatch = errors.New("password mismatch")
 )
 
 type Login struct {

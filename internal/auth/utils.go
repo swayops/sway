@@ -1,8 +1,21 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 	"time"
+)
+
+var (
+	ErrInvalidRequest   = errors.New("invalid request")
+	ErrInvalidUserId    = errors.New("invalid user id, hax0r")
+	ErrInvalidName      = errors.New("invalid or missing name")
+	ErrInvalidEmail     = errors.New("invalid or missing email")
+	ErrInvalidPass      = errors.New("invalid or missing password")
+	ErrEmailExists      = errors.New("email is already registered")
+	ErrShortPass        = errors.New("password can't be less than 8 characters")
+	ErrPasswordMismatch = errors.New("password mismatch")
+	ErrUnauthorized     = errors.New("unauthorized")
 )
 
 func setCookie(w http.ResponseWriter, name, value string, dur time.Duration) {

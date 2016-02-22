@@ -71,6 +71,7 @@ type Config struct {
 		User       string   `json:"user"`
 		Login      string   `json:"login"`
 		Token      string   `json:"Token"`
+		Ownership  string   `json:"ownership"`
 		Agency     string   `json:"agency"`
 		Group      string   `json:"group"`
 		Advertiser string   `json:"advertiser"`
