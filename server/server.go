@@ -27,8 +27,17 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		db:  db,
 	}
 
-	srv.InitializeDB(cfg)
+	err := srv.InitializeDB(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	srv.InitializeRoutes(r)
+	err = srv.InitializeChecks()
+	if err != nil {
+		return nil, err
+	}
+
 	return srv, nil
 }
 
@@ -62,9 +71,8 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
 	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
 	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
-	r.GET("/getCampaignAuditedDeals/:campaignId", getCampaignAuditedDeals(srv))
 	r.GET("/campaignStatus/:campaignId/:status", toggleCampaignStatus(srv))
-	r.POST("/updateCampaignGeo/:campaignId", updateCampaignGeo(srv))
+	r.POST("/updateCampaign/:campaignId", updateCampaign(srv))
 
 	// Groups
 	createRoutes(r, srv, "/group", getGroup, putGroup, delGroup)
@@ -80,9 +88,22 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
-	r.GET("/assignDeal/:influencerId/:campaignId/:dealId", assignDeal(srv))
+	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
 	r.GET("/getDealsAssignedToInfluencer/:influencerId", getDealsAssignedToInfluencer(srv))
 	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
+	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv)) // offset in hours
+}
+
+func (srv *Server) InitializeChecks() error {
+	if err := newDealExplorer(srv); err != nil {
+		return err
+	}
+
+	if err := newStatsUpdate(srv); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (srv *Server) Run() (err error) {

@@ -20,6 +20,8 @@ type Instagram struct {
 	LastUpdated int32   `json:"lastUpdate,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`      // Posts since last update.. will later check these for deal satisfaction
 
+	LinkInBio string `json:"link,omitempty"`
+
 	Score float32
 }
 
@@ -40,12 +42,19 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 
 func (in *Instagram) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
-	if fl, err := getFollowers(in.UserId, cfg); err == nil {
+
+	// If we already updated in the last 4 hours, skip
+	if misc.WithinLast(in.LastUpdated, 4) {
+		return nil
+	}
+
+	if fl, link, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
 			in.FollowerDelta = (fl - in.Followers)
 		}
 		in.Followers = fl
+		in.LinkInBio = link
 	} else {
 		return err
 	}

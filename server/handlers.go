@@ -12,6 +12,7 @@ import (
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/platforms"
 )
 
 ///////// Agencies /////////
@@ -407,10 +408,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube && !cmp.Tumblr {
+		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube { //&& !cmp.Tumblr {
 			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
 			return
 		}
+
+		if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
+			c.JSON(400, misc.StatusErr("Please provide a required tag, mention or link"))
+			return
+		}
+
+		// Sanitize methods
+		sanitized := []string{}
+		for _, ht := range cmp.Tags {
+			sanitized = append(sanitized, sanitizeHash(ht))
+		}
+		cmp.Tags = sanitized
+		cmp.Mention = sanitizeMention(cmp.Mention)
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -423,13 +437,17 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			// The number of deals created is based on an avg
 			// pay per deal value. These deals will be the pool
-			// available.. no more.
+			// available.. no more. The deals are later checked
+			// in GetAvailableDeals function to see if they have
+			// been assigned and if they are eligible for the
+			// given influencer.
 			maxDeals := int(cmp.Budget / 5.0)
 			deals := make(map[string]*common.Deal)
 			for i := 0; i <= maxDeals; i++ {
 				d := &common.Deal{
-					Id:         misc.PseudoUUID(),
-					CampaignId: cmp.Id,
+					Id:           misc.PseudoUUID(),
+					CampaignId:   cmp.Id,
+					AdvertiserId: cmp.AdvertiserId,
 				}
 				deals[d.Id] = d
 			}
@@ -554,7 +572,7 @@ func getCampaignAssignedDeals(s *Server) gin.HandlerFunc {
 
 		deals := make([]*common.Deal, 0, 512)
 		for _, d := range cmp.Deals {
-			if d.Assigned > 0 && d.InfluencerId != "" && d.Completed == 0 && d.Audited == 0 {
+			if d.Assigned > 0 && d.InfluencerId != "" && d.Completed == 0 {
 				deals = append(deals, d)
 			}
 		}
@@ -586,39 +604,7 @@ func getCampaignCompletedDeals(s *Server) gin.HandlerFunc {
 
 		deals := make([]*common.Deal, 0, 512)
 		for _, d := range cmp.Deals {
-			if d.Completed > 0 && d.InfluencerId != "" && d.Audited == 0 {
-				deals = append(deals, d)
-			}
-		}
-
-		c.JSON(200, deals)
-	}
-}
-
-func getCampaignAuditedDeals(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var (
-			v   []byte
-			err error
-			cmp common.Campaign
-		)
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		if err = json.Unmarshal(v, &cmp); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		deals := make([]*common.Deal, 0, 512)
-		for _, d := range cmp.Deals {
-			if d.Audited > 0 && d.InfluencerId != "" {
+			if d.Completed > 0 && d.InfluencerId != "" {
 				deals = append(deals, d)
 			}
 		}
@@ -652,29 +638,67 @@ func delCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
-func updateCampaignGeo(s *Server) gin.HandlerFunc {
-	// Overrwrites geo targeted
+type CampaignUpdate struct {
+	Geos    []*misc.GeoRecord `json:"geos,omitempty"`
+	Tags    []string          `json:"tags,omitempty"`
+	Mention string            `json:"mention,omitempty"`
+	Link    string            `json:"link,omitempty"`
+	Task    string            `json:"task,omitempty"`
+}
+
+func updateCampaign(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the above campaign attributes
 	return func(c *gin.Context) {
 		var (
-			cmp  common.Campaign
-			geos []*misc.GeoRecord // Only expose city and country for now
-			err  error
+			cmp common.Campaign
+			err error
+			b   []byte
 		)
+		cId := c.Params.ByName("campaignId")
+		if cId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid campaign ID"))
+			return
+		}
 
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(cId))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &cmp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			return
+		}
+
+		var upd CampaignUpdate
 		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&geos); err != nil {
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
 			return
 		}
 
+		if len(upd.Geos) > 0 {
+			cmp.Geos = upd.Geos
+		}
+
+		if len(upd.Tags) > 0 {
+			cmp.Tags = upd.Tags
+		}
+
+		if upd.Mention != "" {
+			cmp.Mention = upd.Mention
+		}
+
+		if upd.Link != "" {
+			cmp.Link = upd.Link
+		}
+
+		if upd.Task != "" {
+			cmp.Task = upd.Task
+		}
+
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			b := tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-			if err = json.Unmarshal(b, &cmp); err != nil {
-				return
-			}
-
-			cmp.Geos = geos
 			if b, err = json.Marshal(cmp); err != nil {
 				return
 			}
@@ -689,6 +713,12 @@ func updateCampaignGeo(s *Server) gin.HandlerFunc {
 }
 
 ///////// Influencers /////////
+var (
+	ErrBadGender = errors.New("Please provide a gender ('m' or 'f')")
+	ErrNoAgency  = errors.New("Please provide an agency id")
+	ErrNoGeo     = errors.New("Please provide a geo")
+)
+
 func putInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -699,7 +729,23 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&load); err != nil {
+			log.Println("err", err)
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if load.Gender != "m" && load.Gender != "f" && load.Gender != "unicorn" {
+			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
+			return
+		}
+
+		if load.AgencyId == "" {
+			c.JSON(400, misc.StatusErr(ErrNoAgency.Error()))
+			return
+		}
+
+		if load.Geo == nil && load.AgencyId != "49" {
+			c.JSON(400, misc.StatusErr(ErrNoGeo.Error()))
 			return
 		}
 
@@ -708,7 +754,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			load.InstagramId,
 			load.FbId,
 			load.YouTubeId,
-			load.TumblrId,
+			// load.TumblrId,
 			load.Gender,
 			load.AgencyId,
 			load.GroupIds,
@@ -717,8 +763,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			s.Cfg)
 
 		if err != nil {
-			c.JSON(400, misc.StatusErr("Error when generating influencer data"))
-			log.Println("Influencer generation error", err)
+			c.JSON(400, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -1007,7 +1052,7 @@ func setPlatform(s *Server) gin.HandlerFunc {
 			if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("platform") == "" || id == "" {
 				return ErrUnmarshal
 			}
-
+			log.Println("HERE", c.Params.ByName("platform"))
 			switch c.Params.ByName("platform") {
 			case "instagram":
 				if err = inf.NewInsta(id, s.Cfg); err != nil {
@@ -1025,10 +1070,10 @@ func setPlatform(s *Server) gin.HandlerFunc {
 				if err = inf.NewYouTube(id, s.Cfg); err != nil {
 					return
 				}
-			case "tumblr":
-				if err = inf.NewTumblr(id, s.Cfg); err != nil {
-					return
-				}
+			// case "tumblr":
+			// 	if err = inf.NewTumblr(id, s.Cfg); err != nil {
+			// 		return
+			// 	}
 			default:
 				return ErrPlatform
 			}
@@ -1090,6 +1135,11 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		dealId := c.Params.ByName("dealId")
 		influencerId := c.Params.ByName("influencerId")
 		campaignId := c.Params.ByName("campaignId")
+		mediaPlatform := c.Params.ByName("platform")
+		if _, ok := platform.ALL_PLATFORMS[mediaPlatform]; !ok {
+			c.JSON(200, misc.StatusErr("This platform was not found"))
+			return
+		}
 
 		// Lets quickly make sure that this deal is still available
 		// via our GetAvailableDeals func
@@ -1097,6 +1147,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		foundDeal := &common.Deal{}
 		currentDeals := influencer.GetAvailableDeals(s.db, influencerId, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
+			log.Println(dealId, deal.Id, deal.InfluencerId, deal.CampaignId, campaignId, deal.Assigned)
 			if deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				found = true
 				foundDeal = deal
@@ -1109,6 +1160,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		}
 
 		// Assign the deal & Save the Campaign
+		// DEALS are located in the INFLUENCER struct AND the CAMPAIGN struct
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var cmp *common.Campaign
 
@@ -1123,6 +1175,13 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 			foundDeal.InfluencerId = influencerId
 			foundDeal.Assigned = int32(time.Now().Unix())
+			price, ok := foundDeal.Platforms[mediaPlatform]
+			if !ok || price == 0 {
+				return errors.New("Unforunately, the requested deal is no longer available!")
+			}
+
+			foundDeal.AssignedPlatform = mediaPlatform
+			foundDeal.AssignedPrice = price
 			cmp.Deals[dealId] = foundDeal
 
 			// Append to the influencer's active deals
@@ -1190,59 +1249,7 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		influencerId := c.Params.ByName("influencerId")
 		campaignId := c.Params.ByName("campaignId")
 
-		// Unssign the deal & Save the Campaign
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var (
-				cmp *common.Campaign
-				b   []byte
-			)
-
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
-			if err != nil {
-				return err
-			}
-
-			if deal, ok := cmp.Deals[dealId]; ok {
-				deal.InfluencerId = ""
-				deal.Assigned = 0
-				deal.Completed = 0
-				deal.Audited = 0
-				deal.Platforms = make(map[string]float32)
-				cmp.Deals[dealId] = deal
-			}
-
-			// Append to the influencer's cancellations and remove from active
-			var inf *influencer.Influencer
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(influencerId)), &inf)
-			if err != nil {
-				return err
-			}
-
-			activeDeals := []*common.Deal{}
-			for _, deal := range inf.ActiveDeals {
-				if deal.Id != dealId {
-					activeDeals = append(activeDeals, deal)
-				}
-			}
-
-			inf.ActiveDeals = activeDeals
-			inf.Cancellations += 1
-
-			// Save the Influencer
-			if b, err = json.Marshal(inf); err != nil {
-				return err
-			}
-
-			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
-				return err
-			}
-
-			// Save the campaign
-			if b, err = json.Marshal(cmp); err != nil {
-				return err
-			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
-		}); err != nil {
+		if err := clearDeal(s, dealId, influencerId, campaignId, false); err != nil {
 			c.JSON(200, misc.StatusErr(err.Error()))
 			return
 		}
@@ -1251,22 +1258,49 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			err error
+			v   []byte
+			g   influencer.Influencer
+		)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		if err = json.Unmarshal(v, &g); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		offset := c.Params.ByName("influencerId")
+		if offset == "-1" {
+			c.JSON(200, g.CompletedDeals)
+		} else {
+			offsetHours, err := strconv.Atoi(offset)
+			if err != nil {
+				c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
+				return
+			}
+			minTs := int32(time.Now().Unix()) - (60 * 60 * int32(offsetHours))
+			deals := []*common.Deal{}
+			for _, d := range g.CompletedDeals {
+				if d.Completed >= minTs {
+					deals = append(deals, d)
+				}
+			}
+			c.JSON(200, deals)
+		}
+	}
+}
+
 // func completeDeal(s *Server) gin.HandlerFunc {
 // 	// Influencer marked this deal as completed
-// 	return func(c *gin.Context) {
-// 		c.JSON(200, misc.StatusOK(""))
-// 	}
-// }
-
-//// func getToBeAudited(s *Server) gin.HandlerFunc {
-// 	// Get deals that are yet to be audited
-// 	return func(c *gin.Context) {
-// 		c.JSON(200, misc.StatusOK(""))
-// 	}
-// }
-
-// func auditSuccess(s *Server) gin.HandlerFunc {
-// 	// The deal has been marked successful
 // 	return func(c *gin.Context) {
 // 		c.JSON(200, misc.StatusOK(""))
 // 	}

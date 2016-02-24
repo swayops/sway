@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/swayops/sway/config"
 
@@ -80,9 +81,19 @@ type Tweet struct {
 		Hashtags []struct {
 			Tag string `json:"text"`
 		} `json:"hashtags,omitempty"`
+		Mentions []struct {
+			Name string `json:"screen_name"`
+		} `json:"user_mentions,omitempty"`
+		Urls []struct {
+			Url string `json:"expanded_url"`
+		} `json:"urls,omitempty"`
 	} `json:"entities,omitempty"`
 
+	Text            string `json:"text"`
 	RetweetedStatus *Tweet `json:"retweeted_status,omitempty"`
+
+	LastUpdated int32  `json:"lastUpdated,omitempty"`
+	PostURL     string `json:"postURL,omitempty"`
 }
 
 func (t *Tweet) Location() *misc.GeoRecord {
@@ -99,12 +110,39 @@ func (t *Tweet) Hashtags() (out []string) {
 	}
 	out = make([]string, 0, len(t.Entities.Hashtags))
 	for _, ht := range t.Entities.Hashtags {
-		out = append(out, ht.Tag)
+		out = append(out, strings.ToLower(ht.Tag))
+	}
+	return
+}
+
+func (t *Tweet) Mentions() (out []string) {
+	if t.Entities == nil {
+		return
+	}
+	out = make([]string, 0, len(t.Entities.Mentions))
+	for _, mt := range t.Entities.Mentions {
+		out = append(out, strings.ToLower(mt.Name))
+	}
+	return
+}
+
+func (t *Tweet) Urls() (out []string) {
+	if t.Entities == nil {
+		return
+	}
+	out = make([]string, 0, len(t.Entities.Urls))
+	for _, mt := range t.Entities.Urls {
+		out = append(out, strings.ToLower(mt.Url))
 	}
 	return
 }
 
 func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
+	// If we have already updated within the last 12 hours, skip!
+	if misc.WithinLast(t.LastUpdated, 12) {
+		return nil
+	}
+
 	var (
 		resp   *http.Response
 		client *http.Client
@@ -131,6 +169,7 @@ func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
 	if err = json.NewDecoder(r).Decode(&tmp); err == nil {
 		*t = tmp
 	}
+	t.LastUpdated = int32(time.Now().Unix())
 	return
 }
 

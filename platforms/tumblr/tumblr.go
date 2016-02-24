@@ -15,6 +15,7 @@ const (
 	allPostsUrl       = `%sblog/%s/posts?notes_info=true&limit=20` // 20 is the max....
 	allPostsUrlOffset = `%sblog/%s/posts?notes_info=true&limit=20&offset=%d`
 	singlePostUrl     = `%sblog/%s/posts?notes_info=true&id=%s`
+	FOUR_HOURS        = int32(60 * 60 * 4)
 )
 
 type Tumblr struct {
@@ -46,6 +47,11 @@ func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 }
 
 func (tr *Tumblr) UpdateData(ep string, offset int) error {
+	// If we already updated in the last 4 hours, skip
+	if tr.LastUpdated >= (int32(time.Now().Unix()) - FOUR_HOURS) {
+		return nil
+	}
+
 	posts, err := tr.getPosts(ep, "", offset)
 	if err != nil {
 		return err

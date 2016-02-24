@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/misc"
 )
 
 type YouTube struct {
@@ -41,6 +42,12 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 
 func (yt *YouTube) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
+
+	// If we already updated in the last 4 hours, skip
+	if misc.WithinLast(yt.LastUpdated, 4) {
+		return nil
+	}
+
 	if views, comments, subs, err := getUserStats(yt.UserId, cfg); err == nil {
 		if yt.Subscribers > 0 {
 			yt.SubscriberDelta = (subs - yt.Subscribers)
@@ -52,7 +59,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 		return err
 	}
 
-	p, lk, dlk, err := getPosts(yt.UserName, 10, yt.LastUpdated, cfg)
+	p, lk, dlk, err := getPosts(yt.UserName, 10, cfg)
 	if err != nil {
 		return err
 	}

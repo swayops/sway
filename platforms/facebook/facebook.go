@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/misc"
 )
 
 type Facebook struct {
@@ -31,7 +32,11 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 }
 
 func (fb *Facebook) UpdateData(cfg *config.Config) error {
-	// Used by an eventual ticker to update stats
+	// If we already updated in the last 4 hours, skip
+	if misc.WithinLast(fb.LastUpdated, 4) {
+		return nil
+	}
+
 	if fb.Id != "" {
 		if likes, comments, shares, posts, err := getBasicInfo(fb.Id, cfg); err == nil {
 			fb.AvgLikes = likes

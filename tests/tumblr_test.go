@@ -1,32 +1,24 @@
 package tests
 
-import (
-	"log"
-	"testing"
+// func TestTumblr(t *testing.T) {
+// 	// Complete once API has been built out
 
-	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/internal/influencer"
-)
+// 	cfg, err := config.New("./config.sample.json")
+// 	if err != nil {
+// 		log.Println("Config error", err)
+// 	}
 
-func TestTumblr(t *testing.T) {
-	// Complete once API has been built out
+// 	// Initialize Influencer test
+// 	id := "kropotkindersurprise.tumblr.com" // I may hate the bitch but sadly she's a huge star :(
+// 	inf, err := influencer.New("", "", "", "", id, "m", "FAKEAGENCY", []string{"groupId"}, 0, DefaultGeo, cfg)
+// 	if err != nil {
+// 		t.Fatal("Error when initializing tumblr", err)
+// 	}
 
-	cfg, err := config.New("./config.sample.json")
-	if err != nil {
-		log.Println("Config error", err)
-	}
+// 	tr := inf.Tumblr
+// 	t.Logf("AvgReblogs: %v, AvgLikes: %v, LatestPosts: %v", tr.AvgReblogs, tr.AvgLikes, len(tr.LatestPosts))
 
-	// Initialize Influencer test
-	id := "kropotkindersurprise.tumblr.com" // I may hate the bitch but sadly she's a huge star :(
-	inf, err := influencer.New("", "", "", "", id, "m", "FAKEAGENCY", []string{"groupId"}, 0, DefaultGeo, cfg)
-	if err != nil {
-		t.Fatal("Error when initializing tumblr", err)
-	}
-
-	tr := inf.Tumblr
-	t.Logf("AvgReblogs: %v, AvgLikes: %v, LatestPosts: %v", tr.AvgReblogs, tr.AvgLikes, len(tr.LatestPosts))
-
-	if err := tr.LatestPosts[0].UpdateData(tr, cfg); err != nil {
-		t.Fatal(err)
-	}
-}
+// 	if err := tr.LatestPosts[0].UpdateData(tr, cfg); err != nil {
+// 		t.Fatal(err)
+// 	}
+// }

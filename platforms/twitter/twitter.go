@@ -2,6 +2,7 @@ package twitter
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -51,15 +52,22 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 	if tw.client, err = getClient(cfg); err != nil {
 		return
 	}
-	err = tw.UpdateData(cfg.Twitter.Endpoint)
+	err = tw.UpdateData(cfg)
 	return
 }
 
-func (tw *Twitter) UpdateData(endpoint string) error {
-	tws, err := tw.getTweets(endpoint, tw.LastTweetId)
+func (tw *Twitter) UpdateData(cfg *config.Config) error {
+	// If we already updated in the last 4 hours, skip
+	if misc.WithinLast(tw.LastUpdated, 4) {
+		log.Println("ITS DIS")
+		return nil
+	}
+
+	tws, err := tw.getTweets(cfg.Twitter.Endpoint)
 	if err != nil {
 		return err
 	}
+
 	tw.AvgRetweets = tws.AvgRetweets()
 	tw.AvgLikes = tws.AvgLikes()
 	nf := tws.Followers()
@@ -77,14 +85,22 @@ func (tw *Twitter) UpdateData(endpoint string) error {
 	return nil
 }
 
-func (tw *Twitter) getTweets(endpoint, lastTweetId string) (tws Tweets, err error) {
-	if len(lastTweetId) > 0 {
-		endpoint = fmt.Sprintf(timelineSinceIdUrl, endpoint, tw.Id, lastTweetId)
-	} else {
-		endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id)
-	}
+const (
+	postURL = "https://twitter.com/%s/status/%s"
+)
 
+func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
+	endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id)
 	err = misc.HttpGetJson(tw.client, endpoint, &tws)
+
+	now := int32(time.Now().Unix())
+	for _, t := range tws {
+		t.LastUpdated = now
+		if t.User != nil {
+			t.PostURL = fmt.Sprintf(postURL, t.User.Id, t.Id)
+		}
+
+	}
 	return
 }
 
