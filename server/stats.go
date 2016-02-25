@@ -10,17 +10,14 @@ import (
 )
 
 func newStatsUpdate(srv *Server) error {
-	err := updateStats(srv, true)
-	if err != nil {
-		return err
-	}
-
-	// Check for approved deals every 6 hours
-	ticker := time.NewTicker(10 * time.Second) //srv.Cfg.StatsUpdate * time.Hour)
+	// Update social media profiles every X hours
+	ticker := time.NewTicker(srv.Cfg.StatsUpdate * time.Hour)
 	go func() {
+		if err := updateStats(srv); err != nil {
+			log.Println("Err with stats updater", err)
+		}
 		for range ticker.C {
-			err = updateStats(srv, false)
-			if err != nil {
+			if err := updateStats(srv); err != nil {
 				log.Println("Err with stats updater", err)
 			}
 		}
@@ -28,8 +25,8 @@ func newStatsUpdate(srv *Server) error {
 	return nil
 }
 
-func updateStats(s *Server, boot bool) error {
-	// Traverses influencers and updates their stats
+func updateStats(s *Server) error {
+	// Traverses all influencers and updates their social media stats
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
 			inf := influencer.Influencer{}
@@ -42,9 +39,9 @@ func updateStats(s *Server, boot bool) error {
 				return err
 			}
 
-			if !boot {
-				time.Sleep(s.Cfg.StatsInterval * time.Second)
-			}
+			// Inserting a request interval so we don't hit our API
+			// limits with platforms!
+			time.Sleep(s.Cfg.StatsInterval * time.Second)
 
 			// Update data for all completed deal posts
 			for _, deal := range inf.CompletedDeals {
@@ -67,7 +64,9 @@ func updateStats(s *Server, boot bool) error {
 				}
 			}
 
-			// Save the influencer since we just updated it's data
+			time.Sleep(s.Cfg.StatsInterval * time.Second)
+
+			// Save the influencer since we just updated it's social media data
 			if err := saveInfluencer(tx, inf, s.Cfg); err != nil {
 				return err
 			}

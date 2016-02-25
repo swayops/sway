@@ -11,7 +11,7 @@ type Agency struct {
 
 	Type             string   `json:"type,omitempty"` // Either "group" OR "rtb"
 	RTB              *RTB     `json:"rtb,omitempty"`
-	InfluencerGroups []string `json:"influencerGroups,omitempty"`
+	InfluencerGroups []string `json:"influencerGroups,omitempty"` // Contains group IDs
 }
 
 type RTB struct {

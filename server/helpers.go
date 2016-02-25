@@ -13,7 +13,7 @@ import (
 )
 
 func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
-	// Unssign the deal & Save the Campaign
+	// Unssign the deal & update the campaign and influencer buckets
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		var (
 			cmp *common.Campaign
@@ -26,6 +26,7 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		if deal, ok := cmp.Deals[dealId]; ok {
+			// Flush all attribuets for the deal
 			deal.InfluencerId = ""
 			deal.Assigned = 0
 			deal.Completed = 0

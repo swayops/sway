@@ -5,7 +5,6 @@ const (
 	Facebook  = "facebook"
 	Instagram = "instagram"
 	YouTube   = "youtube"
-	// Tumblr    = "tumblr"
 )
 
 var ALL_PLATFORMS = map[string]struct{}{
@@ -13,5 +12,4 @@ var ALL_PLATFORMS = map[string]struct{}{
 	Facebook:  struct{}{},
 	Instagram: struct{}{},
 	YouTube:   struct{}{},
-	// Tumblr:    struct{}{},
 }

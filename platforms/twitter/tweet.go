@@ -138,6 +138,13 @@ func (t *Tweet) Urls() (out []string) {
 }
 
 func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
+	// If the post is more than 4 days old AND
+	// it has been updated in the last week, SKIP!
+	// i.e. only update old posts once a week
+	if !misc.WithinLast(int32(t.CreatedAt.Unix()), 24*4) && misc.WithinLast(int32(t.CreatedAt.Unix()), 24*7) {
+		return nil
+	}
+
 	// If we have already updated within the last 12 hours, skip!
 	if misc.WithinLast(t.LastUpdated, 12) {
 		return nil

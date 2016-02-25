@@ -16,11 +16,11 @@ type YouTube struct {
 
 	AvgViews        float32 `json:"avgViews,omitempty"`
 	AvgComments     float32 `json:"avgComments,omitempty"`
-	Subscribers     float32 `json:"avgSub,omitempty"`   // float32 for GetScore equation
+	Subscribers     float32 `json:"avgSubs,omitempty"`  // float32 for GetScore equation
 	SubscriberDelta float32 `json:"subDelta,omitempty"` // Follower delta since last UpdateData run
 
-	LastUpdated int32   `json:"lastUpdate,omitempty"` // Epoch timestamp in seconds
-	LatestPosts []*Post `json:"posts,omitempty"`      // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
+	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
 	Score float32 `json:"score,omitempty"`
 }
@@ -41,8 +41,6 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 }
 
 func (yt *YouTube) UpdateData(cfg *config.Config) error {
-	// Used by an eventual ticker to update stats
-
 	// If we already updated in the last 4 hours, skip
 	if misc.WithinLast(yt.LastUpdated, 4) {
 		return nil

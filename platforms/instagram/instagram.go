@@ -10,15 +10,15 @@ import (
 type Instagram struct {
 	UserName      string  `json:"userName"`
 	UserId        string  `json:"userId"`
-	AvgLikes      float32 `json:"avgLikes,omitempty"` // Per post
-	AvgComments   float32 `json:"avgComm,omitempty"`  // Per post
+	AvgLikes      float32 `json:"avgLikes,omitempty"`    // Per post
+	AvgComments   float32 `json:"avgComments,omitempty"` // Per post
 	Followers     float32 `json:"followers,omitempty"`
 	FollowerDelta float32 `json:"fDelta,omitempty"` // Follower delta since last UpdateData run
 
 	LastLocation *misc.GeoRecord `json:"geo,omitempty"` // All locations since last update
 
-	LastUpdated int32   `json:"lastUpdate,omitempty"` // Epoch timestamp in seconds
-	LatestPosts []*Post `json:"posts,omitempty"`      // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
+	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
 	LinkInBio string `json:"link,omitempty"`
 

@@ -19,17 +19,14 @@ import (
 )
 
 func newDealExplorer(srv *Server) error {
-	err := explore(srv)
-	if err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(30 * time.Second) //srv.Cfg.ExplorerUpdate * time.Hour)
+	ticker := time.NewTicker(srv.Cfg.ExplorerUpdate * time.Hour)
 	go func() {
+		if err := explore(srv); err != nil {
+			log.Println("Error exploring!", err)
+		}
 		for range ticker.C {
-			err = explore(srv)
-			if err != nil {
-				log.Println("Err with deal explorer", err)
+			if err := explore(srv); err != nil {
+				log.Println("Error exploring!", err)
 			}
 		}
 	}()
@@ -37,8 +34,8 @@ func newDealExplorer(srv *Server) error {
 }
 
 func explore(srv *Server) error {
-	// Traverses deals looking for satisfied deals
-	// and expired deals
+	// Traverses active deals in our system and checks
+	// to see whether they have been satisfied or have timed out
 	activeDeals, err := srv.GetAllActiveDeals()
 	if err != nil {
 		return err
@@ -90,7 +87,6 @@ func explore(srv *Server) error {
 					log.Println("Failed to approve instagram post", err)
 				}
 			}
-		// case platform.Tumblr:
 		default:
 			return nil
 		}
@@ -107,6 +103,7 @@ func explore(srv *Server) error {
 }
 
 func (srv *Server) GetAllActiveDeals() ([]*common.Deal, error) {
+	// Retrieves all active deals in the system!
 	var err error
 	deals := []*common.Deal{}
 
@@ -133,7 +130,7 @@ func (srv *Server) GetAllActiveDeals() ([]*common.Deal, error) {
 }
 
 func (srv *Server) CompleteDeal(d *common.Deal) error {
-	// DEALS are located in the INFLUENCER struct AND the CAMPAIGN struct
+	// Marks the deal as completed, and updates the campaign and influencer buckets
 	if err := srv.db.Update(func(tx *bolt.Tx) (err error) {
 		var (
 			cmp *common.Campaign
@@ -393,7 +390,7 @@ func findYouTubeMatch(inf *influencer.Influencer, deal *common.Deal) *youtube.Po
 			postTags := post.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
-					if strings.ToLower(hashtag) == tg {
+					if strings.Contains(strings.ToLower(hashtag), tg) {
 						foundHash = true
 					}
 				}

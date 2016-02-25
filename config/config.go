@@ -36,10 +36,10 @@ type Config struct {
 	DBPath string `json:"dbPath"`
 	DBName string `json:"dbName"`
 
-	DealTimeout    int32         `json:"dealTimeout"`    // days
-	StatsUpdate    time.Duration `json:"statsUpdate"`    // hours
-	StatsInterval  time.Duration `json:"statsInterval"`  // hours
-	ExplorerUpdate time.Duration `json:"explorerUpdate"` // hours
+	DealTimeout    int32         `json:"dealTimeout"`    // In days
+	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
+	StatsInterval  time.Duration `json:"statsInterval"`  // In seconds
+	ExplorerUpdate time.Duration `json:"explorerUpdate"` // In hours
 
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`

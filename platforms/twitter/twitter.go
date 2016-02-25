@@ -2,7 +2,6 @@ package twitter
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -35,9 +34,9 @@ type Twitter struct {
 	FollowerDelta float32 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
 
 	LastLocation *misc.GeoRecord `json:"geo,omitempty"`
-	LastTweetId  string          `json:"lastTw,omitempty"`     // the id of the last tweet
-	LatestTweets Tweets          `json:"latestTw,omitempty"`   // Posts since last update.. will later check these for deal satisfaction
-	LastUpdated  int32           `json:"lastUpdate,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	LastTweetId  string          `json:"lastTw,omitempty"`      // the id of the last tweet
+	LatestTweets Tweets          `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated  int32           `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
 	Score        float32         `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
@@ -59,8 +58,14 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 func (tw *Twitter) UpdateData(cfg *config.Config) error {
 	// If we already updated in the last 4 hours, skip
 	if misc.WithinLast(tw.LastUpdated, 4) {
-		log.Println("ITS DIS")
 		return nil
+	}
+
+	var err error
+	if tw.client == nil {
+		if tw.client, err = getClient(cfg); err != nil {
+			return err
+		}
 	}
 
 	tws, err := tw.getTweets(cfg.Twitter.Endpoint)

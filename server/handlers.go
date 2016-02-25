@@ -408,7 +408,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube { //&& !cmp.Tumblr {
+		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
 			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
 			return
 		}
@@ -744,7 +744,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if load.Geo == nil && load.AgencyId != "49" {
+		if load.Geo == nil {
 			c.JSON(400, misc.StatusErr(ErrNoGeo.Error()))
 			return
 		}
@@ -754,7 +754,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			load.InstagramId,
 			load.FbId,
 			load.YouTubeId,
-			// load.TumblrId,
 			load.Gender,
 			load.AgencyId,
 			load.GroupIds,
@@ -833,6 +832,7 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		if err = json.Unmarshal(v, &g); err != nil {
+			log.Println(string(v))
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
@@ -1052,7 +1052,7 @@ func setPlatform(s *Server) gin.HandlerFunc {
 			if err = json.Unmarshal(b, &inf); err != nil || c.Params.ByName("platform") == "" || id == "" {
 				return ErrUnmarshal
 			}
-			log.Println("HERE", c.Params.ByName("platform"))
+
 			switch c.Params.ByName("platform") {
 			case "instagram":
 				if err = inf.NewInsta(id, s.Cfg); err != nil {
@@ -1070,10 +1070,6 @@ func setPlatform(s *Server) gin.HandlerFunc {
 				if err = inf.NewYouTube(id, s.Cfg); err != nil {
 					return
 				}
-			// case "tumblr":
-			// 	if err = inf.NewTumblr(id, s.Cfg); err != nil {
-			// 		return
-			// 	}
 			default:
 				return ErrPlatform
 			}
@@ -1147,7 +1143,6 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		foundDeal := &common.Deal{}
 		currentDeals := influencer.GetAvailableDeals(s.db, influencerId, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
-			log.Println(dealId, deal.Id, deal.InfluencerId, deal.CampaignId, campaignId, deal.Assigned)
 			if deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				found = true
 				foundDeal = deal
@@ -1259,6 +1254,7 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 }
 
 func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
+	// Get all deals completed by the influencer in the last X hours
 	return func(c *gin.Context) {
 		var (
 			err error
@@ -1298,10 +1294,3 @@ func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 		}
 	}
 }
-
-// func completeDeal(s *Server) gin.HandlerFunc {
-// 	// Influencer marked this deal as completed
-// 	return func(c *gin.Context) {
-// 		c.JSON(200, misc.StatusOK(""))
-// 	}
-// }

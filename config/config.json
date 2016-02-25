@@ -41,8 +41,8 @@
   		"accessSecret": "wFZkVcPmMrL7yWrguxbkRIBrGkOiGa4nJbYGNbKMmbma0ZVP6A"
 	},
 	"dealTimeout": 14, 
-	"statsUpdate": 3, 
-	"statsInterval": 5,
-	"explorerUpdate": 2 
+	"statsUpdate": 4, 
+	"statsInterval": 3,
+	"explorerUpdate": 5 
 }
 

@@ -91,7 +91,8 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
 	r.GET("/getDealsAssignedToInfluencer/:influencerId", getDealsAssignedToInfluencer(srv))
 	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
-	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv)) // offset in hours
+	// Offset in hours
+	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv))
 }
 
 func (srv *Server) InitializeChecks() error {

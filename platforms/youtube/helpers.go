@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -17,11 +18,12 @@ type Meta struct {
 }
 
 const (
-	searchesUrl = "%ssearch?part=id&maxResults=1&q=%s&type=channel&key=%s"
-	dataUrl     = "%schannels?part=statistics&id=%s&key=%s"
-	playlistUrl = "%schannels?part=contentDetails&forUsername=%s&key=%s"
-	videosUrl   = "%splaylistItems?part=snippet&playlistId=%s&key=%s&maxResults=%s"
-	postUrl     = "%svideos?id=%s&part=statistics&key=%s"
+	searchesUrl  = "%ssearch?part=id&maxResults=1&q=%s&type=channel&key=%s"
+	dataUrl      = "%schannels?part=statistics&id=%s&key=%s"
+	playlistUrl  = "%schannels?part=contentDetails&forUsername=%s&key=%s"
+	videosUrl    = "%splaylistItems?part=snippet&playlistId=%s&key=%s&maxResults=%s"
+	postUrl      = "%svideos?id=%s&part=statistics&key=%s"
+	postTemplate = "https://www.youtube.com/watch?v=%s"
 )
 
 var (
@@ -197,9 +199,10 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 			p := &Post{
 				Id:          v.Snippet.Resource.VideoId,
 				Title:       v.Snippet.Title,
-				Description: v.Snippet.Description,
+				Description: strings.Replace(v.Snippet.Description, "\n", " ", -1),
 				Published:   pub,
 				LastUpdated: int32(time.Now().Unix()),
+				PostURL:     fmt.Sprintf(postTemplate, v.Snippet.Resource.VideoId),
 			}
 
 			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)

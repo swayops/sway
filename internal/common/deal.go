@@ -7,7 +7,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-// This deal represents an outgoing bid
+// This deal represents a possible bid
 // for an influencer. Do NOT confuse this
 // with a Campaign
 type Deal struct {
@@ -15,28 +15,30 @@ type Deal struct {
 	CampaignId   string `json:"campaignId"`
 	AdvertiserId string `json:"advertiserId"`
 
-	InfluencerId string `json:"influencerId,omitempty"` // Influencer this deal has been assigned to
-
 	// Platform determined by GetAvailableDeals with value as potential pricepoint
 	// This is also saved/reset in the un/assign handlers
 	Platforms map[string]float32 `json:"platforms,omitempty"`
 
-	Assigned  int32 `json:"assigned,omitempty"`  // Timestamp for when the deal was picked up
-	Completed int32 `json:"completed,omitempty"` // Timestamp for when the deal was completed
+	// Timestamp for when the deal was picked up by an influencer
+	Assigned int32 `json:"assigned,omitempty"`
+	// Timestamp for when the deal was completed by an influencer
+	Completed int32 `json:"completed,omitempty"`
 
-	// Both saved/reset in the un/assignDeal method
+	// All of the following are when a deal is assigned/unassigned
+	// or times out
+	InfluencerId     string  `json:"influencerId,omitempty"`
 	AssignedPlatform string  `json:"assignedPlatform,omitempty"`
 	AssignedPrice    float32 `json:"assignedPrice,omitempty"`
 
-	// Only set once deal is completed
+	// Only set once deal is completed. Contain
+	// the information for the post which satisfied the deal
 	Tweet     *twitter.Tweet  `json:"tweet,omitempty"`
 	Facebook  *facebook.Post  `json:"facebook,omitempty"`
 	Instagram *instagram.Post `json:"instagram,omitempty"`
 	YouTube   *youtube.Post   `json:"youtube,omitempty"`
 
-	// Requirements added by GetAvailableDeals for json response
-	// for get deals accessed by influencers (so they know requirements)
-	// This is also saved in un/assignDeal
+	// Requirements copied from the campaign to the deal
+	// GetAvailableDeals
 	Tags    []string `json:"hashtags,omitempty"`
 	Mention string   `json:"mention,omitempty"`
 	Link    string   `json:"link,omitempty"`

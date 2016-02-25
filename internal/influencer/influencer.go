@@ -3,7 +3,6 @@ package influencer
 import (
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -16,6 +15,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+// The json struct accepted by the putInfluencer method
 type InfluencerLoad struct {
 	InstagramId string `json:"instagram,omitempty"`
 	FbId        string `json:"facebook,omitempty"`
@@ -33,32 +33,43 @@ type InfluencerLoad struct {
 }
 
 type Influencer struct {
-	Id         string   `json:"id"`
-	GroupIds   []string `json:"groupIds,omitempty"` // Each influencer will be put into multiple groups (owned by agencies)
-	AgencyId   string   `json:"agencyId,omitempty"` // agency this influencer belongs to
-	FloorPrice float32  `json:"floor,omitempty"`    // Price per engagement set by agency
+	Id string `json:"id"`
 
+	// Each influencer will be put into multiple groups (owned by agencies)
+	GroupIds []string `json:"groupIds,omitempty"`
+
+	// Agency this influencer belongs to
+	AgencyId string `json:"agencyId,omitempty"`
+
+	// Minimum price per engagement set by agency
+	FloorPrice float32 `json:"floor,omitempty"`
+
+	// References to the social media accounts this influencer owns
 	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
 	Instagram *instagram.Instagram `json:"instagram,omitempty"`
 	Twitter   *twitter.Twitter     `json:"twitter,omitempty"`
 	YouTube   *youtube.YouTube     `json:"youtube,omitempty"`
 
-	LastUpdated int32 `json:"lastUpdated,omitempty"` // Last time stats were updated
+	// User inputted geo (should be ingested by the app)
+	Geo *misc.GeoRecord `json:"geo,omitempty"`
 
-	Geo *misc.GeoRecord `json:"geo,omitempty"` // User inputted geo via app
+	// "m" or "f" or "unicorn" lol
+	Gender string `json:"gender,omitempty"`
 
-	Gender string `json:"gender,omitempty"` // "m" or "f" or "unicorn" lol
+	// Active accepted deals by the influencer that have not yet been completed
+	ActiveDeals []*common.Deal `json:"activeDeals,omitempty"`
+	// Completed and approved deals by the influencer
+	CompletedDeals []*common.Deal `json:"completedDeals,omitempty"`
 
-	ActiveDeals    []*common.Deal `json:"activeDeals,omitempty"`    // Accepted pending deals to be completed
-	CompletedDeals []*common.Deal `json:"completedDeals,omitempty"` // Contains historic deals completed
-
-	Cancellations int32 `json:"cancellations,omitempty"` // How many times has this influencer cancelled a deal? Should affect sway score
-	Timeouts      int32 `json:"timeouts,omitempty"`      // How many times has this influencer timed out?
+	// Number of times the influencer has unassigned themself from a deal
+	Cancellations int32 `json:"cancellations,omitempty"`
+	// Number of times the influencer has timed out on a deal
+	Timeouts int32 `json:"timeouts,omitempty"`
 }
 
 func New(twitterId, instaId, fbId, ytId, gender, agency string, groupIds []string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
-		Id:         misc.PseudoUUID(), // Possible change to standard numbering?
+		Id:         misc.PseudoUUID(),
 		AgencyId:   agency,
 		GroupIds:   groupIds,
 		FloorPrice: floorPrice,
@@ -86,17 +97,9 @@ func New(twitterId, instaId, fbId, ytId, gender, agency string, groupIds []strin
 		return inf, err
 	}
 
-	// if err = inf.NewTumblr(tumblrId, cfg); err != nil {
-	// 	return inf, err
-	// }
-
-	inf.LastUpdated = int32(time.Now().Unix())
-
 	return inf, nil
 }
 
-// New functions can be re-used later if an influencer
-// adds a new social media account
 func (inf *Influencer) NewFb(id string, cfg *config.Config) error {
 	if len(id) > 0 {
 		fb, err := facebook.New(id, cfg)
@@ -162,11 +165,13 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 			return err
 		}
 	}
-	inf.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
 
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config) (err error) {
+	// Called intermittently by the stats updater to keep track of engagements
+	// for completed deal posts
+
 	if inf.Facebook != nil {
 		if err = inf.Facebook.UpdateData(cfg); err != nil {
 			return err
@@ -187,22 +192,13 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config) (err error) {
 			return err
 		}
 	}
-	inf.LastUpdated = int32(time.Now().Unix())
 	return nil
 }
 
-// func (inf *Influencer) NewTumblr(id string, cfg *config.Config) error {
-// 	if len(id) > 0 {
-// 		tr, err := tumblr.New(id, cfg)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		inf.Tumblr = tr
-// 	}
-// 	return nil
-// }
-
 func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+	// Iterates over all available deals in the system and matches them
+	// with the given influencer
+
 	var (
 		v   []byte
 		err error
@@ -317,10 +313,6 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecor
 				targetDeal.Platforms[platform.YouTube] = 3
 
 			}
-
-			// if cmp.Tumblr && inf.Tumblr != nil {
-			// 	targetDeal.Platforms[platform.Tumblr] = 4
-			// }
 
 			// Add deal that has approved platform
 			if len(targetDeal.Platforms) > 0 {
