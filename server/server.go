@@ -33,10 +33,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	}
 
 	srv.InitializeRoutes(r)
-	err = srv.InitializeChecks()
-	if err != nil {
-		return nil, err
-	}
+	srv.InitializeChecks()
 
 	return srv, nil
 }
@@ -95,16 +92,9 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv))
 }
 
-func (srv *Server) InitializeChecks() error {
-	if err := newDealExplorer(srv); err != nil {
-		return err
-	}
-
-	if err := newStatsUpdate(srv); err != nil {
-		return err
-	}
-
-	return nil
+func (srv *Server) InitializeChecks() {
+	newDealExplorer(srv)
+	newStatsUpdate(srv)
 }
 
 func (srv *Server) Run() (err error) {

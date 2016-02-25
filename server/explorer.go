@@ -18,7 +18,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-func newDealExplorer(srv *Server) error {
+func newDealExplorer(srv *Server) {
 	ticker := time.NewTicker(srv.Cfg.ExplorerUpdate * time.Hour)
 	go func() {
 		if err := explore(srv); err != nil {
@@ -30,7 +30,6 @@ func newDealExplorer(srv *Server) error {
 			}
 		}
 	}()
-	return nil
 }
 
 func explore(srv *Server) error {

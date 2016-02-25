@@ -9,7 +9,7 @@ import (
 	"github.com/swayops/sway/internal/influencer"
 )
 
-func newStatsUpdate(srv *Server) error {
+func newStatsUpdate(srv *Server) {
 	// Update social media profiles every X hours
 	ticker := time.NewTicker(srv.Cfg.StatsUpdate * time.Hour)
 	go func() {
@@ -22,7 +22,6 @@ func newStatsUpdate(srv *Server) error {
 			}
 		}
 	}()
-	return nil
 }
 
 func updateStats(s *Server) error {
