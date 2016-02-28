@@ -169,27 +169,24 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 }
 
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config) (err error) {
-	// Called intermittently by the stats updater to keep track of engagements
-	// for completed deal posts
-
-	if inf.Facebook != nil {
-		if err = inf.Facebook.UpdateData(cfg); err != nil {
-			return err
-		}
-	}
-	if inf.Instagram != nil {
-		if err = inf.Instagram.UpdateData(cfg); err != nil {
-			return err
-		}
-	}
-	if inf.Twitter != nil {
-		if err = inf.Twitter.UpdateData(cfg); err != nil {
-			return err
-		}
-	}
-	if inf.YouTube != nil {
-		if err = inf.YouTube.UpdateData(cfg); err != nil {
-			return err
+	// Update data for all completed deal posts
+	for _, deal := range inf.CompletedDeals {
+		if deal.Tweet != nil {
+			if err := deal.Tweet.UpdateData(cfg); err != nil {
+				return err
+			}
+		} else if deal.Facebook != nil {
+			if err := deal.Facebook.UpdateData(cfg); err != nil {
+				return err
+			}
+		} else if deal.Instagram != nil {
+			if err := deal.Instagram.UpdateData(cfg); err != nil {
+				return err
+			}
+		} else if deal.YouTube != nil {
+			if err := deal.YouTube.UpdateData(cfg); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

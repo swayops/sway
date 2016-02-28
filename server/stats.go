@@ -43,24 +43,8 @@ func updateStats(s *Server) error {
 			time.Sleep(s.Cfg.StatsInterval * time.Second)
 
 			// Update data for all completed deal posts
-			for _, deal := range inf.CompletedDeals {
-				if deal.Tweet != nil {
-					if err := deal.Tweet.UpdateData(s.Cfg); err != nil {
-						return err
-					}
-				} else if deal.Facebook != nil {
-					if err := deal.Facebook.UpdateData(s.Cfg); err != nil {
-						return err
-					}
-				} else if deal.Instagram != nil {
-					if err := deal.Instagram.UpdateData(s.Cfg); err != nil {
-						return err
-					}
-				} else if deal.YouTube != nil {
-					if err := deal.YouTube.UpdateData(s.Cfg); err != nil {
-						return err
-					}
-				}
+			if err := inf.UpdateCompletedDeals(s.Cfg); err != nil {
+				return err
 			}
 
 			time.Sleep(s.Cfg.StatsInterval * time.Second)
