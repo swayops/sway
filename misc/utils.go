@@ -13,9 +13,10 @@ import (
 	"unsafe"
 )
 
+const hour = int32(60 * 60)
+
 var (
 	ErrMissingId = errors.New("missing id")
-	ONE_HOUR     = int32(60 * 60)
 )
 
 func HttpGetJson(c *http.Client, endpoint string, out interface{}) (err error) {
@@ -69,7 +70,7 @@ func DoesIntersect(opts []string, tg []string) bool {
 func WithinLast(timestamp, hours int32) bool {
 	// Is the timestamp within the last X hours?
 	now := int32(time.Now().Unix())
-	if timestamp >= (now - (hours * ONE_HOUR)) {
+	if timestamp >= (now - (hours * hour)) {
 		return true
 	}
 	return false

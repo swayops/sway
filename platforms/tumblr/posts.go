@@ -46,6 +46,8 @@ type Post struct {
 	NoteCount uint32    `json:"note_count"`
 	Tags      []string  `json:"tags"`
 	Notes     []Note    `json:"notes"`
+
+	LastUpdated int32 `json:"lastUpdated,omitempty"`
 }
 
 type Note struct {
@@ -70,6 +72,18 @@ func (p *Post) Counts() (reblog, likes, total float32) {
 
 // UpdateData needs the parent tumblr call because it needs the blog id
 func (p *Post) UpdateData(tr *Tumblr, cfg *config.Config) (err error) {
+	// If the post is more than 4 days old AND
+	// it has been updated in the last week, SKIP!
+	// i.e. only update old posts once a week
+	if !misc.WithinLast(int32(p.TS.Unix()), 24*4) && misc.WithinLast(int32(p.TS.Unix()), 24*7) {
+		return nil
+	}
+
+	// If we have already updated within the last 12 hours, skip!
+	if misc.WithinLast(p.LastUpdated, 12) {
+		return nil
+	}
+
 	var resp apiResponse
 	if err = misc.HttpGetJson(tr.client, fmt.Sprintf(singlePostUrl, cfg.Tumblr.Endpoint, tr.Id, p.ID.String()), &resp); err != nil {
 		return
@@ -80,6 +94,8 @@ func (p *Post) UpdateData(tr *Tumblr, cfg *config.Config) (err error) {
 	if len(resp.Response.Posts) == 1 { // should never be more or less than 1
 		*p = *resp.Response.Posts[0]
 	}
+	p.LastUpdated = int32(time.Now().Unix())
+
 	return
 }
 
