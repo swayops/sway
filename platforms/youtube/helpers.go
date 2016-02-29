@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -17,11 +18,12 @@ type Meta struct {
 }
 
 const (
-	searchesUrl = "%ssearch?part=id&maxResults=1&q=%s&type=channel&key=%s"
-	dataUrl     = "%schannels?part=statistics&id=%s&key=%s"
-	playlistUrl = "%schannels?part=contentDetails&forUsername=%s&key=%s"
-	videosUrl   = "%splaylistItems?part=snippet&playlistId=%s&key=%s&maxResults=%s"
-	postUrl     = "%svideos?id=%s&part=statistics&key=%s"
+	searchesUrl  = "%ssearch?part=id&maxResults=1&q=%s&type=channel&key=%s"
+	dataUrl      = "%schannels?part=statistics&id=%s&key=%s"
+	playlistUrl  = "%schannels?part=contentDetails&forUsername=%s&key=%s"
+	videosUrl    = "%splaylistItems?part=snippet&playlistId=%s&key=%s&maxResults=%s"
+	postUrl      = "%svideos?id=%s&part=statistics&key=%s"
+	postTemplate = "https://www.youtube.com/watch?v=%s"
 )
 
 var (
@@ -156,7 +158,7 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 	return views / videos, comments / videos, subs, nil
 }
 
-func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
+func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
 	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
 
 	var list Data
@@ -193,15 +195,14 @@ func getPosts(name string, count int, minTime int32, cfg *config.Config) (posts 
 	for _, v := range vid.Items {
 		if v.Snippet != nil && v.Snippet.Resource != nil {
 			pub := int32(v.Snippet.Published.Unix())
-			if minTime >= pub {
-				continue
-			}
 
 			p := &Post{
 				Id:          v.Snippet.Resource.VideoId,
 				Title:       v.Snippet.Title,
-				Description: v.Snippet.Description,
+				Description: strings.Replace(v.Snippet.Description, "\n", " ", -1),
 				Published:   pub,
+				LastUpdated: int32(time.Now().Unix()),
+				PostURL:     fmt.Sprintf(postTemplate, v.Snippet.Resource.VideoId),
 			}
 
 			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)

@@ -46,6 +46,11 @@ func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 }
 
 func (tr *Tumblr) UpdateData(ep string, offset int) error {
+	// If we already updated in the last 4 hours, skip
+	if misc.WithinLast(tr.LastUpdated, 4) {
+		return nil
+	}
+
 	posts, err := tr.getPosts(ep, "", offset)
 	if err != nil {
 		return err

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"time"
 )
 
 var (
@@ -34,6 +35,11 @@ type Config struct {
 
 	DBPath string `json:"dbPath"`
 	DBName string `json:"dbName"`
+
+	DealTimeout    int32         `json:"dealTimeout"`    // In days
+	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
+	StatsInterval  time.Duration `json:"statsInterval"`  // In seconds
+	ExplorerUpdate time.Duration `json:"explorerUpdate"` // In hours
 
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`

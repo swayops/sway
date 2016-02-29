@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
@@ -132,10 +133,11 @@ func getPostInfo(id string, cfg *config.Config) (float32, float32, []*Post, *mis
 		}
 
 		p := &Post{
-			Id:        post.Id,
-			Published: int32(published),
-			Hashtags:  post.Tags,
-			PostURL:   post.URL,
+			Id:          post.Id,
+			Published:   int32(published),
+			Hashtags:    post.Tags,
+			PostURL:     post.URL,
+			LastUpdated: int32(time.Now().Unix()),
 		}
 
 		if post.Comments != nil {
@@ -172,16 +174,17 @@ type BasicUser struct {
 }
 
 type UserData struct {
-	Name   string  `json:"username"`
-	Id     string  `json:"id"`
-	Counts *Counts `json:"counts"`
+	Website string  `json:"website"`
+	Name    string  `json:"username"`
+	Id      string  `json:"id"`
+	Counts  *Counts `json:"counts"`
 }
 
 type Counts struct {
 	Followers float32 `json:"followed_by"`
 }
 
-func getFollowers(id string, cfg *config.Config) (flw float32, err error) {
+func getUserInfo(id string, cfg *config.Config) (flw float32, url string, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
 	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
 	var user BasicUser
@@ -194,8 +197,11 @@ func getFollowers(id string, cfg *config.Config) (flw float32, err error) {
 		return
 	}
 
-	if user.Data.Counts != nil {
-		flw = float32(user.Data.Counts.Followers)
+	if user.Data != nil {
+		url = user.Data.Website
+		if user.Data.Counts != nil {
+			flw = float32(user.Data.Counts.Followers)
+		}
 	}
 
 	return

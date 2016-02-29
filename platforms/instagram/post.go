@@ -3,6 +3,7 @@ package instagram
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
@@ -33,6 +34,8 @@ type Post struct {
 
 	// Type
 	Type string `json:"type,omitempty"` // "photo" or "video"
+
+	LastUpdated int32 `json:"lastUpdated,omitempty"`
 }
 
 type DataByPost struct {
@@ -53,6 +56,18 @@ type PostLikes struct {
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
+	// If the post is more than 4 days old AND
+	// it has been updated in the last week, SKIP!
+	// i.e. only update old posts once a week
+	if !misc.WithinLast(pt.Published, 24*4) && misc.WithinLast(pt.LastUpdated, 24*7) {
+		return nil
+	}
+
+	// If we have already updated within the last 12 hours, skip!
+	if misc.WithinLast(pt.LastUpdated, 12) {
+		return nil
+	}
+
 	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.ClientId)
 
 	var post DataByPost
@@ -72,6 +87,8 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	if post.Data.Likes != nil {
 		pt.Likes = post.Data.Likes.Count
 	}
+
+	pt.LastUpdated = int32(time.Now().Unix())
 
 	return nil
 }
