@@ -3,17 +3,18 @@ package facebook
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
 )
 
 const (
-	postUrl      = "%sv2.5/%s/posts?access_token=%s|%s"
-	likesUrl     = "%sv2.5/%s/likes?access_token=%s|%s&summary=true"
-	commentsUrl  = "%sv2.5/%s/comments?access_token=%s|%s&summary=true"
+	postUrl      = "%s%s/posts?access_token=%s|%s"
+	likesUrl     = "%s%s/likes?access_token=%s|%s&summary=true"
+	commentsUrl  = "%s%s/comments?access_token=%s|%s&summary=true"
 	sharesUrl    = "%s?id=%s"
-	followersUrl = "%s%s/insights/page_fans_country?access_token=%s|%s"
+	followersUrl = "%s%s?access_token=%s|%s&fields=likes"
 )
 
 type PostData struct {
@@ -51,15 +52,17 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float3
 	var posts PostData
 	err = misc.Request("GET", endpoint, "", &posts)
 	if err != nil || len(posts.Data) == 0 {
-		log.Println("Error extracting posts")
+		log.Println("Error extracting posts", endpoint)
 		return
 	}
 
 	for _, p := range posts.Data {
 		fbPost := &Post{
-			Id:        p.Id,
-			Caption:   p.Caption,
-			Published: p.Published,
+			Id:          p.Id,
+			Caption:     p.Caption,
+			Published:   p.Published,
+			LastUpdated: int32(time.Now().Unix()),
+			PostURL:     getPostUrl(p.Id),
 		}
 
 		if lk, err := getLikes(p.Id, cfg); err == nil {
@@ -110,7 +113,7 @@ func getLikes(id string, cfg *config.Config) (lk float32, err error) {
 }
 
 func getComments(id string, cfg *config.Config) (cm float32, err error) {
-	// https://graph.facebook.com/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
+	// https://graph.facebook.com/v2.5/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
 	endpoint := fmt.Sprintf(commentsUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	var comments PostData
 	err = misc.Request("GET", endpoint, "", &comments)
@@ -124,7 +127,7 @@ func getComments(id string, cfg *config.Config) (cm float32, err error) {
 }
 
 func getShares(id string, cfg *config.Config) (shares float32, pType string, err error) {
-	// https://graph.facebook.com/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
+	// https://graph.facebook.com/v2.5/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
 	endpoint := fmt.Sprintf(sharesUrl, cfg.Facebook.Endpoint, id)
 	var post SharesData
 	err = misc.Request("GET", endpoint, "", &post)
@@ -141,29 +144,26 @@ func getShares(id string, cfg *config.Config) (shares float32, pType string, err
 }
 
 type FollowerData struct {
-	Data []*FanData `json:"data"`
-}
-
-type FanData struct {
-	Values []*Value `json:"values"`
-}
-
-type Value struct {
-	Countries map[string]float32 `json:"value"`
+	Likes float32 `json:"likes"`
 }
 
 func getFollowers(id string, cfg *config.Config) (fl float32, err error) {
-	//https://graph.facebook.com/cocacola/insights/page_fans_country?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0
+	//https://graph.facebook.com/v2.5/cocacola?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&fields=likes
 	endpoint := fmt.Sprintf(followersUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	var data FollowerData
 	err = misc.Request("GET", endpoint, "", &data)
-	if err != nil || len(data.Data) == 0 || len(data.Data[0].Values) == 0 {
+	if err != nil {
 		log.Println("Error extracting followers", err)
 		return
 	}
-
-	for _, val := range data.Data[0].Values[0].Countries {
-		fl += val
-	}
+	fl = data.Likes
 	return
+}
+
+const (
+	postURL = "http://www.facebook.com/%s"
+)
+
+func getPostUrl(id string) string {
+	return fmt.Sprintf(postURL, id)
 }

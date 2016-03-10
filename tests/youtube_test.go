@@ -17,7 +17,7 @@ func TestYouTube(t *testing.T) {
 
 	// Initialize Influencer test
 	ytId := "JennaMarbles"
-	inf, err := influencer.New("", "", "", ytId, "", "m", "FAKEAGENCY", []string{"groupId"}, 0, DefaultGeo, cfg)
+	inf, err := influencer.New("", "", "", ytId, "m", "FAKEAGENCY", []string{"groupId"}, 0, DefaultGeo, cfg)
 	if err != nil {
 		t.Error("Error when initializing insta", err)
 	}

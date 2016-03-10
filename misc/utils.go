@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const hour = int32(60 * 60)
+
 var (
 	ErrInvalidToken = errors.New("invalid token")
 	ErrMissingId    = errors.New("missing id")
@@ -104,4 +106,12 @@ func DecodeHex(s string) []byte {
 		return nil
 	}
 	return b
+}
+func WithinLast(timestamp, hours int32) bool {
+	// Is the timestamp within the last X hours?
+	now := int32(time.Now().Unix())
+	if timestamp >= (now - (hours * hour)) {
+		return true
+	}
+	return false
 }
