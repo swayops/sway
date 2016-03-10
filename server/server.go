@@ -43,7 +43,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 
 func (srv *Server) InitializeDB(cfg *config.Config) error {
 	return srv.db.Update(func(tx *bolt.Tx) error {
-		for _, val := range cfg.Bucket.All {
+		for _, val := range cfg.AllBuckets() {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)

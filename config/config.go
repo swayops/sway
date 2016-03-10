@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"reflect"
 	"time"
 )
 
@@ -74,15 +75,26 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
-		User       string   `json:"user"`
-		Login      string   `json:"login"`
-		Token      string   `json:"Token"`
-		Ownership  string   `json:"ownership"`
-		Agency     string   `json:"agency"`
-		Group      string   `json:"group"`
-		Advertiser string   `json:"advertiser"`
-		Campaign   string   `json:"campaign"`
-		Influencer string   `json:"influencer"`
-		All        []string `json:"all"`
+		User          string `json:"user"`
+		Login         string `json:"login"`
+		Token         string `json:"Token"`
+		Ownership     string `json:"ownership"`
+		ResetPassword string `json:"resetPassword"`
+		Agency        string `json:"agency"`
+		Group         string `json:"group"`
+		Advertiser    string `json:"advertiser"`
+		Campaign      string `json:"campaign"`
+		Influencer    string `json:"influencer"`
 	} `json:"bucket"`
+}
+
+func (c *Config) AllBuckets() []string {
+	rv := reflect.ValueOf(c.Bucket)
+	out := make([]string, 0, rv.NumField())
+	for i := 0; i < cap(out); i++ {
+		if v := rv.Field(i).String(); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
 }
