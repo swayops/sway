@@ -13,6 +13,7 @@ var (
 	ErrInvalidUserId    = errors.New("invalid user id, hax0r")
 	ErrInvalidName      = errors.New("invalid or missing name")
 	ErrInvalidEmail     = errors.New("invalid or missing email")
+	ErrInvalidUserType  = errors.New("invalid or missing user type")
 	ErrInvalidPass      = errors.New("invalid or missing password")
 	ErrEmailExists      = errors.New("email is already registered")
 	ErrShortPass        = errors.New("password can't be less than 8 characters")
@@ -58,7 +59,7 @@ func getCookie(r *http.Request, name string) string {
 	}
 }
 
-func getOwnersKey(itemType, itemId string) []byte {
+func getOwnersKey(itemType ItemType, itemId string) []byte {
 	key := make([]byte, 0, len(itemType)+1+len(itemId))
 	key = append(key, itemType...)
 	key = append(key, ':')

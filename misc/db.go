@@ -27,15 +27,7 @@ func InitIndex(tx *bolt.Tx, name string, offset uint64) error {
 }
 
 func GetBucket(tx *bolt.Tx, bucketName string) *bolt.Bucket {
-	n := []byte(bucketName)
-	if b := tx.Bucket(n); b != nil {
-		return b
-	}
-	b, err := tx.CreateBucket(n)
-	if err != nil {
-		log.Printf("couldn't create bucket, something is seriously wrong: %s", err)
-	}
-	return b
+	return tx.Bucket([]byte(bucketName))
 }
 
 func PutBucketBytes(tx *bolt.Tx, bucketName string, id string, value []byte) error {

@@ -36,13 +36,45 @@ func (a *Auth) VerifyUser(c *gin.Context) {
 	}
 }
 
+// CheckScopes returns a gin handler that checks user access against the provided ScopeMap
+func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if u := GetCtxUser(c); u != nil && sm.HasAccess(u.Type, c.Request.Method) {
+			return
+		}
+		misc.AbortWithErr(c, 401, ErrUnauthorized)
+	}
+}
+
+//	CheckOwnership returns a handler that checks the ownership of an item.
+//	params:
+//		- itemType (ex CampaignItem)
+//		- paramName from the route (ex :id)
+func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		u, itemID := GetCtxUser(c), c.Param(paramName)
+		if u == nil || itemID == "" {
+			misc.AbortWithErr(c, 400, ErrInvalidRequest)
+			return
+		}
+		var ok bool
+		a.db.View(func(tx *bolt.Tx) error {
+			ok = a.IsOwner(tx, itemType, itemID, u.Id)
+			return nil
+		})
+		if !ok {
+			misc.AbortWithErr(c, 401, ErrUnauthorized)
+		}
+	}
+}
+
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`
 		Password string `json:"pass" form:"pass"`
 	}
-	if c.Bind(&li) != nil {
-		c.JSON(http.StatusUnauthorized, misc.StatusErr(ErrInvalidRequest.Error()))
+	if err := c.Bind(&li); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 	var (

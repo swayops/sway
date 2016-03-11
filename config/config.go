@@ -37,6 +37,8 @@ type Config struct {
 	DBPath string `json:"dbPath"`
 	DBName string `json:"dbName"`
 
+	BaseURL string `json:"baseURL"` // this is mainly used for internal directs
+
 	DealTimeout    int32         `json:"dealTimeout"`    // In days
 	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
 	StatsInterval  time.Duration `json:"statsInterval"`  // In seconds

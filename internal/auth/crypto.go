@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	bcryptRounds = bcrypt.DefaultCost
+	bcryptRounds = 11
 )
 
 func HashPassword(password string) (string, error) {
@@ -26,17 +26,17 @@ func CheckPassword(hash string, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
-func CreateMAC(password, token, apiKey string) string {
-	key := make([]byte, 0, len(token)+len(apiKey))
-	// if we change the token size to be > 16 bytes, we'll have to decode the token/apikey otherwise they will get hashed
+func CreateMAC(password, token, salt string) string {
+	key := make([]byte, 0, len(token)+len(salt))
+	// if we change the token size to be > 16 bytes, we'll have to decode the token/salt otherwise they will get hashed
 	key = append(key, token...)
-	key = append(key, apiKey...)
+	key = append(key, salt...)
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(password))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func VerifyMac(mac1, password, token, apiKey string) bool {
-	mac2 := misc.DecodeHex(CreateMAC(password, token, apiKey))
+func VerifyMac(mac1, password, token, salt string) bool {
+	mac2 := misc.DecodeHex(CreateMAC(password, token, salt))
 	return hmac.Equal(misc.DecodeHex(mac1), mac2)
 }

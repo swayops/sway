@@ -21,35 +21,44 @@ const (
 	MacLen         = 32
 	MacStringLen   = MacLen * 2
 	ApiKeyHeader   = `x-apikey`
+
+	purgeFrequency = time.Hour * 24
 )
 
 type Auth struct {
 	db       *bolt.DB
 	cfg      *config.Config
 	loginUrl string
+
+	purgeTicker *time.Ticker
 }
 
-func New(db *bolt.DB, cfg *config.Config, loginUrl string) *Auth {
+func New(db *bolt.DB, cfg *config.Config) *Auth {
 	a := &Auth{
-		db:       db,
-		cfg:      cfg,
-		loginUrl: loginUrl,
+		db:  db,
+		cfg: cfg,
 	}
 	go a.purgeInvalidTokens()
 	return a
 }
 
 func (a *Auth) purgeInvalidTokens() {
-	a.db.Update(func(tx *bolt.Tx) error {
-		var tok Token
-		b := misc.GetBucket(tx, a.cfg.Bucket.Token)
-		return b.ForEach(func(k, v []byte) error {
-			if json.Unmarshal(v, &tok) != nil || !tok.Valid() {
-				b.Delete(k)
-			}
-			return nil
+	for {
+		a.db.Update(func(tx *bolt.Tx) error {
+			b := misc.GetBucket(tx, a.cfg.Bucket.Token)
+			ts := time.Now()
+			return b.ForEach(func(k, v []byte) error {
+				var tok Token
+				if json.Unmarshal(v, &tok) != nil || !tok.IsValid(ts) {
+					b.Delete(k)
+				}
+				return nil
+			})
 		})
-	})
+
+		time.Sleep(purgeFrequency)
+	}
+
 }
 func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 	email = strings.ToLower(strings.TrimSpace(email))
@@ -82,7 +91,7 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) (oldMac, hashedPass,
 	}
 
 	var token Token
-	if misc.GetTxJson(tx, a.cfg.Bucket.Token, stoken, &token) != nil || !token.Valid() {
+	if misc.GetTxJson(tx, a.cfg.Bucket.Token, stoken, &token) != nil || !token.IsValid(time.Now()) {
 		return
 	}
 	if user = a.GetUserTx(tx, token.UserId); user == nil {
@@ -121,8 +130,8 @@ type Token struct {
 	Expires int64  `json:"expires"`
 }
 
-func (t *Token) Valid() bool {
-	return t.UserId != "" && t.Expires == -1 || t.Expires > time.Now().UnixNano()
+func (t *Token) IsValid(ts time.Time) bool {
+	return t.UserId != "" && t.Expires == -1 || t.Expires > ts.UnixNano()
 }
 
 func (t *Token) Refresh(dur time.Duration) *Token {
@@ -135,7 +144,7 @@ func (t *Token) Refresh(dur time.Duration) *Token {
 func (a *Auth) refreshToken(stok string, dur time.Duration) {
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
 		var token Token
-		if misc.GetTxJson(tx, a.cfg.Bucket.Token, stok, &token) != nil || !token.Valid() {
+		if misc.GetTxJson(tx, a.cfg.Bucket.Token, stok, &token) != nil || !token.IsValid(time.Now()) {
 			return
 		}
 		return misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, token.Refresh(dur))

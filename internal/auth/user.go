@@ -20,19 +20,27 @@ type User struct {
 	Id        string   `json:"id"`
 	Name      string   `json:"name,omitempty"`
 	Email     string   `json:"email,omitempty"`
+	Type      Scope    `json:"type,omitempty"`
 	Phone     string   `json:"phone,omitempty"`
 	Address   string   `json:"address,omitempty"`
-	Status    bool     `json:"status,omitempty"`
+	Active    bool     `json:"active,omitempty"`
 	CreatedAt int64    `json:"createdAt,omitempty"`
 	UpdatedAt int64    `json:"updatedAt,omitempty"`
 	Agencies  []string `json:"agencies,omitempty"`
 	APIKeys   []string `json:"apiKeys,omitempty"`
-	Salt      string   `json:"apiKey,omitempty"` // pretty much a cooler name for crypto salt
+	Salt      string   `json:"salt,omitempty"`
+}
+
+// Trim returns a browser-safe version of the User, mainly hiding salt, and maybe possibly apiKeys
+func (u *User) Trim() *User {
+	u.Salt = ""
+	return u
 }
 
 // Update fills the updatable fields in the struct, fields like Created and Id should never be blindly set.
 func (u *User) Update(ou *User) *User {
 	u.Name, u.Email, u.Phone, u.Address, u.Agencies = ou.Name, ou.Email, ou.Phone, ou.Address, ou.Agencies
+	u.Active = ou.Active
 	u.UpdatedAt = time.Now().UnixNano()
 	return u
 }
@@ -55,6 +63,9 @@ func (u *User) Check(newUser bool) error {
 	}
 	if len(u.Email) < 6 /* a@a.ab */ || strings.Index(u.Email, "@") == -1 {
 		return ErrInvalidEmail
+	}
+	if !u.Type.Valid() {
+		return ErrInvalidUserType
 	}
 	// other checks?
 	return nil
