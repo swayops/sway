@@ -54,10 +54,13 @@ func (srv *Server) InitializeDB(cfg *config.Config) error {
 }
 
 func (srv *Server) InitializeRoutes(r *gin.Engine) {
-	// RTB Handlers //
-	// Agency
-	createRoutes(r, srv, "/agency", getAgency, putAgency, delAgency)
-	r.GET("/getAllAgencies", getAllAgencies(srv))
+	// Talent Agency
+	createRoutes(r, srv, "/talentAgency", getTalentAgency, putTalentAgency, delTalentAgency)
+	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+
+	// AdAgency
+	createRoutes(r, srv, "/adAgency", getAdAgency, putAdAgency, delAdAgency)
+	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 
 	// Advertiser
 	createRoutes(r, srv, "/advertiser", getAdvertiser, putAdvertiser, delAdvertiser)
@@ -68,20 +71,15 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
 	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
 	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
-	r.GET("/campaignStatus/:campaignId/:status", toggleCampaignStatus(srv))
 	r.POST("/updateCampaign/:campaignId", updateCampaign(srv))
-
-	// Groups
-	createRoutes(r, srv, "/group", getGroup, putGroup, delGroup)
-	r.GET("/getGroupsByAgency/:id", getGroupByAgency(srv))
-	r.GET("/getAllGroups", getAllGroups(srv))
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
-	r.GET("/getInfluencersByGroup/:id", getInfluencersByGroup(srv))
-	r.GET("/addInfluencerToGroup/:influencerId/:groupId", addInfluencerToGroup(srv))
-	r.GET("/delInfluencerFromGroup/:influencerId/:groupId", delInfluencerFromGroup(srv))
+	r.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
+	r.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
+	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
+	r.GET("/getCategories", getCategories(srv))
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))

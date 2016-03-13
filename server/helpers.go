@@ -120,3 +120,11 @@ func sanitizeMention(str string) string {
 
 	return strings.ToLower(raw)
 }
+
+func lowerArr(s []string) []string {
+	out := []string{}
+	for _, v := range s {
+		out = append(out, strings.ToLower(v))
+	}
+	return out
+}
