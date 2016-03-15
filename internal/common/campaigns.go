@@ -28,8 +28,8 @@ type Campaign struct {
 	Instagram bool `json:"instagram,omitempty"`
 	YouTube   bool `json:"youtube,omitempty"`
 
-	// Influencer groups the client is targeting
-	GroupIds []string `json:"groupIds,omitempty"`
+	// Categories the client is targeting
+	Categories []string `json:"categories,omitempty"`
 
 	Perks string `json:"perks,omitempty"` // Perks need to be specced out
 

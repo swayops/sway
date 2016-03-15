@@ -74,12 +74,12 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
-		User       string   `json:"user"`
-		Agency     string   `json:"agency"`
-		Group      string   `json:"group"`
-		Advertiser string   `json:"advertiser"`
-		Campaign   string   `json:"campaign"`
-		Influencer string   `json:"influencer"`
-		All        []string `json:"all"`
+		User         string   `json:"user"`
+		AdAgency     string   `json:"adAgency"`
+		TalentAgency string   `json:"talentAgency"`
+		Advertiser   string   `json:"advertiser"`
+		Campaign     string   `json:"campaign"`
+		Influencer   string   `json:"influencer"`
+		All          []string `json:"all"`
 	} `json:"bucket"`
 }

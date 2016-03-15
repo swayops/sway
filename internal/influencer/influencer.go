@@ -22,21 +22,15 @@ type InfluencerLoad struct {
 	TwitterId   string `json:"twitter,omitempty"`
 	YouTubeId   string `json:"youtube,omitempty"`
 
-	GroupIds []string `json:"groupIds,omitempty"` // Groups this influencer belongs to
-	AgencyId string   `json:"agencyId,omitempty"` // Agency this influencer belongs to
-
-	FloorPrice float32 `json:"floor,omitempty"` // Price per engagement set by agency
-
-	Geo *misc.GeoRecord `json:"geo,omitempty"` // User inputted geo via app
-
-	Gender string `json:"gender,omitempty"`
+	AgencyId   string          `json:"agencyId,omitempty"` // Agency this influencer belongs to
+	FloorPrice float32         `json:"floor,omitempty"`    // Price per engagement set by agency
+	Geo        *misc.GeoRecord `json:"geo,omitempty"`      // User inputted geo via app
+	Gender     string          `json:"gender,omitempty"`
+	Category   string          `json:"category,omitempty"`
 }
 
 type Influencer struct {
 	Id string `json:"id"`
-
-	// Each influencer will be put into multiple groups (owned by agencies)
-	GroupIds []string `json:"groupIds,omitempty"`
 
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
@@ -55,6 +49,8 @@ type Influencer struct {
 
 	// "m" or "f" or "unicorn" lol
 	Gender string `json:"gender,omitempty"`
+	// Influencer inputted category they belong to
+	Category string `json:"category,omitempty"`
 
 	// Active accepted deals by the influencer that have not yet been completed
 	ActiveDeals []*common.Deal `json:"activeDeals,omitempty"`
@@ -67,14 +63,14 @@ type Influencer struct {
 	Timeouts int32 `json:"timeouts,omitempty"`
 }
 
-func New(twitterId, instaId, fbId, ytId, gender, agency string, groupIds []string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(twitterId, instaId, fbId, ytId, gender, agency, cat string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:         misc.PseudoUUID(),
 		AgencyId:   agency,
-		GroupIds:   groupIds,
 		FloorPrice: floorPrice,
 		Geo:        geo,
 		Gender:     gender,
+		Category:   cat,
 	}
 
 	err := inf.NewInsta(instaId, cfg)
@@ -258,8 +254,17 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecor
 			}
 
 			// Filter Checks
-			if len(cmp.GroupIds) > 0 && !misc.DoesIntersect(cmp.GroupIds, inf.GroupIds) {
-				return nil
+			if len(cmp.Categories) > 0 {
+				catFound := false
+				for _, cat := range cmp.Categories {
+					if inf.Category == cat {
+						catFound = true
+						break
+					}
+				}
+				if !catFound {
+					return nil
+				}
 			}
 
 			// If you already have a/have done deal for this campaign, screw off
