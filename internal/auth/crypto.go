@@ -27,11 +27,8 @@ func CheckPassword(hash string, password string) bool {
 }
 
 func CreateMAC(password, token, salt string) string {
-	key := make([]byte, 0, len(token)+len(salt))
 	// if we change the token size to be > 16 bytes, we'll have to decode the token/salt otherwise they will get hashed
-	key = append(key, token...)
-	key = append(key, salt...)
-	h := hmac.New(sha256.New, key)
+	h := hmac.New(sha256.New, []byte(token+salt))
 	h.Write([]byte(password))
 	return hex.EncodeToString(h.Sum(nil))
 }

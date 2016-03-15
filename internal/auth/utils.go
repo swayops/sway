@@ -60,11 +60,7 @@ func getCookie(r *http.Request, name string) string {
 }
 
 func getOwnersKey(itemType ItemType, itemId string) []byte {
-	key := make([]byte, 0, len(itemType)+1+len(itemId))
-	key = append(key, itemType...)
-	key = append(key, ':')
-	key = append(key, itemId...)
-	return key
+	return []byte(string(itemType) + ":" + itemId)
 }
 
 func getCreds(req *http.Request) (token, key string, isApiKey bool) {

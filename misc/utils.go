@@ -47,7 +47,7 @@ func HttpGetJson(c *http.Client, endpoint string, out interface{}) (err error) {
 	return
 }
 
-// CreateToken creates a token which consists of 2 bytes hash + 6 bytes timestamp(yyyyMMddhhmm) + sz secure random data
+// CreateToken creates a token which consists of 2 bytes hash + 6 bytes timestamp(yyMMddhhmmss) + sz secure random data
 // It will panic on the wrong size or random read errors since the program should NOT continue after that.
 func CreateToken(sz int) []byte {
 	if sz%8 != 0 {
@@ -55,8 +55,8 @@ func CreateToken(sz int) []byte {
 	}
 	buf := make([]byte, 8+sz)
 	t := time.Now().UTC()
-	binary.BigEndian.PutUint16(buf[2:], uint16(t.Year()))
-	buf[4], buf[5], buf[6], buf[7] = byte(t.Month()), byte(t.Day()), byte(t.Hour()), byte(t.Minute())
+	buf[2], buf[3], buf[4] = byte(t.Year()-2000), byte(t.Month()), byte(t.Day())
+	buf[5], buf[6], buf[7] = byte(t.Hour()), byte(t.Minute()), byte(t.Second())
 	if _, err := rand.Read(buf[8:]); err != nil {
 		panic(err)
 	}
@@ -69,10 +69,10 @@ func CheckToken(tok string) (time.Time, error) {
 	if len(buf) < 8 {
 		return nilTime, ErrInvalidToken
 	}
-	if Hash16(buf[2:]) != binary.BigEndian.Uint16(buf) {
+	if Hash16(buf[2:]) != binary.BigEndian.Uint16(buf[2:]) {
 		return nilTime, ErrInvalidToken
 	}
-	t := time.Date(int(binary.BigEndian.Uint16(buf[2:])), time.Month(buf[4]), int(buf[5]), int(buf[6]), int(buf[7]), 0, 0, time.UTC)
+	t := time.Date(2000+int(buf[2]), time.Month(buf[3]), int(buf[4]), int(buf[5]), int(buf[6]), int(buf[7]), 0, time.UTC)
 	return t, nil
 }
 
@@ -107,6 +107,7 @@ func DecodeHex(s string) []byte {
 	}
 	return b
 }
+
 func WithinLast(timestamp, hours int32) bool {
 	// Is the timestamp within the last X hours?
 	now := int32(time.Now().Unix())

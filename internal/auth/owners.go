@@ -9,9 +9,11 @@ type ItemType string
 
 // update this as we add new item types
 const (
+	AdvertiserAgencyItem ItemType = "advAgency"
+	AdvertiserItem       ItemType = "adv"
 	CampaignItem         ItemType = "camp"
-	TalentAgencyItem     ItemType = "talent"
-	AdvertiserAgencyItem ItemType = "adv"
+	TalentAgencyItem     ItemType = "talentAgency"
+	InfluencerItem       ItemType = `influencer`
 )
 
 func (a *Auth) SetOwnerTx(tx *bolt.Tx, itemType ItemType, itemId, userId string) error {
@@ -19,9 +21,13 @@ func (a *Auth) SetOwnerTx(tx *bolt.Tx, itemType ItemType, itemId, userId string)
 	return b.Put(getOwnersKey(itemType, itemId), []byte(userId))
 }
 
-func (a *Auth) IsOwner(tx *bolt.Tx, itemType ItemType, itemId, userId string) bool {
+func (a *Auth) IsOwnerTx(tx *bolt.Tx, itemType ItemType, itemId, userId string) bool {
+	return a.GetOwnerTx(tx, itemType, itemId) == userId
+}
+
+func (a *Auth) GetOwnerTx(tx *bolt.Tx, itemType ItemType, itemId string) string {
 	b := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
-	return string(b.Get(getOwnersKey(itemType, itemId))) == userId
+	return string(b.Get(getOwnersKey(itemType, itemId)))
 }
 
 func (a *Auth) DelOwnedItem(tx *bolt.Tx, itemType ItemType, itemId string) error {

@@ -27,7 +27,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		Cfg:  cfg,
 		r:    r,
 		db:   db,
-		auth: auth.New(db, cfg, "/login"),
+		auth: auth.New(db, cfg),
 	}
 
 	err := srv.InitializeDB(cfg)

@@ -11,6 +11,11 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+const (
+	AdminUserId     = "0"
+	SwayOpsAgencyId = "1"
+)
+
 type Login struct {
 	UserId   string `json:"userId"`
 	Password string `json:"password"`
@@ -18,6 +23,7 @@ type Login struct {
 
 type User struct {
 	Id        string   `json:"id"`
+	ParentId  string   `json:"parentId,omitempty"` // who created this user
 	Name      string   `json:"name,omitempty"`
 	Email     string   `json:"email,omitempty"`
 	Type      Scope    `json:"type,omitempty"`
@@ -100,6 +106,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		UserId:   u.Id,
 		Password: password,
 	}
+
 	if err = misc.PutTxJson(tx, a.cfg.Bucket.Login, strings.ToLower(u.Email), login); err != nil {
 		return
 	}

@@ -57,9 +57,21 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			misc.AbortWithErr(c, 400, ErrInvalidRequest)
 			return
 		}
+		if u.Type == Admin { // admin owns everything
+			return
+		}
 		var ok bool
 		a.db.View(func(tx *bolt.Tx) error {
-			ok = a.IsOwner(tx, itemType, itemID, u.Id)
+			oid := a.GetOwnerTx(tx, itemType, itemID)
+			if ok = oid == u.Id; ok {
+				return nil
+			}
+			// a parent owns all his children's assists, what a cruel cruel world.
+			for ou := a.GetUserTx(tx, oid); ou != nil && u.ParentId != ""; u = a.GetUserTx(tx, u.ParentId) {
+				if ok = u.Id == ou.ParentId; ok {
+					break
+				}
+			}
 			return nil
 		})
 		if !ok {
@@ -117,6 +129,22 @@ func (a *Auth) SignupHandler(c *gin.Context) {
 	if err := c.BindJSON(&uwp); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
+	}
+	if uwp.Type == "" {
+		uwp.Type = Advertiser
+	}
+	currentUser := GetCtxUser(c)
+	if currentUser != nil {
+		if !canCreate(currentUser.Type, uwp.Type) {
+			misc.AbortWithErr(c, 401, ErrUnauthorized)
+			return
+		}
+		uwp.ParentId = currentUser.Id
+	} else if uwp.Type != Advertiser {
+		misc.AbortWithErr(c, 401, ErrUnauthorized)
+		return
+	} else {
+		uwp.ParentId = SwayOpsAgencyId
 	}
 	if uwp.Password != uwp.Password2 {
 		misc.AbortWithErr(c, 400, ErrPasswordMismatch)
