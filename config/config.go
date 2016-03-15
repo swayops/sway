@@ -37,7 +37,8 @@ type Config struct {
 	DBPath string `json:"dbPath"`
 	DBName string `json:"dbName"`
 
-	BaseURL string `json:"baseURL"` // this is mainly used for internal directs
+	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
+	APIPath   string `json:"apiPath"`
 
 	DealTimeout    int32         `json:"dealTimeout"`    // In days
 	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
@@ -77,16 +78,15 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
-		User          string `json:"user"`
-		Login         string `json:"login"`
-		Token         string `json:"Token"`
-		Ownership     string `json:"ownership"`
-		ResetPassword string `json:"resetPassword"`
-		AdAgency      string `json:"adAgency"`
-		TalentAgency  string `json:"talentAgency"`
-		Advertiser    string `json:"advertiser"`
-		Campaign      string `json:"campaign"`
-		Influencer    string `json:"influencer"`
+		User         string `json:"user"`
+		Login        string `json:"login"`
+		Token        string `json:"Token"`
+		Ownership    string `json:"ownership"`
+		AdAgency     string `json:"adAgency"`
+		TalentAgency string `json:"talentAgency"`
+		Advertiser   string `json:"advertiser"`
+		Campaign     string `json:"campaign"`
+		Influencer   string `json:"influencer"`
 	} `json:"bucket"`
 }
 

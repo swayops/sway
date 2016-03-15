@@ -87,7 +87,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 
 	u.CreatedAt = time.Now().UnixNano()
 	u.UpdatedAt = u.CreatedAt
-	u.Salt = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
+	u.Salt = hex.EncodeToString(misc.CreateToken(SaltLen))
 
 	if password, err = HashPassword(password); err != nil {
 		return
@@ -107,7 +107,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		Password: password,
 	}
 
-	if err = misc.PutTxJson(tx, a.cfg.Bucket.Login, strings.ToLower(u.Email), login); err != nil {
+	if err = misc.PutTxJson(tx, a.cfg.Bucket.Login, misc.TrimEmail(u.Email), login); err != nil {
 		return
 	}
 	return
@@ -120,7 +120,7 @@ func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
 	}
 	uid := []byte(userId)
 	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
-	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(strings.ToLower(user.Email)))
+	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
 	os := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
 	os.ForEach(func(k, v []byte) error {
 		if bytes.Compare(v, uid) == 0 {

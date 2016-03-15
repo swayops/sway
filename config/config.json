@@ -2,7 +2,8 @@
 	"port": "8080",
 	"dbPath": "data/",
 	"dbName": "sway",
-	"baseURL": "http://localhost:8080/",
+	"serverURL": "http://localhost:8080",
+	"apiPath": "/api/v1/",
 
 	"bucket": {
 		"user": "user",
@@ -13,8 +14,7 @@
 		"talentAgency": "talentAgency",
 		"advertiser": "advertiser",
 		"campaign": "campaign",
-		"influencer": "influencer",
-		"resetPassword": "resetPassword"
+		"influencer": "influencer"
 	},
 
 	"youtube": {

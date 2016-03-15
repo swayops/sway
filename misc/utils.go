@@ -9,7 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
+	"unicode"
 )
 
 const hour = int32(60 * 60)
@@ -69,7 +71,7 @@ func CheckToken(tok string) (time.Time, error) {
 	if len(buf) < 8 {
 		return nilTime, ErrInvalidToken
 	}
-	if Hash16(buf[2:]) != binary.BigEndian.Uint16(buf[2:]) {
+	if Hash16(buf[2:]) != binary.BigEndian.Uint16(buf) {
 		return nilTime, ErrInvalidToken
 	}
 	t := time.Date(2000+int(buf[2]), time.Month(buf[3]), int(buf[4]), int(buf[5]), int(buf[6]), int(buf[7]), 0, time.UTC)
@@ -115,4 +117,15 @@ func WithinLast(timestamp, hours int32) bool {
 		return true
 	}
 	return false
+}
+
+// this will break "a x"@xxx.com, but seriously if someone is using a space in their name,
+// maybe they shouldn't be allowed on the internet.
+func TrimEmail(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+		return unicode.ToLower(r)
+	}, s)
 }

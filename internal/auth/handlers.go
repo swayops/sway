@@ -135,7 +135,7 @@ func (a *Auth) SignupHandler(c *gin.Context) {
 	}
 	currentUser := GetCtxUser(c)
 	if currentUser != nil {
-		if !canCreate(currentUser.Type, uwp.Type) {
+		if !currentUser.Type.CanCreate(uwp.Type) {
 			misc.AbortWithErr(c, 401, ErrUnauthorized)
 			return
 		}

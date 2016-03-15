@@ -4,23 +4,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/missionMeteora/mandrill"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
 )
 
 const (
-	TokenAge       = time.Hour * 6
-	TokenLen       = 16
-	TokenStringLen = TokenLen * 2
-	SaltLen        = 16
-	SaltStringLen  = TokenLen * 2
-	MacLen         = 32
-	MacStringLen   = MacLen * 2
-	ApiKeyHeader   = `x-apikey`
+	TokenAge     = time.Hour * 6
+	TokenLen     = 8 // it's actually 16 because CreateToken appends 8 bytes
+	SaltLen      = 8
+	MacLen       = 32
+	ApiKeyHeader = `x-apikey`
 
 	purgeFrequency = time.Hour * 24
 )
@@ -31,6 +28,7 @@ type Auth struct {
 	loginUrl string
 
 	purgeTicker *time.Ticker
+	emailClient *mandrill.Client
 }
 
 func New(db *bolt.DB, cfg *config.Config) *Auth {
@@ -60,8 +58,9 @@ func (a *Auth) purgeInvalidTokens() {
 	}
 
 }
+
 func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
-	email = strings.ToLower(strings.TrimSpace(email))
+	email = misc.TrimEmail(email)
 
 	var l Login
 	if misc.GetTxJson(tx, a.cfg.Bucket.Login, email, &l) == nil && l.UserId != "" {
@@ -112,8 +111,8 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 	if !CheckPassword(l.Password, pass) {
 		return nil, "", ErrInvalidPass
 	}
-	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8)) // -8 because CreateToken adds 8 bytes
-	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, &Token{l.UserId, time.Now().Add(TokenAge).UnixNano()})
+	stok = hex.EncodeToString(misc.CreateToken(TokenLen))
+	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, &Token{UserId: l.UserId, Expires: time.Now().Add(TokenAge).UnixNano()})
 	return
 }
 
@@ -127,11 +126,12 @@ func (a *Auth) SignIn(email, pass string) (l *Login, stok string, err error) {
 
 type Token struct {
 	UserId  string `json:"userId"`
+	Email   string `json:"email"`
 	Expires int64  `json:"expires"`
 }
 
 func (t *Token) IsValid(ts time.Time) bool {
-	return t.UserId != "" && t.Expires == -1 || t.Expires > ts.UnixNano()
+	return (t.UserId != "" || t.Email != "") && t.Expires == -1 || t.Expires > ts.UnixNano()
 }
 
 func (t *Token) Refresh(dur time.Duration) *Token {
