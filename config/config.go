@@ -82,8 +82,8 @@ type Config struct {
 		Token         string `json:"Token"`
 		Ownership     string `json:"ownership"`
 		ResetPassword string `json:"resetPassword"`
-		Agency        string `json:"agency"`
-		Group         string `json:"group"`
+		AdAgency      string `json:"adAgency"`
+		TalentAgency  string `json:"talentAgency"`
 		Advertiser    string `json:"advertiser"`
 		Campaign      string `json:"campaign"`
 		Influencer    string `json:"influencer"`

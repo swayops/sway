@@ -6,4 +6,6 @@ type Advertiser struct {
 
 	Name      string   `json:"name"`
 	Campaigns []string `json:"campaigns"`
+
+	BudgetType string `json:"budget"` // "subscription" OR "net30"
 }
