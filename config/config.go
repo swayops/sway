@@ -7,6 +7,8 @@ import (
 	"os"
 	"reflect"
 	"time"
+
+	"github.com/missionMeteora/mandrill"
 )
 
 var (
@@ -26,7 +28,7 @@ func New(loc string) (*Config, error) {
 		log.Println("Config error", err)
 		return nil, err
 	}
-
+	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	return &c, nil
 }
 
@@ -40,10 +42,19 @@ type Config struct {
 	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
 	APIPath   string `json:"apiPath"`
 
+	Sandbox bool `json:"sandbox"`
+
 	DealTimeout    int32         `json:"dealTimeout"`    // In days
 	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
 	StatsInterval  time.Duration `json:"statsInterval"`  // In seconds
 	ExplorerUpdate time.Duration `json:"explorerUpdate"` // In hours
+
+	Mandrill struct {
+		APIKey     string `json:"apiKey"`
+		SubAccount string `json:"subAccount"`
+		FromEmail  string `json:"fromEmail"`
+		FromName   string `json:"fromName"`
+	} `json:"mandrill"`
 
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`
@@ -88,6 +99,8 @@ type Config struct {
 		Campaign     string `json:"campaign"`
 		Influencer   string `json:"influencer"`
 	} `json:"bucket"`
+
+	ec *mandrill.Client
 }
 
 func (c *Config) AllBuckets() []string {
@@ -99,4 +112,8 @@ func (c *Config) AllBuckets() []string {
 		}
 	}
 	return out
+}
+
+func (c *Config) MailClient() *mandrill.Client {
+	return c.ec
 }

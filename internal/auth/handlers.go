@@ -1,10 +1,13 @@
 package auth
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
 
@@ -161,4 +164,41 @@ func (a *Auth) SignupHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(200, misc.StatusOK(uwp.Id))
+}
+
+const resetPasswordUrl = "%s%s/resetPassword/%s"
+
+func (a *Auth) ReqResetHandler(c *gin.Context) {
+	var req struct {
+		Email string `json:"email"`
+	}
+	if c.BindJSON(&req) != nil || len(req.Email) == 0 {
+		misc.AbortWithErr(c, 400, ErrInvalidRequest)
+		return
+	}
+	var (
+		u    *User
+		stok string
+		err  error
+	)
+	a.db.Update(func(tx *bolt.Tx) error {
+		u, stok, err = a.RequestResetPasswordTx(tx, req.Email)
+		return nil
+	})
+	if err != nil {
+		misc.AbortWithErr(c, 400, ErrInvalidRequest)
+		return
+	}
+	tmplData := struct {
+		Sandbox bool
+		URL     string
+	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, a.cfg.APIPath, stok)}
+
+	email := templates.ResetPassword.Render(tmplData)
+	if resp, err := a.cfg.MailClient().SendMessage(email, "Password Reset Request", req.Email, u.Name, []string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		log.Printf("%v: %+v", err, resp)
+		misc.AbortWithErr(c, 500, ErrUnexpected)
+		return
+	}
+	c.JSON(200, misc.StatusOK(""))
 }

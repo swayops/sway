@@ -4,6 +4,7 @@
 	"dbName": "sway",
 	"serverURL": "http://localhost:8080",
 	"apiPath": "/api/v1/",
+	"sandbox": true,
 
 	"bucket": {
 		"user": "user",
@@ -15,6 +16,13 @@
 		"advertiser": "advertiser",
 		"campaign": "campaign",
 		"influencer": "influencer"
+	},
+
+	"mandrill": {
+		"apiKey": "Pc4PtpXLpGQr0iHjzUPCjg",
+		"subAccount":"SwayOps",
+		"fromEmail": "noreply@swayops.com",
+		"fromName": "SwayOps"
 	},
 
 	"youtube": {

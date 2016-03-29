@@ -19,6 +19,7 @@ var (
 	ErrShortPass        = errors.New("password can't be less than 8 characters")
 	ErrPasswordMismatch = errors.New("password mismatch")
 	ErrUnauthorized     = errors.New("unauthorized")
+	ErrUnexpected       = errors.New("unexpected system error, our highly trained bug squashers have been summoned")
 )
 
 func GetCtxUser(c *gin.Context) *User {
