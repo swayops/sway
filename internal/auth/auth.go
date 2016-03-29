@@ -14,9 +14,8 @@ import (
 
 const (
 	TokenAge     = time.Hour * 6
-	TokenLen     = 8 // it's actually 16 because CreateToken appends 8 bytes
-	SaltLen      = 8
-	MacLen       = 32
+	TokenLen     = 16 // it's actually 16 because CreateToken appends 8 bytes
+	SaltLen      = 16
 	ApiKeyHeader = `x-apikey`
 
 	purgeFrequency = time.Hour * 24
@@ -84,24 +83,33 @@ func (a *Auth) GetUserByEmailTx(tx *bolt.Tx, email string) *User {
 	return nil
 }
 
-func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) (oldMac, hashedPass, stoken string, user *User, isApiKey bool) {
-	if stoken, oldMac, isApiKey = getCreds(req); len(stoken) == 0 || len(oldMac) == 0 {
-		return
+type reqInfo struct {
+	oldMac     string
+	hashedPass string
+	stoken     string
+	user       *User
+	isApiKey   bool
+}
+
+func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
+	var ri reqInfo
+	if ri.stoken, ri.oldMac, ri.isApiKey = getCreds(req); ri.stoken == "" || ri.oldMac == "" {
+		return nil
 	}
 
 	var token Token
-	if misc.GetTxJson(tx, a.cfg.Bucket.Token, stoken, &token) != nil || !token.IsValid(time.Now()) {
-		return
+	if misc.GetTxJson(tx, a.cfg.Bucket.Token, ri.stoken, &token) != nil || !token.IsValid(time.Now()) {
+		return nil
 	}
-	if user = a.GetUserTx(tx, token.UserId); user == nil {
-		return
+	if ri.user = a.GetUserTx(tx, token.UserId); ri.user == nil {
+		return nil
 	}
-	if l := a.GetLoginTx(tx, user.Email); l != nil {
-		hashedPass = l.Password
+	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
+		ri.hashedPass = l.Password
 	} else {
-		user = nil
+		return nil
 	}
-	return
+	return &ri
 }
 
 func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string, err error) {
@@ -111,7 +119,7 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 	if !CheckPassword(l.Password, pass) {
 		return nil, "", ErrInvalidPass
 	}
-	stok = hex.EncodeToString(misc.CreateToken(TokenLen))
+	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
 	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, &Token{UserId: l.UserId, Expires: time.Now().Add(TokenAge).UnixNano()})
 	return
 }

@@ -26,8 +26,8 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 		return err
 	}
 
-	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&respData)
+	resp.Body.Close()
 	if err != nil {
 		log.Println("Error when unmarshalling from:", endpoint, err)
 		return err

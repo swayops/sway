@@ -10,7 +10,7 @@ import (
 
 const (
 	ResetTokenLen    = 16
-	ResetTokenMaxAge = time.Hour * 24
+	ResetTokenMaxAge = time.Hour * 48
 )
 
 func (a *Auth) RequestResetPasswordTx(tx *bolt.Tx, email string) (*User, string, error) {
@@ -18,7 +18,7 @@ func (a *Auth) RequestResetPasswordTx(tx *bolt.Tx, email string) (*User, string,
 	if u == nil {
 		return nil, "", ErrInvalidEmail
 	}
-	stok := hex.EncodeToString(misc.CreateToken(ResetTokenLen))
+	stok := hex.EncodeToString(misc.CreateToken(ResetTokenLen - 8))
 	tokVal := Token{Email: misc.TrimEmail(email), Expires: time.Now().Add(ResetTokenMaxAge).UnixNano()}
 	return u, stok, misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, tokVal)
 }

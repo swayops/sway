@@ -12,18 +12,13 @@ import (
 )
 
 func (a *Auth) VerifyUser(c *gin.Context) {
-	var (
-		oldMac, hashedPass, stoken string
-
-		isApiKey bool
-		user     *User
-	)
+	var ri *reqInfo
 	a.db.View(func(tx *bolt.Tx) error {
-		oldMac, hashedPass, stoken, user, isApiKey = a.getReqInfoTx(tx, c.Request)
+		ri = a.getReqInfoTx(tx, c.Request)
 		return nil
 	})
 	w, r := c.Writer, c.Request
-	if len(hashedPass) == 0 || !VerifyMac(oldMac, hashedPass, stoken, user.Salt) {
+	if ri == nil || !VerifyMac(ri.oldMac, ri.hashedPass, ri.stoken, ri.user.Salt) {
 		if a.loginUrl != "" && r.Method == "GET" && r.Header.Get("X-Requested-With") == "" {
 			c.Redirect(302, a.loginUrl)
 		} else {
@@ -31,11 +26,11 @@ func (a *Auth) VerifyUser(c *gin.Context) {
 		}
 		return
 	}
-	c.Set(gin.AuthUserKey, user)
-	if !isApiKey {
+	c.Set(gin.AuthUserKey, ri.user)
+	if !ri.isApiKey {
 		refreshCookie(w, r, "token", TokenAge)
 		refreshCookie(w, r, "key", TokenAge)
-		a.refreshToken(stoken, TokenAge)
+		a.refreshToken(ri.stoken, TokenAge)
 	}
 }
 
@@ -166,7 +161,7 @@ func (a *Auth) SignupHandler(c *gin.Context) {
 	c.JSON(200, misc.StatusOK(uwp.Id))
 }
 
-const resetPasswordUrl = "%s%s/resetPassword/%s"
+const resetPasswordUrl = "%s/resetPassword/%s"
 
 func (a *Auth) ReqResetHandler(c *gin.Context) {
 	var req struct {
@@ -192,12 +187,39 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 	tmplData := struct {
 		Sandbox bool
 		URL     string
-	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, a.cfg.APIPath, stok)}
+	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, stok)}
 
 	email := templates.ResetPassword.Render(tmplData)
-	if resp, err := a.cfg.MailClient().SendMessage(email, "Password Reset Request", req.Email, u.Name, []string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+	if resp, err := a.cfg.MailClient().SendMessage(email, "Password Reset Request", req.Email, u.Name,
+		[]string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		log.Printf("%v: %+v", err, resp)
 		misc.AbortWithErr(c, 500, ErrUnexpected)
+		return
+	}
+	c.JSON(200, misc.StatusOK(""))
+}
+
+func (a *Auth) ResetHandler(c *gin.Context) {
+	var req struct {
+		Token     string `json:"token"`
+		Email     string `json:"email"`
+		Password  string `json:"pass"`
+		Password1 string `json:"pass1"`
+	}
+
+	if c.BindJSON(&req) != nil || req.Email == "" || req.Token == "" {
+		misc.AbortWithErr(c, 400, ErrInvalidRequest)
+		return
+	}
+
+	if req.Password != req.Password1 {
+		misc.AbortWithErr(c, 400, ErrPasswordMismatch)
+		return
+	}
+	if err := a.db.Update(func(tx *bolt.Tx) error {
+		return a.ResetPasswordTx(tx, req.Token, req.Email, req.Password)
+	}); err != nil {
+		misc.AbortWithErr(c, 400, err)
 		return
 	}
 	c.JSON(200, misc.StatusOK(""))
