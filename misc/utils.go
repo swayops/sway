@@ -3,13 +3,15 @@ package misc
 import (
 	"compress/flate"
 	"compress/gzip"
-	"crypto/rand"
+	crand "crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 )
@@ -21,7 +23,21 @@ var (
 	ErrMissingId    = errors.New("missing id")
 
 	nilTime time.Time
+
+	rnd     struct {
+		sync.Mutex
+		*rand.Rand
+	}
 )
+
+func init() {
+	var seed [8]byte
+	if n, err := crand.Read(seed[:]); n != 8 || err != nil {
+		panic("couldn't generate a crypto rand seed")
+	}
+	seedn := binary.BigEndian.Uint64(seed[:])
+	rnd.Rand = rand.New(rand.NewSource(int64(seedn)))
+}
 
 func HttpGetJson(c *http.Client, endpoint string, out interface{}) (err error) {
 	var resp *http.Response
@@ -59,7 +75,10 @@ func CreateToken(sz int) []byte {
 	t := time.Now().UTC()
 	buf[2], buf[3], buf[4] = byte(t.Year()-2000), byte(t.Month()), byte(t.Day())
 	buf[5], buf[6], buf[7] = byte(t.Hour()), byte(t.Minute()), byte(t.Second())
-	if _, err := rand.Read(buf[8:]); err != nil {
+	rnd.Lock()
+	_, err := rnd.Read(buf[8:])
+	rnd.Unlock()
+	if err != nil {
 		panic(err)
 	}
 	binary.BigEndian.PutUint16(buf, Hash16(buf[2:]))
