@@ -27,13 +27,14 @@ type Auth struct {
 	loginUrl string
 
 	purgeTicker *time.Ticker
-	emailClient *mandrill.Client
+	ec          *mandrill.Client
 }
 
 func New(db *bolt.DB, cfg *config.Config) *Auth {
 	a := &Auth{
 		db:  db,
 		cfg: cfg,
+		ec:  cfg.MailClient(),
 	}
 	go a.purgeInvalidTokens()
 	return a

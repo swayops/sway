@@ -7,6 +7,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
@@ -91,10 +92,21 @@ func saveInfluencer(tx *bolt.Tx, inf influencer.Influencer, cfg *config.Config) 
 	return misc.PutBucketBytes(tx, cfg.Bucket.Influencer, inf.Id, b)
 }
 
-func createRoutes(r *gin.Engine, srv *Server, endpoint string, get, post, del func(*Server) gin.HandlerFunc) {
-	r.GET(endpoint+"/:id", get(srv))
-	r.POST(endpoint, post(srv))
-	r.DELETE(endpoint+"/:id", del(srv))
+//TODO discuss with Shahzil and handle scopes
+func createRoutes(r *gin.Engine, srv *Server, endpoint string, scopes auth.ScopeMap, ownershipItemType auth.ItemType,
+	get, post, del func(*Server) gin.HandlerFunc) {
+
+	sh := srv.auth.CheckScopes(scopes)
+	if ownershipItemType != "" {
+		oh := srv.auth.CheckOwnership(ownershipItemType, "id")
+		r.GET(endpoint+"/:id", srv.auth.VerifyUser, sh, oh, get(srv))
+		r.POST(endpoint, srv.auth.VerifyUser, sh, post(srv))
+		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser, sh, oh, del(srv))
+	} else {
+		r.GET(endpoint+"/:id", srv.auth.VerifyUser, sh, get(srv))
+		r.POST(endpoint, srv.auth.VerifyUser, sh, post(srv))
+		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser, sh, del(srv))
+	}
 }
 
 func sanitizeHash(str string) string {

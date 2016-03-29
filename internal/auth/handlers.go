@@ -190,7 +190,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, stok)}
 
 	email := templates.ResetPassword.Render(tmplData)
-	if resp, err := a.cfg.MailClient().SendMessage(email, "Password Reset Request", req.Email, u.Name,
+	if resp, err := a.ec.SendMessage(email, "Password Reset Request", req.Email, u.Name,
 		[]string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		log.Printf("%v: %+v", err, resp)
 		misc.AbortWithErr(c, 500, ErrUnexpected)
