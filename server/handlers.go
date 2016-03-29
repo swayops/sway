@@ -47,6 +47,7 @@ func putTalentAgency(s *Server) gin.HandlerFunc {
 			}
 			return misc.PutBucketBytes(tx, s.Cfg.Bucket.TalentAgency, ag.Id, b)
 		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 
