@@ -19,8 +19,7 @@ func OpenDB(path string, name string) *bolt.DB {
 func InitIndex(tx *bolt.Tx, name string, offset uint64) error {
 	b := GetBucket(tx, "index")
 	key := []byte(name)
-	s := string(b.Get(key))
-	if len(s) == 0 {
+	if len(b.Get(key)) == 0 {
 		return b.Put(key, big.NewInt(int64(offset)).Bytes())
 	}
 	return nil
@@ -57,6 +56,8 @@ func GetNextIndex(tx *bolt.Tx, bucket string) (string, error) {
 	key := []byte(bucket)
 	// note that using SetBytes is pure bytes not  the string rep of the number.
 	b := GetBucket(tx, "index")
-	n := new(big.Int).SetBytes(b.Get(key))
+	ov := b.Get(key)
+	log.Println(ov)
+	n := new(big.Int).SetBytes(ov)
 	return n.String(), b.Put(key, n.Add(n, one).Bytes())
 }
