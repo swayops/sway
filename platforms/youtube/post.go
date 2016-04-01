@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/misc"
 )
 
 type Post struct {
@@ -17,36 +16,51 @@ type Post struct {
 	PostURL string `json:"url,omitempty"` // Link to the post
 
 	// Stats
-	Views    float32 `json:"views,omitempty"`
-	Likes    float32 `json:"likes,omitempty"`
-	Dislikes float32 `json:"dislikes,omitempty"`
-	Comments float32 `json:"comments,omitempty"`
+	Views      float32 `json:"views,omitempty"`
+	ViewsDelta float32 `json:"vDelta,omitempty"`
+
+	Likes      float32 `json:"likes,omitempty"`
+	LikesDelta float32 `json:"lDelta,omitempty"`
+
+	Dislikes      float32 `json:"dislikes,omitempty"`
+	DislikesDelta float32 `json:"dlDelta,omitempty"`
+
+	Comments      float32 `json:"comments,omitempty"`
+	CommentsDelta float32 `json:"cDelta,omitempty"`
 
 	LastUpdated int32 `json:"lastUpdated,omitempty"`
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
-	// If the post is more than 4 days old AND
-	// it has been updated in the last week, SKIP!
-	// i.e. only update old posts once a week
-	if !misc.WithinLast(pt.Published, 24*4) && misc.WithinLast(pt.LastUpdated, 24*7) {
-		return nil
-	}
+	// // If the post is more than 4 days old AND
+	// // it has been updated in the last week, SKIP!
+	// // i.e. only update old posts once a week
+	// if !misc.WithinLast(pt.Published, 24*4) && misc.WithinLast(pt.LastUpdated, 24*7) {
+	// 	return nil
+	// }
 
-	// If we have already updated within the last 12 hours, skip!
-	if misc.WithinLast(pt.LastUpdated, 12) {
-		return nil
-	}
+	// // If we have already updated within the last 12 hours, skip!
+	// if misc.WithinLast(pt.LastUpdated, 12) {
+	// 	return nil
+	// }
 
 	views, likes, dislikes, comments, err := getVideoStats(pt.Id, cfg)
 	if err != nil {
 		return err
 	}
 
+	pt.LikesDelta = likes - pt.Likes
 	pt.Likes = likes
+
+	pt.DislikesDelta = dislikes - pt.Dislikes
 	pt.Dislikes = dislikes
+
+	pt.ViewsDelta = views - pt.Views
 	pt.Views = views
+
+	pt.CommentsDelta = comments - pt.Comments
 	pt.Comments = comments
+
 	pt.LastUpdated = int32(time.Now().Unix())
 
 	return nil

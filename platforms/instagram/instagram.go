@@ -43,8 +43,8 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 func (in *Instagram) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
 
-	// If we already updated in the last 4 hours, skip
-	if misc.WithinLast(in.LastUpdated, 4) {
+	// If we already updated in the last 12 hours, skip
+	if misc.WithinLast(in.LastUpdated, cfg.InfluencerTTL) {
 		return nil
 	}
 

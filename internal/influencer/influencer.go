@@ -6,6 +6,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -17,6 +18,8 @@ import (
 
 // The json struct accepted by the putInfluencer method
 type InfluencerLoad struct {
+	Name string `json:"name,omitempty"`
+
 	InstagramId string `json:"instagram,omitempty"`
 	FbId        string `json:"facebook,omitempty"`
 	TwitterId   string `json:"twitter,omitempty"`
@@ -32,11 +35,14 @@ type InfluencerLoad struct {
 type Influencer struct {
 	Id string `json:"id"`
 
+	// Name of the influencer
+	Name string `json:"name"`
+
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
 
 	// Minimum price per engagement set by agency
-	FloorPrice float32 `json:"floor,omitempty"`
+	FloorPrice float32 `json:"floorPrice,omitempty"`
 
 	// References to the social media accounts this influencer owns
 	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
@@ -63,8 +69,9 @@ type Influencer struct {
 	Timeouts int32 `json:"timeouts,omitempty"`
 }
 
-func New(twitterId, instaId, fbId, ytId, gender, agency, cat string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(name, twitterId, instaId, fbId, ytId, gender, agency, cat string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
+		Name:       name,
 		Id:         misc.PseudoUUID(),
 		AgencyId:   agency,
 		FloorPrice: floorPrice,
@@ -164,9 +171,14 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	return nil
 }
 
-func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config) (err error) {
+func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]struct{}) (err error) {
 	// Update data for all completed deal posts
 	for _, deal := range inf.CompletedDeals {
+		if _, ok := activeCampaigns[deal.CampaignId]; !ok {
+			// Don't udpate deals for campaigns that aren't
+			// active anymore! NO POINT!
+			continue
+		}
 		if deal.Tweet != nil {
 			if err := deal.Tweet.UpdateData(cfg); err != nil {
 				return err
@@ -188,7 +200,7 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config) (err error) {
 	return nil
 }
 
-func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func GetAvailableDeals(db, budgetDb *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 
@@ -244,7 +256,7 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecor
 					}
 					targetDeal = deal
 					dealFound = true
-					targetDeal.Platforms = make(map[string]float32)
+					targetDeal.Platforms = []string{}
 				}
 			}
 
@@ -298,21 +310,21 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecor
 			// Social Media Checks
 			// Values are potential price points TBD
 			if cmp.Twitter && inf.Twitter != nil {
-				targetDeal.Platforms[platform.Twitter] = 1
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
 			}
 
 			if cmp.Facebook && inf.Facebook != nil {
-				targetDeal.Platforms[platform.Facebook] = 1
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 
 			}
 
 			if cmp.Instagram && inf.Instagram != nil {
-				targetDeal.Platforms[platform.Instagram] = 2
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
 
 			}
 
 			if cmp.YouTube && inf.YouTube != nil {
-				targetDeal.Platforms[platform.YouTube] = 3
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 
 			}
 
@@ -329,5 +341,18 @@ func GetAvailableDeals(db *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecor
 		})
 		return nil
 	})
-	return infDeals
+
+	// Fill in available spendables now
+	// This also makes sure that only campaigns with spendable are the
+	// only ones eligible for deals
+	filtered := make([]*common.Deal, 0, 512)
+	for _, deal := range infDeals {
+		store, err := budget.GetBudgetInfo(budgetDb, cfg, deal.CampaignId, "")
+		if err == nil && store.Spendable > 0 && store.Spent < store.Budget {
+			deal.Spendable = store.Spendable
+			filtered = append(filtered, deal)
+		}
+	}
+
+	return filtered
 }
