@@ -176,10 +176,11 @@ func billing(s *Server) error {
 		// Influencer Invoice
 		log.Println("Influencer Invoice")
 		for _, data := range store {
-			for id, inf := range data.Influencers {
+			for id, infData := range data.Influencers {
 				var (
-					g influencer.Influencer
-					v []byte
+					inf       influencer.Influencer
+					v         []byte
+					agencyFee float32
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
@@ -189,16 +190,22 @@ func billing(s *Server) error {
 					continue
 				}
 
-				if err = json.Unmarshal(v, &g); err != nil {
+				if err = json.Unmarshal(v, &inf); err != nil {
 					log.Println("Invoice error for influencer", err)
+					continue
+				}
+
+				agencyFee = getTalentAgencyFee(s, inf.AgencyId)
+				if agencyFee == 0 {
+					log.Println("error retrieving agency fee for", inf.Id)
 					continue
 				}
 
 				formatted := fmt.Sprintf(
 					infInvoiceFormat,
-					g.Name,
+					inf.Name,
 					id,
-					inf.Payout*(1-budget.TalentAgencyFee),
+					infData.Payout*(1-agencyFee),
 				)
 				log.Println(formatted)
 			}
@@ -207,10 +214,12 @@ func billing(s *Server) error {
 		// Talent Agency Invoice
 		log.Println("Talent Agency Invoice")
 		for _, data := range store {
-			for id, data := range data.Influencers {
+			for id, infData := range data.Influencers {
 				var (
-					inf influencer.Influencer
-					v   []byte
+					ag        common.TalentAgency
+					inf       influencer.Influencer
+					v         []byte
+					agencyFee float32
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
@@ -225,9 +234,6 @@ func billing(s *Server) error {
 					continue
 				}
 
-				var (
-					g common.TalentAgency
-				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(inf.AgencyId))
 					return nil
@@ -236,16 +242,22 @@ func billing(s *Server) error {
 					continue
 				}
 
-				if err = json.Unmarshal(v, &g); err != nil {
+				if err = json.Unmarshal(v, &ag); err != nil {
 					log.Println("Invoice error for talent agency invoice", err)
+					continue
+				}
+
+				agencyFee = getTalentAgencyFee(s, inf.AgencyId)
+				if agencyFee == 0 {
+					log.Println("error retrieving agency fee for", inf.Id)
 					continue
 				}
 
 				formatted := fmt.Sprintf(
 					talentAgencyInvoiceFormat,
-					g.Name,
-					g.Id,
-					data.Payout*budget.TalentAgencyFee,
+					ag.Name,
+					ag.Id,
+					infData.Payout*agencyFee,
 				)
 				log.Println(formatted)
 			}

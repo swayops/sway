@@ -264,6 +264,26 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, cfg *config.Config) error {
 	return misc.PutBucketBytes(tx, cfg.Bucket.Campaign, cmp.Id, b)
 }
 
+func getTalentAgencyFee(s *Server, id string) float32 {
+	var (
+		v   []byte
+		err error
+		ag  common.TalentAgency
+	)
+
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(id))
+		return nil
+	}); err != nil {
+		return 0
+	}
+
+	if err = json.Unmarshal(v, &ag); err != nil {
+		return 0
+	}
+	return ag.Fee
+}
+
 func saveAllDeals(s *Server, inf *influencer.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data

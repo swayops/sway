@@ -7,5 +7,5 @@ type AdAgency struct {
 
 	UserId string `json:"userId,omitempty"` // User this belongs to
 
-	Fee float32 `json:"fee,omitempty"` // To be specced out
+	Fee float32 `json:"fee,omitempty"` // Percentage (decimal)
 }

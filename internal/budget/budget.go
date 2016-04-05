@@ -72,6 +72,7 @@ type InfluencerData struct {
 }
 
 func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float32, billing bool) error {
+	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
 		key := getBudgetKey()
 		b := tx.Bucket([]byte(cfg.BudgetBucket)).Get([]byte(key))
@@ -89,7 +90,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		monthlyBudget := cmp.Budget
 		if !billing {
 			// TODAY IS NOT BILLING DAY! (first of the month)
-			// This function could be run could be mid-month..
+			// This function could be run could be mid-month.. (new campaign)
 			// so we need to calculate what the given
 			// (monthly) budget would be for the days left.
 			now := time.Now().UTC()
@@ -97,7 +98,6 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			daysUntilEnd := days - now.Day() + 1
 
 			monthlyBudget = (cmp.Budget / float32(days)) * float32(daysUntilEnd)
-			log.Println("NEW MONTHLY!", monthlyBudget)
 		} else {
 			// TODAY IS BILLING DAY! (first of the month)
 			// Is there a newBudget value (i.e. a lower budget)?
@@ -113,6 +113,9 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 
 		// Take out margins from spendable
 		// NOTE: This will automatically reset Pending too
+		// Also.. no need for an influencers struct because
+		// this is either a brand new campaign or its billing
+		// day
 		st[cmp.Id] = &Store{
 			Budget:      monthlyBudget,
 			Leftover:    leftover,
@@ -171,8 +174,10 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			Budget:      oldBudget + tbaBudget,
 			Leftover:    store.Leftover,
 			Spendable:   store.Spendable + tbaBudget - (tbaDspFee + tbaExchangeFee),
+			Spent:       store.Spent,
 			DspFee:      store.DspFee + tbaDspFee,
 			ExchangeFee: store.ExchangeFee + tbaExchangeFee,
+			Influencers: store.Influencers,
 		}
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
@@ -181,9 +186,11 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			Budget:      store.Budget,
 			Leftover:    store.Leftover,
 			Spendable:   store.Spendable,
+			Spent:       store.Spent,
 			DspFee:      store.DspFee,
 			ExchangeFee: store.ExchangeFee,
 			Pending:     newBudget,
+			Influencers: store.Influencers,
 		}
 	}
 

@@ -8,6 +8,6 @@ type Advertiser struct {
 	Name      string   `json:"name"`
 	Campaigns []string `json:"campaigns"`
 
-	ExchangeFee float32 `json:"exchangeFee,omitempty"`
-	DspFee      float32 `json:"dspFee,omitempty"`
+	ExchangeFee float32 `json:"exchangeFee,omitempty"` // Percentage (decimal)
+	DspFee      float32 `json:"dspFee,omitempty"`      // Percentage (decimal)
 }

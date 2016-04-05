@@ -37,12 +37,78 @@ func putTalentAgency(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if ag.Fee == 0 || ag.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Insert a check for whether the user id exists in the "User" bucket here
 
 			if ag.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.TalentAgency); err != nil {
 				return
 			}
+			if b, err = json.Marshal(ag); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.TalentAgency, ag.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(ag.Id))
+	}
+}
+
+func updateTalentAgency(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the agency attributes
+	// NOTE: Must send full struct filled out with previous returned values
+	return func(c *gin.Context) {
+		var (
+			ag common.TalentAgency
+			err error
+			b   []byte
+		)
+		id := c.Params.ByName("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(id))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &ag); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
+			return
+		}
+
+		var upd common.TalentAgency
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if ag.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		ag.Name = upd.Name
+
+		if upd.Fee == 0 || upd.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+		// NOTE: Fee changes will only reflect for new campaigns AND old campaigns
+		// AFTER the first of the month (when billing runs!)
+		ag.Fee = upd.Fee
+
+		// Save the Agency
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if b, err = json.Marshal(ag); err != nil {
 				return
 			}
@@ -155,12 +221,78 @@ func putAdAgency(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if ag.Fee == 0 || ag.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Insert a check for whether the user id exists in the "User" bucket here
 
 			if ag.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.AdAgency); err != nil {
 				return
 			}
+			if b, err = json.Marshal(ag); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.AdAgency, ag.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(ag.Id))
+	}
+}
+
+func updateAdAgency(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the ad agency attributes
+	// NOTE: Must send full struct filled out with previous returned values
+	return func(c *gin.Context) {
+		var (
+			ag common.AdAgency
+			err error
+			b   []byte
+		)
+		id := c.Params.ByName("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.AdAgency)).Get([]byte(id))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &ag); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
+			return
+		}
+
+		var upd common.AdAgency
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if ag.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		ag.Name = upd.Name
+
+		if upd.Fee == 0 || upd.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+		// NOTE: Fee changes will only reflect for new campaigns AND old campaigns
+		// AFTER the first of the month (when billing runs!)
+		ag.Fee = upd.Fee
+
+		// Save the Agency
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if b, err = json.Marshal(ag); err != nil {
 				return
 			}
@@ -273,12 +405,12 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if adv.ExchangeFee == 0 {
+		if adv.ExchangeFee == 0 || adv.ExchangeFee > 0.99 {
 			c.JSON(400, misc.StatusErr("Please provide a valid exchange fee"))
 			return
 		}
 
-		if adv.DspFee == 0 {
+		if adv.DspFee == 0 || adv.DspFee > 0.99{
 			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
 			return
 		}
@@ -288,6 +420,78 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 				return
 			}
 
+			if b, err = json.Marshal(adv); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Advertiser, adv.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(adv.Id))
+	}
+}
+
+func updateAdvertiser(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the advertiser attributes
+	return func(c *gin.Context) {
+		var (
+			adv common.Advertiser
+			err error
+			b   []byte
+		)
+		id := c.Params.ByName("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(id))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &adv); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
+			return
+		}
+
+		var upd common.Advertiser
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if upd.AgencyId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+		adv.AgencyId = upd.AgencyId
+
+		if upd.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		adv.Name = upd.Name
+
+		if upd.ExchangeFee == 0 || upd.ExchangeFee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid exchange fee"))
+			return
+		}
+		adv.ExchangeFee = upd.ExchangeFee
+
+		if upd.DspFee == 0 || upd.DspFee > 0.99{
+			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
+			return
+		}
+		adv.DspFee = upd.DspFee
+		// NOTE: Fee changes will only reflect for new campaigns OR old campaigns
+		// AFTER the first of the month (when billing runs!)
+
+		// Save the Advertiser
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if b, err = json.Marshal(adv); err != nil {
 				return
 			}
@@ -603,20 +807,17 @@ func delCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+// Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
 	Geos       []*misc.GeoRecord `json:"geos,omitempty"`
-	Tags       []string          `json:"tags,omitempty"`
-	Mention    string            `json:"mention,omitempty"`
-	Link       string            `json:"link,omitempty"`
-	Task       string            `json:"task,omitempty"`
 	Categories []string          `json:"categories,omitempty"`
 	Active     bool              `json:"active,omitempty"`
 	Budget     float32           `json:"budget,omitempty"`
+	Gender     string            `json:"gender,omitempty"` // "m" or "f" or "mf"
 }
 
 func updateCampaign(s *Server) gin.HandlerFunc {
 	// Overrwrites any of the above campaign attributes
-	// NOTE: Must send full struct filled out with previous returned values
 	return func(c *gin.Context) {
 		var (
 			cmp common.Campaign
@@ -646,6 +847,11 @@ func updateCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if upd.Gender != "m" && upd.Gender != "f" && upd.Gender != "mf" {
+			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
+			return
+		}
+
 		if upd.Budget == 0 {
 			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
 			return
@@ -662,18 +868,10 @@ func updateCampaign(s *Server) gin.HandlerFunc {
 			cmp.Budget = upd.Budget
 		}
 
-		cmp.Geos = upd.Geos
-		cmp.Link = upd.Link
-		cmp.Task = upd.Task
 		cmp.Active = upd.Active
 
-		// Sanitize methods
-		sanitized := []string{}
-		for _, ht := range upd.Tags {
-			sanitized = append(sanitized, sanitizeHash(ht))
-		}
-		cmp.Tags = sanitized
-		cmp.Mention = sanitizeMention(upd.Mention)
+		cmp.Geos = upd.Geos
+		cmp.Gender = upd.Gender
 		cmp.Categories = lowerArr(upd.Categories)
 
 		// Save the Campaign

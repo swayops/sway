@@ -22,7 +22,7 @@ const (
 )
 
 func (store *Store) deductSpendable(val float32) {
-	if store.Spendable <= 0 {
+	if store.Spendable <= 0 || val <= 0 {
 		return
 	}
 

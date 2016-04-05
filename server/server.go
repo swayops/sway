@@ -78,14 +78,17 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", getTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+	r.POST("/updateTalentAgency/:id", updateTalentAgency(srv))
 
 	// AdAgency
 	createRoutes(r, srv, "/adAgency", getAdAgency, putAdAgency, delAdAgency)
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
+	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
 
 	// Advertiser
 	createRoutes(r, srv, "/advertiser", getAdvertiser, putAdvertiser, delAdvertiser)
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
+	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
 
 	// Campaigns
 	// delCampaign only sets active to false!
