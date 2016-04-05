@@ -260,7 +260,7 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 	return st, nil
 }
 
-func AdjustStore(store *Store, deal *common.Deal, ppe float32) *Store {
+func AdjustStore(store *Store, deal *common.Deal) *Store {
 	if store.Spendable <= 0 {
 		// Stop giving influencers money once we've depleted spendable
 		return store

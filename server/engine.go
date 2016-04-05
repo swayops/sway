@@ -11,7 +11,6 @@ import (
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
-	"github.com/swayops/sway/internal/ppe"
 	"github.com/swayops/sway/misc"
 )
 
@@ -126,16 +125,7 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 
-			// Adjust the store so it has an
-			// updated spendable value, and influencer
-			// incrs
-			inf, err := getInfluencerFromId(s, deal.InfluencerId)
-			if err != nil {
-				log.Println("Error getting influencer from id", err)
-				continue
-			}
-
-			store = budget.AdjustStore(store, deal, ppe.Calculate(s.db, s.Cfg, inf, deal.AssignedPlatform))
+			store = budget.AdjustStore(store, deal)
 			updatedStore = true
 		}
 

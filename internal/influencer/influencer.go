@@ -40,8 +40,6 @@ type Influencer struct {
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
 
-	// // Minimum price per engagement set by agency
-
 	// References to the social media accounts this influencer owns
 	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
 	Instagram *instagram.Instagram `json:"instagram,omitempty"`
