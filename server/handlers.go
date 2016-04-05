@@ -393,35 +393,35 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// if cmp.Gender != "m" && cmp.Gender != "f" && cmp.Gender != "mf" {
-		// 	c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
-		// 	return
-		// }
+		if cmp.Gender != "m" && cmp.Gender != "f" && cmp.Gender != "mf" {
+			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
+			return
+		}
 
-		// if cmp.Budget <= 0 {
-		// 	c.JSON(400, misc.StatusErr("Please provide a valid budget"))
-		// 	return
-		// }
+		if cmp.Budget <= 0 {
+			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
+			return
+		}
 
-		// if cmp.AdvertiserId == "" {
-		// 	c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
-		// 	return
-		// }
+		if cmp.AdvertiserId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
 
-		// if cmp.AgencyId == "" {
-		// 	c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
-		// 	return
-		// }
+		if cmp.AgencyId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
 
-		// if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
-		// 	c.JSON(400, misc.StatusErr("Please target atleast one social network"))
-		// 	return
-		// }
+		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
+			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
+			return
+		}
 
-		// if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
-		// 	c.JSON(400, misc.StatusErr("Please provide a required tag, mention or link"))
-		// 	return
-		// }
+		if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
+			c.JSON(400, misc.StatusErr("Please provide a required tag, mention or link"))
+			return
+		}
 
 		// Sanitize methods
 		sanitized := []string{}
@@ -715,31 +715,31 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// if load.Gender != "m" && load.Gender != "f" && load.Gender != "unicorn" {
-		// 	c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
-		// 	return
-		// }
+		if load.Gender != "m" && load.Gender != "f" && load.Gender != "unicorn" {
+			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
+			return
+		}
 
-		// if load.AgencyId == "" {
-		// 	c.JSON(400, misc.StatusErr(ErrNoAgency.Error()))
-		// 	return
-		// }
+		if load.AgencyId == "" {
+			c.JSON(400, misc.StatusErr(ErrNoAgency.Error()))
+			return
+		}
 
-		// if load.Name == "" {
-		// 	c.JSON(400, misc.StatusErr(ErrNoName.Error()))
-		// 	return
-		// }
+		if load.Name == "" {
+			c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+			return
+		}
 
-		// if load.Geo == nil {
-		// 	c.JSON(400, misc.StatusErr(ErrNoGeo.Error()))
-		// 	return
-		// }
+		if load.Geo == nil {
+			c.JSON(400, misc.StatusErr(ErrNoGeo.Error()))
+			return
+		}
 
-		// load.Category = strings.ToLower(load.Category)
-		// if _, ok := common.CATEGORIES[load.Category]; !ok {
-		// 	c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
-		// 	return
-		// }
+		load.Category = strings.ToLower(load.Category)
+		if _, ok := common.CATEGORIES[load.Category]; !ok {
+			c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
+			return
+		}
 
 		inf, err := influencer.New(
 			load.Name,
@@ -750,7 +750,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			load.Gender,
 			load.AgencyId,
 			load.Category,
-			load.FloorPrice,
 			load.Geo,
 			s.Cfg)
 
@@ -839,46 +838,46 @@ func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 	}
 }
 
-func setFloor(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		raw := c.Params.ByName("floor")
-		floor, err := strconv.ParseFloat(raw, 64)
-		if err != nil {
-			log.Println("ERR", err)
-			c.JSON(500, misc.StatusErr("Invalid floor price"))
-			return
-		}
+// func setFloor(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		raw := c.Params.ByName("floor")
+// 		floor, err := strconv.ParseFloat(raw, 64)
+// 		if err != nil {
+// 			log.Println("ERR", err)
+// 			c.JSON(500, misc.StatusErr("Invalid floor price"))
+// 			return
+// 		}
 
-		// Alter influencer bucket
-		var (
-			inf influencer.Influencer
-		)
+// 		// Alter influencer bucket
+// 		var (
+// 			inf influencer.Influencer
+// 		)
 
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
+// 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+// 			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
 
-			if err = json.Unmarshal(b, &inf); err != nil {
-				return ErrUnmarshal
-			}
+// 			if err = json.Unmarshal(b, &inf); err != nil {
+// 				return ErrUnmarshal
+// 			}
 
-			inf.FloorPrice = float32(floor)
+// 			inf.FloorPrice = float32(floor)
 
-			if b, err = json.Marshal(&inf); err != nil {
-				return
-			}
+// 			if b, err = json.Marshal(&inf); err != nil {
+// 				return
+// 			}
 
-			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
-				return
-			}
-			return
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
+// 			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+// 				return
+// 			}
+// 			return
+// 		}); err != nil {
+// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			return
+// 		}
 
-		c.JSON(200, misc.StatusOK(inf.Id))
-	}
-}
+// 		c.JSON(200, misc.StatusOK(inf.Id))
+// 	}
+// }
 
 func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {

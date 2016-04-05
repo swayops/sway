@@ -141,16 +141,15 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 	if err != nil {
 		return err
 	}
-	log.Println("TEST", cid)
+
 	store, ok := st[cid]
 	if !ok {
 		return ErrNotFound
 	}
 
 	oldBudget := store.Budget
-	log.Println("NEW VS OLD", newBudget, oldBudget)
 	if newBudget > oldBudget {
-		// If the budget has been INCREASED...
+		// If the budget has been INCREASED... increase spendable and fees
 		diffBudget := newBudget - oldBudget
 
 		// This function could be run could be mid-month..
@@ -175,8 +174,6 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			DspFee:      store.DspFee + tbaDspFee,
 			ExchangeFee: store.ExchangeFee + tbaExchangeFee,
 		}
-
-		log.Println("NEW DIFF BEING ADDED!", tbaBudget, tbaDspFee, tbaExchangeFee, tbaBudget-(tbaDspFee+tbaExchangeFee))
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
 		// Save the budget in pending for when a transfer is made on the 1st
@@ -188,9 +185,6 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			ExchangeFee: store.ExchangeFee,
 			Pending:     newBudget,
 		}
-
-		log.Println("BUDGET DECREASED", newBudget)
-
 	}
 
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
@@ -288,8 +282,8 @@ func AdjustStore(store *Store, deal *common.Deal, ppe float32) *Store {
 		infData.Retweets += int32(deal.Tweet.RetweetsDelta)
 		infData.Favorites += int32(deal.Tweet.FavoritesDelta)
 
-		store.deductSpendable(float32(deal.Tweet.RetweetsDelta) * ppe)
-		store.deductSpendable(float32(deal.Tweet.FavoritesDelta) * ppe)
+		store.deductSpendable(float32(deal.Tweet.RetweetsDelta) * TW_RETWEET)
+		store.deductSpendable(float32(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
 		infData.Url = deal.Facebook.PostURL
 
@@ -297,17 +291,17 @@ func AdjustStore(store *Store, deal *common.Deal, ppe float32) *Store {
 		infData.Shares += int32(deal.Facebook.SharesDelta)
 		infData.Comments += int32(deal.Facebook.CommentsDelta)
 
-		store.deductSpendable(float32(deal.Facebook.LikesDelta) * ppe)
-		store.deductSpendable(float32(deal.Facebook.SharesDelta) * ppe)
-		store.deductSpendable(float32(deal.Facebook.CommentsDelta) * ppe)
+		store.deductSpendable(float32(deal.Facebook.LikesDelta) * FB_LIKE)
+		store.deductSpendable(float32(deal.Facebook.SharesDelta) * FB_SHARE)
+		store.deductSpendable(float32(deal.Facebook.CommentsDelta) * FB_COMMENT)
 	} else if deal.Instagram != nil {
 		infData.Url = deal.Instagram.PostURL
 
 		infData.Likes += int32(deal.Instagram.LikesDelta)
 		infData.Comments += int32(deal.Instagram.CommentsDelta)
 
-		store.deductSpendable(float32(deal.Instagram.LikesDelta) * ppe)
-		store.deductSpendable(float32(deal.Instagram.CommentsDelta) * ppe)
+		store.deductSpendable(float32(deal.Instagram.LikesDelta) * INSTA_LIKE)
+		store.deductSpendable(float32(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
 		infData.Url = deal.YouTube.PostURL
 
@@ -315,9 +309,9 @@ func AdjustStore(store *Store, deal *common.Deal, ppe float32) *Store {
 		infData.Likes += int32(deal.YouTube.LikesDelta)
 		infData.Comments += int32(deal.YouTube.CommentsDelta)
 
-		store.deductSpendable(float32(deal.YouTube.ViewsDelta) * ppe)
-		store.deductSpendable(float32(deal.YouTube.LikesDelta) * ppe)
-		store.deductSpendable(float32(deal.YouTube.CommentsDelta) * ppe)
+		store.deductSpendable(float32(deal.YouTube.ViewsDelta) * YT_VIEW)
+		store.deductSpendable(float32(deal.YouTube.LikesDelta) * YT_LIKE)
+		store.deductSpendable(float32(deal.YouTube.CommentsDelta) * YT_COMMENT)
 	}
 
 	tmpSpent := oldSpendable - store.Spendable
@@ -329,21 +323,6 @@ func AdjustStore(store *Store, deal *common.Deal, ppe float32) *Store {
 
 	store.Influencers[deal.InfluencerId] = infData
 	return store
-}
-
-func (store *Store) deductSpendable(val float32) {
-	if store.Spendable <= 0 {
-		return
-	}
-
-	precalc := store.Spendable - val
-	if precalc < 0 {
-		store.Spendable = 0
-		return
-	}
-
-	store.Spendable = precalc
-	return
 }
 
 func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {

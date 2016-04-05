@@ -14,7 +14,6 @@ import (
 )
 
 func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
-	log.Println("Clearing the deal!", dealId, influencerId)
 	// Unssign the deal & update the campaign and influencer buckets
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		var (

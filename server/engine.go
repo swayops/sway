@@ -135,8 +135,6 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 
-			log.Println("PPE", ppe.Calculate(s.db, s.Cfg, inf, deal.AssignedPlatform))
-
 			store = budget.AdjustStore(store, deal, ppe.Calculate(s.db, s.Cfg, inf, deal.AssignedPlatform))
 			updatedStore = true
 		}
@@ -324,16 +322,5 @@ func billing(s *Server) error {
 
 		return budget.UpdateLastBill(s.budgetDb, s.Cfg)
 	}
-	// if its the first of the month..
-	// - RESET EVERYTHING:
-	// new key for campaign-month in vault
-	// flush out existing deals and add new ones?
-
-	// - add new round of deals as per monthly budget
-	// - add monthly budget into spendable (carry over last months unused funds)
-	// - send out influencer payouts.. send out campaign invoices based on how much they spent
-	// - save the campaign
-
-	// carry over last months unused funds
 	return nil
 }

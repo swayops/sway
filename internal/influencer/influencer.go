@@ -25,11 +25,10 @@ type InfluencerLoad struct {
 	TwitterId   string `json:"twitter,omitempty"`
 	YouTubeId   string `json:"youtube,omitempty"`
 
-	AgencyId   string          `json:"agencyId,omitempty"` // Agency this influencer belongs to
-	FloorPrice float32         `json:"floor,omitempty"`    // Price per engagement set by agency
-	Geo        *misc.GeoRecord `json:"geo,omitempty"`      // User inputted geo via app
-	Gender     string          `json:"gender,omitempty"`
-	Category   string          `json:"category,omitempty"`
+	AgencyId string          `json:"agencyId,omitempty"` // Agency this influencer belongs to
+	Geo      *misc.GeoRecord `json:"geo,omitempty"`      // User inputted geo via app
+	Gender   string          `json:"gender,omitempty"`
+	Category string          `json:"category,omitempty"`
 }
 
 type Influencer struct {
@@ -41,8 +40,7 @@ type Influencer struct {
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
 
-	// Minimum price per engagement set by agency
-	FloorPrice float32 `json:"floorPrice,omitempty"`
+	// // Minimum price per engagement set by agency
 
 	// References to the social media accounts this influencer owns
 	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
@@ -69,15 +67,14 @@ type Influencer struct {
 	Timeouts int32 `json:"timeouts,omitempty"`
 }
 
-func New(name, twitterId, instaId, fbId, ytId, gender, agency, cat string, floorPrice float32, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(name, twitterId, instaId, fbId, ytId, gender, agency, cat string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
-		Name:       name,
-		Id:         misc.PseudoUUID(),
-		AgencyId:   agency,
-		FloorPrice: floorPrice,
-		Geo:        geo,
-		Gender:     gender,
-		Category:   cat,
+		Name:     name,
+		Id:       misc.PseudoUUID(),
+		AgencyId: agency,
+		Geo:      geo,
+		Gender:   gender,
+		Category: cat,
 	}
 
 	err := inf.NewInsta(instaId, cfg)

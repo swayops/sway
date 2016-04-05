@@ -102,7 +102,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
-	r.GET("/setFloor/:influencerId/:floor", setFloor(srv))
+	// r.GET("/setFloor/:influencerId/:floor", setFloor(srv))
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))

@@ -10,10 +10,6 @@ import (
 var minPpe = float32(0.03) // 3 cents
 
 func Calculate(db *bolt.DB, cfg *config.Config, inf *influencer.Influencer, network string) float32 {
-	if inf.FloorPrice > 0 {
-		return inf.FloorPrice
-	}
-
 	switch network {
 	case platform.Twitter:
 		return getPpeFromScore(inf.Twitter.GetScore())

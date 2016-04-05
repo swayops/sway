@@ -63,8 +63,6 @@ func explore(srv *Server) error {
 			if post := findInstagramMatch(&inf, deal); post != nil {
 				if err = srv.ApproveInstagram(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
-				} else {
-					log.Println("APPROVED INSTA!")
 				}
 			}
 		case platform.YouTube:
