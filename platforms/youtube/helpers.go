@@ -117,7 +117,7 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 	return "", ErrUnknown
 }
 
-func getUserStats(id string, cfg *config.Config) (float32, float32, float32, error) {
+func getUserStats(id string, cfg *config.Config) (float64, float32, float32, error) {
 	endpoint := fmt.Sprintf(dataUrl, cfg.YouTube.Endpoint, id, cfg.YouTube.ClientId)
 
 	var data Data
@@ -140,7 +140,7 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 		return 0, 0, 0, err
 	}
 
-	views, err := getCount(stats.Views)
+	views, err := getCount64(stats.Views)
 	if err != nil {
 		return 0, 0, 0, err
 	}
@@ -155,7 +155,7 @@ func getUserStats(id string, cfg *config.Config) (float32, float32, float32, err
 		return 0, 0, 0, err
 	}
 
-	return views / videos, comments / videos, subs, nil
+	return views / float64(videos), comments / videos, subs, nil
 }
 
 func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
@@ -231,7 +231,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 
 var ErrStats = errors.New("Unable to retrieve video stats")
 
-func getVideoStats(videoId string, cfg *config.Config) (views, likes, dislikes, comments float32, err error) {
+func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float32, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
 
 	var vData Data
@@ -249,7 +249,7 @@ func getVideoStats(videoId string, cfg *config.Config) (views, likes, dislikes, 
 		return
 	}
 
-	views, err = getCount(i.Stats.Views)
+	views, err = getCount64(i.Stats.Views)
 	if err != nil {
 		log.Println("Error extracting views data", endpoint)
 		err = ErrStats
@@ -278,6 +278,15 @@ func getVideoStats(videoId string, cfg *config.Config) (views, likes, dislikes, 
 	}
 
 	return
+}
+
+func getCount64(val string) (float64, error) {
+	v, err := strconv.ParseFloat(val, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return v, nil
 }
 
 func getCount(val string) (float32, error) {

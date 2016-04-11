@@ -16,8 +16,8 @@ type Post struct {
 	PostURL string `json:"url,omitempty"` // Link to the post
 
 	// Stats
-	Views      float32 `json:"views,omitempty"`
-	ViewsDelta float32 `json:"vDelta,omitempty"`
+	Views      float64 `json:"views,omitempty"`
+	ViewsDelta float64 `json:"vDelta,omitempty"`
 
 	Likes      float32 `json:"likes,omitempty"`
 	LikesDelta float32 `json:"lDelta,omitempty"`

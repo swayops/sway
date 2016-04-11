@@ -65,7 +65,7 @@ type InfluencerData struct {
 	Shares    int32   `json:"shares,omitempty"`
 	Retweets  int32   `json:"retweets,omitempty"`
 	Favorites int32   `json:"favorites,omitempty"`
-	Views     int32   `json:"views,omitempty"`
+	Views     int64   `json:"views,omitempty"`
 
 	Completed int32  `json:"completed,omitempty"`
 	Url       string `json:"url,omitempty"`
@@ -312,7 +312,7 @@ func AdjustStore(store *Store, deal *common.Deal) *Store {
 	} else if deal.YouTube != nil {
 		infData.Url = deal.YouTube.PostURL
 
-		infData.Views += int32(deal.YouTube.ViewsDelta)
+		infData.Views += int64(deal.YouTube.ViewsDelta)
 		infData.Likes += int32(deal.YouTube.LikesDelta)
 		infData.Comments += int32(deal.YouTube.CommentsDelta)
 
