@@ -1425,7 +1425,7 @@ func getBudgetInfo(s *Server) gin.HandlerFunc {
 func getStore(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		store, err := budget.GetStore(s.budgetDb, s.Cfg, "")
-		if err != nil {
+		if err != nil || store == nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
@@ -1436,7 +1436,7 @@ func getStore(s *Server) gin.HandlerFunc {
 func getLastMonthsStore(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
-		if err != nil {
+		if err != nil || store == nil{
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}

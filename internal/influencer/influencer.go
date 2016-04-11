@@ -251,7 +251,6 @@ func GetAvailableDeals(db, budgetDb *bolt.DB, infId, forcedDeal string, geo *mis
 					}
 					targetDeal = deal
 					dealFound = true
-					targetDeal.Platforms = []string{}
 				}
 			}
 
@@ -340,10 +339,10 @@ func GetAvailableDeals(db, budgetDb *bolt.DB, infId, forcedDeal string, geo *mis
 	// Fill in available spendables now
 	// This also makes sure that only campaigns with spendable are the
 	// only ones eligible for deals
-	filtered := make([]*common.Deal, 0, 512)
+	filtered := make([]*common.Deal, 0, len(infDeals))
 	for _, deal := range infDeals {
 		store, err := budget.GetBudgetInfo(budgetDb, cfg, deal.CampaignId, "")
-		if err == nil && store.Spendable > 0 && store.Spent < store.Budget {
+		if err == nil && store != nil && store.Spendable > 0 && store.Spent < store.Budget {
 			deal.Spendable = store.Spendable
 			filtered = append(filtered, deal)
 		}

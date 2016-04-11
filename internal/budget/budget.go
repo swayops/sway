@@ -213,37 +213,14 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 }
 
 func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid string, forceDate string) (*Store, error) {
-	var (
-		st    map[string]*Store
-		store *Store
-	)
-
-	if err := db.View(func(tx *bolt.Tx) (err error) {
-		key := forceDate
-		if key == "" {
-			key = getBudgetKey()
-		}
-
-		b := tx.Bucket([]byte(cfg.BudgetBucket)).Get([]byte(key))
-		if len(b) == 0 {
-			// First save of the month!
-			st = make(map[string]*Store)
-			return nil
-		}
-
-		if err = json.Unmarshal(b, &st); err != nil {
-			return ErrUnmarshal
-		}
-		return
-	}); err != nil {
-		log.Println("Error when getting budget info", err)
-		return store, err
+	st, err := GetStore(db, cfg, forceDate)
+	if err != nil {
+		return nil, err
 	}
-
 	if store, ok := st[cid]; ok {
 		return store, nil
 	}
-	return store, ErrNotFound
+	return nil, ErrNotFound
 }
 
 func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*Store, error) {
@@ -262,8 +239,9 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 		return
 	}); err != nil {
 		log.Println("Error when getting store", err)
-		return st, err
+		return nil, err
 	}
+
 	return st, nil
 }
 
@@ -279,7 +257,9 @@ func AdjustStore(store *Store, deal *common.Deal) *Store {
 
 	infData, ok := store.Influencers[deal.InfluencerId]
 	if !ok {
+		// Saving the pointer once
 		infData = &InfluencerData{}
+		store.Influencers[deal.InfluencerId] = infData
 	}
 
 	oldSpendable := store.Spendable
@@ -324,11 +304,9 @@ func AdjustStore(store *Store, deal *common.Deal) *Store {
 	tmpSpent := oldSpendable - store.Spendable
 
 	store.Spent += tmpSpent
-
 	infData.Payout += tmpSpent
 	infData.Completed = deal.Completed
 
-	store.Influencers[deal.InfluencerId] = infData
 	return store
 }
 
@@ -348,7 +326,6 @@ func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error 
 		}
 
 		st[cid] = store
-
 		if b, err = json.Marshal(&st); err != nil {
 			return
 		}

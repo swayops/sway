@@ -2,12 +2,11 @@ package budget
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 )
 
 const (
-	format = "%s-%s"
+	format = "%d-%02d"
 )
 
 func getBudgetKey() string {
@@ -15,8 +14,8 @@ func getBudgetKey() string {
 
 	return fmt.Sprintf(
 		format,
-		strconv.Itoa(int(now.Month())),
-		strconv.Itoa(now.Year()),
+		now.Month(),
+		now.Year(),
 	)
 }
 
@@ -31,8 +30,8 @@ func GetLastMonthBudgetKey() string {
 	}
 	return fmt.Sprintf(
 		format,
-		strconv.Itoa(int(lastMonth)),
-		strconv.Itoa(year),
+		lastMonth,
+		year,
 	)
 }
 

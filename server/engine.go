@@ -154,7 +154,7 @@ func billing(s *Server) error {
 	if budget.ShouldBill(s.budgetDb, s.Cfg) {
 		// Now that it's a new month.. get last month's budget store
 		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
-		if len(store) == 0 || err != nil {
+		if err != nil || store == nil || len(store) == 0 {
 			// Insert file informant check
 			return ErrEmptyStore
 		}
@@ -223,26 +223,19 @@ func billing(s *Server) error {
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
-					return nil
-				}); err != nil {
-					log.Println("Invoice error for talent agency invoice", err)
-					continue
-				}
+					if err = json.Unmarshal(v, &inf); err != nil {
+						log.Println("Invoice error for talent agency invoice", err)
+						return err
+					}
 
-				if err = json.Unmarshal(v, &inf); err != nil {
-					log.Println("Invoice error for talent agency invoice", err)
-					continue
-				}
-
-				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(inf.AgencyId))
+					if err = json.Unmarshal(v, &ag); err != nil {
+						log.Println("Invoice error for talent agency invoice", err)
+						return err
+					}
+
 					return nil
 				}); err != nil {
-					log.Println("Invoice error for talent agency invoice", err)
-					continue
-				}
-
-				if err = json.Unmarshal(v, &ag); err != nil {
 					log.Println("Invoice error for talent agency invoice", err)
 					continue
 				}
