@@ -75,14 +75,14 @@ func (p *Post) UpdateData(tr *Tumblr, cfg *config.Config) (err error) {
 	// If the post is more than 4 days old AND
 	// it has been updated in the last week, SKIP!
 	// i.e. only update old posts once a week
-	if !misc.WithinLast(int32(p.TS.Unix()), 24*4) && misc.WithinLast(int32(p.TS.Unix()), 24*7) {
-		return nil
-	}
+	// if !misc.WithinLast(int32(p.TS.Unix()), 24*4) && misc.WithinLast(int32(p.TS.Unix()), 24*7) {
+	// 	return nil
+	// }
 
-	// If we have already updated within the last 12 hours, skip!
-	if misc.WithinLast(p.LastUpdated, 12) {
-		return nil
-	}
+	// // If we have already updated within the last 12 hours, skip!
+	// if misc.WithinLast(p.LastUpdated, 12) {
+	// 	return nil
+	// }
 
 	var resp apiResponse
 	if err = misc.HttpGetJson(tr.client, fmt.Sprintf(singlePostUrl, cfg.Tumblr.Endpoint, tr.Id, p.ID.String()), &resp); err != nil {

@@ -14,7 +14,7 @@ type YouTube struct {
 	AvgLikes    float32 `json:"avgLikes,omitempty"`
 	AvgDislikes float32 `json:"avgDislikes,omitempty"`
 
-	AvgViews        float32 `json:"avgViews,omitempty"`
+	AvgViews        float64 `json:"avgViews,omitempty"`
 	AvgComments     float32 `json:"avgComments,omitempty"`
 	Subscribers     float32 `json:"avgSubs,omitempty"`  // float32 for GetScore equation
 	SubscriberDelta float32 `json:"subDelta,omitempty"` // Follower delta since last UpdateData run
@@ -41,8 +41,8 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 }
 
 func (yt *YouTube) UpdateData(cfg *config.Config) error {
-	// If we already updated in the last 4 hours, skip
-	if misc.WithinLast(yt.LastUpdated, 4) {
+	// If we already updated in the last 12 hours, skip
+	if misc.WithinLast(yt.LastUpdated, cfg.InfluencerTTL) {
 		return nil
 	}
 
@@ -70,5 +70,5 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 }
 
 func (yt *YouTube) GetScore() float32 {
-	return ((yt.AvgComments * 4) + (yt.AvgLikes * 3) + (yt.Subscribers * 2) + (yt.AvgViews)) / yt.AvgDislikes
+	return ((yt.AvgComments * 4) + (yt.AvgLikes * 3) + (yt.Subscribers * 2) + (float32(yt.AvgViews))) / yt.AvgDislikes
 }

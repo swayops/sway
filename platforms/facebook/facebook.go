@@ -32,8 +32,8 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 }
 
 func (fb *Facebook) UpdateData(cfg *config.Config) error {
-	// If we already updated in the last 4 hours, skip
-	if misc.WithinLast(fb.LastUpdated, 4) {
+	// If we already updated in the last 12 hours, skip
+	if misc.WithinLast(fb.LastUpdated, cfg.InfluencerTTL) {
 		return nil
 	}
 
@@ -58,4 +58,8 @@ func (fb *Facebook) UpdateData(cfg *config.Config) error {
 		fb.LastUpdated = int32(time.Now().Unix())
 	}
 	return nil
+}
+
+func (fb *Facebook) GetScore() float32 {
+	return (fb.Followers * 3) + (fb.AvgShares * 3) + (fb.FollowerDelta * 2) + (fb.AvgComments * 2) + (fb.AvgLikes)
 }

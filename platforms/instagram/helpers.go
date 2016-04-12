@@ -143,11 +143,13 @@ func getPostInfo(id string, cfg *config.Config) (float32, float32, []*Post, *mis
 		if post.Comments != nil {
 			comments += post.Comments.Count
 			p.Comments = post.Comments.Count
+			p.CommentsDelta = p.Comments
 		}
 
 		if post.Likes != nil {
 			likes += post.Likes.Count
 			p.Likes = post.Likes.Count
+			p.LikesDelta = p.Likes
 		}
 
 		if post.Location != nil && post.Location.Latitude != 0 && post.Location.Longtitude != 0 {

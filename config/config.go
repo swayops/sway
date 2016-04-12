@@ -25,7 +25,6 @@ func New(loc string) (*Config, error) {
 		log.Println("Config error", err)
 		return nil, err
 	}
-
 	return &c, nil
 }
 
@@ -33,13 +32,15 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	DBPath string `json:"dbPath"`
-	DBName string `json:"dbName"`
+	DBPath       string `json:"dbPath"`
+	DBName       string `json:"dbName"`
+	BudgetDBName string `json:"budgetDbName"`
+	BudgetBucket string `json:"budgetBucket"`
 
-	DealTimeout    int32         `json:"dealTimeout"`    // In days
-	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
-	StatsInterval  time.Duration `json:"statsInterval"`  // In seconds
-	ExplorerUpdate time.Duration `json:"explorerUpdate"` // In hours
+	DealTimeout   int32         `json:"dealTimeout"`   // In days
+	EngineUpdate  time.Duration `json:"engineUpdate"`  // In hours
+	StatsInterval time.Duration `json:"statsInterval"` // In seconds
+	InfluencerTTL int32         `json:"influencerTtl"` // In hours
 
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`

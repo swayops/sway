@@ -29,8 +29,11 @@ type Post struct {
 	Location *misc.GeoRecord `json:"location,omitempty"`
 
 	// Stats
-	Likes    float32 `json:"likes,omitempty"`
-	Comments float32 `json:"comments,omitempty"`
+	Likes      float32 `json:"likes,omitempty"`
+	LikesDelta float32 `json:"lDelta,omitempty"`
+
+	Comments      float32 `json:"comments,omitempty"`
+	CommentsDelta float32 `json:"cDelta,omitempty"`
 
 	// Type
 	Type string `json:"type,omitempty"` // "photo" or "video"
@@ -56,17 +59,17 @@ type PostLikes struct {
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
-	// If the post is more than 4 days old AND
-	// it has been updated in the last week, SKIP!
-	// i.e. only update old posts once a week
-	if !misc.WithinLast(pt.Published, 24*4) && misc.WithinLast(pt.LastUpdated, 24*7) {
-		return nil
-	}
+	// // If the post is more than 4 days old AND
+	// // it has been updated in the last week, SKIP!
+	// // i.e. only update old posts once a week
+	// if !misc.WithinLast(pt.Published, 24*4) && misc.WithinLast(pt.LastUpdated, 24*7) {
+	// 	return nil
+	// }
 
-	// If we have already updated within the last 12 hours, skip!
-	if misc.WithinLast(pt.LastUpdated, 12) {
-		return nil
-	}
+	// // If we have already updated within the last 12 hours, skip!
+	// if misc.WithinLast(pt.LastUpdated, 12) {
+	// 	return nil
+	// }
 
 	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.ClientId)
 
@@ -81,10 +84,12 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	}
 
 	if post.Data.Comments != nil {
+		pt.CommentsDelta = post.Data.Comments.Count - pt.Comments
 		pt.Comments = post.Data.Comments.Count
 	}
 
 	if post.Data.Likes != nil {
+		pt.LikesDelta = post.Data.Likes.Count - pt.Likes
 		pt.Likes = post.Data.Likes.Count
 	}
 

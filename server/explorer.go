@@ -10,7 +10,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
-	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
@@ -18,24 +17,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-func newDealExplorer(srv *Server) {
-	ticker := time.NewTicker(srv.Cfg.ExplorerUpdate * time.Hour)
-	go func() {
-		if err := explore(srv); err != nil {
-			log.Println("Error exploring!", err)
-		}
-		for range ticker.C {
-			if err := explore(srv); err != nil {
-				log.Println("Error exploring!", err)
-			}
-		}
-	}()
-}
-
 func explore(srv *Server) error {
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
-	activeDeals, err := srv.GetAllActiveDeals()
+	activeDeals, err := getAllActiveDeals(srv)
 	if err != nil {
 		return err
 	}
@@ -101,43 +86,16 @@ func explore(srv *Server) error {
 	return nil
 }
 
-func (srv *Server) GetAllActiveDeals() ([]*common.Deal, error) {
-	// Retrieves all active deals in the system!
-	var err error
-	deals := []*common.Deal{}
-
-	if err := srv.db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-			cmp := &common.Campaign{}
-			if err = json.Unmarshal(v, cmp); err != nil {
-				log.Println("error when unmarshalling campaign", string(v))
-				return err
-			}
-
-			for _, deal := range cmp.Deals {
-				if deal.Assigned > 0 && deal.Completed == 0 && deal.InfluencerId != "" {
-					deals = append(deals, deal)
-				}
-			}
-			return
-		})
-		return nil
-	}); err != nil {
-		return deals, err
-	}
-	return deals, err
-}
-
 func (srv *Server) CompleteDeal(d *common.Deal) error {
 	// Marks the deal as completed, and updates the campaign and influencer buckets
 	if err := srv.db.Update(func(tx *bolt.Tx) (err error) {
 		var (
 			cmp *common.Campaign
-			b   []byte
 		)
 
 		err = json.Unmarshal(tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).Get([]byte(d.CampaignId)), &cmp)
 		if err != nil {
+			log.Println("Error unmarshallign campaign", err)
 			return err
 		}
 
@@ -151,6 +109,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		var inf *influencer.Influencer
 		err = json.Unmarshal(tx.Bucket([]byte(srv.Cfg.Bucket.Influencer)).Get([]byte(d.InfluencerId)), &inf)
 		if err != nil {
+			log.Println("Error unmarshalling influencer", err)
 			return err
 		}
 
@@ -170,20 +129,18 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		inf.ActiveDeals = activeDeals
 
 		// Save the Influencer
-		if b, err = json.Marshal(inf); err != nil {
+		if err := saveInfluencer(tx, inf, srv.Cfg); err != nil {
+			log.Println("Error saving influencer!", err)
 			return err
 		}
 
-		if err = misc.PutBucketBytes(tx, srv.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+		// Save the campaign!
+		if err := saveCampaign(tx, cmp, srv.Cfg); err != nil {
+			log.Println("Error saving campaign!", err)
 			return err
 		}
 
-		// Save the campaign
-		if b, err = json.Marshal(cmp); err != nil {
-			return err
-		}
-
-		return misc.PutBucketBytes(tx, srv.Cfg.Bucket.Campaign, cmp.Id, b)
+		return nil
 	}); err != nil {
 		return err
 	}
@@ -217,6 +174,10 @@ func findTwitterMatch(inf *influencer.Influencer, deal *common.Deal) *twitter.Tw
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
+		if int32(tw.CreatedAt.Unix()) < deal.Assigned {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
 			postTags := tw.Hashtags()
@@ -275,6 +236,10 @@ func findFacebookMatch(inf *influencer.Influencer, deal *common.Deal) *facebook.
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
+		if int32(post.Published.Unix()) < deal.Assigned {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
 			postTags := post.Hashtags()
@@ -330,6 +295,10 @@ func findInstagramMatch(inf *influencer.Influencer, deal *common.Deal) *instagra
 	}
 
 	for _, post := range inf.Instagram.LatestPosts {
+		if post.Published < deal.Assigned {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
 			for _, tg := range deal.Tags {
@@ -384,6 +353,10 @@ func findYouTubeMatch(inf *influencer.Influencer, deal *common.Deal) *youtube.Po
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
+		if post.Published < deal.Assigned {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
 			postTags := post.Hashtags()

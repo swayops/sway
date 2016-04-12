@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
-	"strconv"
 
 	"github.com/boltdb/bolt"
 )
@@ -18,14 +17,12 @@ func OpenDB(path string, name string) *bolt.DB {
 }
 
 func InitIndex(tx *bolt.Tx, name string, offset uint64) error {
-	key := []byte(name)
-	if b, err := tx.CreateBucketIfNotExists([]byte("index")); err != nil {
+	b, err := tx.CreateBucketIfNotExists([]byte("index"))
+	if err != nil {
 		return err
-	} else {
-		s := string(b.Get(key))
-		if len(s) == 0 {
-			return b.Put(key, []byte(strconv.FormatUint(offset, 10)))
-		}
+	}
+	if key := []byte(name); len(b.Get(key)) == 0 {
+		return b.Put(key, big.NewInt(int64(offset)).Bytes())
 	}
 	return nil
 }
@@ -50,15 +47,18 @@ func PutTxJson(tx *bolt.Tx, bucketName, key string, val interface{}) error {
 	return tx.Bucket([]byte(bucketName)).Put([]byte(key), b)
 }
 
+func GetBucket(tx *bolt.Tx, bucketName string) *bolt.Bucket {
+	return tx.Bucket([]byte(bucketName))
+}
+
 var one = new(big.Int).SetUint64(1)
 
 // increments index for the specified bucket using the given R/W transaction.
 func GetNextIndex(tx *bolt.Tx, bucket string) (string, error) {
 	key := []byte(bucket)
 	// note that using SetBytes is pure bytes not  the string rep of the number.
-	b := tx.Bucket([]byte("index"))
-
-	n := new(big.Int).SetBytes(b.Get(key))
-	b.Put(key, new(big.Int).Add(n, one).Bytes())
-	return n.String(), nil
+	b := GetBucket(tx, "index")
+	ov := b.Get(key)
+	n := new(big.Int).SetBytes(ov)
+	return n.String(), b.Put(key, n.Add(n, one).Bytes())
 }

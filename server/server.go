@@ -12,34 +12,39 @@ import (
 )
 
 type Server struct {
-	Cfg *config.Config
-	r   *gin.Engine
-	db  *bolt.DB
-	// Db
+	Cfg      *config.Config
+	r        *gin.Engine
+	db       *bolt.DB
+	budgetDb *bolt.DB
 }
 
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
+	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 
 	srv := &Server{
-		Cfg: cfg,
-		r:   r,
-		db:  db,
+		Cfg:      cfg,
+		r:        r,
+		db:       db,
+		budgetDb: budgetDb,
 	}
 
-	err := srv.InitializeDB(cfg)
+	err := srv.initializeDBs(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	srv.InitializeRoutes(r)
-	srv.InitializeChecks()
+	if err = srv.startEngine(); err != nil {
+		return nil, err
+	}
+
+	srv.initializeRoutes(r)
 
 	return srv, nil
 }
 
-func (srv *Server) InitializeDB(cfg *config.Config) error {
-	return srv.db.Update(func(tx *bolt.Tx) error {
+func (srv *Server) initializeDBs(cfg *config.Config) error {
+	if err := srv.db.Update(func(tx *bolt.Tx) error {
 		for _, val := range cfg.Bucket.All {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
@@ -50,23 +55,43 @@ func (srv *Server) InitializeDB(cfg *config.Config) error {
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.BudgetBucket)); err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (srv *Server) InitializeRoutes(r *gin.Engine) {
+func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", getTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+	r.POST("/updateTalentAgency/:id", updateTalentAgency(srv))
 
 	// AdAgency
 	createRoutes(r, srv, "/adAgency", getAdAgency, putAdAgency, delAdAgency)
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
+	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
 
 	// Advertiser
 	createRoutes(r, srv, "/advertiser", getAdvertiser, putAdvertiser, delAdvertiser)
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
+	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
 
 	// Campaigns
+	// delCampaign only sets active to false!
 	createRoutes(r, srv, "/campaign", getCampaign, putCampaign, delCampaign)
 	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
 	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
@@ -80,6 +105,7 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
+	// r.GET("/setFloor/:influencerId/:floor", setFloor(srv))
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
@@ -88,11 +114,16 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
 	// Offset in hours
 	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv))
+
+	// Budget
+	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
+	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
+	r.GET("/getStore", getStore(srv))
+
 }
 
-func (srv *Server) InitializeChecks() {
-	newDealExplorer(srv)
-	newStatsUpdate(srv)
+func (srv *Server) startEngine() error {
+	return newSwayEngine(srv)
 }
 
 func (srv *Server) Run() (err error) {

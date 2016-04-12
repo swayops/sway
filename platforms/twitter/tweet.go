@@ -66,9 +66,14 @@ func (tws Tweets) LatestLocation() *misc.GeoRecord {
 }
 
 type Tweet struct {
-	Id        string      `json:"id_str"`
-	Retweets  uint32      `json:"retweet_count"`
-	Favorites uint32      `json:"favorite_count"`
+	Id string `json:"id_str"`
+
+	Retweets      uint32 `json:"retweet_count"`
+	RetweetsDelta uint32 `json:"rtDelta"`
+
+	Favorites      uint32 `json:"favorite_count"`
+	FavoritesDelta uint32 `json:"fDelta"`
+
 	CreatedAt TwitterTime `json:"created_at"`
 
 	User *User `json:"user,omitempty"`
@@ -138,17 +143,17 @@ func (t *Tweet) Urls() (out []string) {
 }
 
 func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
-	// If the post is more than 4 days old AND
-	// it has been updated in the last week, SKIP!
-	// i.e. only update old posts once a week
-	if !misc.WithinLast(int32(t.CreatedAt.Unix()), 24*4) && misc.WithinLast(int32(t.CreatedAt.Unix()), 24*7) {
-		return nil
-	}
+	// // If the post is more than 4 days old AND
+	// // it has been updated in the last week, SKIP!
+	// // i.e. only update old posts once a week
+	// if !misc.WithinLast(int32(t.CreatedAt.Unix()), 24*4) && misc.WithinLast(int32(t.CreatedAt.Unix()), 24*7) {
+	// 	return nil
+	// }
 
-	// If we have already updated within the last 12 hours, skip!
-	if misc.WithinLast(t.LastUpdated, 12) {
-		return nil
-	}
+	// // If we have already updated within the last 12 hours, skip!
+	// if misc.WithinLast(t.LastUpdated, 12) {
+	// 	return nil
+	// }
 
 	var (
 		resp   *http.Response
@@ -174,6 +179,8 @@ func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
 
 	var tmp Tweet
 	if err = json.NewDecoder(r).Decode(&tmp); err == nil {
+		tmp.FavoritesDelta = tmp.Favorites - t.Favorites
+		tmp.RetweetsDelta = tmp.RetweetsDelta - t.Retweets
 		*t = tmp
 	}
 	t.LastUpdated = int32(time.Now().Unix())

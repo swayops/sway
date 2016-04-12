@@ -6,8 +6,7 @@ type Campaign struct {
 	Id   string `json:"id"` // Should not passed for putCampaign
 	Name string `json:"name"`
 
-	Budget float64 `json:"budget"`
-	Span   string  `json:"span"` // Timespan the budget represents
+	Budget float32 `json:"budget"` // Always monthly
 
 	AdvertiserId string `json:"advertiserId"`
 	AgencyId     string `json:"agencyId"`
@@ -34,5 +33,6 @@ type Campaign struct {
 	Perks string `json:"perks,omitempty"` // Perks need to be specced out
 
 	// Internal attribute set by putCampaign and un/assignDeal
+	// Contains all the deals sent out by this campaign.. keyed off of deal ID
 	Deals map[string]*Deal `json:"deals,omitempty"`
 }
