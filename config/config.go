@@ -36,18 +36,20 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	DBPath string `json:"dbPath"`
-	DBName string `json:"dbName"`
+	DBPath       string `json:"dbPath"`
+	DBName       string `json:"dbName"`
+	BudgetDBName string `json:"budgetDbName"`
+	BudgetBucket string `json:"budgetBucket"`
 
 	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
 	APIPath   string `json:"apiPath"`
 
 	Sandbox bool `json:"sandbox"`
 
-	DealTimeout    int32         `json:"dealTimeout"`    // In days
-	StatsUpdate    time.Duration `json:"statsUpdate"`    // In hours
-	StatsInterval  time.Duration `json:"statsInterval"`  // In seconds
-	ExplorerUpdate time.Duration `json:"explorerUpdate"` // In hours
+	DealTimeout   int32         `json:"dealTimeout"`   // In days
+	EngineUpdate  time.Duration `json:"engineUpdate"`  // In hours
+	StatsInterval time.Duration `json:"statsInterval"` // In seconds
+	InfluencerTTL int32         `json:"influencerTtl"` // In hours
 
 	Mandrill struct {
 		APIKey     string `json:"apiKey"`

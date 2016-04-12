@@ -10,6 +10,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
@@ -36,12 +37,78 @@ func putTalentAgency(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if ag.Fee == 0 || ag.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Insert a check for whether the user id exists in the "User" bucket here
 
 			if ag.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.TalentAgency); err != nil {
 				return
 			}
+			if b, err = json.Marshal(ag); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.TalentAgency, ag.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(ag.Id))
+	}
+}
+
+func updateTalentAgency(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the agency attributes
+	// NOTE: Must send full struct filled out with previous returned values
+	return func(c *gin.Context) {
+		var (
+			ag common.TalentAgency
+			err error
+			b   []byte
+		)
+		id := c.Params.ByName("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(id))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &ag); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
+			return
+		}
+
+		var upd common.TalentAgency
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if ag.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		ag.Name = upd.Name
+
+		if upd.Fee == 0 || upd.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+		// NOTE: Fee changes will only reflect for new campaigns AND old campaigns
+		// AFTER the first of the month (when billing runs!)
+		ag.Fee = upd.Fee
+
+		// Save the Agency
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if b, err = json.Marshal(ag); err != nil {
 				return
 			}
@@ -149,12 +216,83 @@ func putAdAgency(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if ag.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+
+		if ag.Fee == 0 || ag.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Insert a check for whether the user id exists in the "User" bucket here
 
 			if ag.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.AdAgency); err != nil {
 				return
 			}
+			if b, err = json.Marshal(ag); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.AdAgency, ag.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(ag.Id))
+	}
+}
+
+func updateAdAgency(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the ad agency attributes
+	// NOTE: Must send full struct filled out with previous returned values
+	return func(c *gin.Context) {
+		var (
+			ag common.AdAgency
+			err error
+			b   []byte
+		)
+		id := c.Params.ByName("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.AdAgency)).Get([]byte(id))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &ag); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
+			return
+		}
+
+		var upd common.AdAgency
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if ag.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		ag.Name = upd.Name
+
+		if upd.Fee == 0 || upd.Fee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
+			return
+		}
+		// NOTE: Fee changes will only reflect for new campaigns AND old campaigns
+		// AFTER the first of the month (when billing runs!)
+		ag.Fee = upd.Fee
+
+		// Save the Agency
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if b, err = json.Marshal(ag); err != nil {
 				return
 			}
@@ -257,11 +395,103 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if adv.AgencyId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+
+		if adv.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+
+		if adv.ExchangeFee == 0 || adv.ExchangeFee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid exchange fee"))
+			return
+		}
+
+		if adv.DspFee == 0 || adv.DspFee > 0.99{
+			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
+			return
+		}
+
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if adv.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Advertiser); err != nil {
 				return
 			}
 
+			if b, err = json.Marshal(adv); err != nil {
+				return
+			}
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Advertiser, adv.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(adv.Id))
+	}
+}
+
+func updateAdvertiser(s *Server) gin.HandlerFunc {
+	// Overrwrites any of the advertiser attributes
+	return func(c *gin.Context) {
+		var (
+			adv common.Advertiser
+			err error
+			b   []byte
+		)
+		id := c.Params.ByName("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(id))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &adv); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
+			return
+		}
+
+		var upd common.Advertiser
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if upd.AgencyId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+		adv.AgencyId = upd.AgencyId
+
+		if upd.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		adv.Name = upd.Name
+
+		if upd.ExchangeFee == 0 || upd.ExchangeFee > 0.99 {
+			c.JSON(400, misc.StatusErr("Please provide a valid exchange fee"))
+			return
+		}
+		adv.ExchangeFee = upd.ExchangeFee
+
+		if upd.DspFee == 0 || upd.DspFee > 0.99{
+			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
+			return
+		}
+		adv.DspFee = upd.DspFee
+		// NOTE: Fee changes will only reflect for new campaigns OR old campaigns
+		// AFTER the first of the month (when billing runs!)
+
+		// Save the Advertiser
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if b, err = json.Marshal(adv); err != nil {
 				return
 			}
@@ -412,33 +642,21 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			// Assuming each deal will be paying out max of $5
-			// Lower this if you want less deals
-
-			// The number of deals created is based on an avg
-			// pay per deal value. These deals will be the pool
-			// available.. no more. The deals are later checked
-			// in GetAvailableDeals function to see if they have
-			// been assigned and if they are eligible for the
-			// given influencer.
-			maxDeals := int(cmp.Budget / 5.0)
-			deals := make(map[string]*common.Deal)
-			for i := 0; i <= maxDeals; i++ {
-				d := &common.Deal{
-					Id:           misc.PseudoUUID(),
-					CampaignId:   cmp.Id,
-					AdvertiserId: cmp.AdvertiserId,
-				}
-				deals[d.Id] = d
-			}
-
-			cmp.Deals = deals
+			addDealsToCampaign(&cmp)
 
 			if b, err = json.Marshal(cmp); err != nil {
 				return
 			}
 			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		// Create their budget key
+		dspFee, exchangeFee := getAdvertiserFees(s, cmp.AdvertiserId)
+		if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, dspFee, exchangeFee, false); err != nil {
+			log.Println("Error creating budget key!", err)
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
@@ -563,6 +781,9 @@ func getCampaignCompletedDeals(s *Server) gin.HandlerFunc {
 
 func delCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var (
+			b []byte
+		)
 		id := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Campaign
@@ -571,12 +792,12 @@ func delCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			err = misc.DelBucketBytes(tx, s.Cfg.Bucket.Campaign, id)
-			if err != nil {
+			g.Active = false
+
+			if b, err = json.Marshal(g); err != nil {
 				return
 			}
-
-			return nil
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, id, b)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -586,19 +807,17 @@ func delCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+// Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
 	Geos       []*misc.GeoRecord `json:"geos,omitempty"`
-	Tags       []string          `json:"tags,omitempty"`
-	Mention    string            `json:"mention,omitempty"`
-	Link       string            `json:"link,omitempty"`
-	Task       string            `json:"task,omitempty"`
 	Categories []string          `json:"categories,omitempty"`
 	Active     bool              `json:"active,omitempty"`
+	Budget     float32           `json:"budget,omitempty"`
+	Gender     string            `json:"gender,omitempty"` // "m" or "f" or "mf"
 }
 
 func updateCampaign(s *Server) gin.HandlerFunc {
 	// Overrwrites any of the above campaign attributes
-	// NOTE: Must send full struct filled out with previous returned values
 	return func(c *gin.Context) {
 		var (
 			cmp common.Campaign
@@ -628,18 +847,31 @@ func updateCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmp.Geos = upd.Geos
-		cmp.Link = upd.Link
-		cmp.Task = upd.Task
+		if upd.Gender != "m" && upd.Gender != "f" && upd.Gender != "mf" {
+			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
+			return
+		}
+
+		if upd.Budget == 0 {
+			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
+			return
+		}
+
+		if cmp.Budget != upd.Budget {
+			// Update their budget!
+			dspFee, exchangeFee := getAdvertiserFees(s, cmp.AdvertiserId)
+			if err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, upd.Budget, dspFee, exchangeFee); err != nil {
+				log.Println("Error creating budget key!", err)
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+			cmp.Budget = upd.Budget
+		}
+
 		cmp.Active = upd.Active
 
-		// Sanitize methods
-		sanitized := []string{}
-		for _, ht := range upd.Tags {
-			sanitized = append(sanitized, sanitizeHash(ht))
-		}
-		cmp.Tags = sanitized
-		cmp.Mention = sanitizeMention(upd.Mention)
+		cmp.Geos = upd.Geos
+		cmp.Gender = upd.Gender
 		cmp.Categories = lowerArr(upd.Categories)
 
 		// Save the Campaign
@@ -662,6 +894,7 @@ var (
 	ErrBadGender = errors.New("Please provide a gender ('m' or 'f')")
 	ErrNoAgency  = errors.New("Please provide an agency id")
 	ErrNoGeo     = errors.New("Please provide a geo")
+	ErrNoName    = errors.New("Please provide a name")
 	ErrBadCat    = errors.New("Please provide a valid category")
 )
 
@@ -690,6 +923,11 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if load.Name == "" {
+			c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+			return
+		}
+
 		if load.Geo == nil {
 			c.JSON(400, misc.StatusErr(ErrNoGeo.Error()))
 			return
@@ -702,6 +940,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		inf, err := influencer.New(
+			load.Name,
 			load.TwitterId,
 			load.InstagramId,
 			load.FbId,
@@ -709,7 +948,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			load.Gender,
 			load.AgencyId,
 			load.Category,
-			load.FloorPrice,
 			load.Geo,
 			s.Cfg)
 
@@ -738,27 +976,13 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			v   []byte
-			err error
-			g   influencer.Influencer
-		)
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("id")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		if err = json.Unmarshal(v, &g); err != nil {
-			log.Println(string(v))
+		inf, err := getInfluencerFromId(s, c.Params.ByName("id"))
+		if err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, g)
+		c.JSON(200, inf)
 	}
 }
 
@@ -811,6 +1035,47 @@ func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 		c.JSON(200, influencers)
 	}
 }
+
+// func setFloor(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		raw := c.Params.ByName("floor")
+// 		floor, err := strconv.ParseFloat(raw, 64)
+// 		if err != nil {
+// 			log.Println("ERR", err)
+// 			c.JSON(500, misc.StatusErr("Invalid floor price"))
+// 			return
+// 		}
+
+// 		// Alter influencer bucket
+// 		var (
+// 			inf influencer.Influencer
+// 		)
+
+// 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+// 			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
+
+// 			if err = json.Unmarshal(b, &inf); err != nil {
+// 				return ErrUnmarshal
+// 			}
+
+// 			inf.FloorPrice = float32(floor)
+
+// 			if b, err = json.Marshal(&inf); err != nil {
+// 				return
+// 			}
+
+// 			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+// 				return
+// 			}
+// 			return
+// 		}); err != nil {
+// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			return
+// 		}
+
+// 		c.JSON(200, misc.StatusOK(inf.Id))
+// 	}
+// }
 
 func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -966,7 +1231,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := influencer.GetAvailableDeals(s.db, influencerId, "", misc.GetGeoFromCoords(lat, long, time.Now().Unix()), false, s.Cfg)
+		deals := influencer.GetAvailableDeals(s.db, s.budgetDb, influencerId, "", misc.GetGeoFromCoords(lat, long, time.Now().Unix()), false, s.Cfg)
 		c.JSON(200, deals)
 	}
 }
@@ -975,10 +1240,6 @@ func assignDeal(s *Server) gin.HandlerFunc {
 	// Influencer accepting deal
 	// Must pass in influencer ID and deal ID
 	return func(c *gin.Context) {
-		var (
-			b []byte
-		)
-
 		dealId := c.Params.ByName("dealId")
 		influencerId := c.Params.ByName("influencerId")
 		campaignId := c.Params.ByName("campaignId")
@@ -992,9 +1253,9 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		// via our GetAvailableDeals func
 		var found bool
 		foundDeal := &common.Deal{}
-		currentDeals := influencer.GetAvailableDeals(s.db, influencerId, dealId, nil, true, s.Cfg)
+		currentDeals := influencer.GetAvailableDeals(s.db, s.budgetDb, influencerId, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
-			if deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
+			if deal.Spendable > 0 && deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				found = true
 				foundDeal = deal
 			}
@@ -1021,13 +1282,20 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 			foundDeal.InfluencerId = influencerId
 			foundDeal.Assigned = int32(time.Now().Unix())
-			price, ok := foundDeal.Platforms[mediaPlatform]
-			if !ok || price == 0 {
+
+			foundPlatform := false
+			for _, p := range foundDeal.Platforms {
+				if p == mediaPlatform {
+					foundPlatform = true
+					break
+				}
+			}
+
+			if !foundPlatform {
 				return errors.New("Unforunately, the requested deal is no longer available!")
 			}
 
 			foundDeal.AssignedPlatform = mediaPlatform
-			foundDeal.AssignedPrice = price
 			cmp.Deals[dealId] = foundDeal
 
 			// Append to the influencer's active deals
@@ -1043,19 +1311,15 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			inf.ActiveDeals = append(inf.ActiveDeals, foundDeal)
 
 			// Save the Influencer
-			if b, err = json.Marshal(inf); err != nil {
-				return err
-			}
-
-			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+			if err = saveInfluencer(tx, inf, s.Cfg); err != nil {
 				return err
 			}
 
 			// Save the campaign
-			if b, err = json.Marshal(cmp); err != nil {
+			if err = saveCampaign(tx, cmp, s.Cfg); err != nil {
 				return err
 			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
+			return nil
 		}); err != nil {
 			c.JSON(200, misc.StatusErr(err.Error()))
 			return
@@ -1143,5 +1407,39 @@ func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 			}
 			c.JSON(200, deals)
 		}
+	}
+}
+
+// Budget
+func getBudgetInfo(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, c.Params.ByName("id"), "")
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, store)
+	}
+}
+
+func getStore(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		store, err := budget.GetStore(s.budgetDb, s.Cfg, "")
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, store)
+	}
+}
+
+func getLastMonthsStore(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, store)
 	}
 }

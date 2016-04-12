@@ -17,7 +17,7 @@ type Deal struct {
 
 	// Platform determined by GetAvailableDeals with value as potential pricepoint
 	// This is also saved/reset in the un/assign handlers
-	Platforms map[string]float32 `json:"platforms,omitempty"`
+	Platforms []string `json:"platforms,omitempty"`
 
 	// Timestamp for when the deal was picked up by an influencer
 	Assigned int32 `json:"assigned,omitempty"`
@@ -26,9 +26,8 @@ type Deal struct {
 
 	// All of the following are when a deal is assigned/unassigned
 	// or times out
-	InfluencerId     string  `json:"influencerId,omitempty"`
-	AssignedPlatform string  `json:"assignedPlatform,omitempty"`
-	AssignedPrice    float32 `json:"assignedPrice,omitempty"`
+	InfluencerId     string `json:"influencerId,omitempty"`
+	AssignedPlatform string `json:"assignedPlatform,omitempty"`
 
 	// Only set once deal is completed. Contain
 	// the information for the post which satisfied the deal
@@ -44,4 +43,8 @@ type Deal struct {
 	Link    string   `json:"link,omitempty"`
 	Task    string   `json:"task,omitempty"`
 	Perks   string   `json:"perks,omitempty"` // Perks need to be specced out
+
+	// How much this campaign has left to spend for the month
+	// Only filled in GetAvailableDeals for the influencer to see
+	Spendable float32 `json:"spendable,omitempty"`
 }

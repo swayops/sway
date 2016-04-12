@@ -6,6 +6,9 @@
 	"apiPath": "/api/v1/",
 	"sandbox": true,
 
+	"budgetDbName": "budget",
+	"budgetBucket": "budget",
+
 	"bucket": {
 		"user": "user",
 		"login": "login",
@@ -54,9 +57,7 @@
 	},
 
 	"dealTimeout": 14,
-	"statsUpdate": 4,
-	"statsInterval": 3,
-	"explorerUpdate": 5
-
-
+	"engineUpdate": 4,
+	"statsInterval": 5,
+	"influencerTtl": 12
 }

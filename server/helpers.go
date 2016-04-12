@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -31,9 +32,8 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 			deal.InfluencerId = ""
 			deal.Assigned = 0
 			deal.Completed = 0
-			deal.Platforms = make(map[string]float32)
+			deal.Platforms = []string{}
 			deal.AssignedPlatform = ""
-			deal.AssignedPrice = 0
 			cmp.Deals[dealId] = deal
 		}
 
@@ -79,13 +79,173 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 	return nil
 }
 
-func saveInfluencer(tx *bolt.Tx, inf influencer.Influencer, cfg *config.Config) error {
+func getAllActiveCampaigns(s *Server) ([]*common.Campaign, map[string]struct{}) {
+	// Returns a list of active campaign IDs in the system
+	campaigns := map[string]struct{}{}
+	campaignList := make([]*common.Campaign, 0, 512)
+
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+			cmp := &common.Campaign{}
+			if err := json.Unmarshal(v, cmp); err != nil {
+				log.Println("error when unmarshalling campaign", string(v))
+				return nil
+			}
+			if cmp.Active && cmp.Budget > 0 && len(cmp.Deals) != 0 {
+				campaigns[cmp.Id] = struct{}{}
+				campaignList = append(campaignList, cmp)
+			}
+
+			return
+		})
+		return nil
+	}); err != nil {
+		log.Println("Err getting all active campaigns", err)
+	}
+	return campaignList, campaigns
+}
+
+func getAllInfluencers(s *Server) []*influencer.Influencer {
+	influencers := make([]*influencer.Influencer, 0, 512)
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
+			inf := influencer.Influencer{}
+			if err := json.Unmarshal(v, &inf); err != nil {
+				log.Println("errorrrr when unmarshalling influencer", string(v))
+				return nil
+			}
+			influencers = append(influencers, &inf)
+			return
+		})
+		return nil
+	}); err != nil {
+		log.Println("Err when getting all influencers", err)
+	}
+	return influencers
+}
+
+func getAllActiveDeals(srv *Server) ([]*common.Deal, error) {
+	// Retrieves all active deals in the system!
+	var err error
+	deals := []*common.Deal{}
+
+	if err := srv.db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+			cmp := &common.Campaign{}
+			if err = json.Unmarshal(v, cmp); err != nil {
+				log.Println("error when unmarshalling campaign", string(v))
+				return err
+			}
+
+			for _, deal := range cmp.Deals {
+				if deal.Assigned > 0 && deal.Completed == 0 && deal.InfluencerId != "" {
+					deals = append(deals, deal)
+				}
+			}
+			return
+		})
+		return nil
+	}); err != nil {
+		return deals, err
+	}
+	return deals, err
+}
+
+func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
+	// Assuming each deal will be paying out max of $5
+	// Lower this if you want less deals
+
+	// The number of deals created is based on an avg
+	// pay per deal value. These deals will be the pool
+	// available.. no more. The deals are later checked
+	// in GetAvailableDeals function to see if they have
+	// been assigned and if they are eligible for the
+	// given influencer.
+
+	if cmp.Deals == nil || len(cmp.Deals) == 0 {
+		cmp.Deals = make(map[string]*common.Deal)
+	}
+
+	// Budget is always monthly
+	// Keeping it low because acceptance rate is low
+	maxDeals := int(cmp.Budget / 1.5)
+	for i := 0; i < maxDeals; i++ {
+		d := &common.Deal{
+			Id:           misc.PseudoUUID(),
+			CampaignId:   cmp.Id,
+			AdvertiserId: cmp.AdvertiserId,
+		}
+		cmp.Deals[d.Id] = d
+	}
+	return cmp
+}
+
+func getAdvertiserFees(s *Server, advId string) (float32, float32) {
+	var (
+		g   common.Advertiser
+		v   []byte
+		err error
+	)
+
+	if err = s.db.View(func(tx *bolt.Tx) error {
+		v = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(advId))
+		return nil
+	}); err != nil {
+		return 0, 0
+	}
+
+	if err = json.Unmarshal(v, &g); err != nil {
+		return 0, 0
+	}
+
+	return g.DspFee, g.ExchangeFee
+}
+
+func getAdvertiserFeesFromTx(tx *bolt.Tx, cfg *config.Config, advId string) (float32, float32) {
+	var (
+		g   common.Advertiser
+		v   []byte
+		err error
+	)
+
+	v = tx.Bucket([]byte(cfg.Bucket.Advertiser)).Get([]byte(advId))
+
+	if err = json.Unmarshal(v, &g); err != nil {
+		return 0, 0
+	}
+
+	return g.DspFee, g.ExchangeFee
+}
+
+func getInfluencerFromId(s *Server, id string) (*influencer.Influencer, error) {
+
+	var (
+		v   []byte
+		err error
+		g   influencer.Influencer
+	)
+
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
+		return nil
+	}); err != nil {
+		return &g, err
+	}
+
+	if err = json.Unmarshal(v, &g); err != nil {
+		return &g, err
+	}
+
+	return &g, nil
+}
+
+func saveInfluencer(tx *bolt.Tx, inf *influencer.Influencer, cfg *config.Config) error {
 	var (
 		b   []byte
 		err error
 	)
 
-	if b, err = json.Marshal(&inf); err != nil {
+	if b, err = json.Marshal(inf); err != nil {
 		return err
 	}
 
@@ -107,6 +267,75 @@ func createRoutes(r *gin.Engine, srv *Server, endpoint string, scopes auth.Scope
 		r.POST(endpoint, srv.auth.VerifyUser, sh, post(srv))
 		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser, sh, del(srv))
 	}
+}
+
+func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, cfg *config.Config) error {
+	var (
+		b   []byte
+		err error
+	)
+
+	if b, err = json.Marshal(cmp); err != nil {
+		return err
+	}
+
+	return misc.PutBucketBytes(tx, cfg.Bucket.Campaign, cmp.Id, b)
+}
+
+func getTalentAgencyFee(s *Server, id string) float32 {
+	var (
+		v   []byte
+		err error
+		ag  common.TalentAgency
+	)
+
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(id))
+		return nil
+	}); err != nil {
+		return 0
+	}
+
+	if err = json.Unmarshal(v, &ag); err != nil {
+		return 0
+	}
+	return ag.Fee
+}
+
+func saveAllDeals(s *Server, inf *influencer.Influencer) error {
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		// Save the influencer since we just updated it's social media data
+		if err := saveInfluencer(tx, inf, s.Cfg); err != nil {
+			log.Println("Errored saving influencer", err)
+			return err
+		}
+
+		cmpB := tx.Bucket([]byte(s.Cfg.Bucket.Campaign))
+		// Since we just updated the deal metrics for the influencer,
+		// lets also update the deal values in the campaign
+		for _, deal := range inf.CompletedDeals {
+			var cmp *common.Campaign
+			err := json.Unmarshal((cmpB).Get([]byte(deal.CampaignId)), &cmp)
+			if err != nil {
+				log.Println("Err unmarshalling campaign", err)
+				continue
+			}
+			if _, ok := cmp.Deals[deal.Id]; ok {
+				// Replace the old deal saved with the new one
+				cmp.Deals[deal.Id] = deal
+			}
+
+			// Save the campaign!
+			if err := saveCampaign(tx, cmp, s.Cfg); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		log.Println("Error when saving influencer", err)
+		return err
+	}
+	return nil
 }
 
 func sanitizeHash(str string) string {

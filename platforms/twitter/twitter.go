@@ -56,8 +56,8 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 }
 
 func (tw *Twitter) UpdateData(cfg *config.Config) error {
-	// If we already updated in the last 4 hours, skip
-	if misc.WithinLast(tw.LastUpdated, 4) {
+	// If we already updated in the last 12 hours, skip
+	if misc.WithinLast(tw.LastUpdated, cfg.InfluencerTTL) {
 		return nil
 	}
 
@@ -104,6 +104,8 @@ func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
 		if t.User != nil {
 			t.PostURL = fmt.Sprintf(postURL, t.User.Id, t.Id)
 		}
+		t.RetweetsDelta = t.Retweets
+		t.FavoritesDelta = t.Favorites
 
 	}
 	return

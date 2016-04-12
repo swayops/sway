@@ -13,36 +13,41 @@ import (
 )
 
 type Server struct {
-	Cfg  *config.Config
-	r    *gin.Engine
-	db   *bolt.DB
-	auth *auth.Auth
-	// Db
+	Cfg      *config.Config
+	r        *gin.Engine
+	db       *bolt.DB
+	budgetDb *bolt.DB
+	auth     *auth.Auth
 }
 
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
+	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 
 	srv := &Server{
-		Cfg:  cfg,
-		r:    r,
-		db:   db,
-		auth: auth.New(db, cfg),
+		Cfg:      cfg,
+		r:        r,
+		db:       db,
+		budgetDb: budgetDb,
+		auth:     auth.New(db, cfg),
 	}
 
-	err := srv.InitializeDB(cfg)
+	err := srv.initializeDBs(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	srv.InitializeRoutes(r)
-	srv.InitializeChecks()
+	if err = srv.startEngine(); err != nil {
+		return nil, err
+	}
+
+	srv.initializeRoutes(r)
 
 	return srv, nil
 }
 
-func (srv *Server) InitializeDB(cfg *config.Config) error {
-	return srv.db.Update(func(tx *bolt.Tx) error {
+func (srv *Server) initializeDBs(cfg *config.Config) error {
+	if err := srv.db.Update(func(tx *bolt.Tx) error {
 		for _, val := range cfg.AllBuckets() {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
@@ -53,7 +58,23 @@ func (srv *Server) InitializeDB(cfg *config.Config) error {
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.BudgetBucket)); err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //TODO should this be in the config?
@@ -70,18 +91,21 @@ var scopes = map[string]auth.ScopeMap{
 	},
 }
 
-func (srv *Server) InitializeRoutes(r *gin.Engine) {
+func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+	r.POST("/updateTalentAgency/:id", updateTalentAgency(srv))
 
 	// AdAgency
 	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdvertiserAgencyItem, getAdAgency, putAdAgency, delAdAgency)
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
+	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
 
 	// Advertiser
 	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser, delAdvertiser)
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
+	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
 
 	// Campaigns
 	createRoutes(r, srv, "/campaign", scopes["adv"], auth.CampaignItem, getCampaign, putCampaign, delCampaign)
@@ -101,6 +125,7 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
+	// r.GET("/setFloor/:influencerId/:floor", setFloor(srv))
 
 	// Deal
 	// TODO
@@ -111,11 +136,16 @@ func (srv *Server) InitializeRoutes(r *gin.Engine) {
 	// Offset in hours
 	// TODO
 	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv))
+
+	// Budget
+	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
+	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
+	r.GET("/getStore", getStore(srv))
+
 }
 
-func (srv *Server) InitializeChecks() {
-	newDealExplorer(srv)
-	newStatsUpdate(srv)
+func (srv *Server) startEngine() error {
+	return newSwayEngine(srv)
 }
 
 func (srv *Server) Run() (err error) {
