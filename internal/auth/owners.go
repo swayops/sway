@@ -17,7 +17,7 @@ const (
 )
 
 func (a *Auth) SetOwnerTx(tx *bolt.Tx, itemType ItemType, itemId, userId string) error {
-	b := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
+	b := misc.GetBucket(tx, a.cfg.AuthBucket.Ownership)
 	return b.Put(getOwnersKey(itemType, itemId), []byte(userId))
 }
 
@@ -26,11 +26,11 @@ func (a *Auth) IsOwnerTx(tx *bolt.Tx, itemType ItemType, itemId, userId string) 
 }
 
 func (a *Auth) GetOwnerTx(tx *bolt.Tx, itemType ItemType, itemId string) string {
-	b := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
+	b := misc.GetBucket(tx, a.cfg.AuthBucket.Ownership)
 	return string(b.Get(getOwnersKey(itemType, itemId)))
 }
 
 func (a *Auth) DelOwnedItem(tx *bolt.Tx, itemType ItemType, itemId string) error {
-	b := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
+	b := misc.GetBucket(tx, a.cfg.AuthBucket.Ownership)
 	return b.Delete(getOwnersKey(itemType, itemId))
 }

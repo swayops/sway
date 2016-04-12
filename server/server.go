@@ -17,19 +17,23 @@ type Server struct {
 	r        *gin.Engine
 	db       *bolt.DB
 	budgetDb *bolt.DB
+	authDb   *bolt.DB
 	auth     *auth.Auth
 }
 
+// TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
+	authDb := misc.OpenDB(cfg.DBPath, cfg.AuthDBName)
 
 	srv := &Server{
 		Cfg:      cfg,
 		r:        r,
 		db:       db,
 		budgetDb: budgetDb,
-		auth:     auth.New(db, cfg),
+		authDb:   authDb,
+		auth:     auth.New(authDb, cfg),
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -68,6 +72,21 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		}
 		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
 			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := srv.authDb.Update(func(tx *bolt.Tx) error {
+		for _, val := range cfg.AllAuthBuckets() {
+			log.Println("Initializing bucket", val)
+			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
+				return fmt.Errorf("create bucket: %s", err)
+			}
+			if err := misc.InitIndex(tx, val, 1); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {

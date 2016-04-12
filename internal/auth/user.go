@@ -93,11 +93,11 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		return
 	}
 
-	if u.Id, err = misc.GetNextIndex(tx, a.cfg.Bucket.User); err != nil {
+	if u.Id, err = misc.GetNextIndex(tx, a.cfg.AuthBucket.User); err != nil {
 		return
 	}
 
-	if err = misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u); err != nil {
+	if err = misc.PutTxJson(tx, a.cfg.AuthBucket.User, u.Id, u); err != nil {
 		return
 	}
 
@@ -107,7 +107,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		Password: password,
 	}
 
-	if err = misc.PutTxJson(tx, a.cfg.Bucket.Login, misc.TrimEmail(u.Email), login); err != nil {
+	if err = misc.PutTxJson(tx, a.cfg.AuthBucket.Login, misc.TrimEmail(u.Email), login); err != nil {
 		return
 	}
 	return
@@ -119,9 +119,9 @@ func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
 		return ErrInvalidUserId
 	}
 	uid := []byte(userId)
-	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
-	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
-	os := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
+	misc.GetBucket(tx, a.cfg.AuthBucket.User).Delete(uid)
+	misc.GetBucket(tx, a.cfg.AuthBucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
+	os := misc.GetBucket(tx, a.cfg.AuthBucket.Ownership)
 	os.ForEach(func(k, v []byte) error {
 		if bytes.Compare(v, uid) == 0 {
 			os.Delete(k)

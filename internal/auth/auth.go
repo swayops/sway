@@ -43,7 +43,7 @@ func New(db *bolt.DB, cfg *config.Config) *Auth {
 func (a *Auth) purgeInvalidTokens() {
 	for {
 		a.db.Update(func(tx *bolt.Tx) error {
-			b := misc.GetBucket(tx, a.cfg.Bucket.Token)
+			b := misc.GetBucket(tx, a.cfg.AuthBucket.Token)
 			ts := time.Now()
 			return b.ForEach(func(k, v []byte) error {
 				var tok Token
@@ -63,7 +63,7 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 	email = misc.TrimEmail(email)
 
 	var l Login
-	if misc.GetTxJson(tx, a.cfg.Bucket.Login, email, &l) == nil && l.UserId != "" {
+	if misc.GetTxJson(tx, a.cfg.AuthBucket.Login, email, &l) == nil && l.UserId != "" {
 		return &l
 	}
 	return nil
@@ -71,7 +71,7 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 
 func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
 	var u User
-	if misc.GetTxJson(tx, a.cfg.Bucket.Login, userId, &u) == nil && len(u.Salt) > 0 {
+	if misc.GetTxJson(tx, a.cfg.AuthBucket.Login, userId, &u) == nil && len(u.Salt) > 0 {
 		return &u
 	}
 	return nil
@@ -99,7 +99,7 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 	}
 
 	var token Token
-	if misc.GetTxJson(tx, a.cfg.Bucket.Token, ri.stoken, &token) != nil || !token.IsValid(time.Now()) {
+	if misc.GetTxJson(tx, a.cfg.AuthBucket.Token, ri.stoken, &token) != nil || !token.IsValid(time.Now()) {
 		return nil
 	}
 	if ri.user = a.GetUserTx(tx, token.UserId); ri.user == nil {
@@ -121,7 +121,8 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 		return nil, "", ErrInvalidPass
 	}
 	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
-	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, &Token{UserId: l.UserId, Expires: time.Now().Add(TokenAge).UnixNano()})
+	ntok := &Token{UserId: l.UserId, Expires: time.Now().Add(TokenAge).UnixNano()}
+	err = misc.PutTxJson(tx, a.cfg.AuthBucket.Token, stok, ntok)
 	return
 }
 
@@ -153,9 +154,9 @@ func (t *Token) Refresh(dur time.Duration) *Token {
 func (a *Auth) refreshToken(stok string, dur time.Duration) {
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
 		var token Token
-		if misc.GetTxJson(tx, a.cfg.Bucket.Token, stok, &token) != nil || !token.IsValid(time.Now()) {
+		if misc.GetTxJson(tx, a.cfg.AuthBucket.Token, stok, &token) != nil || !token.IsValid(time.Now()) {
 			return
 		}
-		return misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, token.Refresh(dur))
+		return misc.PutTxJson(tx, a.cfg.AuthBucket.Token, stok, token.Refresh(dur))
 	})
 }

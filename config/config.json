@@ -7,6 +7,7 @@
 	"sandbox": true,
 
 	"budgetDbName": "budget",
+	"authDbName": "auth",
 	"budgetBucket": "budget",
 
 	"bucket": {
@@ -19,6 +20,13 @@
 		"advertiser": "advertiser",
 		"campaign": "campaign",
 		"influencer": "influencer"
+	},
+
+	"authBucket": {
+		"user": "user",
+		"login": "login",
+		"token": "token",
+		"ownership": "ownership"
 	},
 
 	"mandrill": {
