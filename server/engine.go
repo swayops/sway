@@ -154,7 +154,7 @@ func billing(s *Server) error {
 	if budget.ShouldBill(s.budgetDb, s.Cfg) {
 		// Now that it's a new month.. get last month's budget store
 		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
-		if err != nil || store == nil || len(store) == 0 {
+		if err != nil || len(store) == 0 {
 			// Insert file informant check
 			return ErrEmptyStore
 		}
