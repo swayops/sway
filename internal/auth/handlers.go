@@ -118,7 +118,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 	c.JSON(200, misc.StatusOK(login.UserId))
 }
 
-func (a *Auth) SignupHandler(c *gin.Context) {
+func (a *Auth) SignUpHandler(c *gin.Context) {
 	var uwp struct { // UserWithPassword
 		User
 		Password  string `json:"pass"`

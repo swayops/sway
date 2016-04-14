@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	AdminUserId     = "0"
-	SwayOpsAgencyId = "1"
+	AdminUserId     = "1"
+	SwayOpsAgencyId = "2"
 )
 
 type Login struct {

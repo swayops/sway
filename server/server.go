@@ -12,6 +12,13 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+const (
+	adminEmail  = "admin@swayops.com"
+	adminPass   = "Rf_jv9hM3-"
+	agencyEmail = "agency@swayops.com"
+	agencyPass  = "Rf_jv9hM4-"
+)
+
 type Server struct {
 	Cfg      *config.Config
 	r        *gin.Engine
@@ -40,7 +47,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	go srv.auth.PurgeInvalidTokens()
 	if err = srv.startEngine(); err != nil {
 		return nil, err
 	}
@@ -78,7 +85,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		return err
 	}
 
-	if err := srv.authDb.Update(func(tx *bolt.Tx) error {
+	return srv.authDb.Update(func(tx *bolt.Tx) error {
 		for _, val := range cfg.AllAuthBuckets() {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
@@ -88,12 +95,32 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 				return err
 			}
 		}
+		if srv.auth.GetUserTx(tx, auth.AdminUserId) == nil {
+			u := auth.User{
+				Name:  "System Admin",
+				Email: adminEmail,
+				Type:  auth.Admin,
+			}
+			if err := srv.auth.CreateUserTx(tx, &u, adminPass); err != nil {
+				return err
+			}
+			log.Println("created admin user, id = ", u.Id)
+		}
+		// is this needed?
+		if srv.auth.GetUserTx(tx, auth.SwayOpsAgencyId) == nil {
+			u := auth.User{
+				Name:     "SwayOps Agency",
+				Email:    agencyEmail,
+				Type:     auth.AdvertiserAgency,
+				ParentId: auth.AdminUserId,
+			}
+			if err := srv.auth.CreateUserTx(tx, &u, agencyPass); err != nil {
+				return err
+			}
+			log.Println("created agency, id = ", u.Id)
+		}
 		return nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }
 
 //TODO should this be in the config?
@@ -111,6 +138,8 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
+	r.POST("/signin", srv.auth.SignInHandler)
+	r.POST("/signup", srv.auth.SignUpHandler)
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))

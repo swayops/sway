@@ -36,11 +36,10 @@ func New(db *bolt.DB, cfg *config.Config) *Auth {
 		cfg: cfg,
 		ec:  cfg.MailClient(),
 	}
-	go a.purgeInvalidTokens()
 	return a
 }
 
-func (a *Auth) purgeInvalidTokens() {
+func (a *Auth) PurgeInvalidTokens() {
 	for {
 		a.db.Update(func(tx *bolt.Tx) error {
 			b := misc.GetBucket(tx, a.cfg.AuthBucket.Token)
@@ -71,7 +70,7 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 
 func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
 	var u User
-	if misc.GetTxJson(tx, a.cfg.AuthBucket.Login, userId, &u) == nil && len(u.Salt) > 0 {
+	if misc.GetTxJson(tx, a.cfg.AuthBucket.User, userId, &u) == nil && len(u.Salt) > 0 {
 		return &u
 	}
 	return nil
