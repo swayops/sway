@@ -9,6 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 )
 
@@ -25,20 +26,12 @@ import (
 // 			"influencers": {
 // 				"JennaMarbles": {
 // 					"payout": 3.4,
-// 					"likes": 0,
-// 					"comments": 0,
-// 					"shares": 0,
-// 					"retweets": 0,
-// 					"favorites": 34,
-// 					"views": 30,
-// 					"dislikes": 45
 // 				}
 // 			}
 // 		}
 // 	}
 // }
 
-// Fees
 var (
 	TalentAgencyFee = float32(0.125) // 12.5%
 	ErrUnmarshal    = errors.New("Failed to unmarshal data!")
@@ -58,17 +51,17 @@ type Store struct {
 }
 
 type InfluencerData struct {
-	Payout    float32 `json:"payout,omitempty"`
-	Likes     int32   `json:"likes,omitempty"`
-	Dislikes  int32   `json:"dislikes,omitempty"`
-	Comments  int32   `json:"comments,omitempty"`
-	Shares    int32   `json:"shares,omitempty"`
-	Retweets  int32   `json:"retweets,omitempty"`
-	Favorites int32   `json:"favorites,omitempty"`
-	Views     int64   `json:"views,omitempty"`
+	Payout float32 `json:"payout,omitempty"`
+	// Likes    int32   `json:"likes,omitempty"`
+	// Dislikes int32   `json:"dislikes,omitempty"`
+	// Comments int32   `json:"comments,omitempty"`
+	// Shares   int32   `json:"shares,omitempty"`
+	// Retweets  int32   `json:"retweets,omitempty"`
+	// Favorites int32   `json:"favorites,omitempty"`
+	// Views int64 `json:"views,omitempty"`
 
-	Completed int32  `json:"completed,omitempty"`
-	Url       string `json:"url,omitempty"`
+	// Completed int32  `json:"completed,omitempty"`
+	// Url       string `json:"url,omitempty"`
 }
 
 func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float32, billing bool) error {
@@ -131,6 +124,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		if err = misc.PutBucketBytes(tx, cfg.BudgetBucket, key, b); err != nil {
 			return
 		}
+
 		return
 	}); err != nil {
 		log.Println("Error when creating budget key", err)
@@ -245,12 +239,7 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 	return st, nil
 }
 
-func AdjustStore(store *Store, deal *common.Deal) *Store {
-	if store.Spendable <= 0 {
-		// Stop giving influencers money once we've depleted spendable
-		return store
-	}
-
+func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Store, *reporting.Stats) {
 	if store.Influencers == nil || len(store.Influencers) == 0 {
 		store.Influencers = make(map[string]*InfluencerData)
 	}
@@ -262,39 +251,38 @@ func AdjustStore(store *Store, deal *common.Deal) *Store {
 		store.Influencers[deal.InfluencerId] = infData
 	}
 
+	// Add logging here eventually!
+
 	oldSpendable := store.Spendable
 	if deal.Tweet != nil {
-		infData.Url = deal.Tweet.PostURL
-
-		infData.Retweets += int32(deal.Tweet.RetweetsDelta)
-		infData.Favorites += int32(deal.Tweet.FavoritesDelta)
+		// Considering retweets as shares and favorites as likes!
+		stats.Shares += int32(deal.Tweet.RetweetsDelta)
+		stats.Likes += int32(deal.Tweet.FavoritesDelta)
+		stats.Published = int32(deal.Tweet.CreatedAt.Unix())
 
 		store.deductSpendable(float32(deal.Tweet.RetweetsDelta) * TW_RETWEET)
 		store.deductSpendable(float32(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		infData.Url = deal.Facebook.PostURL
-
-		infData.Likes += int32(deal.Facebook.LikesDelta)
-		infData.Shares += int32(deal.Facebook.SharesDelta)
-		infData.Comments += int32(deal.Facebook.CommentsDelta)
+		stats.Likes += int32(deal.Facebook.LikesDelta)
+		stats.Shares += int32(deal.Facebook.SharesDelta)
+		stats.Comments += int32(deal.Facebook.CommentsDelta)
+		stats.Published = int32(deal.Facebook.Published.Unix())
 
 		store.deductSpendable(float32(deal.Facebook.LikesDelta) * FB_LIKE)
 		store.deductSpendable(float32(deal.Facebook.SharesDelta) * FB_SHARE)
 		store.deductSpendable(float32(deal.Facebook.CommentsDelta) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		infData.Url = deal.Instagram.PostURL
-
-		infData.Likes += int32(deal.Instagram.LikesDelta)
-		infData.Comments += int32(deal.Instagram.CommentsDelta)
+		stats.Likes += int32(deal.Instagram.LikesDelta)
+		stats.Comments += int32(deal.Instagram.CommentsDelta)
+		stats.Published = deal.Instagram.Published
 
 		store.deductSpendable(float32(deal.Instagram.LikesDelta) * INSTA_LIKE)
 		store.deductSpendable(float32(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		infData.Url = deal.YouTube.PostURL
-
-		infData.Views += int64(deal.YouTube.ViewsDelta)
-		infData.Likes += int32(deal.YouTube.LikesDelta)
-		infData.Comments += int32(deal.YouTube.CommentsDelta)
+		stats.Views += int32(deal.YouTube.ViewsDelta)
+		stats.Likes += int32(deal.YouTube.LikesDelta)
+		stats.Comments += int32(deal.YouTube.CommentsDelta)
+		stats.Published = deal.YouTube.Published
 
 		store.deductSpendable(float32(deal.YouTube.ViewsDelta) * YT_VIEW)
 		store.deductSpendable(float32(deal.YouTube.LikesDelta) * YT_LIKE)
@@ -305,9 +293,10 @@ func AdjustStore(store *Store, deal *common.Deal) *Store {
 
 	store.Spent += tmpSpent
 	infData.Payout += tmpSpent
-	infData.Completed = deal.Completed
 
-	return store
+	stats.Payout += tmpSpent
+
+	return store, stats
 }
 
 func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {
@@ -333,6 +322,7 @@ func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error 
 		if err = misc.PutBucketBytes(tx, cfg.BudgetBucket, key, b); err != nil {
 			return
 		}
+
 		return
 	}); err != nil {
 		log.Println("Error when saving store", err)

@@ -8,25 +8,32 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
 )
 
 type Server struct {
-	Cfg      *config.Config
-	r        *gin.Engine
-	db       *bolt.DB
-	budgetDb *bolt.DB
+	Cfg         *config.Config
+	r           *gin.Engine
+	db          *bolt.DB
+	budgetDb    *bolt.DB
+	reportingDb *bolt.DB
+
+	Campaigns *common.Campaigns
 }
 
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
+	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
 
 	srv := &Server{
-		Cfg:      cfg,
-		r:        r,
-		db:       db,
-		budgetDb: budgetDb,
+		Cfg:         cfg,
+		r:           r,
+		db:          db,
+		budgetDb:    budgetDb,
+		reportingDb: reportingDb,
+		Campaigns:   common.NewCampaigns(),
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -71,6 +78,18 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		return err
 	}
 
+	if err := srv.reportingDb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.ReportingBucket)); err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		if err := misc.InitIndex(tx, cfg.ReportingBucket, 1); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -105,7 +124,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
-	// r.GET("/setFloor/:influencerId/:floor", setFloor(srv))
 
 	// Deal
 	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
@@ -119,6 +137,10 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
 	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
 	r.GET("/getStore", getStore(srv))
+
+	// Reporting
+	r.GET("/getStats/:cid", getStats(srv))
+	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
 
 }
 

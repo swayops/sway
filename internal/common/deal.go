@@ -1,6 +1,11 @@
 package common
 
 import (
+	"encoding/json"
+	"log"
+
+	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/twitter"
@@ -47,4 +52,31 @@ type Deal struct {
 	// How much this campaign has left to spend for the month
 	// Only filled in GetAvailableDeals for the influencer to see
 	Spendable float32 `json:"spendable,omitempty"`
+}
+
+func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
+	// Retrieves all active deals in the system!
+	var err error
+	deals := []*Deal{}
+
+	if err := db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+			cmp := &Campaign{}
+			if err = json.Unmarshal(v, cmp); err != nil {
+				log.Println("error when unmarshalling campaign", string(v))
+				return err
+			}
+
+			for _, deal := range cmp.Deals {
+				if deal.Assigned > 0 && deal.Completed == 0 && deal.InfluencerId != "" {
+					deals = append(deals, deal)
+				}
+			}
+			return
+		})
+		return nil
+	}); err != nil {
+		return deals, err
+	}
+	return deals, err
 }

@@ -32,10 +32,12 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	DBPath       string `json:"dbPath"`
-	DBName       string `json:"dbName"`
-	BudgetDBName string `json:"budgetDbName"`
-	BudgetBucket string `json:"budgetBucket"`
+	DBPath          string `json:"dbPath"`
+	DBName          string `json:"dbName"`
+	BudgetDBName    string `json:"budgetDbName"`
+	BudgetBucket    string `json:"budgetBucket"`
+	ReportingDBName string `json:"reportingDbName"`
+	ReportingBucket string `json:"reportingBucket"`
 
 	DealTimeout   int32         `json:"dealTimeout"`   // In days
 	EngineUpdate  time.Duration `json:"engineUpdate"`  // In hours
@@ -83,4 +85,6 @@ type Config struct {
 		Influencer   string   `json:"influencer"`
 		All          []string `json:"all"`
 	} `json:"bucket"`
+
+	JsonXlsxPath string `json:"jsonXlsxPath"`
 }

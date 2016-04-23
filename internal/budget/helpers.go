@@ -20,13 +20,22 @@ func getBudgetKey() string {
 }
 
 func GetLastMonthBudgetKey() string {
+	return getBudgetKeyOffset(1)
+}
+
+func getBudgetKeyOffset(offset int) string {
 	now := time.Now().UTC()
 
-	lastMonth := int(now.Month()) - 1
+	lastMonth := int(now.Month()) - offset
 	year := now.Year()
 	if lastMonth == 0 {
 		year = year - 1
 		lastMonth = 12
+	} else if lastMonth < 0 {
+		lastMonth = -lastMonth
+		lastMonth = 12 - lastMonth
+		year = year - 1
+
 	}
 	return fmt.Sprintf(
 		format,
