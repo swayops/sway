@@ -622,10 +622,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
-		// 	c.JSON(400, misc.StatusErr("Please provide a required tag, mention or link"))
-		// 	return
-		// }
+		if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
+			c.JSON(400, misc.StatusErr("Please provide a required tag, mention or link"))
+			return
+		}
 
 		// Sanitize methods
 		sanitized := []string{}

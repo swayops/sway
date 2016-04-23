@@ -14,7 +14,7 @@ func GetAllInfluencers(db *bolt.DB, cfg *config.Config) []*Influencer {
 		tx.Bucket([]byte(cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
 			inf := Influencer{}
 			if err := json.Unmarshal(v, &inf); err != nil {
-				log.Println("errorrrr when unmarshalling influencer", string(v))
+				log.Println("Error when unmarshalling influencer", string(v))
 				return nil
 			}
 			influencers = append(influencers, &inf)

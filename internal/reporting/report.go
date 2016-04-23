@@ -12,12 +12,6 @@ import (
 	"github.com/swayops/sway/internal/common"
 )
 
-const (
-	GREY  = "E6EEF1"
-	BLUE  = "86CCE3"
-	WHITE = "FFFFFF"
-)
-
 var (
 	ErrCampaignNotFound = errors.New("Campaign not found!")
 )

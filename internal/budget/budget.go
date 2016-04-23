@@ -52,16 +52,6 @@ type Store struct {
 
 type InfluencerData struct {
 	Payout float32 `json:"payout,omitempty"`
-	// Likes    int32   `json:"likes,omitempty"`
-	// Dislikes int32   `json:"dislikes,omitempty"`
-	// Comments int32   `json:"comments,omitempty"`
-	// Shares   int32   `json:"shares,omitempty"`
-	// Retweets  int32   `json:"retweets,omitempty"`
-	// Favorites int32   `json:"favorites,omitempty"`
-	// Views int64 `json:"views,omitempty"`
-
-	// Completed int32  `json:"completed,omitempty"`
-	// Url       string `json:"url,omitempty"`
 }
 
 func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float32, billing bool) error {
