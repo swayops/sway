@@ -14,7 +14,7 @@ import (
 )
 
 // Structure of Reporting DB:
-// Stores all transactions by day at the influencer level
+// Stores all transactions by day at the post level
 // {
 //     "1": { // Campaign ID
 //         "2016-10-30||1||JennaMarbles||Instagram||http://www.instagram.com/post": { // Date::Name::Platform::postUrl
