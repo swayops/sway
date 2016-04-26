@@ -139,7 +139,8 @@ var scopes = map[string]auth.ScopeMap{
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.POST("/signin", srv.auth.SignInHandler)
-	r.POST("/signup", srv.auth.SignUpHandler)
+	r.POST("/signup", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
+
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
@@ -160,10 +161,10 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	sh := srv.auth.CheckScopes(scopes["adv"])
 	oh := srv.auth.CheckOwnership(auth.CampaignItem, "campaignId")
-	r.GET("/getCampaignsByAdvertiser/:id", srv.auth.VerifyUser, sh, getCampaignsByAdvertiser(srv))
-	r.GET("/getCampaignAssignedDeals/:campaignId", srv.auth.VerifyUser, sh, oh, getCampaignAssignedDeals(srv))
-	r.GET("/getCampaignCompletedDeals/:campaignId", srv.auth.VerifyUser, sh, oh, getCampaignCompletedDeals(srv))
-	r.POST("/updateCampaign/:campaignId", srv.auth.VerifyUser, sh, oh, updateCampaign(srv))
+	r.GET("/getCampaignsByAdvertiser/:id", srv.auth.VerifyUser(false), sh, getCampaignsByAdvertiser(srv))
+	r.GET("/getCampaignAssignedDeals/:campaignId", srv.auth.VerifyUser(false), sh, oh, getCampaignAssignedDeals(srv))
+	r.GET("/getCampaignCompletedDeals/:campaignId", srv.auth.VerifyUser(false), sh, oh, getCampaignCompletedDeals(srv))
+	r.POST("/updateCampaign/:campaignId", srv.auth.VerifyUser(false), sh, oh, updateCampaign(srv))
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", scopes["inf"], auth.InfluencerItem, getInfluencer, putInfluencer, delInfluencer)

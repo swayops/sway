@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,26 +12,31 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
-func (a *Auth) VerifyUser(c *gin.Context) {
-	var ri *reqInfo
-	a.db.View(func(tx *bolt.Tx) error {
-		ri = a.getReqInfoTx(tx, c.Request)
-		return nil
-	})
-	w, r := c.Writer, c.Request
-	if ri == nil || !VerifyMac(ri.oldMac, ri.hashedPass, ri.stoken, ri.user.Salt) {
-		if a.loginUrl != "" && r.Method == "GET" && r.Header.Get("X-Requested-With") == "" {
-			c.Redirect(302, a.loginUrl)
-		} else {
-			misc.AbortWithErr(c, 401, ErrUnauthorized)
+func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var ri *reqInfo
+		a.db.View(func(tx *bolt.Tx) error {
+			ri = a.getReqInfoTx(tx, c.Request)
+			return nil
+		})
+		if ri == nil && allowAnon {
+			return
 		}
-		return
-	}
-	c.Set(gin.AuthUserKey, ri.user)
-	if !ri.isApiKey {
-		refreshCookie(w, r, "token", TokenAge)
-		refreshCookie(w, r, "key", TokenAge)
-		a.refreshToken(ri.stoken, TokenAge)
+		w, r := c.Writer, c.Request
+		if ri == nil || !VerifyMac(ri.oldMac, ri.hashedPass, ri.stoken, ri.user.Salt) {
+			if a.loginUrl != "" && r.Method == "GET" && r.Header.Get("X-Requested-With") == "" {
+				c.Redirect(302, a.loginUrl)
+			} else {
+				misc.AbortWithErr(c, 401, ErrUnauthorized)
+			}
+			return
+		}
+		c.Set(gin.AuthUserKey, ri.user)
+		if !ri.isApiKey {
+			refreshCookie(w, r, "token", TokenAge)
+			refreshCookie(w, r, "key", TokenAge)
+			a.refreshToken(ri.stoken, TokenAge)
+		}
 	}
 }
 
@@ -93,6 +99,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 		tok   string
 		err   error
 	)
+
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
 		if login, tok, err = a.SignInTx(tx, li.Email, li.Password); err != nil {
 			return
@@ -223,4 +230,38 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(200, misc.StatusOK(""))
+}
+
+// this returns a perma API key for the logged in user, the key gets invalidated if the user changes their password
+// or passes ?renew=true
+func (a *Auth) APIKeyHandler(c *gin.Context) {
+	u := GetCtxUser(c)
+	if u.APIKey == "" || c.Query("renew") == "true" {
+		stok := hex.EncodeToString(misc.CreateToken(TokenLen - 8))
+		ntok := &Token{UserId: u.Id, Expires: -1}
+		var pass string
+		if err := a.db.Update(func(tx *bolt.Tx) error {
+			l := a.GetLoginTx(tx, u.Email)
+			if l == nil {
+				return ErrInvalidEmail
+			}
+			pass = l.Password
+			return misc.PutTxJson(tx, a.cfg.AuthBucket.Token, stok, ntok)
+		}); err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+		mac := CreateMAC(pass, stok, u.Salt)
+		if err := a.db.Update(func(tx *bolt.Tx) error {
+			u.APIKey = stok + mac
+			return misc.PutTxJson(tx, a.cfg.AuthBucket.User, u.Id, u)
+		}); err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+	}
+	msg := misc.StatusOK(u.Id)
+	msg["key"] = u.APIKey
+	c.JSON(200, msg)
 }

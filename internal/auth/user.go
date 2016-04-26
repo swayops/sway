@@ -33,7 +33,7 @@ type User struct {
 	CreatedAt int64    `json:"createdAt,omitempty"`
 	UpdatedAt int64    `json:"updatedAt,omitempty"`
 	Agencies  []string `json:"agencies,omitempty"`
-	APIKeys   []string `json:"apiKeys,omitempty"`
+	APIKey    string   `json:"apiKeys,omitempty"`
 	Salt      string   `json:"salt,omitempty"`
 }
 

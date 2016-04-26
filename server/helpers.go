@@ -259,13 +259,13 @@ func createRoutes(r *gin.Engine, srv *Server, endpoint string, scopes auth.Scope
 	sh := srv.auth.CheckScopes(scopes)
 	if ownershipItemType != "" {
 		oh := srv.auth.CheckOwnership(ownershipItemType, "id")
-		r.GET(endpoint+"/:id", srv.auth.VerifyUser, sh, oh, get(srv))
-		r.POST(endpoint, srv.auth.VerifyUser, sh, post(srv))
-		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser, sh, oh, del(srv))
+		r.GET(endpoint+"/:id", srv.auth.VerifyUser(false), sh, oh, get(srv))
+		r.POST(endpoint, srv.auth.VerifyUser(false), sh, post(srv))
+		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser(false), sh, oh, del(srv))
 	} else {
-		r.GET(endpoint+"/:id", srv.auth.VerifyUser, sh, get(srv))
-		r.POST(endpoint, srv.auth.VerifyUser, sh, post(srv))
-		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser, sh, del(srv))
+		r.GET(endpoint+"/:id", srv.auth.VerifyUser(false), sh, get(srv))
+		r.POST(endpoint, srv.auth.VerifyUser(false), sh, post(srv))
+		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser(false), sh, del(srv))
 	}
 }
 

@@ -13,7 +13,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	if !cfg.Sandbox {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := gin.Default()
 	// Ping test
 	r.GET("/ping", func(c *gin.Context) {
@@ -27,6 +29,6 @@ func main() {
 
 	// Listen and Serve
 	if err = srv.Run(); err != nil {
-		log.Fatalf("Failed to listen:", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
 }

@@ -69,7 +69,10 @@ func getCreds(req *http.Request) (token, key string, isApiKey bool) {
 		return
 	}
 	apiKey := req.Header.Get(ApiKeyHeader)
-	if len(apiKey) != 64 {
+	if apiKey == "" {
+		apiKey = req.URL.Query().Get("key")
+	}
+	if len(apiKey) < 32 {
 		return "", "", false
 	}
 	return apiKey[:32], apiKey[32:], true
