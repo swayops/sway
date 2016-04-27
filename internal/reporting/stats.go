@@ -241,18 +241,13 @@ func getTargetStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.T
 				}
 
 				if tg.Total == nil {
-					tg.Total = &Totals{
-						Engagements: eng,
-						Likes:       st.Likes,
-						Views:       views,
-						Spent:       st.Payout,
-					}
-				} else {
-					tg.Total.Engagements += eng
-					tg.Total.Likes += st.Likes
-					tg.Total.Views += views
-					tg.Total.Spent += st.Payout
+					tg.Total = &Totals{}
 				}
+
+				tg.Total.Engagements += eng
+				tg.Total.Likes += st.Likes
+				tg.Total.Views += views
+				tg.Total.Spent += st.Payout
 
 				infId, platformId, channel, postUrl := getElementsFromKey(k)
 
@@ -287,55 +282,38 @@ func getTargetStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.T
 func fillReportStats(key string, data map[string]*ReportStats, st *Stats, views int32, infId, channel string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
-		data[key] = &ReportStats{
-			Likes:        st.Likes,
-			Comments:     st.Comments,
-			Shares:       st.Shares,
-			Views:        views,
-			Spent:        st.Payout,
-			Perks:        st.Perks,
-			InfluencerId: infId,
-			Network:      channel,
-		}
-	} else {
-		stats.Likes += st.Likes
-		stats.Comments += st.Comments
-		stats.Shares += st.Shares
-		stats.Views += views
-		stats.Spent += st.Payout
-		stats.Perks += st.Perks
-		stats.InfluencerId = infId
-		stats.Network = channel
+		stats = &ReportStats{}
 		data[key] = stats
 	}
+
+	stats.Likes += st.Likes
+	stats.Comments += st.Comments
+	stats.Shares += st.Shares
+	stats.Views += views
+	stats.Spent += st.Payout
+	stats.Perks += st.Perks
+	stats.InfluencerId = infId
+	stats.Network = channel
+
 	return data
 }
 
 func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *Stats, views int32, infId string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
-		data[key] = &ReportStats{
-			Likes:        st.Likes,
-			Comments:     st.Comments,
-			Shares:       st.Shares,
-			Views:        views,
-			Spent:        st.Payout,
-			Perks:        st.Perks,
-			PlatformId:   platformId,
-			Published:    getPostDate(st.Published),
-			InfluencerId: infId,
-		}
-	} else {
-		stats.Likes += st.Likes
-		stats.Comments += st.Comments
-		stats.Shares += st.Shares
-		stats.Views += views
-		stats.Spent += st.Payout
-		stats.Perks += st.Perks
-		stats.PlatformId = platformId
-		stats.Published = getPostDate(st.Published)
-		stats.InfluencerId = infId
+		stats = &ReportStats{}
 		data[key] = stats
 	}
+
+	stats.Likes += st.Likes
+	stats.Comments += st.Comments
+	stats.Shares += st.Shares
+	stats.Views += views
+	stats.Spent += st.Payout
+	stats.Perks += st.Perks
+	stats.PlatformId = platformId
+	stats.Published = getPostDate(st.Published)
+	stats.InfluencerId = infId
+
 	return data
 }

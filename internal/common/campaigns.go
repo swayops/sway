@@ -45,6 +45,10 @@ type Campaign struct {
 	Deals map[string]*Deal `json:"deals,omitempty"`
 }
 
+func (cmp *Campaign) IsValid() bool {
+	return cmp.Active && cmp.Budget > 0 && len(cmp.Deals) > 0
+}
+
 type Campaigns struct {
 	mux   sync.RWMutex
 	store map[string]*Campaign
@@ -70,10 +74,13 @@ func (p *Campaigns) SetCampaign(id string, cmp *Campaign) {
 }
 
 func (p *Campaigns) GetStore() map[string]*Campaign {
+	store := make(map[string]*Campaign)
 	p.mux.RLock()
-	val := p.store
+	for cId, cmp := range p.store {
+		store[cId] = cmp
+	}
 	p.mux.RUnlock()
-	return val
+	return store
 }
 
 func (p *Campaigns) Get(id string) (*Campaign, bool) {

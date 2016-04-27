@@ -11,13 +11,7 @@ import (
 const dateFormat = "%d-%02d-%02d"
 
 func getDate() string {
-	now := time.Now().UTC()
-	return fmt.Sprintf(
-		dateFormat,
-		now.Year(),
-		now.Month(),
-		now.Day(),
-	)
+	return getDateFromTime(time.Now().UTC())
 }
 
 func getDateFromTime(t time.Time) string {

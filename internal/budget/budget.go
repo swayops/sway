@@ -230,7 +230,7 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 }
 
 func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Store, *reporting.Stats) {
-	if store.Influencers == nil || len(store.Influencers) == 0 {
+	if store.Influencers == nil {
 		store.Influencers = make(map[string]*InfluencerData)
 	}
 

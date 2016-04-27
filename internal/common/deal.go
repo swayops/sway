@@ -64,7 +64,7 @@ func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
 			cmp := &Campaign{}
 			if err = json.Unmarshal(v, cmp); err != nil {
 				log.Println("error when unmarshalling campaign", string(v))
-				return err
+				return nil
 			}
 
 			for _, deal := range cmp.Deals {

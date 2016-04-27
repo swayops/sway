@@ -223,7 +223,7 @@ func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId
 		return nil
 	})
 
-	infDeals := make([]*common.Deal, 0, 512)
+	var infDeals []*common.Deal
 	if err = json.Unmarshal(v, &inf); err != nil {
 		log.Println("Error unmarshalling influencer", err)
 		return infDeals
@@ -246,7 +246,7 @@ func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId
 		targetDeal := &common.Deal{}
 		dealFound := false
 
-		if !cmp.Active || cmp.Budget == 0 || len(cmp.Deals) == 0 {
+		if !cmp.IsValid() {
 			continue
 		}
 

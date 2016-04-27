@@ -92,7 +92,7 @@ func GetReportDate(date string) time.Time {
 	if t, err := time.Parse(`02 Jan 06`, date); err == nil {
 		return t
 	}
-	if u, err := strconv.ParseInt(date, 10, 64); err != nil {
+	if u, err := strconv.ParseInt(date, 10, 64); err == nil {
 		return time.Unix(u, 0)
 	}
 	return time.Time{}

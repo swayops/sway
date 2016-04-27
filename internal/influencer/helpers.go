@@ -9,7 +9,7 @@ import (
 )
 
 func GetAllInfluencers(db *bolt.DB, cfg *config.Config) []*Influencer {
-	influencers := make([]*Influencer, 0, 512)
+	var influencers []*Influencer
 	if err := db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
 			inf := Influencer{}
