@@ -178,11 +178,16 @@ func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
 	}
 
 	var tmp Tweet
-	if err = json.NewDecoder(r).Decode(&tmp); err == nil {
-		tmp.FavoritesDelta = tmp.Favorites - t.Favorites
-		tmp.RetweetsDelta = tmp.RetweetsDelta - t.Retweets
-		*t = tmp
+	if err = json.NewDecoder(r).Decode(&tmp); err != nil {
+		return
 	}
+
+	t.FavoritesDelta = tmp.Favorites - t.Favorites
+	t.Favorites = tmp.Favorites
+
+	t.RetweetsDelta = tmp.Retweets - t.Retweets
+	t.Retweets = tmp.Retweets
+
 	t.LastUpdated = int32(time.Now().Unix())
 	return
 }

@@ -45,6 +45,9 @@
 	"dealTimeout": 14, 
 	"engineUpdate": 4, 
 	"statsInterval": 5,
-	"influencerTtl": 12
+	"influencerTtl": 12,
+	"jsonXlsxPath": "./config/json2xlsx.py",
+	"reportingDbName": "reporting",
+	"reportingBucket": "campaign"
 }
 

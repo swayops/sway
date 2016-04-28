@@ -11,20 +11,26 @@ import (
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
-	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/internal/reporting"
 )
 
 func newSwayEngine(srv *Server) error {
-	if err := run(srv, true); err != nil {
-		log.Println("Err running engine", err)
-		return err
-	}
+	// Keep a live struct of active campaigns
+	// This will be used by "GetAvailableDeals"
+	// to avoid constant unmarshalling of campaigns
+	srv.Campaigns.Set(srv.db, srv.Cfg)
+	cTicker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for range cTicker.C {
+			srv.Campaigns.Set(srv.db, srv.Cfg)
+		}
+	}()
 
 	// Update social media profiles every X hours
 	ticker := time.NewTicker(srv.Cfg.EngineUpdate * time.Hour)
 	go func() {
 		for range ticker.C {
-			if err := run(srv, false); err != nil {
+			if err := run(srv); err != nil {
 				log.Println("Err running engine", err)
 			}
 		}
@@ -33,13 +39,14 @@ func newSwayEngine(srv *Server) error {
 	return nil
 }
 
-func run(srv *Server, skipWait bool) error {
+func run(srv *Server) error {
 	// Update all social media stats/completed deal stats
-	if err := updateStats(srv, skipWait); err != nil {
+	if err := updateStats(srv); err != nil {
 		// Insert a file informant check
 		log.Println("Err with stats updater", err)
 		return err
 	}
+	log.Println("Stats updated!")
 
 	// Explore the influencer posts to look for completed deals!
 	if err := explore(srv); err != nil {
@@ -47,6 +54,7 @@ func run(srv *Server, skipWait bool) error {
 		log.Println("Error exploring!", err)
 		return err
 	}
+	log.Println("Posts explored!")
 
 	// Iterate over deltas for completed deals
 	// and deplete budgets
@@ -55,22 +63,23 @@ func run(srv *Server, skipWait bool) error {
 		log.Println("Err with depleting budgets!", err)
 		return err
 	}
+	log.Println("Budgets depleted!")
 
 	// Will run the first of every month to
 	// refresh our budget dbs, budgets,
 	// and send out invoices
 	if err := billing(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Err with billig!", err)
+		log.Println("Err with billing!", err)
 		return err
 	}
 
 	return nil
 }
 
-func updateStats(s *Server, skipWait bool) error {
-	_, activeCampaigns := getAllActiveCampaigns(s)
-	influencers := getAllInfluencers(s)
+func updateStats(s *Server) error {
+	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
+	influencers := influencer.GetAllInfluencers(s.db, s.Cfg)
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
@@ -80,20 +89,16 @@ func updateStats(s *Server, skipWait bool) error {
 			return err
 		}
 
-		if !skipWait {
-			// Inserting a request interval so we don't hit our API
-			// limits with platforms!
-			time.Sleep(s.Cfg.StatsInterval * time.Second)
-		}
+		// Inserting a request interval so we don't hit our API
+		// limits with platforms!
+		time.Sleep(s.Cfg.StatsInterval * time.Second)
 
 		// Update data for all completed deal posts
 		if err := inf.UpdateCompletedDeals(s.Cfg, activeCampaigns); err != nil {
 			return err
 		}
 
-		if !skipWait {
-			time.Sleep(s.Cfg.StatsInterval * time.Second)
-		}
+		time.Sleep(s.Cfg.StatsInterval * time.Second)
 
 		if err := saveAllDeals(s, inf); err != nil {
 			return err
@@ -108,7 +113,7 @@ func depleteBudget(s *Server) error {
 	// go over completed deals..
 	// Iterate over all
 
-	activeCampaigns, _ := getAllActiveCampaigns(s)
+	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
 	// Iterate over all active campaigns
 	for _, cmp := range activeCampaigns {
 		// Get this month's store for this campaign
@@ -125,7 +130,26 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 
-			store = budget.AdjustStore(store, deal)
+			inf, err := getInfluencerFromId(s, deal.InfluencerId)
+			if err != nil {
+				log.Println("Missing influencer id!")
+				continue
+			}
+
+			// Get stats for this deal for today! We'll need it to increment
+			// stat values in AdjustStore!
+			stats, statsKey, err := reporting.GetStats(deal, s.reportingDb, s.Cfg, inf.GetPlatformId(deal))
+			if err != nil {
+				// Insert file informant notification
+				log.Println("Unable to retrieve stats!")
+				continue
+			}
+
+			store, stats = budget.AdjustStore(store, deal, stats)
+			// Save the stats store since it's been updated
+			if err := reporting.SaveStats(stats, deal, s.reportingDb, s.Cfg, statsKey, inf.GetPlatformId(deal)); err != nil {
+				log.Println("Err saving stats!", err)
+			}
 			updatedStore = true
 		}
 
@@ -135,6 +159,7 @@ func depleteBudget(s *Server) error {
 				log.Println("Err saving store!", err)
 			}
 		}
+
 	}
 
 	return nil
@@ -263,7 +288,6 @@ func billing(s *Server) error {
 		// do a put on all the active campaigns in the system
 		// flush all unassigned deals
 
-		var b []byte
 		if err := s.db.Update(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				cmp := &common.Campaign{}
@@ -276,11 +300,7 @@ func billing(s *Server) error {
 					// Add fresh deals for this month
 					addDealsToCampaign(cmp)
 
-					if b, err = json.Marshal(cmp); err != nil {
-						return
-					}
-
-					if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b); err != nil {
+					if err = saveCampaign(tx, cmp, s); err != nil {
 						log.Println("Error saving campaign for billing", err)
 						return
 					}

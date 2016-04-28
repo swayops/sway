@@ -3,6 +3,7 @@ package influencer
 import (
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -166,7 +167,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	return nil
 }
 
-func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]struct{}) (err error) {
+func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]*common.Campaign) (err error) {
 	// Update data for all completed deal posts
 	for _, deal := range inf.CompletedDeals {
 		if _, ok := activeCampaigns[deal.CampaignId]; !ok {
@@ -195,22 +196,35 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 	return nil
 }
 
-func GetAvailableDeals(db, budgetDb *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetPlatformId(deal *common.Deal) string {
+	// Gets the user id for the platform based on the deal
+	if deal.Tweet != nil && inf.Twitter != nil {
+		return inf.Twitter.Id
+	} else if deal.Facebook != nil && inf.Facebook != nil {
+		return inf.Facebook.Id
+	} else if deal.Instagram != nil && inf.Instagram != nil {
+		return inf.Instagram.UserName
+	} else if deal.YouTube != nil && inf.YouTube != nil {
+		return inf.YouTube.UserName
+	}
+	return ""
+}
+
+func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
-
 	var (
 		v   []byte
 		err error
 		inf Influencer
 	)
-	infDeals := make([]*common.Deal, 0, 512)
 
 	db.View(func(tx *bolt.Tx) error {
 		v = tx.Bucket([]byte(cfg.Bucket.Influencer)).Get([]byte(infId))
 		return nil
 	})
 
+	var infDeals []*common.Deal
 	if err = json.Unmarshal(v, &inf); err != nil {
 		log.Println("Error unmarshalling influencer", err)
 		return infDeals
@@ -229,112 +243,99 @@ func GetAvailableDeals(db, budgetDb *bolt.DB, infId, forcedDeal string, geo *mis
 
 	}
 
-	db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(cfg.Bucket.Campaign)).ForEach(func(cid, v []byte) (err error) {
-			cmp := &common.Campaign{}
-			targetDeal := &common.Deal{}
-			dealFound := false
+	for _, cmp := range campaigns.GetStore() {
+		targetDeal := &common.Deal{}
+		dealFound := false
 
-			if err := json.Unmarshal(v, cmp); err != nil {
-				log.Println("error when unmarshalling campaign", string(v))
-				return nil
+		if !cmp.IsValid() {
+			continue
+		}
+
+		for _, deal := range cmp.Deals {
+			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" && !dealFound {
+				if forcedDeal != "" && deal.Id != forcedDeal {
+					continue
+				}
+				// Make a copy of the deal rather than assign the pointer
+				*targetDeal = *deal
+				dealFound = true
 			}
+		}
 
-			if !cmp.Active || cmp.Budget == 0 || len(cmp.Deals) == 0 {
-				return nil
-			}
+		if !dealFound {
+			// This campaign has no active deals
+			continue
+		}
 
-			for _, deal := range cmp.Deals {
-				if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" && !dealFound {
-					if forcedDeal != "" && deal.Id != forcedDeal {
-						continue
-					}
-					targetDeal = deal
-					dealFound = true
+		// Filter Checks
+		if len(cmp.Categories) > 0 {
+			catFound := false
+			for _, cat := range cmp.Categories {
+				if inf.Category == cat {
+					catFound = true
+					break
 				}
 			}
-
-			if !dealFound {
-				// This campaign has no active deals
-				return nil
+			if !catFound {
+				continue
 			}
+		}
 
-			// Filter Checks
-			if len(cmp.Categories) > 0 {
-				catFound := false
-				for _, cat := range cmp.Categories {
-					if inf.Category == cat {
-						catFound = true
-						break
-					}
-				}
-				if !catFound {
-					return nil
-				}
+		// If you already have a/have done deal for this campaign, screw off
+		dealFound = false
+		for _, d := range inf.ActiveDeals {
+			if d.CampaignId == targetDeal.CampaignId {
+				dealFound = true
 			}
-
-			// If you already have a/have done deal for this campaign, screw off
-			for _, d := range inf.ActiveDeals {
-				if d.CampaignId == targetDeal.CampaignId {
-					return nil
-				}
+		}
+		for _, d := range inf.CompletedDeals {
+			if d.CampaignId == targetDeal.CampaignId {
+				dealFound = true
 			}
-			for _, d := range inf.CompletedDeals {
-				if d.CampaignId == targetDeal.CampaignId {
-					return nil
-				}
-			}
+		}
+		if dealFound {
+			continue
+		}
 
-			// Match Campaign Geo Targeting with Influencer Geo //
-			if !misc.IsGeoMatch(cmp.Geos, geo) {
-				return nil
-			}
+		// Match Campaign Geo Targeting with Influencer Geo //
+		if !misc.IsGeoMatch(cmp.Geos, geo) {
+			continue
+		}
 
-			// Gender check
-			if cmp.Gender == "m" {
-				if inf.Gender == "f" {
-					return nil
-				}
-			} else if cmp.Gender == "f" {
-				if inf.Gender == "m" {
-					return nil
-				}
-			}
+		// Gender check
+		if !strings.Contains(cmp.Gender, inf.Gender) {
+			continue
+		}
 
-			// Social Media Checks
-			// Values are potential price points TBD
-			if cmp.Twitter && inf.Twitter != nil {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
-			}
+		// Social Media Checks
+		// Values are potential price points TBD
+		if cmp.Twitter && inf.Twitter != nil {
+			targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
+		}
 
-			if cmp.Facebook && inf.Facebook != nil {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
+		if cmp.Facebook && inf.Facebook != nil {
+			targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
+		}
 
-			}
+		if cmp.Instagram && inf.Instagram != nil {
+			targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
+		}
 
-			if cmp.Instagram && inf.Instagram != nil {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
+		if cmp.YouTube && inf.YouTube != nil {
+			targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 
-			}
+		}
 
-			if cmp.YouTube && inf.YouTube != nil {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
-
-			}
-
-			// Add deal that has approved platform
-			if len(targetDeal.Platforms) > 0 {
-				targetDeal.Tags = cmp.Tags
-				targetDeal.Mention = cmp.Mention
-				targetDeal.Link = cmp.Link
-				targetDeal.Task = cmp.Task
-				targetDeal.Perks = cmp.Perks
-				infDeals = append(infDeals, targetDeal)
-			}
-			return
-		})
-		return nil
-	})
+		// Add deal that has approved platform
+		if len(targetDeal.Platforms) > 0 {
+			targetDeal.Tags = cmp.Tags
+			targetDeal.Mention = cmp.Mention
+			targetDeal.Link = cmp.Link
+			targetDeal.Task = cmp.Task
+			targetDeal.Perks = cmp.Perks
+			infDeals = append(infDeals, targetDeal)
+		}
+	}
 
 	// Fill in available spendables now
 	// This also makes sure that only campaigns with spendable are the

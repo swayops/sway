@@ -20,7 +20,7 @@ import (
 func explore(srv *Server) error {
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
-	activeDeals, err := getAllActiveDeals(srv)
+	activeDeals, err := common.GetAllActiveDeals(srv.db, srv.Cfg)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		}
 
 		// Save the campaign!
-		if err := saveCampaign(tx, cmp, srv.Cfg); err != nil {
+		if err := saveCampaign(tx, cmp, srv); err != nil {
 			log.Println("Error saving campaign!", err)
 			return err
 		}
@@ -187,6 +187,9 @@ func findTwitterMatch(inf *influencer.Influencer, deal *common.Deal) *twitter.Tw
 						foundHash = true
 					}
 				}
+				if strings.Contains(tw.Text, tg) {
+					foundHash = true
+				}
 			}
 			if !foundHash {
 				continue
@@ -215,6 +218,10 @@ func findTwitterMatch(inf *influencer.Influencer, deal *common.Deal) *twitter.Tw
 					foundLink = true
 				}
 			}
+			if strings.Contains(tw.Text, deal.Link) {
+				foundLink = true
+			}
+
 			if !foundLink {
 				continue
 			}
@@ -248,6 +255,9 @@ func findFacebookMatch(inf *influencer.Influencer, deal *common.Deal) *facebook.
 					if hashtag == tg {
 						foundHash = true
 					}
+				}
+				if strings.Contains(post.Caption, tg) {
+					foundHash = true
 				}
 			}
 			if !foundHash {
@@ -307,7 +317,11 @@ func findInstagramMatch(inf *influencer.Influencer, deal *common.Deal) *instagra
 						foundHash = true
 					}
 				}
+				if strings.Contains(post.Caption, tg) {
+					foundHash = true
+				}
 			}
+
 			if !foundHash {
 				continue
 			}
@@ -328,7 +342,7 @@ func findInstagramMatch(inf *influencer.Influencer, deal *common.Deal) *instagra
 		}
 
 		if deal.Link != "" {
-			if strings.Contains(deal.Link, inf.Instagram.LinkInBio) {
+			if strings.Contains(deal.Link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, deal.Link) {
 				foundLink = true
 			}
 
