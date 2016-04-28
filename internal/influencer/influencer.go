@@ -3,6 +3,7 @@ package influencer
 import (
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -302,14 +303,8 @@ func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId
 		}
 
 		// Gender check
-		if cmp.Gender == "m" {
-			if inf.Gender == "f" {
-				continue
-			}
-		} else if cmp.Gender == "f" {
-			if inf.Gender == "m" {
-				continue
-			}
+		if !strings.Contains(cmp.Gender, inf.Gender) {
+			continue
 		}
 
 		// Social Media Checks
