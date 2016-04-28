@@ -672,8 +672,7 @@ func getCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.Request.ParseForm()
-		if c.Request.Form.Get("deals") != "true" {
+		if c.Query("deals") != "true" {
 			// Hide deals otherwise output will get massive
 			cmp.Deals = nil
 		}
