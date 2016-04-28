@@ -101,7 +101,7 @@ func GetAllActiveCampaigns(db *bolt.DB, cfg *config.Config) map[string]*Campaign
 				log.Println("error when unmarshalling campaign", string(v))
 				return nil
 			}
-			if cmp.Active && cmp.Budget > 0 && len(cmp.Deals) != 0 {
+			if cmp.IsValid() {
 				campaignList[cmp.Id] = cmp
 			}
 
