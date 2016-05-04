@@ -1,38 +1,23 @@
 package budget
 
-import (
-	"fmt"
-	"time"
-)
+import "time"
 
-const (
-	format = "%d-%02d"
-)
+const format = "01-2006"
 
 func getBudgetKey() string {
-	now := time.Now().UTC()
-
-	return fmt.Sprintf(
-		format,
-		now.Month(),
-		now.Year(),
-	)
+	return time.Now().UTC().Format(format)
 }
 
 func GetLastMonthBudgetKey() string {
-	now := time.Now().UTC()
+	return getBudgetKeyOffset(1)
+}
 
-	lastMonth := int(now.Month()) - 1
-	year := now.Year()
-	if lastMonth == 0 {
-		year = year - 1
-		lastMonth = 12
+func getBudgetKeyOffset(offset int) string {
+	now := time.Now().UTC()
+	if offset > 0 {
+		offset = -offset
 	}
-	return fmt.Sprintf(
-		format,
-		lastMonth,
-		year,
-	)
+	return now.AddDate(0, offset, 0).Format(format)
 }
 
 func isFirstDay() bool {

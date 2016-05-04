@@ -36,11 +36,13 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	DBPath       string `json:"dbPath"`
-	DBName       string `json:"dbName"`
-	BudgetDBName string `json:"budgetDbName"`
-	AuthDBName   string `json:"authDbName"`
-	BudgetBucket string `json:"budgetBucket"`
+	DBPath          string `json:"dbPath"`
+	DBName          string `json:"dbName"`
+	BudgetDBName    string `json:"budgetDbName"`
+	BudgetBucket    string `json:"budgetBucket"`
+	ReportingDBName string `json:"reportingDbName"`
+	ReportingBucket string `json:"reportingBucket"`
+	AuthDBName      string `json:"authDbName"`
 
 	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
 	APIPath   string `json:"apiPath"`
@@ -107,6 +109,8 @@ type Config struct {
 	} `json:"authBucket"`
 
 	ec *mandrill.Client
+
+	JsonXlsxPath string `json:"jsonXlsxPath"`
 }
 
 func (c *Config) AllBuckets() []string {

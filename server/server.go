@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
 )
 
@@ -20,27 +21,31 @@ const (
 )
 
 type Server struct {
-	Cfg      *config.Config
-	r        *gin.Engine
-	db       *bolt.DB
-	budgetDb *bolt.DB
-	authDb   *bolt.DB
-	auth     *auth.Auth
+	Cfg         *config.Config
+	r           *gin.Engine
+	db          *bolt.DB
+	budgetDb    *bolt.DB
+	authDb      *bolt.DB
+	reportingDb *bolt.DB
+	auth        *auth.Auth
+
+	Campaigns *common.Campaigns
 }
 
 // TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
+	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
 	authDb := misc.OpenDB(cfg.DBPath, cfg.AuthDBName)
-
 	srv := &Server{
-		Cfg:      cfg,
-		r:        r,
-		db:       db,
-		budgetDb: budgetDb,
-		authDb:   authDb,
-		auth:     auth.New(authDb, cfg),
+		Cfg:         cfg,
+		r:           r,
+		db:          db,
+		budgetDb:    budgetDb,
+		reportingDb: reportingDb,
+		authDb:      authDb,
+		Campaigns:   common.NewCampaigns(),
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -78,6 +83,18 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := srv.reportingDb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.ReportingBucket)); err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		if err := misc.InitIndex(tx, cfg.ReportingBucket, 1); err != nil {
 			return err
 		}
 		return nil
@@ -174,7 +191,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
-	// r.GET("/setFloor/:influencerId/:floor", setFloor(srv))
 
 	// Deal
 	// TODO
@@ -190,6 +206,10 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
 	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
 	r.GET("/getStore", getStore(srv))
+
+	// Reporting
+	r.GET("/getStats/:cid", getStats(srv))
+	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
 
 }
 

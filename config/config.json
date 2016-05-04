@@ -7,8 +7,12 @@
 	"sandbox": true,
 
 	"budgetDbName": "budget",
-	"authDbName": "auth",
 	"budgetBucket": "budget",
+
+	"reportingDbName": "reporting",
+	"reportingBucket": "campaign",
+
+	"authDbName": "auth",
 
 	"bucket": {
 		"user": "user",
@@ -67,5 +71,6 @@
 	"dealTimeout": 14,
 	"engineUpdate": 4,
 	"statsInterval": 5,
-	"influencerTtl": 12
+	"influencerTtl": 12,
+	"jsonXlsxPath": "./config/json2xlsx.py"
 }

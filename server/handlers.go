@@ -13,6 +13,7 @@ import (
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 )
@@ -66,7 +67,7 @@ func updateTalentAgency(s *Server) gin.HandlerFunc {
 	// NOTE: Must send full struct filled out with previous returned values
 	return func(c *gin.Context) {
 		var (
-			ag common.TalentAgency
+			ag  common.TalentAgency
 			err error
 			b   []byte
 		)
@@ -250,7 +251,7 @@ func updateAdAgency(s *Server) gin.HandlerFunc {
 	// NOTE: Must send full struct filled out with previous returned values
 	return func(c *gin.Context) {
 		var (
-			ag common.AdAgency
+			ag  common.AdAgency
 			err error
 			b   []byte
 		)
@@ -410,7 +411,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if adv.DspFee == 0 || adv.DspFee > 0.99{
+		if adv.DspFee == 0 || adv.DspFee > 0.99 {
 			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
 			return
 		}
@@ -482,7 +483,7 @@ func updateAdvertiser(s *Server) gin.HandlerFunc {
 		}
 		adv.ExchangeFee = upd.ExchangeFee
 
-		if upd.DspFee == 0 || upd.DspFee > 0.99{
+		if upd.DspFee == 0 || upd.DspFee > 0.99 {
 			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
 			return
 		}
@@ -587,7 +588,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
 			cmp common.Campaign
-			b   []byte
 			err error
 		)
 
@@ -644,10 +644,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			addDealsToCampaign(&cmp)
 
-			if b, err = json.Marshal(cmp); err != nil {
-				return
-			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
+			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -665,28 +662,22 @@ func putCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+var ErrCampaign = errors.New("Unable to retrieve campaign!")
+
 func getCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			v   []byte
-			err error
-			g   common.Campaign
-		)
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("id")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+		cmp := common.GetCampaign(c.Params.ByName("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
 			return
 		}
 
-		if err = json.Unmarshal(v, &g); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
+		if c.Query("deals") != "true" {
+			// Hide deals otherwise output will get massive
+			cmp.Deals = nil
 		}
 
-		c.JSON(200, g)
+		c.JSON(200, cmp)
 	}
 }
 
@@ -702,6 +693,8 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if cmp.AdvertiserId == targetAdv {
+					// No need to display massive deal set
+					cmp.Deals = nil
 					campaigns = append(campaigns, cmp)
 				}
 				return
@@ -781,9 +774,6 @@ func getCampaignCompletedDeals(s *Server) gin.HandlerFunc {
 
 func delCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			b []byte
-		)
 		id := c.Params.ByName("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			var g *common.Campaign
@@ -794,10 +784,7 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 			g.Active = false
 
-			if b, err = json.Marshal(g); err != nil {
-				return
-			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, id, b)
+			return saveCampaign(tx, g, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -876,10 +863,7 @@ func updateCampaign(s *Server) gin.HandlerFunc {
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if b, err = json.Marshal(cmp); err != nil {
-				return
-			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
+			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -1231,7 +1215,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := influencer.GetAvailableDeals(s.db, s.budgetDb, influencerId, "", misc.GetGeoFromCoords(lat, long, time.Now().Unix()), false, s.Cfg)
+		deals := influencer.GetAvailableDeals(s.Campaigns, s.db, s.budgetDb, influencerId, "", misc.GetGeoFromCoords(lat, long, time.Now().Unix()), false, s.Cfg)
 		c.JSON(200, deals)
 	}
 }
@@ -1253,7 +1237,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		// via our GetAvailableDeals func
 		var found bool
 		foundDeal := &common.Deal{}
-		currentDeals := influencer.GetAvailableDeals(s.db, s.budgetDb, influencerId, dealId, nil, true, s.Cfg)
+		currentDeals := influencer.GetAvailableDeals(s.Campaigns, s.db, s.budgetDb, influencerId, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				found = true
@@ -1316,7 +1300,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 
 			// Save the campaign
-			if err = saveCampaign(tx, cmp, s.Cfg); err != nil {
+			if err = saveCampaign(tx, cmp, s); err != nil {
 				return err
 			}
 			return nil
@@ -1441,5 +1425,38 @@ func getLastMonthsStore(s *Server) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, store)
+	}
+}
+
+// Reporting
+func getStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		stats, err := reporting.GetStatsByCampaign(c.Params.ByName("cid"), s.reportingDb, s.Cfg)
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, stats)
+	}
+}
+
+func getCampaignReport(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cid := c.Params.ByName("cid")
+		if cid == "" {
+			c.JSON(500, misc.StatusErr("Please pass in a valid campaign ID"))
+			return
+		}
+
+		from := reporting.GetReportDate(c.Params.ByName("from"))
+		to := reporting.GetReportDate(c.Params.ByName("to"))
+		if from.IsZero() || to.IsZero() || to.Before(from) {
+			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			return
+		}
+
+		if err := reporting.GenerateCampaignReport(c.Writer, s.db, s.reportingDb, cid, from, to, s.Cfg); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+		}
 	}
 }

@@ -68,87 +68,12 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Save the campaign
-		if b, err = json.Marshal(cmp); err != nil {
-			return err
-		}
-		return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
+		return saveCampaign(tx, cmp, s)
 	}); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func getAllActiveCampaigns(s *Server) ([]*common.Campaign, map[string]struct{}) {
-	// Returns a list of active campaign IDs in the system
-	campaigns := map[string]struct{}{}
-	campaignList := make([]*common.Campaign, 0, 512)
-
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-			cmp := &common.Campaign{}
-			if err := json.Unmarshal(v, cmp); err != nil {
-				log.Println("error when unmarshalling campaign", string(v))
-				return nil
-			}
-			if cmp.Active && cmp.Budget > 0 && len(cmp.Deals) != 0 {
-				campaigns[cmp.Id] = struct{}{}
-				campaignList = append(campaignList, cmp)
-			}
-
-			return
-		})
-		return nil
-	}); err != nil {
-		log.Println("Err getting all active campaigns", err)
-	}
-	return campaignList, campaigns
-}
-
-func getAllInfluencers(s *Server) []*influencer.Influencer {
-	influencers := make([]*influencer.Influencer, 0, 512)
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).ForEach(func(k, v []byte) (err error) {
-			inf := influencer.Influencer{}
-			if err := json.Unmarshal(v, &inf); err != nil {
-				log.Println("errorrrr when unmarshalling influencer", string(v))
-				return nil
-			}
-			influencers = append(influencers, &inf)
-			return
-		})
-		return nil
-	}); err != nil {
-		log.Println("Err when getting all influencers", err)
-	}
-	return influencers
-}
-
-func getAllActiveDeals(srv *Server) ([]*common.Deal, error) {
-	// Retrieves all active deals in the system!
-	var err error
-	deals := []*common.Deal{}
-
-	if err := srv.db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-			cmp := &common.Campaign{}
-			if err = json.Unmarshal(v, cmp); err != nil {
-				log.Println("error when unmarshalling campaign", string(v))
-				return err
-			}
-
-			for _, deal := range cmp.Deals {
-				if deal.Assigned > 0 && deal.Completed == 0 && deal.InfluencerId != "" {
-					deals = append(deals, deal)
-				}
-			}
-			return
-		})
-		return nil
-	}); err != nil {
-		return deals, err
-	}
-	return deals, err
 }
 
 func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
@@ -269,7 +194,7 @@ func createRoutes(r *gin.Engine, srv *Server, endpoint string, scopes auth.Scope
 	}
 }
 
-func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, cfg *config.Config) error {
+func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	var (
 		b   []byte
 		err error
@@ -279,7 +204,11 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, cfg *config.Config) error {
 		return err
 	}
 
-	return misc.PutBucketBytes(tx, cfg.Bucket.Campaign, cmp.Id, b)
+	// Update the campaign store as well so things don't mess up
+	// until the next cache update!
+	s.Campaigns.SetCampaign(cmp.Id, cmp)
+
+	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
 
 func getTalentAgencyFee(s *Server, id string) float32 {
@@ -326,7 +255,7 @@ func saveAllDeals(s *Server, inf *influencer.Influencer) error {
 			}
 
 			// Save the campaign!
-			if err := saveCampaign(tx, cmp, s.Cfg); err != nil {
+			if err := saveCampaign(tx, cmp, s); err != nil {
 				return err
 			}
 		}
