@@ -64,3 +64,16 @@ func getDateFromTime(t time.Time) string {
 		t.Day(),
 	)
 }
+
+func degradeRep(val int32, rep float32) float32 {
+	if val > 0 && val < 5 {
+		rep = rep * 0.75
+	} else if val >= 5 && val < 20 {
+		rep = rep * 0.5
+	} else if val >= 20 && val < 50 {
+		rep = rep * 0.25
+	} else if val >= 50 {
+		rep = rep * 0.05
+	}
+	return rep
+}

@@ -242,8 +242,9 @@ func (inf *Influencer) setSwayRep() {
 	}
 
 	rep = rep * (1 + float32(len(inf.CompletedDeals))*float32(0.5))
-	rep = rep / (1 + float32(inf.Timeouts)*float32(0.5))
-	rep = rep / (1 + float32(inf.Cancellations)*1)
+
+	rep = degradeRep(inf.Timeouts, rep)
+	rep = degradeRep(inf.Cancellations, rep)
 
 	if inf.Rep == nil {
 		inf.Rep = make(map[string]float32)
