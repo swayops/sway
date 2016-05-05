@@ -74,5 +74,5 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 }
 
 func (in *Instagram) GetScore() float32 {
-	return (in.Followers * 3) + (in.FollowerDelta * 2) + (in.AvgComments * 2) + (in.AvgLikes)
+	return (in.Followers * 3) + (in.AvgComments * 2) + (in.AvgLikes)
 }

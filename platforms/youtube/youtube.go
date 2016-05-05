@@ -70,5 +70,5 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 }
 
 func (yt *YouTube) GetScore() float32 {
-	return ((yt.AvgComments * 4) + (yt.AvgLikes * 3) + (yt.Subscribers * 2) + (float32(yt.AvgViews))) / yt.AvgDislikes
+	return (yt.Subscribers * 2.5) + (yt.AvgComments * 1.5) + float32(yt.AvgLikes) + float32(yt.AvgViews)
 }

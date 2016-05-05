@@ -139,8 +139,10 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/getStore", getStore(srv))
 
 	// Reporting
-	r.GET("/getStats/:cid", getStats(srv))
 	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
+	r.GET("/getRawStats/:cid", getRawStats(srv))
+	r.GET("/getCampaignStats/:cid/:days", getCampaignStats(srv))
+	r.GET("/getInfluencerStats/:infId/:days", getInfluencerStats(srv))
 
 }
 

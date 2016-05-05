@@ -26,10 +26,10 @@ type InfluencerLoad struct {
 	TwitterId   string `json:"twitter,omitempty"`
 	YouTubeId   string `json:"youtube,omitempty"`
 
-	AgencyId string          `json:"agencyId,omitempty"` // Agency this influencer belongs to
-	Geo      *misc.GeoRecord `json:"geo,omitempty"`      // User inputted geo via app
-	Gender   string          `json:"gender,omitempty"`
-	Category string          `json:"category,omitempty"`
+	AgencyId   string          `json:"agencyId,omitempty"` // Agency this influencer belongs to
+	Geo        *misc.GeoRecord `json:"geo,omitempty"`      // User inputted geo via app
+	Gender     string          `json:"gender,omitempty"`
+	Categories []string        `json:"categories,omitempty"`
 }
 
 type Influencer struct {
@@ -53,7 +53,7 @@ type Influencer struct {
 	// "m" or "f" or "unicorn" lol
 	Gender string `json:"gender,omitempty"`
 	// Influencer inputted category they belong to
-	Category string `json:"category,omitempty"`
+	Categories []string `json:"categories,omitempty"`
 
 	// Active accepted deals by the influencer that have not yet been completed
 	ActiveDeals []*common.Deal `json:"activeDeals,omitempty"`
@@ -64,16 +64,20 @@ type Influencer struct {
 	Cancellations int32 `json:"cancellations,omitempty"`
 	// Number of times the influencer has timed out on a deal
 	Timeouts int32 `json:"timeouts,omitempty"`
+
+	// Sway Rep scores by date
+	Rep        map[string]float32 `json:"historicRep,omitempty"`
+	CurrentRep float32            `json:"currentRep,omitempty"`
 }
 
-func New(name, twitterId, instaId, fbId, ytId, gender, agency, cat string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(name, twitterId, instaId, fbId, ytId, gender, agency string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
-		Name:     name,
-		Id:       misc.PseudoUUID(),
-		AgencyId: agency,
-		Geo:      geo,
-		Gender:   gender,
-		Category: cat,
+		Name:       name,
+		Id:         misc.PseudoUUID(),
+		AgencyId:   agency,
+		Geo:        geo,
+		Gender:     gender,
+		Categories: cats,
 	}
 
 	err := inf.NewInsta(instaId, cfg)
@@ -95,6 +99,8 @@ func New(name, twitterId, instaId, fbId, ytId, gender, agency, cat string, geo *
 	if err != nil {
 		return inf, err
 	}
+
+	inf.setSwayRep()
 
 	return inf, nil
 }
@@ -164,6 +170,9 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 			return err
 		}
 	}
+
+	inf.setSwayRep()
+
 	return nil
 }
 
@@ -208,6 +217,40 @@ func (inf *Influencer) GetPlatformId(deal *common.Deal) string {
 		return inf.YouTube.UserName
 	}
 	return ""
+}
+
+func (inf *Influencer) setSwayRep() {
+	// Considers the following and returns a sway rep score:
+	// - Averages per post (likes, comments, shares etc)
+	// - Followers
+	// - Completed deals
+	// - Timeouts
+	// - Cancellations
+
+	var rep float32
+	if inf.Facebook != nil {
+		rep += inf.Facebook.GetScore()
+	}
+	if inf.Instagram != nil {
+		rep += inf.Instagram.GetScore()
+	}
+	if inf.Twitter != nil {
+		rep += inf.Twitter.GetScore()
+	}
+	if inf.YouTube != nil {
+		rep += inf.YouTube.GetScore()
+	}
+
+	rep = rep * (1 + float32(len(inf.CompletedDeals))*float32(0.5))
+	rep = rep / (1 + float32(inf.Timeouts)*float32(0.5))
+	rep = rep / (1 + float32(inf.Cancellations)*1)
+
+	if inf.Rep == nil {
+		inf.Rep = make(map[string]float32)
+	}
+
+	inf.Rep[getDate()] = rep
+	inf.CurrentRep = rep
 }
 
 func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
@@ -271,9 +314,11 @@ func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId
 		if len(cmp.Categories) > 0 {
 			catFound := false
 			for _, cat := range cmp.Categories {
-				if inf.Category == cat {
-					catFound = true
-					break
+				for _, infCat := range inf.Categories {
+					if infCat == cat {
+						catFound = true
+						break
+					}
 				}
 			}
 			if !catFound {
