@@ -38,6 +38,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
 	authDb := misc.OpenDB(cfg.DBPath, cfg.AuthDBName)
+
 	srv := &Server{
 		Cfg:         cfg,
 		r:           r,
@@ -45,6 +46,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		budgetDb:    budgetDb,
 		reportingDb: reportingDb,
 		authDb:      authDb,
+		auth:        auth.New(authDb, cfg),
 		Campaigns:   common.NewCampaigns(),
 	}
 
@@ -52,7 +54,9 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	go srv.auth.PurgeInvalidTokens()
+
 	if err = srv.startEngine(); err != nil {
 		return nil, err
 	}
@@ -155,6 +159,7 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
+	r.GET("/apiKey", srv.auth.VerifyUser(false), srv.auth.APIKeyHandler)
 	r.POST("/signin", srv.auth.SignInHandler)
 	r.POST("/signup", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 

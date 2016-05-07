@@ -236,30 +236,31 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 // or passes ?renew=true
 func (a *Auth) APIKeyHandler(c *gin.Context) {
 	u := GetCtxUser(c)
+
 	if u.APIKey == "" || c.Query("renew") == "true" {
 		stok := hex.EncodeToString(misc.CreateToken(TokenLen - 8))
 		ntok := &Token{UserId: u.Id, Expires: -1}
-		var pass string
 		if err := a.db.Update(func(tx *bolt.Tx) error {
 			l := a.GetLoginTx(tx, u.Email)
 			if l == nil {
 				return ErrInvalidEmail
 			}
-			pass = l.Password
 			return misc.PutTxJson(tx, a.cfg.AuthBucket.Token, stok, ntok)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
-		mac := CreateMAC(pass, stok, u.Salt)
+		mac := CreateMAC(u.Id, stok, u.Salt)
 		if err := a.db.Update(func(tx *bolt.Tx) error {
+			if len(u.APIKey) == 64 { // delete the old key
+				tx.Bucket([]byte(a.cfg.AuthBucket.Token)).Delete([]byte(u.APIKey[:32]))
+			}
 			u.APIKey = stok + mac
 			return misc.PutTxJson(tx, a.cfg.AuthBucket.User, u.Id, u)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
-
 	}
 	msg := misc.StatusOK(u.Id)
 	msg["key"] = u.APIKey

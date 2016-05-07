@@ -104,6 +104,10 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 	if ri.user = a.GetUserTx(tx, token.UserId); ri.user == nil {
 		return nil
 	}
+	if ri.isApiKey { // for api keys, we use the id as the password so the key wouldn't break if the user change it
+		ri.hashedPass = ri.user.Id
+		return &ri
+	}
 	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
 		ri.hashedPass = l.Password
 	} else {
