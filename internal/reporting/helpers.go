@@ -67,27 +67,18 @@ func getPostDate(ts int32) string {
 	return time.Unix(int64(ts), 0).String()
 }
 
-func getDateRangeFromOffset(offset int) []time.Time {
-	// Get all time instances for days since now
+func getDateRangeFromOffset(off int) []time.Time {
 	to := time.Now().UTC()
-	if offset == -1 {
-		// All time
-		offset = -365
-	} else if offset > 0 {
-		offset = -offset
+	if off == -1 {
+		off = -365
+	} else if off > 0 {
+		off = -off
 	}
-
-	from := to.AddDate(0, 0, offset)
-	diff := to.Sub(from)
-
-	// convert diff to days
-	days := int(diff.Hours() / 24)
-
-	var dateRange []time.Time
-	for d := 0; d <= days; d++ {
-		dateRange = append(dateRange, from.AddDate(0, 0, d))
+	out := make([]time.Time, -off+1)
+	for i := range out {
+		out[i] = to.AddDate(0, 0, off+i)
 	}
-	return dateRange
+	return out
 }
 
 func getEngagements(st *Stats) int32 {

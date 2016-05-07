@@ -21,7 +21,6 @@ import (
 // 			"leftover": 10, // leftover from last month which was added
 // 			"dspFee": 4, // amount dsp took
 // 			"exchangeFee": 4, // amount exchange took
-// 			"agencyFee": 4, // amount talent agency took
 // 			"spendable": 10,
 // 			"influencers": {
 // 				"JennaMarbles": {
@@ -93,7 +92,6 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 
 		dspCut := monthlyBudget * dspFee
 		exchangeCut := monthlyBudget * exchangeFee
-
 		// Take out margins from spendable
 		// NOTE: This will automatically reset Pending too
 		// Also.. no need for an influencers struct because

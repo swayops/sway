@@ -99,7 +99,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 			return err
 		}
 
-		if !cmp.Active {
+		if !cmp.Status {
 			return errors.New("Campaign is no longer active")
 		}
 

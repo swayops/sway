@@ -113,9 +113,14 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// delCampaign only sets active to false!
 	createRoutes(r, srv, "/campaign", getCampaign, putCampaign, delCampaign)
 	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
-	r.GET("/getCampaignAssignedDeals/:campaignId", getCampaignAssignedDeals(srv))
-	r.GET("/getCampaignCompletedDeals/:campaignId", getCampaignCompletedDeals(srv))
 	r.POST("/updateCampaign/:campaignId", updateCampaign(srv))
+
+	// Deal
+	r.GET("/getDeals/:influencerId/:lat/:long", getDealsForInfluencer(srv))
+	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
+	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
+	r.GET("/getDealsAssigned/:influencerId", getDealsAssignedToInfluencer(srv))
+	r.GET("/getDealsCompleted/:influencerId", getDealsCompletedByInfluencer(srv))
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
@@ -125,14 +130,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
 
-	// Deal
-	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
-	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
-	r.GET("/getDealsAssignedToInfluencer/:influencerId", getDealsAssignedToInfluencer(srv))
-	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
-	// Offset in hours
-	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv))
-
 	// Budget
 	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
 	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
@@ -140,10 +137,10 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	// Reporting
 	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
-	r.GET("/getRawStats/:cid", getRawStats(srv))
 	r.GET("/getCampaignStats/:cid/:days", getCampaignStats(srv))
 	r.GET("/getInfluencerStats/:infId/:days", getInfluencerStats(srv))
-
+	r.GET("/getRawStats/:cid", getRawStats(srv))
+	r.GET("/getCampaignInfluencerStats/:cid/:infId/:days", getCampaignInfluencerStats(srv))
 }
 
 func (srv *Server) startEngine() error {

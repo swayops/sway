@@ -300,7 +300,7 @@ func billing(s *Server) error {
 					return err
 				}
 
-				if cmp.Active && cmp.Budget > 0 {
+				if cmp.Status && cmp.Budget > 0 {
 					// Add fresh deals for this month
 					addDealsToCampaign(cmp)
 

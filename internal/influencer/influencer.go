@@ -47,6 +47,12 @@ type Influencer struct {
 	Twitter   *twitter.Twitter     `json:"twitter,omitempty"`
 	YouTube   *youtube.YouTube     `json:"youtube,omitempty"`
 
+	// Used for the API exclusively (in the influencer's Clean method)
+	FbUsername      string `json:"fbUsername,omitempty"`
+	InstaUsername   string `json:"instaUsername,omitempty"`
+	TwitterUsername string `json:"twitterUsername,omitempty"`
+	YTUsername      string `json:"youtubeUsername,omitempty"`
+
 	// User inputted geo (should be ingested by the app)
 	Geo *misc.GeoRecord `json:"geo,omitempty"`
 
@@ -67,7 +73,7 @@ type Influencer struct {
 
 	// Sway Rep scores by date
 	Rep        map[string]float32 `json:"historicRep,omitempty"`
-	CurrentRep float32            `json:"currentRep,omitempty"`
+	CurrentRep float32            `json:"rep,omitempty"`
 }
 
 func New(name, twitterId, instaId, fbId, ytId, gender, agency string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
@@ -252,6 +258,69 @@ func (inf *Influencer) setSwayRep() {
 
 	inf.Rep[getDate()] = rep
 	inf.CurrentRep = rep
+}
+
+func (inf *Influencer) CleanAssignedDeals() []*common.Deal {
+	var (
+		cleanDeals []*common.Deal
+	)
+
+	for _, deal := range inf.ActiveDeals {
+		deal.Platforms = []string{}
+		deal.Spendable = 0
+		cleanDeals = append(cleanDeals, deal)
+	}
+
+	return cleanDeals
+}
+
+func (inf *Influencer) CleanCompletedDeals() []*common.Deal {
+	var (
+		cleanDeals []*common.Deal
+	)
+
+	for _, deal := range inf.CompletedDeals {
+		if deal.Tweet != nil {
+			deal.PostUrl = deal.Tweet.PostURL
+			deal.Tweet = nil
+		} else if deal.Facebook != nil {
+			deal.PostUrl = deal.Facebook.PostURL
+			deal.Facebook = nil
+		} else if deal.Instagram != nil {
+			deal.PostUrl = deal.Instagram.PostURL
+			deal.Instagram = nil
+		} else if deal.YouTube != nil {
+			deal.PostUrl = deal.YouTube.PostURL
+			deal.YouTube = nil
+		}
+		deal.Platforms = []string{}
+		deal.Spendable = 0
+		cleanDeals = append(cleanDeals, deal)
+	}
+
+	return cleanDeals
+}
+
+func (inf *Influencer) Clean() {
+	if inf.Facebook != nil {
+		inf.FbUsername = inf.Facebook.Id
+		inf.Facebook = nil
+	}
+	if inf.Instagram != nil {
+		inf.InstaUsername = inf.Instagram.UserName
+		inf.Instagram = nil
+	}
+	if inf.Twitter != nil {
+		inf.TwitterUsername = inf.Twitter.Id
+		inf.Twitter = nil
+	}
+	if inf.YouTube != nil {
+		inf.YTUsername = inf.YouTube.UserName
+		inf.YouTube = nil
+	}
+	inf.ActiveDeals = nil
+	inf.CompletedDeals = nil
+	inf.Rep = nil
 }
 
 func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {

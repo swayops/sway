@@ -19,7 +19,7 @@ type Campaign struct {
 	AdvertiserId string `json:"advertiserId"`
 	AgencyId     string `json:"agencyId"`
 
-	Active bool `json:"active"`
+	Status bool `json:"status"`
 
 	// Social Media Post/User Requirements
 	Tags    []string          `json:"hashtags,omitempty"`
@@ -46,7 +46,7 @@ type Campaign struct {
 }
 
 func (cmp *Campaign) IsValid() bool {
-	return cmp.Active && cmp.Budget > 0 && len(cmp.Deals) > 0
+	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status
 }
 
 type Campaigns struct {

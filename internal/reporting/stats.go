@@ -194,7 +194,7 @@ type TargetStats struct {
 
 type Totals struct {
 	Influencers int32 `json:"infs,omitempty"`
-	Engagements int32 `json:"eng,omitempty"`
+	Engagements int32 `json:"engagements,omitempty"`
 	Likes       int32 `json:"likes,omitempty"`
 	Views       int32 `json:"views,omitempty"`
 
@@ -205,13 +205,14 @@ type Totals struct {
 }
 
 type ReportStats struct {
-	Likes    int32   `json:"likes,omitempty"`
-	Comments int32   `json:"comments,omitempty"`
-	Shares   int32   `json:"shares,omitempty"`
-	Views    int32   `json:"views,omitempty"`
-	Spent    float32 `json:"spent,omitempty"`
-	Perks    int32   `json:"perks,omitempty"` // Perks sent
-	Rep      float32 `json:"rep,omitempty"`
+	Likes       int32   `json:"likes,omitempty"`
+	Comments    int32   `json:"comments,omitempty"`
+	Shares      int32   `json:"shares,omitempty"`
+	Views       int32   `json:"views,omitempty"`
+	Spent       float32 `json:"spent,omitempty"`
+	Perks       int32   `json:"perks,omitempty"` // Perks sent
+	Rep         float32 `json:"rep,omitempty"`
+	Engagements int32   `json:"engagements,omitempty"`
 
 	PlatformId   string `json:"platformId,omitempty"` // Screen name for the platform used for the deal
 	Published    string `json:"posted,omitempty"`     // Pretty string of date post was made
@@ -320,11 +321,15 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	return data
 }
 
-func GetTotalInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time) (*ReportStats, error) {
+func GetTotalInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid string) (*ReportStats, error) {
 	stats := &ReportStats{}
 
 	if err := db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(cfg.ReportingBucket)).ForEach(func(k, v []byte) (err error) {
+			if cid != "" && cid != string(k) {
+				return nil
+			}
+
 			var allStats map[string]*Stats
 			if err := json.Unmarshal(v, &allStats); err != nil {
 				log.Println("error when unmarshalling stats", string(v))
@@ -344,6 +349,7 @@ func GetTotalInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from
 						stats.Views += views
 						stats.Spent += st.Payout
 						stats.Perks += st.Perks
+						stats.Engagements += eng
 					}
 				}
 			}

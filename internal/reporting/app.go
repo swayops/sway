@@ -11,15 +11,15 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 
 	dateRange := getDateRangeFromOffset(offset)
 
-	// Insert totals for the range in the key "totals"
-	tg["totals"] = &Totals{}
+	// Insert totals for the range in the key "total"
+	tg["total"] = &Totals{}
 
 	// Insert day stats for the range
 	for _, d := range dateRange {
 		tot, err := GetTotalStats(cid, db, cfg, d, d, true)
 		if err == nil && tot != nil && tot.Total != nil {
 			tg[getDateFromTime(d)] = tot.Total
-			val, _ := tg["totals"]
+			val, _ := tg["total"]
 			val.Engagements += tot.Total.Engagements
 			val.Likes += tot.Total.Likes
 			val.Views += tot.Total.Views
@@ -32,35 +32,46 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 	return tg
 }
 
-func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offset int, rep map[string]float32, currentRep float32) map[string]*ReportStats {
+func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offset int, rep map[string]float32, currentRep float32, cid string) map[string]*ReportStats {
 	// Retrieves influencer totals for the range and influencer stats by day
 	tg := make(map[string]*ReportStats)
 
 	dateRange := getDateRangeFromOffset(offset)
 
 	// Insert totals for the range in the key "totals"
-	tg["totals"] = &ReportStats{
-		Rep: currentRep,
+	st := &ReportStats{}
+	if cid == "" {
+		// Do not add the rep values if we are doing
+		// Campaign Influencer stats (i.e. when cid override
+		// is not passed in)
+		st.Rep = currentRep
 	}
+	tg["total"] = st
 
 	// Insert day stats for the range
 	for _, d := range dateRange {
-		r, err := GetTotalInfluencerStats(infId, db, cfg, d, d)
+		r, err := GetTotalInfluencerStats(infId, db, cfg, d, d, cid)
 		if err == nil && r != nil && r.Spent != 0 {
 			key := getDateFromTime(d)
-			dayRep, ok := rep[key]
-			if ok {
-				r.Rep = dayRep
+
+			if cid == "" {
+				// Do not add the rep values if we are doing
+				// Campaign Influencer stats
+				dayRep, ok := rep[key]
+				if ok {
+					r.Rep = dayRep
+				}
 			}
 
 			tg[key] = r
-			val, _ := tg["totals"]
+			val, _ := tg["total"]
 			val.Likes += r.Likes
 			val.Comments += r.Comments
 			val.Shares += r.Shares
 			val.Views += r.Views
 			val.Spent += r.Spent
 			val.Perks += r.Perks
+			val.Engagements += r.Engagements
 		}
 	}
 

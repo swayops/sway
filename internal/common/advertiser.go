@@ -5,8 +5,8 @@ type Advertiser struct {
 	Id       string `json:"id,omitempty"`
 	AgencyId string `json:"agencyId"`
 
-	Name      string   `json:"name"`
-	Campaigns []string `json:"campaigns"`
+	Name   string `json:"name,omitempty"`
+	Status string `json:"status,omitempty"`
 
 	ExchangeFee float32 `json:"exchangeFee,omitempty"` // Percentage (decimal)
 	DspFee      float32 `json:"dspFee,omitempty"`      // Percentage (decimal)
