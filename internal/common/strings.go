@@ -15,7 +15,7 @@ func StringsRemove(hay []string, needle string) []string {
 	if idx > -1 {
 		copy(hay[idx:], hay[idx+1:])
 		ln := len(hay) - 1
-		hay, hay[ln] = hay[:ln], ""
+		hay = hay[:ln:ln]
 	}
 	return hay
 }

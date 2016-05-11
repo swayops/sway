@@ -125,47 +125,51 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 	c.JSON(200, misc.StatusOK(login.UserId))
 }
 
-func (a *Auth) SignUpHandler(c *gin.Context) {
-	var uwp struct { // UserWithPassword
-		User
-		Password  string `json:"pass"`
-		Password2 string `json:"pass2"`
-	}
-	if err := c.BindJSON(&uwp); err != nil {
-		misc.AbortWithErr(c, 400, err)
-		return
-	}
-	if uwp.Type == "" {
-		uwp.Type = Advertiser
+// SignUpHelper handles common user sign up operations, returns a *User.
+// if nil is returned, it means it failed and already returned an http error
+func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope) (_ bool) {
+	if sup.Type == "" {
+		sup.Type = defaultScope
 	}
 	currentUser := GetCtxUser(c)
 	if currentUser != nil {
-		if !currentUser.Type.CanCreate(uwp.Type) {
+		if !currentUser.Type.CanCreate(sup.Type) {
 			misc.AbortWithErr(c, 401, ErrUnauthorized)
 			return
 		}
-		uwp.ParentId = currentUser.Id
-	} else if uwp.Type != Advertiser {
+		sup.ParentId = currentUser.Id
+	} else if sup.Type != Advertiser {
 		misc.AbortWithErr(c, 401, ErrUnauthorized)
 		return
 	} else {
-		uwp.ParentId = SwayOpsAgencyId
+		sup.ParentId = SwayOpsAgencyId
 	}
-	if uwp.Password != uwp.Password2 {
+	if sup.Password != sup.Password2 {
 		misc.AbortWithErr(c, 400, ErrPasswordMismatch)
 		return
 	}
-	if len(uwp.Password) < 8 {
+	if len(sup.Password) < 8 {
 		misc.AbortWithErr(c, 400, ErrShortPass)
 		return
 	}
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		return a.CreateUserTx(tx, &uwp.User, uwp.Password)
+		return a.CreateUserTx(tx, &sup.User, sup.Password)
 	}); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}
-	c.JSON(200, misc.StatusOK(uwp.Id))
+	return true
+}
+
+func (a *Auth) SignUpHandler(c *gin.Context) {
+	var sup SignupUser
+	if err := c.BindJSON(&sup); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+	if a.SignUpHelper(c, &sup, Advertiser) {
+		c.JSON(200, misc.StatusOK(sup.Id))
+	}
 }
 
 const resetPasswordUrl = "%s/resetPassword/%s"
@@ -232,8 +236,7 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 	c.JSON(200, misc.StatusOK(""))
 }
 
-// this returns a perma API key for the logged in user, the key gets invalidated if the user changes their password
-// or passes ?renew=true
+// this returns a perma API key for the logged in user, the user can pass ?renew=true to generate a new key.
 func (a *Auth) APIKeyHandler(c *gin.Context) {
 	u := GetCtxUser(c)
 
@@ -252,7 +255,8 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 		}
 		mac := CreateMAC(u.Id, stok, u.Salt)
 		if err := a.db.Update(func(tx *bolt.Tx) error {
-			if len(u.APIKey) == 64 { // delete the old key
+			log.Println(u.APIKey, len(u.APIKey))
+			if len(u.APIKey) == 96 { // delete the old key
 				tx.Bucket([]byte(a.cfg.AuthBucket.Token)).Delete([]byte(u.APIKey[:32]))
 			}
 			u.APIKey = stok + mac
@@ -262,6 +266,7 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			return
 		}
 	}
+
 	msg := misc.StatusOK(u.Id)
 	msg["key"] = u.APIKey
 	c.JSON(200, msg)

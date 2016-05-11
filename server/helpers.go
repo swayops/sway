@@ -211,21 +211,10 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
 
-func getTalentAgencyFee(s *Server, id string) float32 {
-	var (
-		v   []byte
-		err error
-		ag  common.TalentAgency
-	)
+func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float32 {
+	var ag common.TalentAgency
 
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(id))
-		return nil
-	}); err != nil {
-		return 0
-	}
-
-	if err = json.Unmarshal(v, &ag); err != nil {
+	if misc.GetTxJson(tx, s.Cfg.Bucket.TalentAgency, id, &ag) != nil {
 		return 0
 	}
 	return ag.Fee

@@ -68,14 +68,6 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 	return nil
 }
 
-func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
-	var u User
-	if misc.GetTxJson(tx, a.cfg.AuthBucket.User, userId, &u) == nil && len(u.Salt) > 0 {
-		return &u
-	}
-	return nil
-}
-
 func (a *Auth) GetUserByEmailTx(tx *bolt.Tx, email string) *User {
 	if l := a.GetLoginTx(tx, email); l != nil {
 		return a.GetUserTx(tx, l.UserId)

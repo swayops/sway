@@ -37,6 +37,12 @@ type User struct {
 	Salt      string   `json:"salt,omitempty"`
 }
 
+type SignupUser struct {
+	User
+	Password  string `json:"pass"`
+	Password2 string `json:"pass2"`
+}
+
 // Trim returns a browser-safe version of the User, mainly hiding salt, and maybe possibly apiKeys
 func (u *User) Trim() *User {
 	u.Salt = ""
@@ -44,13 +50,14 @@ func (u *User) Trim() *User {
 }
 
 // Update fills the updatable fields in the struct, fields like Created and Id should never be blindly set.
-func (u *User) Update(ou *User) *User {
-	u.Name, u.Email, u.Phone, u.Address, u.Agencies = ou.Name, ou.Email, ou.Phone, ou.Address, ou.Agencies
-	u.Active = ou.Active
+func (u *User) Update(o *User) *User {
+	u.Name, u.Email, u.Phone, u.Address, u.Agencies = o.Name, o.Email, o.Phone, o.Address, o.Agencies
+	u.Active = o.Active
 	u.UpdatedAt = time.Now().UnixNano()
 	return u
 }
 
+// TODO move this to misc or ownership
 func (u *User) OwnsAgency(aid string) bool {
 	return common.StringsIndexOf(u.Agencies, aid) > -1
 }
@@ -129,4 +136,12 @@ func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
 		return nil
 	})
 	return
+}
+
+func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
+	var u User
+	if misc.GetTxJson(tx, a.cfg.AuthBucket.User, userId, &u) == nil && len(u.Salt) > 0 {
+		return &u
+	}
+	return nil
 }

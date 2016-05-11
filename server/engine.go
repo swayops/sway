@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
@@ -209,6 +210,7 @@ func billing(s *Server) error {
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
+					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
 					return nil
 				}); err != nil {
 					log.Println("Invoice error for influencer", err)
@@ -220,7 +222,6 @@ func billing(s *Server) error {
 					continue
 				}
 
-				agencyFee = getTalentAgencyFee(s, inf.AgencyId)
 				if agencyFee == 0 {
 					log.Println("error retrieving agency fee for", inf.Id)
 					continue
@@ -241,8 +242,8 @@ func billing(s *Server) error {
 		for _, data := range store {
 			for id, infData := range data.Influencers {
 				var (
-					ag        common.TalentAgency
 					inf       influencer.Influencer
+					agUser    *auth.User
 					v         []byte
 					agencyFee float32
 				)
@@ -253,19 +254,19 @@ func billing(s *Server) error {
 						return err
 					}
 
-					v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(inf.AgencyId))
-					if err = json.Unmarshal(v, &ag); err != nil {
-						log.Println("Invoice error for talent agency invoice", err)
-						return err
-					}
-
+					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
+					agUser = s.auth.GetUserTx(tx, inf.AgencyId)
 					return nil
 				}); err != nil {
 					log.Println("Invoice error for talent agency invoice", err)
 					continue
 				}
 
-				agencyFee = getTalentAgencyFee(s, inf.AgencyId)
+				if agUser == nil {
+					log.Println("error retrieving agency", inf.AgencyId)
+					continue
+				}
+
 				if agencyFee == 0 {
 					log.Println("error retrieving agency fee for", inf.Id)
 					continue
@@ -273,8 +274,8 @@ func billing(s *Server) error {
 
 				formatted := fmt.Sprintf(
 					talentAgencyInvoiceFormat,
-					ag.Name,
-					ag.Id,
+					agUser.Name,
+					agUser.Id,
 					infData.Payout*agencyFee,
 				)
 				log.Println(formatted)
