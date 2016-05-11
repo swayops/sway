@@ -214,12 +214,10 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 }
 
 func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float32 {
-	var ag common.TalentAgency
-
-	if misc.GetTxJson(tx, s.Cfg.Bucket.TalentAgency, id, &ag) != nil {
-		return 0
+	if ag := s.auth.GetTalentAgencyTx(tx, id); ag != nil {
+		return ag.Fee
 	}
-	return ag.Fee
+	return 0
 }
 
 func saveAllDeals(s *Server, inf *influencer.Influencer) error {

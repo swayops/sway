@@ -50,6 +50,7 @@ func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 	}
 }
 
+// TODO: FIX
 //	CheckOwnership returns a handler that checks the ownership of an item.
 //	params:
 //		- itemType (ex CampaignItem)

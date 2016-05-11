@@ -74,29 +74,39 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 				return err
 			}
 		}
-		if srv.auth.GetUserTx(tx, auth.AdminUserId) == nil {
-			u := auth.User{
+		var u *auth.User
+		if u = srv.auth.GetUserTx(tx, auth.AdminUserId); u == nil {
+			u = auth.User{
 				Name:  "System Admin",
 				Email: adminEmail,
-				Type:  auth.Admin,
+				Type:  auth.AdminScope,
 			}
 			if err := srv.auth.CreateUserTx(tx, &u, adminPass); err != nil {
 				return err
 			}
 			log.Println("created admin user, id = ", u.Id)
 		}
-		// is this needed?
-		if srv.auth.GetUserTx(tx, auth.SwayOpsAgencyId) == nil {
-			u := auth.User{
-				Name:     "SwayOps Agency",
-				Email:    agencyEmail,
-				Type:     auth.AdvertiserAgency,
-				ParentId: auth.AdminUserId,
+		if srv.auth.GetTalentAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
+			ag := &auth.TalentAgency{
+				Name:   "Sway Ops Talent Agency",
+				UserId: u.Id,
+				Fee:    0.2,
 			}
-			if err := srv.auth.CreateUserTx(tx, &u, agencyPass); err != nil {
+			if err := srv.auth.CreateTalentAgencyTx(tx, u, ag); err != nil {
 				return err
 			}
-			log.Println("created agency, id = ", u.Id)
+			log.Println("created talent agency, id = ", u.Id)
+		}
+		if srv.auth.GetAdAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
+			ag := &auth.TalentAgency{
+				Name:   "Sway Ops Ad Agency",
+				UserId: u.Id,
+				Fee:    0.2,
+			}
+			if err := srv.auth.CreateAdAgencyTx(tx, u, ag); err != nil {
+				return err
+			}
+			log.Println("created ad agency, id = ", u.Id)
 		}
 		return nil
 	}); err != nil {
@@ -136,10 +146,10 @@ var scopes = map[string]auth.ScopeMap{
 		auth.TalentAgency: {Get: true, Post: true, Put: true, Delete: true},
 		auth.Influencer:   {Get: true, Post: true, Put: true, Delete: true},
 	},
-	"adAgency": {auth.AdvertiserAgency: {Get: true, Post: true, Put: true, Delete: true}},
+	"adAgency": {auth.AdAgency: {Get: true, Post: true, Put: true, Delete: true}},
 	"adv": {
-		auth.AdvertiserAgency: {Get: true, Post: true, Put: true, Delete: true},
-		auth.Advertiser:       {Get: true, Post: true, Put: true, Delete: true},
+		auth.AdAgency:   {Get: true, Post: true, Put: true, Delete: true},
+		auth.Advertiser: {Get: true, Post: true, Put: true, Delete: true},
 	},
 }
 
@@ -153,7 +163,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
 	// AdAgency
-	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdvertiserAgencyItem, getAdAgency, postAdAgency, putAdAgency, delAdAgency)
+	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdvertiserAgencyItem, getAdAgency, putAdAgency, putAdAgency, delAdAgency)
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
 

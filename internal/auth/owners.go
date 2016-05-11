@@ -9,11 +9,11 @@ type ItemType string
 
 // update this as we add new item types
 const (
-	AdvertiserAgencyItem ItemType = "advAgency"
-	AdvertiserItem       ItemType = "adv"
-	CampaignItem         ItemType = "camp"
-	TalentAgencyItem     ItemType = "talentAgency"
-	InfluencerItem       ItemType = `influencer`
+	AdAgencyItem     ItemType = "advAgency"
+	AdvertiserItem   ItemType = "adv"
+	CampaignItem     ItemType = "camp"
+	TalentAgencyItem ItemType = "talentAgency"
+	InfluencerItem   ItemType = `influencer`
 )
 
 func (a *Auth) SetOwnerTx(tx *bolt.Tx, itemType ItemType, itemId, userId string) error {
