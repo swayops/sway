@@ -61,7 +61,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			misc.AbortWithErr(c, 400, ErrInvalidRequest)
 			return
 		}
-		if u.Type == Admin { // admin owns everything
+		if u.Type == AdminScope { // admin owns everything
 			return
 		}
 		var ok bool
@@ -138,7 +138,7 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope)
 			return
 		}
 		sup.ParentId = currentUser.Id
-	} else if sup.Type != Advertiser {
+	} else if sup.Type != AdvertiserScope {
 		misc.AbortWithErr(c, 401, ErrUnauthorized)
 		return
 	} else {
@@ -167,7 +167,7 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}
-	if a.SignUpHelper(c, &sup, Advertiser) {
+	if a.SignUpHelper(c, &sup, AdvertiserScope) {
 		c.JSON(200, misc.StatusOK(sup.Id))
 	}
 }
@@ -248,7 +248,7 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			if l == nil {
 				return ErrInvalidEmail
 			}
-			return misc.PutTxJson(tx, a.cfg.AuthBucket.Token, stok, ntok)
+			return misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, ntok)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
@@ -257,10 +257,10 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 		if err := a.db.Update(func(tx *bolt.Tx) error {
 			log.Println(u.APIKey, len(u.APIKey))
 			if len(u.APIKey) == 96 { // delete the old key
-				tx.Bucket([]byte(a.cfg.AuthBucket.Token)).Delete([]byte(u.APIKey[:32]))
+				tx.Bucket([]byte(a.cfg.Bucket.Token)).Delete([]byte(u.APIKey[:32]))
 			}
 			u.APIKey = stok + mac
-			return misc.PutTxJson(tx, a.cfg.AuthBucket.User, u.Id, u)
+			return misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return

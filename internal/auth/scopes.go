@@ -3,18 +3,18 @@ package auth
 type Scope string
 
 const (
-	Admin            Scope = `admin`
-	AdvertiserAgency Scope = `advAgency`
-	Advertiser       Scope = `advertiser`
-	TalentAgency     Scope = `talentAgency`
-	Influencer       Scope = `influencer`
+	AdminScope            Scope = `admin`
+	AdvertiserAgencyScope Scope = `advAgency`
+	AdvertiserScope       Scope = `advertiser`
+	TalentAgencyScope     Scope = `talentAgency`
+	InfluencerScope       Scope = `influencer`
 
-	AllUsers Scope = `*` // this is a special catch-all case for matching
+	AllScopes Scope = `*` // this is a special catch-all case for matching
 )
 
 func (s Scope) Valid() bool {
 	switch s {
-	case Admin, AdvertiserAgency, TalentAgency, Advertiser, Influencer:
+	case AdminScope, AdvertiserAgencyScope, TalentAgencyScope, AdvertiserScope, InfluencerScope:
 		return true
 	}
 	return false
@@ -22,25 +22,25 @@ func (s Scope) Valid() bool {
 
 func (s Scope) CanCreate(child Scope) bool {
 	switch s {
-	case Admin:
+	case AdminScope:
 		return true
-	case AdvertiserAgency:
-		return child == Advertiser
-	case TalentAgency:
-		return child == Influencer
+	case AdvertiserAgencyScope:
+		return child == AdvertiserScope
+	case TalentAgencyScope:
+		return child == InfluencerScope
 	}
 	return false
 }
 
 func (s Scope) CanOwn(it ItemType) bool {
 	switch s {
-	case Admin:
+	case AdminScope:
 		return it == AdvertiserAgencyItem || it == TalentAgencyItem
-	case AdvertiserAgency:
+	case AdvertiserAgencyScope:
 		return it == AdvertiserItem
-	case TalentAgency:
+	case TalentAgencyScope:
 		return it == InfluencerItem
-	case Advertiser:
+	case AdvertiserScope:
 		return it == CampaignItem
 	}
 	return false
@@ -49,7 +49,7 @@ func (s Scope) CanOwn(it ItemType) bool {
 type ScopeMap map[Scope]struct{ Get, Put, Post, Delete bool }
 
 func (sm ScopeMap) HasAccess(scope Scope, method string) bool {
-	if scope == Admin {
+	if scope == AdminScope {
 		return true
 	}
 	var v bool
@@ -65,8 +65,8 @@ func (sm ScopeMap) HasAccess(scope Scope, method string) bool {
 			v = m.Delete
 		}
 	}
-	if !v && scope != AllUsers {
-		v = sm.HasAccess(AllUsers, method)
+	if !v && scope != AllScopes {
+		v = sm.HasAccess(AllScopes, method)
 	}
 	return v
 }

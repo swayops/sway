@@ -179,17 +179,19 @@ func saveInfluencer(tx *bolt.Tx, inf *influencer.Influencer, cfg *config.Config)
 
 //TODO discuss with Shahzil and handle scopes
 func createRoutes(r *gin.Engine, srv *Server, endpoint string, scopes auth.ScopeMap, ownershipItemType auth.ItemType,
-	get, post, del func(*Server) gin.HandlerFunc) {
+	get, post, put, del func(*Server) gin.HandlerFunc) {
 
 	sh := srv.auth.CheckScopes(scopes)
 	if ownershipItemType != "" {
 		oh := srv.auth.CheckOwnership(ownershipItemType, "id")
 		r.GET(endpoint+"/:id", srv.auth.VerifyUser(false), sh, oh, get(srv))
 		r.POST(endpoint, srv.auth.VerifyUser(false), sh, post(srv))
+		r.PUT(endpoint, srv.auth.VerifyUser(false), sh, oh, put(srv))
 		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser(false), sh, oh, del(srv))
 	} else {
 		r.GET(endpoint+"/:id", srv.auth.VerifyUser(false), sh, get(srv))
 		r.POST(endpoint, srv.auth.VerifyUser(false), sh, post(srv))
+		r.PUT(endpoint, srv.auth.VerifyUser(false), sh, put(srv))
 		r.DELETE(endpoint+"/:id", srv.auth.VerifyUser(false), sh, del(srv))
 	}
 }

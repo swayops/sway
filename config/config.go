@@ -94,19 +94,17 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
+		User      string `json:"user"`
+		Login     string `json:"login"`
+		Token     string `json:"Token"`
+		Ownership string `json:"ownership"`
+
 		AdAgency     string `json:"adAgency"`
 		TalentAgency string `json:"talentAgency"`
 		Advertiser   string `json:"advertiser"`
 		Campaign     string `json:"campaign"`
 		Influencer   string `json:"influencer"`
 	} `json:"bucket"`
-
-	AuthBucket struct {
-		User      string `json:"user"`
-		Login     string `json:"login"`
-		Token     string `json:"Token"`
-		Ownership string `json:"ownership"`
-	} `json:"authBucket"`
 
 	ec *mandrill.Client
 
@@ -115,17 +113,6 @@ type Config struct {
 
 func (c *Config) AllBuckets() []string {
 	rv := reflect.ValueOf(c.Bucket)
-	out := make([]string, 0, rv.NumField())
-	for i := 0; i < cap(out); i++ {
-		if v := rv.Field(i).String(); v != "" {
-			out = append(out, v)
-		}
-	}
-	return out
-}
-
-func (c *Config) AllAuthBuckets() []string {
-	rv := reflect.ValueOf(c.AuthBucket)
 	out := make([]string, 0, rv.NumField())
 	for i := 0; i < cap(out); i++ {
 		if v := rv.Field(i).String(); v != "" {

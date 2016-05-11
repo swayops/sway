@@ -25,7 +25,6 @@ type Server struct {
 	r           *gin.Engine
 	db          *bolt.DB
 	budgetDb    *bolt.DB
-	authDb      *bolt.DB
 	reportingDb *bolt.DB
 	auth        *auth.Auth
 
@@ -37,7 +36,6 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
-	authDb := misc.OpenDB(cfg.DBPath, cfg.AuthDBName)
 
 	srv := &Server{
 		Cfg:         cfg,
@@ -45,8 +43,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		db:          db,
 		budgetDb:    budgetDb,
 		reportingDb: reportingDb,
-		authDb:      authDb,
-		auth:        auth.New(authDb, cfg),
+		auth:        auth.New(db, cfg),
 		Campaigns:   common.NewCampaigns(),
 	}
 
@@ -69,45 +66,6 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 func (srv *Server) initializeDBs(cfg *config.Config) error {
 	if err := srv.db.Update(func(tx *bolt.Tx) error {
 		for _, val := range cfg.AllBuckets() {
-			log.Println("Initializing bucket", val)
-			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
-				return fmt.Errorf("create bucket: %s", err)
-			}
-			if err := misc.InitIndex(tx, val, 1); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.BudgetBucket)); err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := srv.reportingDb.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.ReportingBucket)); err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		if err := misc.InitIndex(tx, cfg.ReportingBucket, 1); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	return srv.authDb.Update(func(tx *bolt.Tx) error {
-		for _, val := range cfg.AllAuthBuckets() {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
@@ -141,7 +99,34 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			log.Println("created agency, id = ", u.Id)
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.BudgetBucket)); err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := srv.reportingDb.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.ReportingBucket)); err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		if err := misc.InitIndex(tx, cfg.ReportingBucket, 1); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 //TODO should this be in the config?
@@ -164,22 +149,21 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.POST("/signup", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 
 	// Talent Agency
-	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency, putTalentAgency, delTalentAgency)
+	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency, putTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
-	r.POST("/updateTalentAgency/:id", updateTalentAgency(srv))
 
 	// AdAgency
-	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdvertiserAgencyItem, getAdAgency, putAdAgency, delAdAgency)
+	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdvertiserAgencyItem, getAdAgency, postAdAgency, putAdAgency, delAdAgency)
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
 
 	// Advertiser
-	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser, delAdvertiser)
+	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, postAdvertiser, putAdvertiser, delAdvertiser)
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
 	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
 
 	// Campaigns
-	createRoutes(r, srv, "/campaign", scopes["adv"], auth.CampaignItem, getCampaign, putCampaign, delCampaign)
+	createRoutes(r, srv, "/campaign", scopes["adv"], auth.CampaignItem, getCampaign, postCampaign, putCampaign, delCampaign)
 
 	sh := srv.auth.CheckScopes(scopes["adv"])
 	oh := srv.auth.CheckOwnership(auth.CampaignItem, "campaignId")

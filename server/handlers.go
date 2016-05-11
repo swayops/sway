@@ -22,113 +22,64 @@ import (
 ///////// Talent Agencies ///////////
 func putTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var ag struct {
-			auth.SignupUser
-			common.TalentAgency
-		}
-		if err := c.BindJSON(&ag); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-		if ag.Fee == 0 || ag.Fee > 0.99 {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
-			return
-		}
-		if !s.auth.SignUpHelper(c, &ag.SignupUser, auth.TalentAgency) {
-			return
-		}
+		var (
+			ta   auth.TalentAgency
+			user = auth.GetCtxUser(c)
+			id   = c.Param("id")
+		)
 
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return misc.PutTxJson(tx, s.Cfg.Bucket.TalentAgency, ag.Id, &ag.TalentAgency)
-		}); err != nil {
-			misc.AbortWithErr(c, 500, err)
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(ag.Id))
-	}
-}
-
-func updateTalentAgency(s *Server) gin.HandlerFunc {
-	// Overrwrites any of the agency attributes
-	// NOTE: Must send full struct filled out with previous returned values
-	return func(c *gin.Context) {
-		var ag, upd common.TalentAgency
-		id := c.Params.ByName("id")
-		if id == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
-			return
-		}
-		if err := c.BindJSON(&upd); err != nil {
+		if err := c.BindJSON(&ta); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
 
-		if upd.Fee == 0 || upd.Fee > 0.99 {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency fee"))
-			return
-		}
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			return misc.GetTxJson(tx, s.Cfg.Bucket.TalentAgency, id, &ag)
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			if id == "" {
+				return s.auth.CreateTalentAgencyTx(tx, user, &ta)
+			}
+			return s.auth.UpdateTalentAgencyTx(tx, user, &ta)
 		}); err != nil {
-			c.JSON(401, misc.StatusErr("wrong user id"))
-			return
+			misc.AbortWithErr(c, 400, err)
 		}
-
-		// NOTE: Fee changes will only reflect for new campaigns AND old campaigns
-		// AFTER the first of the month (when billing runs!)
-		ag.Fee = upd.Fee
-
-		// Save the Agency
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return misc.PutTxJson(tx, s.Cfg.Bucket.TalentAgency, id, &ag)
-		}); err != nil {
-			misc.AbortWithErr(c, 500, err)
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(id))
+		c.JSON(200, misc.StatusOK(ta.Id))
 	}
 }
 
 func getTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var ag struct {
-			*auth.User
-			common.TalentAgency
-		}
-		id := c.Params.ByName("id")
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			ag.User = s.auth.GetUserTx(tx, id)
-			return misc.GetTxJson(tx, s.Cfg.Bucket.TalentAgency, id, &ag.TalentAgency)
-		}); err != nil || ag.User == nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+		var ta *auth.TalentAgency
+		s.db.View(func(tx *bolt.Tx) error {
+			ta = s.auth.GetTalentAgencyTx(tx, c.Param("id"))
+			return nil
+		})
+		c.JSON(200, ta)
+	}
+}
+
+func delTalentAgency(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, user := c.Params.ByName("id"), auth.GetCtxUser(c)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return s.auth.DeleteTalentAgencyTx(tx, user, id)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
-		ag.User.Trim()
-		c.JSON(200, &ag)
+		c.JSON(200, misc.StatusOK(id))
 	}
 }
 
 func getAllTalentAgencies(s *Server) gin.HandlerFunc {
-	type talentAgencyWithUser struct {
-		*auth.User
-		common.TalentAgency
-	}
 	return func(c *gin.Context) {
-		var agenciesAll []talentAgencyWithUser
+		var all []*auth.TalentAgency
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			return tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).ForEach(func(k, v []byte) (_ error) {
-				var ag talentAgencyWithUser
-				if ag.User = s.auth.GetUserTx(tx, string(k)); ag.User == nil {
+				var ta auth.TalentAgency
+				if err := json.Unmarshal(v, &ta); err != nil {
+					log.Printf("error when unmarshalling agency: %v -> %s", err, v)
 					return
 				}
-				if err := json.Unmarshal(v, &ag.TalentAgency); err != nil {
-					log.Println("error when unmarshalling agency", string(v))
-					return
-				}
-				agenciesAll = append(agenciesAll, ag)
+				all = append(all, &ta)
 				return
 			})
 		}); err != nil { // this is a noop pretty much
@@ -136,33 +87,7 @@ func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, agenciesAll)
-	}
-}
-
-func delTalentAgency(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		agId := c.Params.ByName("id")
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var ag *common.TalentAgency
-
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(agId)), &ag)
-			if err != nil {
-				return err
-			}
-
-			err = misc.DelBucketBytes(tx, s.Cfg.Bucket.TalentAgency, agId)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(agId))
+		c.JSON(200, all)
 	}
 }
 

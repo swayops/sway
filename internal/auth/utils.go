@@ -11,10 +11,12 @@ import (
 var (
 	ErrInvalidRequest   = errors.New("invalid request")
 	ErrInvalidUserId    = errors.New("invalid user id, hax0r")
+	ErrInvalidId        = errors.New("invalid item id")
 	ErrInvalidName      = errors.New("invalid or missing name")
 	ErrInvalidEmail     = errors.New("invalid or missing email")
 	ErrInvalidUserType  = errors.New("invalid or missing user type")
 	ErrInvalidPass      = errors.New("invalid or missing password")
+	ErrInvalidFee       = errors.New("invalid or missing fee")
 	ErrEmailExists      = errors.New("email is already registered")
 	ErrShortPass        = errors.New("password can't be less than 8 characters")
 	ErrPasswordMismatch = errors.New("password mismatch")

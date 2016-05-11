@@ -32,7 +32,7 @@ type User struct {
 	Active    bool     `json:"active,omitempty"`
 	CreatedAt int64    `json:"createdAt,omitempty"`
 	UpdatedAt int64    `json:"updatedAt,omitempty"`
-	Agencies  []string `json:"agencies,omitempty"`
+	Items     []string `json:"items,omitempty"`
 	APIKey    string   `json:"apiKeys,omitempty"`
 	Salt      string   `json:"salt,omitempty"`
 }
@@ -51,19 +51,25 @@ func (u *User) Trim() *User {
 
 // Update fills the updatable fields in the struct, fields like Created and Id should never be blindly set.
 func (u *User) Update(o *User) *User {
-	u.Name, u.Email, u.Phone, u.Address, u.Agencies = o.Name, o.Email, o.Phone, o.Address, o.Agencies
+	u.Name, u.Email, u.Phone, u.Address, u.Items = o.Name, o.Email, o.Phone, o.Address, o.Items
 	u.Active = o.Active
 	u.UpdatedAt = time.Now().UnixNano()
 	return u
 }
 
-// TODO move this to misc or ownership
-func (u *User) OwnsAgency(aid string) bool {
-	return common.StringsIndexOf(u.Agencies, aid) > -1
+// TODO sort and use binary search
+func (u *User) AddItem(it ItemType, id string) *User {
+	if !u.OwnsItem(it, id) {
+		u.Items = append(u.Items, string(it)+":"+id)
+	}
+	return u
+}
+func (u *User) OwnsItem(it ItemType, id string) bool {
+	return common.StringsIndexOf(u.Items, string(it)+":"+id) > -1
 }
 
-func (u *User) RemoveAgency(aid string) *User {
-	u.Agencies = common.StringsRemove(u.Agencies, aid)
+func (u *User) RemoveItem(it ItemType, id string) *User {
+	u.Items = common.StringsRemove(u.Items, string(it)+":"+id)
 	return u
 }
 
@@ -84,6 +90,10 @@ func (u *User) Check(newUser bool) error {
 	return nil
 }
 
+func (u *User) Store(a *Auth, tx *bolt.Tx) error {
+	return misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u)
+}
+
 func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	u.Name = strings.TrimSpace(u.Name)
 	u.Email = strings.TrimSpace(u.Email)
@@ -100,11 +110,11 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		return
 	}
 
-	if u.Id, err = misc.GetNextIndex(tx, a.cfg.AuthBucket.User); err != nil {
+	if u.Id, err = misc.GetNextIndex(tx, a.cfg.Bucket.User); err != nil {
 		return
 	}
 
-	if err = misc.PutTxJson(tx, a.cfg.AuthBucket.User, u.Id, u); err != nil {
+	if err = misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u); err != nil {
 		return
 	}
 
@@ -114,7 +124,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		Password: password,
 	}
 
-	if err = misc.PutTxJson(tx, a.cfg.AuthBucket.Login, misc.TrimEmail(u.Email), login); err != nil {
+	if err = misc.PutTxJson(tx, a.cfg.Bucket.Login, misc.TrimEmail(u.Email), login); err != nil {
 		return
 	}
 	return
@@ -126,9 +136,9 @@ func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
 		return ErrInvalidUserId
 	}
 	uid := []byte(userId)
-	misc.GetBucket(tx, a.cfg.AuthBucket.User).Delete(uid)
-	misc.GetBucket(tx, a.cfg.AuthBucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
-	os := misc.GetBucket(tx, a.cfg.AuthBucket.Ownership)
+	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
+	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
+	os := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
 	os.ForEach(func(k, v []byte) error {
 		if bytes.Compare(v, uid) == 0 {
 			os.Delete(k)
@@ -140,7 +150,7 @@ func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
 
 func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
 	var u User
-	if misc.GetTxJson(tx, a.cfg.AuthBucket.User, userId, &u) == nil && len(u.Salt) > 0 {
+	if misc.GetTxJson(tx, a.cfg.Bucket.User, userId, &u) == nil && len(u.Salt) > 0 {
 		return &u
 	}
 	return nil

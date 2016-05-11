@@ -20,7 +20,7 @@ func (a *Auth) RequestResetPasswordTx(tx *bolt.Tx, email string) (*User, string,
 	}
 	stok := hex.EncodeToString(misc.CreateToken(ResetTokenLen - 8))
 	tokVal := Token{Email: misc.TrimEmail(email), Expires: time.Now().Add(ResetTokenMaxAge).UnixNano()}
-	return u, stok, misc.PutTxJson(tx, a.cfg.AuthBucket.Token, stok, tokVal)
+	return u, stok, misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, tokVal)
 }
 
 func (a *Auth) ChangePasswordTx(tx *bolt.Tx, email, oldPassword, newPassword string, force bool) error {
@@ -35,18 +35,18 @@ func (a *Auth) ChangePasswordTx(tx *bolt.Tx, email, oldPassword, newPassword str
 	if l.Password, err = HashPassword(newPassword); err != nil {
 		return err
 	}
-	return misc.PutTxJson(tx, a.cfg.AuthBucket.Login, misc.TrimEmail(email), l)
+	return misc.PutTxJson(tx, a.cfg.Bucket.Login, misc.TrimEmail(email), l)
 }
 
 func (a *Auth) ResetPasswordTx(tx *bolt.Tx, stok, email, newPassword string) error {
 	email = misc.TrimEmail(email)
 	var tok Token
-	if misc.GetTxJson(tx, a.cfg.AuthBucket.Token, stok, &tok) != nil || !tok.IsValid(time.Now()) {
+	if misc.GetTxJson(tx, a.cfg.Bucket.Token, stok, &tok) != nil || !tok.IsValid(time.Now()) {
 		return ErrInvalidRequest
 	}
 	if tok.Email != email {
 		return ErrInvalidRequest
 	}
-	tx.Bucket([]byte(a.cfg.AuthBucket.Token)).Delete([]byte(stok))
+	tx.Bucket([]byte(a.cfg.Bucket.Token)).Delete([]byte(stok))
 	return a.ChangePasswordTx(tx, email, "", newPassword, true)
 }
