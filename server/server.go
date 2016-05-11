@@ -74,18 +74,20 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 				return err
 			}
 		}
+
 		var u *auth.User
 		if u = srv.auth.GetUserTx(tx, auth.AdminUserId); u == nil {
-			u = auth.User{
-				Name:  "System Admin",
+			u = &auth.User{
+				Name:  "Sexy Sway Admin",
 				Email: adminEmail,
 				Type:  auth.AdminScope,
 			}
-			if err := srv.auth.CreateUserTx(tx, &u, adminPass); err != nil {
+			if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 				return err
 			}
 			log.Println("created admin user, id = ", u.Id)
 		}
+
 		if srv.auth.GetTalentAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
 			ag := &auth.TalentAgency{
 				Name:   "Sway Ops Talent Agency",
@@ -97,8 +99,9 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			}
 			log.Println("created talent agency, id = ", u.Id)
 		}
+
 		if srv.auth.GetAdAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
-			ag := &auth.TalentAgency{
+			ag := &auth.AdAgency{
 				Name:   "Sway Ops Ad Agency",
 				UserId: u.Id,
 				Fee:    0.2,
@@ -108,6 +111,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			}
 			log.Println("created ad agency, id = ", u.Id)
 		}
+
 		return nil
 	}); err != nil {
 		return err
@@ -141,15 +145,15 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 
 //TODO should this be in the config?
 var scopes = map[string]auth.ScopeMap{
-	"talentAgency": {auth.TalentAgency: {Get: true, Post: true, Put: true, Delete: true}},
+	"talentAgency": {auth.TalentAgencyScope: {Get: true, Post: true, Put: true, Delete: true}},
 	"inf": {
-		auth.TalentAgency: {Get: true, Post: true, Put: true, Delete: true},
-		auth.Influencer:   {Get: true, Post: true, Put: true, Delete: true},
+		auth.TalentAgencyScope: {Get: true, Post: true, Put: true, Delete: true},
+		auth.InfluencerScope:   {Get: true, Post: true, Put: true, Delete: true},
 	},
-	"adAgency": {auth.AdAgency: {Get: true, Post: true, Put: true, Delete: true}},
+	"adAgency": {auth.AdAgencyScope: {Get: true, Post: true, Put: true, Delete: true}},
 	"adv": {
-		auth.AdAgency:   {Get: true, Post: true, Put: true, Delete: true},
-		auth.Advertiser: {Get: true, Post: true, Put: true, Delete: true},
+		auth.AdAgencyScope:   {Get: true, Post: true, Put: true, Delete: true},
+		auth.AdvertiserScope: {Get: true, Post: true, Put: true, Delete: true},
 	},
 }
 
@@ -159,16 +163,17 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.POST("/signup", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 
 	// Talent Agency
-	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency, putTalentAgency, putTalentAgency, delTalentAgency)
+	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
+		putTalentAgency, putTalentAgency, delTalentAgency)
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
 	// AdAgency
-	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdvertiserAgencyItem, getAdAgency, putAdAgency, putAdAgency, delAdAgency)
+	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, putAdAgency,
+		putAdAgency, delAdAgency)
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
-	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
 
 	// Advertiser
-	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, postAdvertiser, putAdvertiser, delAdvertiser)
+	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser, putAdvertiser, delAdvertiser)
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
 	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
 
@@ -183,7 +188,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.POST("/updateCampaign/:campaignId", srv.auth.VerifyUser(false), sh, oh, updateCampaign(srv))
 
 	// Influencers
-	createRoutes(r, srv, "/influencer", scopes["inf"], auth.InfluencerItem, getInfluencer, putInfluencer, delInfluencer)
+	createRoutes(r, srv, "/influencer", scopes["inf"], auth.InfluencerItem, getInfluencer, postInfluencer, putInfluencer, delInfluencer)
 	// TODO
 	r.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
 	r.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))

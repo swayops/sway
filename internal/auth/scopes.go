@@ -3,18 +3,18 @@ package auth
 type Scope string
 
 const (
-	AdminScope            Scope = `admin`
-	AdvertiserAgencyScope Scope = `advAgency`
-	AdvertiserScope       Scope = `advertiser`
-	TalentAgencyScope     Scope = `talentAgency`
-	InfluencerScope       Scope = `influencer`
+	AdminScope        Scope = `admin`
+	AdAgencyScope     Scope = `advAgency`
+	AdvertiserScope   Scope = `advertiser`
+	TalentAgencyScope Scope = `talentAgency`
+	InfluencerScope   Scope = `influencer`
 
 	AllScopes Scope = `*` // this is a special catch-all case for matching
 )
 
 func (s Scope) Valid() bool {
 	switch s {
-	case AdminScope, AdvertiserAgencyScope, TalentAgencyScope, AdvertiserScope, InfluencerScope:
+	case AdminScope, AdAgencyScope, TalentAgencyScope, AdvertiserScope, InfluencerScope:
 		return true
 	}
 	return false
@@ -24,7 +24,7 @@ func (s Scope) CanCreate(child Scope) bool {
 	switch s {
 	case AdminScope:
 		return true
-	case AdvertiserAgencyScope:
+	case AdAgencyScope:
 		return child == AdvertiserScope
 	case TalentAgencyScope:
 		return child == InfluencerScope
@@ -36,7 +36,7 @@ func (s Scope) CanOwn(it ItemType) bool {
 	switch s {
 	case AdminScope:
 		return it == AdAgencyItem || it == TalentAgencyItem
-	case AdvertiserAgencyScope:
+	case AdAgencyScope:
 		return it == AdvertiserItem
 	case TalentAgencyScope:
 		return it == InfluencerItem

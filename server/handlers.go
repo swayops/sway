@@ -365,7 +365,9 @@ func delAdvertiser(s *Server) gin.HandlerFunc {
 }
 
 ///////// Campaigns /////////
-
+func postCampaign(s *Server) gin.HandlerFunc {
+	return nil
+}
 func putCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -664,6 +666,9 @@ var (
 	ErrBadCat    = errors.New("Please provide a valid category")
 )
 
+func postInfluencer(s *Server) gin.HandlerFunc {
+	return nil
+}
 func putInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
