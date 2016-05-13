@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"bytes"
 	"encoding/hex"
 	"strings"
 	"time"
@@ -9,6 +8,17 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
+)
+
+type ItemType string
+
+// update this as we add new item types
+const (
+	AdAgencyItem     ItemType = "advAgency"
+	AdvertiserItem   ItemType = "adv"
+	CampaignItem     ItemType = "camp"
+	TalentAgencyItem ItemType = "talentAgency"
+	InfluencerItem   ItemType = `influencer`
 )
 
 const (
@@ -138,13 +148,6 @@ func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
 	uid := []byte(userId)
 	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
 	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
-	os := misc.GetBucket(tx, a.cfg.Bucket.Ownership)
-	os.ForEach(func(k, v []byte) error {
-		if bytes.Compare(v, uid) == 0 {
-			os.Delete(k)
-		}
-		return nil
-	})
 	return
 }
 

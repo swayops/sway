@@ -18,19 +18,11 @@
 		"user": "user",
 		"login": "login",
 		"token": "token",
-		"ownership": "ownership",
 		"adAgency": "adAgency",
 		"talentAgency": "talentAgency",
 		"advertiser": "advertiser",
 		"campaign": "campaign",
 		"influencer": "influencer"
-	},
-
-	"authBucket": {
-		"user": "user",
-		"login": "login",
-		"token": "token",
-		"ownership": "ownership"
 	},
 
 	"mandrill": {
@@ -44,10 +36,12 @@
 		"endpoint": "https://www.googleapis.com/youtube/v3/",
 		"clientId": "AIzaSyA_RFUvI5hxseLWniqEjFtzH-0h_A57Igg"
 	},
+
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
 		"clientId": "5941ed0c28874764a5d86fb47984aceb"
 	},
+
 	"twitter": {
 		"endpoint": "https://api.twitter.com/1.1/",
 		"key": "HwmrtQmbRlPFoEjYttFhxIYjS",
@@ -55,11 +49,13 @@
 		"accessToken": "4148312354-KAyugxUF1oTbV6jPJ17Bf9SHmGDvUtoExWhYPzF",
 		"accessSecret": "wTWeltKgC96VufFUFfYKflv76FzJFZ7UDYm1Hgj0U17gr"
 	},
+
 	"facebook": {
 		"endpoint": "https://graph.facebook.com/v2.5/",
 		"id": "160153604335761",
 		"secret": "d306e3e3bbf5995f18b8ff8507ff4cc0"
 	},
+
 	"tumblr": {
 		"endpoint": "https://api.tumblr.com/v2/",
 		"key": "wqqoRuxBDR7cVhik5YjCQJ5rJpgCNz9EBo0R8MakY2DyH0OjS6",

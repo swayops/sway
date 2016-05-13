@@ -94,10 +94,9 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
-		User      string `json:"user"`
-		Login     string `json:"login"`
-		Token     string `json:"Token"`
-		Ownership string `json:"ownership"`
+		User  string `json:"user"`
+		Login string `json:"login"`
+		Token string `json:"Token"`
 
 		AdAgency     string `json:"adAgency"`
 		TalentAgency string `json:"talentAgency"`
