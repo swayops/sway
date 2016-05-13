@@ -635,6 +635,12 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Tags = sanitized
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = lowerArr(cmp.Categories)
+		if cmp.Whitelist != nil {
+			cmp.Whitelist.Sanitize()
+		}
+		if cmp.Blacklist != nil {
+			cmp.Blacklist.Sanitize()
+		}
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -796,11 +802,13 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos       []*misc.GeoRecord `json:"geos,omitempty"`
-	Categories []string          `json:"categories,omitempty"`
-	Active     bool              `json:"active,omitempty"`
-	Budget     float32           `json:"budget,omitempty"`
-	Gender     string            `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Geos       []*misc.GeoRecord  `json:"geos,omitempty"`
+	Categories []string           `json:"categories,omitempty"`
+	Active     bool               `json:"active,omitempty"`
+	Budget     float32            `json:"budget,omitempty"`
+	Gender     string             `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Whitelist  *common.TargetList `json:"whitelist,omitempty"`
+	Blacklist  *common.TargetList `json:"blacklist,omitempty"`
 }
 
 func updateCampaign(s *Server) gin.HandlerFunc {
@@ -860,6 +868,12 @@ func updateCampaign(s *Server) gin.HandlerFunc {
 		cmp.Geos = upd.Geos
 		cmp.Gender = upd.Gender
 		cmp.Categories = lowerArr(upd.Categories)
+		if upd.Whitelist != nil {
+			cmp.Whitelist = upd.Whitelist.Sanitize()
+		}
+		if upd.Blacklist != nil {
+			cmp.Blacklist = upd.Blacklist.Sanitize()
+		}
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {

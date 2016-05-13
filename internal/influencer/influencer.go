@@ -308,20 +308,19 @@ func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId
 		}
 
 		// Social Media Checks
-		// Values are potential price points TBD
-		if cmp.Twitter && inf.Twitter != nil {
+		if cmp.Twitter && inf.Twitter != nil && isTwitterAllowed(cmp, inf.Twitter) {
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
 		}
 
-		if cmp.Facebook && inf.Facebook != nil {
+		if cmp.Facebook && inf.Facebook != nil && isFacebookAllowed(cmp, inf.Facebook) {
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 		}
 
-		if cmp.Instagram && inf.Instagram != nil {
+		if cmp.Instagram && inf.Instagram != nil && isInstagramAllowed(cmp, inf.Instagram) {
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
 		}
 
-		if cmp.YouTube && inf.YouTube != nil {
+		if cmp.YouTube && inf.YouTube != nil && isYouTubeAllowed(cmp, inf.YouTube) {
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 
 		}
@@ -350,4 +349,120 @@ func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId
 	}
 
 	return filtered
+}
+
+func isTwitterAllowed(cmp *common.Campaign, tw *twitter.Twitter) bool {
+	if cmp.Whitelist != nil && len(cmp.Whitelist.Twitter) > 0 {
+		userFound := false
+		for _, infId := range cmp.Whitelist.Twitter {
+			if infId == strings.ToLower(tw.Id) {
+				userFound = true
+				break
+			}
+		}
+		if userFound {
+			// The user was found in the whitelist.. allow!
+			return true
+		} else {
+			return false
+		}
+	}
+
+	if cmp.Blacklist != nil && len(cmp.Blacklist.Twitter) > 0 {
+		for _, infId := range cmp.Blacklist.Twitter {
+			if infId == strings.ToLower(tw.Id) {
+				// The user was found in the blacklist.. disallow!
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func isFacebookAllowed(cmp *common.Campaign, fb *facebook.Facebook) bool {
+	if cmp.Whitelist != nil && len(cmp.Whitelist.Facebook) > 0 {
+		userFound := false
+		for _, infId := range cmp.Whitelist.Facebook {
+			if infId == strings.ToLower(fb.Id) {
+				userFound = true
+				break
+			}
+		}
+		if userFound {
+			// The user was found in the whitelist.. allow!
+			return true
+		} else {
+			return false
+		}
+	}
+
+	if cmp.Blacklist != nil && len(cmp.Blacklist.Facebook) > 0 {
+		for _, infId := range cmp.Blacklist.Facebook {
+			if infId == strings.ToLower(fb.Id) {
+				// The user was found in the blacklist.. disallow!
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func isInstagramAllowed(cmp *common.Campaign, insta *instagram.Instagram) bool {
+	if cmp.Whitelist != nil && len(cmp.Whitelist.Instagram) > 0 {
+		userFound := false
+		for _, infId := range cmp.Whitelist.Instagram {
+			if infId == strings.ToLower(insta.UserName) {
+				userFound = true
+				break
+			}
+		}
+		if userFound {
+			// The user was found in the whitelist.. allow!
+			return true
+		} else {
+			return false
+		}
+	}
+
+	if cmp.Blacklist != nil && len(cmp.Blacklist.Instagram) > 0 {
+		for _, infId := range cmp.Blacklist.Instagram {
+			if infId == strings.ToLower(insta.UserName) {
+				// The user was found in the blacklist.. disallow!
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func isYouTubeAllowed(cmp *common.Campaign, yt *youtube.YouTube) bool {
+	if cmp.Whitelist != nil && len(cmp.Whitelist.YouTube) > 0 {
+		userFound := false
+		for _, infId := range cmp.Whitelist.YouTube {
+			if infId == strings.ToLower(yt.UserName) {
+				userFound = true
+				break
+			}
+		}
+		if userFound {
+			// The user was found in the whitelist.. allow!
+			return true
+		} else {
+			return false
+		}
+	}
+
+	if cmp.Blacklist != nil && len(cmp.Blacklist.YouTube) > 0 {
+		for _, infId := range cmp.Blacklist.YouTube {
+			if infId == strings.ToLower(yt.UserName) {
+				// The user was found in the blacklist.. disallow!
+				return false
+			}
+		}
+	}
+
+	return true
 }

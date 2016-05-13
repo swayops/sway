@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -38,11 +39,30 @@ type Campaign struct {
 	// Categories the client is targeting
 	Categories []string `json:"categories,omitempty"`
 
+	// White/Blacklist influencers
+	Whitelist *TargetList `json:"whitelist,omitempty"`
+	Blacklist *TargetList `json:"blacklist,omitempty"`
+
 	Perks string `json:"perks,omitempty"` // Perks need to be specced out
 
 	// Internal attribute set by putCampaign and un/assignDeal
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID
 	Deals map[string]*Deal `json:"deals,omitempty"`
+}
+
+type TargetList struct {
+	Twitter   []string `json:"twitter,omitempty"`
+	Facebook  []string `json:"facebook,omitempty"`
+	Instagram []string `json:"instagram,omitempty"`
+	YouTube   []string `json:"youtube,omitempty"`
+}
+
+func (tl *TargetList) Sanitize() *TargetList {
+	tl.Twitter = lowerArr(tl.Twitter)
+	tl.Facebook = lowerArr(tl.Facebook)
+	tl.Instagram = lowerArr(tl.Instagram)
+	tl.YouTube = lowerArr(tl.YouTube)
+	return tl
 }
 
 func (cmp *Campaign) IsValid() bool {
@@ -132,4 +152,11 @@ func GetCampaign(cid string, db *bolt.DB, cfg *config.Config) *Campaign {
 	}
 
 	return &g
+}
+
+func lowerArr(s []string) []string {
+	for i, v := range s {
+		s[i] = strings.ToLower(v)
+	}
+	return s
 }
