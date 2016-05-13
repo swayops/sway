@@ -11,6 +11,7 @@ import (
 var (
 	ErrInvalidRequest   = errors.New("invalid request")
 	ErrInvalidUserId    = errors.New("invalid user id, hax0r")
+	ErrInvalidAgencyId  = errors.New("invalid agency id")
 	ErrInvalidId        = errors.New("invalid item id")
 	ErrInvalidName      = errors.New("invalid or missing name")
 	ErrInvalidEmail     = errors.New("invalid or missing email")

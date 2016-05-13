@@ -6,10 +6,11 @@ import (
 )
 
 type AdAgency struct {
-	Id     string  `json:"id,omitempty"`
-	UserId string  `json:"userId,omitempty"`
-	Name   string  `json:"name,omitempty"`
-	Fee    float32 `json:"fee,omitempty"` // Percentage (decimal)
+	Id          string   `json:"id,omitempty"`
+	UserId      string   `json:"userId,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	Fee         float32  `json:"fee,omitempty"` // Percentage (decimal)
+	Advertisers []string `json:"advertisers,omitempty"`
 }
 
 func (a *Auth) CreateAdAgencyTx(tx *bolt.Tx, u *User, ta *AdAgency) (err error) {

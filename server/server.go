@@ -159,8 +159,8 @@ var scopes = map[string]auth.ScopeMap{
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/apiKey", srv.auth.VerifyUser(false), srv.auth.APIKeyHandler)
-	r.POST("/signin", srv.auth.SignInHandler)
-	r.POST("/signup", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
+	r.POST("/signIn", srv.auth.SignInHandler)
+	r.POST("/signUp", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,

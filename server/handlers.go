@@ -52,6 +52,10 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 			ag = s.auth.GetTalentAgencyTx(tx, c.Param("id"))
 			return nil
 		})
+		if ag == nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 		c.JSON(200, ag)
 	}
 }
@@ -124,6 +128,10 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 			ag = s.auth.GetAdAgencyTx(tx, c.Param("id"))
 			return nil
 		})
+		if ag == nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
 		c.JSON(200, ag)
 	}
 }
@@ -167,165 +175,56 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			adv common.Advertiser
-			b   []byte
-			err error
+			adv  auth.Advertiser
+			user = auth.GetCtxUser(c)
+			id   = c.Param("id")
 		)
 
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&adv); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+		if err := c.BindJSON(&adv); err != nil {
+			misc.AbortWithErr(c, 400, err)
 			return
 		}
 
-		if adv.AgencyId == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
-			return
-		}
-
-		if adv.Name == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid name"))
-			return
-		}
-
-		if adv.ExchangeFee == 0 || adv.ExchangeFee > 0.99 {
-			c.JSON(400, misc.StatusErr("Please provide a valid exchange fee"))
-			return
-		}
-
-		if adv.DspFee == 0 || adv.DspFee > 0.99 {
-			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
-			return
-		}
-
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if adv.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Advertiser); err != nil {
-				return
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			if id == "" {
+				return s.auth.CreateAdvertiserTx(tx, user, &adv)
 			}
-
-			if b, err = json.Marshal(adv); err != nil {
-				return
-			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Advertiser, adv.Id, b)
+			return s.auth.UpdateAdvertiserTx(tx, user, &adv)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
+			misc.AbortWithErr(c, 400, err)
 		}
-
-		c.JSON(200, misc.StatusOK(adv.Id))
-	}
-}
-
-func updateAdvertiser(s *Server) gin.HandlerFunc {
-	// Overrwrites any of the advertiser attributes
-	return func(c *gin.Context) {
-		var (
-			adv common.Advertiser
-			err error
-			b   []byte
-		)
-		id := c.Params.ByName("id")
-		if id == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
-			return
-		}
-
-		s.db.View(func(tx *bolt.Tx) error {
-			b = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(id))
-			return nil
-		})
-
-		if err = json.Unmarshal(b, &adv); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling agency"))
-			return
-		}
-
-		var upd common.Advertiser
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
-			return
-		}
-
-		if upd.AgencyId == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
-			return
-		}
-		adv.AgencyId = upd.AgencyId
-
-		if upd.Name == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid name"))
-			return
-		}
-		adv.Name = upd.Name
-
-		if upd.ExchangeFee == 0 || upd.ExchangeFee > 0.99 {
-			c.JSON(400, misc.StatusErr("Please provide a valid exchange fee"))
-			return
-		}
-		adv.ExchangeFee = upd.ExchangeFee
-
-		if upd.DspFee == 0 || upd.DspFee > 0.99 {
-			c.JSON(400, misc.StatusErr("Please provide a valid DSP fee"))
-			return
-		}
-		adv.DspFee = upd.DspFee
-		// NOTE: Fee changes will only reflect for new campaigns OR old campaigns
-		// AFTER the first of the month (when billing runs!)
-
-		// Save the Advertiser
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if b, err = json.Marshal(adv); err != nil {
-				return
-			}
-			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Advertiser, adv.Id, b)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
 		c.JSON(200, misc.StatusOK(adv.Id))
 	}
 }
 
 func getAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			v   []byte
-			err error
-			g   common.Advertiser
-		)
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(c.Params.ByName("id")))
+		var adv *auth.Advertiser
+		s.db.View(func(tx *bolt.Tx) error {
+			adv = s.auth.GetAdvertiserTx(tx, c.Param("id"))
 			return nil
-		}); err != nil {
+		})
+		if adv == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
-
-		if err = json.Unmarshal(v, &g); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, g)
+		c.JSON(200, adv)
 	}
 }
 
 func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAgency := c.Params.ByName("id")
-		advertisers := make([]*common.Advertiser, 0, 512)
+		var advertisers []*auth.Advertiser
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).ForEach(func(k, v []byte) (err error) {
-				adv := &common.Advertiser{}
-				if err := json.Unmarshal(v, adv); err != nil {
+				var adv auth.Advertiser
+				if err := json.Unmarshal(v, &adv); err != nil {
 					log.Println("error when unmarshalling advertiser", string(v))
 					return nil
 				}
 				if adv.AgencyId == targetAgency {
-					advertisers = append(advertisers, adv)
+					advertisers = append(advertisers, &adv)
 				}
 				return
 			})
@@ -341,26 +240,14 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 
 func delAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		gId := c.Params.ByName("id")
+		id, user := c.Params.ByName("id"), auth.GetCtxUser(c)
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var g *common.Advertiser
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(gId)), &g)
-			if err != nil {
-				return err
-			}
-
-			err = misc.DelBucketBytes(tx, s.Cfg.Bucket.Advertiser, gId)
-			if err != nil {
-				return err
-			}
-
-			return nil
+			return s.auth.DeleteAdvertiserTx(tx, user, id)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
-
-		c.JSON(200, misc.StatusOK(gId))
+		c.JSON(200, misc.StatusOK(id))
 	}
 }
 
