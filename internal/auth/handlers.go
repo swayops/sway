@@ -61,7 +61,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 	return func(c *gin.Context) {
 		u, itemID := GetCtxUser(c), c.Param(paramName)
 		if u == nil || itemID == "" {
-			misc.AbortWithErr(c, 400, ErrInvalidRequest)
+			misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
 			return
 		}
 		if u.Type == AdminScope { // admin owns everything
@@ -78,11 +78,11 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				return nil
 			})
 		case CampaignItem:
-			cmp := common.GetCampaign(itemID, a.db, a.cfg)
-			if cmp == nil {
-				break
-			}
 			a.db.View(func(tx *bolt.Tx) error {
+				var cmp common.Campaign
+				if misc.GetTxJson(tx, a.cfg.Bucket.Campaign, itemID, &cmp) != nil {
+					return nil
+				}
 				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserId)
 				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
 				return nil
@@ -97,25 +97,44 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				return nil
 			})
 		}
-		// a.db.View(func(tx *bolt.Tx) error {
-		// 	oid := a.GetOwnerTx(tx, itemType, itemID)
-		// 	if ok = oid == u.Id; ok {
-		// 		return nil
-		// 	}
-		// 	// a parent owns all his children's assists, what a cruel cruel world.
-		// 	for ou := a.GetUserTx(tx, oid); ou != nil && u.ParentId != ""; u = a.GetUserTx(tx, u.ParentId) {
-		// 		if ok = u.Id == ou.ParentId; ok {
-		// 			break
-		// 		}
-		// 	}
-		// 	return nil
-		// })
 		if !ok {
 			misc.AbortWithErr(c, 401, ErrUnauthorized)
 		}
 	}
 }
 
+func (a *Auth) signInHelper(c *gin.Context) (*User, *Login) {
+	var li struct {
+		Email    string `json:"email" form:"email"`
+		Password string `json:"pass" form:"pass"`
+	}
+	if err := c.Bind(&li); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return nil, nil
+	}
+	var (
+		login *Login
+		user  *User
+		tok   string
+		err   error
+	)
+
+	if err := a.db.Update(func(tx *bolt.Tx) (_ error) {
+		if login, tok, err = a.SignInTx(tx, li.Email, li.Password); err != nil {
+			return
+		}
+
+		if user = a.GetUserTx(tx, login.UserId); user == nil {
+			return ErrInvalidRequest // this should never ever ever happen
+		}
+		return nil
+	}); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return nil, nil
+	}
+	return user, login
+
+}
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`
@@ -177,17 +196,17 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope)
 		sup.ParentId = SwayOpsAgencyId
 	}
 	if sup.Password != sup.Password2 {
-		misc.AbortWithErr(c, 400, ErrPasswordMismatch)
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)
 		return
 	}
 	if len(sup.Password) < 8 {
-		misc.AbortWithErr(c, 400, ErrShortPass)
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrShortPass)
 		return
 	}
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		return a.CreateUserTx(tx, &sup.User, sup.Password)
 	}); err != nil {
-		misc.AbortWithErr(c, 400, err)
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 	return true
@@ -196,7 +215,7 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope)
 func (a *Auth) SignUpHandler(c *gin.Context) {
 	var sup SignupUser
 	if err := c.BindJSON(&sup); err != nil {
-		misc.AbortWithErr(c, 400, err)
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 	if a.SignUpHelper(c, &sup, AdvertiserScope) {
@@ -211,7 +230,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		Email string `json:"email"`
 	}
 	if c.BindJSON(&req) != nil || len(req.Email) == 0 {
-		misc.AbortWithErr(c, 400, ErrInvalidRequest)
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
 		return
 	}
 	var (
@@ -224,7 +243,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		return nil
 	})
 	if err != nil {
-		misc.AbortWithErr(c, 400, ErrInvalidRequest)
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
 		return
 	}
 	tmplData := struct {
@@ -251,18 +270,18 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 	}
 
 	if c.BindJSON(&req) != nil || req.Email == "" || req.Token == "" {
-		misc.AbortWithErr(c, 400, ErrInvalidRequest)
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
 		return
 	}
 
 	if req.Password != req.Password1 {
-		misc.AbortWithErr(c, 400, ErrPasswordMismatch)
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)
 		return
 	}
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		return a.ResetPasswordTx(tx, req.Token, req.Email, req.Password)
 	}); err != nil {
-		misc.AbortWithErr(c, 400, err)
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 	c.JSON(200, misc.StatusOK(""))
@@ -271,6 +290,32 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 // this returns a perma API key for the logged in user, the user can pass ?renew=true to generate a new key.
 func (a *Auth) APIKeyHandler(c *gin.Context) {
 	u := GetCtxUser(c)
+	if u == nil {
+		var li struct {
+			Email    string `json:"email" form:"email"`
+			Password string `json:"pass" form:"pass"`
+		}
+		if err := c.Bind(&li); err != nil {
+			misc.AbortWithErr(c, http.StatusBadRequest, err)
+			return
+		}
+		if err := a.db.View(func(tx *bolt.Tx) error {
+			l := a.GetLoginTx(tx, li.Email)
+			if l == nil {
+				return ErrInvalidEmail
+			}
+			if !CheckPassword(l.Password, li.Password) {
+				return ErrInvalidPass
+			}
+			if u = a.GetUserTx(tx, l.UserId); u == nil { // should never ever happen
+				return ErrInvalidId
+			}
+			return nil
+		}); err != nil {
+			misc.AbortWithErr(c, http.StatusBadRequest, err)
+			return
+		}
+	}
 
 	if u.APIKey == "" || c.Query("renew") == "true" {
 		stok := hex.EncodeToString(misc.CreateToken(TokenLen - 8))
@@ -282,7 +327,7 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			}
 			return misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, ntok)
 		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
+			misc.AbortWithErr(c, http.StatusBadRequest, err)
 			return
 		}
 		mac := CreateMAC(u.Id, stok, u.Salt)
@@ -294,7 +339,7 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			u.APIKey = stok + mac
 			return misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u)
 		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
+			misc.AbortWithErr(c, http.StatusBadRequest, err)
 			return
 		}
 	}

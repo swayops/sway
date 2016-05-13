@@ -158,22 +158,30 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
+	// /apiKey easier takes the GET request of a logged in user or
+	// POST with the user's email/password
 	r.GET("/apiKey", srv.auth.VerifyUser(false), srv.auth.APIKeyHandler)
+	r.POST("/apiKey", srv.auth.APIKeyHandler)
+
 	r.POST("/signIn", srv.auth.SignInHandler)
 	r.POST("/signUp", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 
 	// Talent Agency
 	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
 		putTalentAgency, putTalentAgency, delTalentAgency)
+	// shouldn't this be admin only or have some scope?
 	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
 	// AdAgency
 	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, putAdAgency,
 		putAdAgency, delAdAgency)
+	// shouldn't this be admin only or have some scope?
 	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 
 	// Advertiser
-	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser, putAdvertiser, delAdvertiser)
+	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser,
+		putAdvertiser, delAdvertiser)
+	// shouldn't this be admin only or have some scope?
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
 
 	// Campaigns
