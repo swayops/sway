@@ -217,7 +217,7 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 		targetAgency := c.Params.ByName("id")
 		var advertisers []*auth.Advertiser
 		if err := s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).ForEach(func(k, v []byte) (err error) {
+			return tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).ForEach(func(k, v []byte) error {
 				var adv auth.Advertiser
 				if err := json.Unmarshal(v, &adv); err != nil {
 					log.Println("error when unmarshalling advertiser", string(v))
@@ -226,9 +226,8 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 				if adv.AgencyId == targetAgency {
 					advertisers = append(advertisers, &adv)
 				}
-				return
+				return nil
 			})
-			return nil
 		}); err != nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
@@ -253,9 +252,6 @@ func delAdvertiser(s *Server) gin.HandlerFunc {
 
 ///////// Campaigns /////////
 func postCampaign(s *Server) gin.HandlerFunc {
-	return nil
-}
-func putCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
 			cmp common.Campaign
@@ -298,12 +294,9 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// Sanitize methods
-		sanitized := []string{}
-		for _, ht := range cmp.Tags {
-			sanitized = append(sanitized, sanitizeHash(ht))
+		for i, ht := range cmp.Tags {
+			cmp.Tags[i] = sanitizeHash(ht)
 		}
-		cmp.Tags = sanitized
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = lowerArr(cmp.Categories)
 
@@ -312,9 +305,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
 				return
 			}
-
 			addDealsToCampaign(&cmp)
-
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -474,7 +465,7 @@ type CampaignUpdate struct {
 	Gender     string            `json:"gender,omitempty"` // "m" or "f" or "mf"
 }
 
-func updateCampaign(s *Server) gin.HandlerFunc {
+func putCampaign(s *Server) gin.HandlerFunc {
 	// Overrwrites any of the above campaign attributes
 	return func(c *gin.Context) {
 		var (
@@ -553,10 +544,12 @@ var (
 	ErrBadCat    = errors.New("Please provide a valid category")
 )
 
-func postInfluencer(s *Server) gin.HandlerFunc {
-	return nil
-}
 func putInfluencer(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		panic("n/a") //TODO
+	}
+}
+func postInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
 			load influencer.InfluencerLoad

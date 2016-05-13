@@ -8,6 +8,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
@@ -66,19 +68,48 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			return
 		}
 		var ok bool
-		a.db.View(func(tx *bolt.Tx) error {
-			oid := a.GetOwnerTx(tx, itemType, itemID)
-			if ok = oid == u.Id; ok {
+		switch itemType {
+		case AdAgencyItem, TalentAgencyItem:
+			ok = u.OwnsItem(itemType, itemID)
+		case AdvertiserItem:
+			a.db.View(func(tx *bolt.Tx) error {
+				adv := a.GetAdvertiserTx(tx, itemID)
+				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
 				return nil
+			})
+		case CampaignItem:
+			cmp := common.GetCampaign(itemID, a.db, a.cfg)
+			if cmp == nil {
+				break
 			}
-			// a parent owns all his children's assists, what a cruel cruel world.
-			for ou := a.GetUserTx(tx, oid); ou != nil && u.ParentId != ""; u = a.GetUserTx(tx, u.ParentId) {
-				if ok = u.Id == ou.ParentId; ok {
-					break
+			a.db.View(func(tx *bolt.Tx) error {
+				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserId)
+				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
+				return nil
+			})
+		case InfluencerItem:
+			a.db.View(func(tx *bolt.Tx) error {
+				var inf influencer.Influencer
+				if misc.GetTxJson(tx, a.cfg.Bucket.Influencer, itemID, &inf) != nil {
+					return nil
 				}
-			}
-			return nil
-		})
+				ok = inf.AgencyId != "" && u.OwnsItem(TalentAgencyItem, inf.AgencyId)
+				return nil
+			})
+		}
+		// a.db.View(func(tx *bolt.Tx) error {
+		// 	oid := a.GetOwnerTx(tx, itemType, itemID)
+		// 	if ok = oid == u.Id; ok {
+		// 		return nil
+		// 	}
+		// 	// a parent owns all his children's assists, what a cruel cruel world.
+		// 	for ou := a.GetUserTx(tx, oid); ou != nil && u.ParentId != ""; u = a.GetUserTx(tx, u.ParentId) {
+		// 		if ok = u.Id == ou.ParentId; ok {
+		// 			break
+		// 		}
+		// 	}
+		// 	return nil
+		// })
 		if !ok {
 			misc.AbortWithErr(c, 401, ErrUnauthorized)
 		}

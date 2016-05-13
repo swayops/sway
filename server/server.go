@@ -175,7 +175,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Advertiser
 	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser, putAdvertiser, delAdvertiser)
 	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
-	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
 
 	// Campaigns
 	createRoutes(r, srv, "/campaign", scopes["adv"], auth.CampaignItem, getCampaign, postCampaign, putCampaign, delCampaign)
@@ -185,7 +184,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/getCampaignsByAdvertiser/:id", srv.auth.VerifyUser(false), sh, getCampaignsByAdvertiser(srv))
 	r.GET("/getCampaignAssignedDeals/:campaignId", srv.auth.VerifyUser(false), sh, oh, getCampaignAssignedDeals(srv))
 	r.GET("/getCampaignCompletedDeals/:campaignId", srv.auth.VerifyUser(false), sh, oh, getCampaignCompletedDeals(srv))
-	r.POST("/updateCampaign/:campaignId", srv.auth.VerifyUser(false), sh, oh, updateCampaign(srv))
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", scopes["inf"], auth.InfluencerItem, getInfluencer, postInfluencer, putInfluencer, delInfluencer)

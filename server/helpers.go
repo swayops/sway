@@ -107,7 +107,7 @@ func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
 
 func getAdvertiserFees(s *Server, advId string) (float32, float32) {
 	var (
-		g   common.Advertiser
+		g   auth.Advertiser
 		v   []byte
 		err error
 	)
@@ -128,13 +128,11 @@ func getAdvertiserFees(s *Server, advId string) (float32, float32) {
 
 func getAdvertiserFeesFromTx(tx *bolt.Tx, cfg *config.Config, advId string) (float32, float32) {
 	var (
-		g   common.Advertiser
+		g   auth.Advertiser
 		v   []byte
 		err error
 	)
-
 	v = tx.Bucket([]byte(cfg.Bucket.Advertiser)).Get([]byte(advId))
-
 	if err = json.Unmarshal(v, &g); err != nil {
 		return 0, 0
 	}
