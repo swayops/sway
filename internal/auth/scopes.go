@@ -51,7 +51,10 @@ type ScopeMap map[Scope]struct{ Get, Put, Post, Delete bool }
 func (sm ScopeMap) HasAccess(scope Scope, method string) bool {
 	if scope == AdminScope {
 		return true
+	} else if sm == nil {
+		return false
 	}
+
 	var v bool
 	if m, ok := sm[scope]; ok {
 		switch method {

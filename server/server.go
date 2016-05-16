@@ -92,9 +92,8 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 
 		if srv.auth.GetTalentAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
 			ag := &auth.TalentAgency{
-				Name:   "Sway Ops Talent Agency",
-				UserId: u.Id,
-				Fee:    0.2,
+				Name: "Sway Ops Talent Agency",
+				Fee:  0.2,
 			}
 			if err := srv.auth.CreateTalentAgencyTx(tx, u, ag); err != nil {
 				return err
@@ -104,9 +103,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 
 		if srv.auth.GetAdAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
 			ag := &auth.AdAgency{
-				Name:   "Sway Ops Ad Agency",
-				UserId: u.Id,
-				Fee:    0.2,
+				Name: "Sway Ops Ad Agency",
 			}
 			if err := srv.auth.CreateAdAgencyTx(tx, u, ag); err != nil {
 				return err
@@ -160,65 +157,77 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
+	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
+	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
+
 	// /apiKey easier takes the GET request of a logged in user or
 	// POST with the user's email/password
-	r.GET("/apiKey", srv.auth.VerifyUser(false), srv.auth.APIKeyHandler)
+	verifyGroup.GET("/apiKey", srv.auth.APIKeyHandler)
 	r.POST("/apiKey", srv.auth.APIKeyHandler)
 
 	r.POST("/signIn", srv.auth.SignInHandler)
 	r.POST("/signUp", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 
 	// Talent Agency
-	createRoutes(r, srv, "/talentAgency", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
+	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
 		putTalentAgency, putTalentAgency, delTalentAgency)
-	// shouldn't this be admin only or have some scope?
-	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+
+	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
 	// AdAgency
-	createRoutes(r, srv, "/adAgency", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, putAdAgency,
+	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, putAdAgency,
 		putAdAgency, delAdAgency)
-	// shouldn't this be admin only or have some scope?
-	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
+
+	adminGroup.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 
 	// Advertiser
-	createRoutes(r, srv, "/advertiser", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser,
+	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser,
 		putAdvertiser, delAdvertiser)
-	// shouldn't this be admin only or have some scope?
-	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
+
+	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
+		getAdvertisersByAgency, nil, nil, nil)
 
 	// Campaigns
-	createRoutes(r, srv, "/campaign", scopes["adv"], auth.CampaignItem, getCampaign, postCampaign, putCampaign, delCampaign)
+	createRoutes(verifyGroup, srv, "/campaign", "id", scopes["adv"], auth.CampaignItem, getCampaign, postCampaign,
+		putCampaign, delCampaign)
 
-	sh := srv.auth.CheckScopes(scopes["adv"])
-	r.GET("/getCampaignsByAdvertiser/:id", srv.auth.VerifyUser(false), sh, getCampaignsByAdvertiser(srv))
+	createRoutes(verifyGroup, srv, "/getCampaignsByAdvertiser", "id", scopes["adv"], auth.AdAgencyItem,
+		getCampaignsByAdvertiser, nil, nil, nil)
 
 	// Deal
-	r.GET("/getDeals/:influencerId/:lat/:long", getDealsForInfluencer(srv))
-	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
-	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
-	r.GET("/getDealsAssigned/:influencerId", getDealsAssignedToInfluencer(srv))
-	r.GET("/getDealsCompleted/:influencerId", getDealsCompletedByInfluencer(srv))
+	infScope := srv.auth.CheckScopes(scopes["inf"])
+	infOwnership := srv.auth.CheckOwnership(auth.InfluencerItem, "influencerId")
+	verifyGroup.GET("/getDeals/:influencerId/:lat/:long", infScope, infOwnership, getDealsForInfluencer(srv))
+	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
+	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
+	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
+	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 
 	// Influencers
-	createRoutes(r, srv, "/influencer", scopes["inf"], auth.InfluencerItem, getInfluencer, postInfluencer, putInfluencer, delInfluencer)
-	// TODO
-	r.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
-	r.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
-	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
-	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
-	r.GET("/getCategories", getCategories(srv))
+	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
+		postInfluencer, putInfluencer, delInfluencer)
+
+	// TODO: ask
+	verifyGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
+	verifyGroup.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
+	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
+	verifyGroup.GET("/setCategory/:influencerId/:category", setCategory(srv))
+	verifyGroup.GET("/getCategories", getCategories(srv))
 
 	// Budget
-	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
-	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
-	r.GET("/getStore", getStore(srv))
+	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
+	adminGroup.GET("/getLastMonthsStore", getLastMonthsStore(srv))
+	adminGroup.GET("/getStore", getStore(srv))
 
 	// Reporting
-	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
-	r.GET("/getCampaignStats/:cid/:days", getCampaignStats(srv))
-	r.GET("/getInfluencerStats/:infId/:days", getInfluencerStats(srv))
-	r.GET("/getRawStats/:cid", getRawStats(srv))
-	r.GET("/getCampaignInfluencerStats/:cid/:infId/:days", getCampaignInfluencerStats(srv))
+	advScope := srv.auth.CheckScopes(scopes["adv"])
+	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
+	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
+	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
+	verifyGroup.GET("/getRawStats/:cid", advScope, campOwnership, getRawStats(srv))
+	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
+
+	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
 }
 
 func (srv *Server) startEngine() error {
