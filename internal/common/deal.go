@@ -41,6 +41,8 @@ type Deal struct {
 	Instagram *instagram.Post `json:"instagram,omitempty"`
 	YouTube   *youtube.Post   `json:"youtube,omitempty"`
 
+	PostUrl string `json:"postUrl,omitempty"`
+
 	// Requirements copied from the campaign to the deal
 	// GetAvailableDeals
 	Tags    []string `json:"hashtags,omitempty"`
@@ -51,6 +53,8 @@ type Deal struct {
 
 	// How much this campaign has left to spend for the month
 	// Only filled in GetAvailableDeals for the influencer to see
+	// and is saved to show how much the influencer was offered
+	// when the deal was assigned
 	Spendable float32 `json:"spendable,omitempty"`
 }
 

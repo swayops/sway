@@ -61,5 +61,5 @@ func (fb *Facebook) UpdateData(cfg *config.Config) error {
 }
 
 func (fb *Facebook) GetScore() float32 {
-	return (fb.Followers * 3) + (fb.AvgShares * 3) + (fb.FollowerDelta * 2) + (fb.AvgComments * 2) + (fb.AvgLikes)
+	return (fb.Followers * 3) + (fb.AvgShares * 2) + (fb.AvgComments * 2) + (fb.AvgLikes)
 }

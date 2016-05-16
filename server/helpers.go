@@ -141,28 +141,6 @@ func getAdvertiserFeesFromTx(tx *bolt.Tx, cfg *config.Config, advId string) (flo
 	return g.DspFee, g.ExchangeFee
 }
 
-func getInfluencerFromId(s *Server, id string) (*influencer.Influencer, error) {
-
-	var (
-		v   []byte
-		err error
-		g   influencer.Influencer
-	)
-
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
-		return nil
-	}); err != nil {
-		return &g, err
-	}
-
-	if err = json.Unmarshal(v, &g); err != nil {
-		return &g, err
-	}
-
-	return &g, nil
-}
-
 func saveInfluencer(tx *bolt.Tx, inf *influencer.Influencer, cfg *config.Config) error {
 	var (
 		b   []byte

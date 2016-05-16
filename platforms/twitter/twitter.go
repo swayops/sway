@@ -112,7 +112,7 @@ func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
 }
 
 func (tw *Twitter) GetScore() float32 {
-	return (tw.Followers * 3) + (tw.FollowerDelta * 2) + (tw.AvgRetweets * 2) + (tw.AvgLikes)
+	return (tw.Followers * 3) + (tw.AvgRetweets * 2) + (tw.AvgLikes * 2)
 }
 
 func getClient(cfg *config.Config) (*http.Client, error) {
