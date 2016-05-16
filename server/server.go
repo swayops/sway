@@ -20,6 +20,7 @@ const (
 	agencyPass  = "Rf_jv9hM4-"
 )
 
+// Server is the main server of the sway server
 type Server struct {
 	Cfg         *config.Config
 	r           *gin.Engine
@@ -31,6 +32,7 @@ type Server struct {
 	Campaigns *common.Campaigns
 }
 
+// New returns a new Server or an error
 // TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
@@ -188,10 +190,14 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	createRoutes(r, srv, "/campaign", scopes["adv"], auth.CampaignItem, getCampaign, postCampaign, putCampaign, delCampaign)
 
 	sh := srv.auth.CheckScopes(scopes["adv"])
-	oh := srv.auth.CheckOwnership(auth.CampaignItem, "campaignId")
 	r.GET("/getCampaignsByAdvertiser/:id", srv.auth.VerifyUser(false), sh, getCampaignsByAdvertiser(srv))
-	r.GET("/getCampaignAssignedDeals/:campaignId", srv.auth.VerifyUser(false), sh, oh, getCampaignAssignedDeals(srv))
-	r.GET("/getCampaignCompletedDeals/:campaignId", srv.auth.VerifyUser(false), sh, oh, getCampaignCompletedDeals(srv))
+
+	// Deal
+	r.GET("/getDeals/:influencerId/:lat/:long", getDealsForInfluencer(srv))
+	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
+	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
+	r.GET("/getDealsAssigned/:influencerId", getDealsAssignedToInfluencer(srv))
+	r.GET("/getDealsCompleted/:influencerId", getDealsCompletedByInfluencer(srv))
 
 	// Influencers
 	createRoutes(r, srv, "/influencer", scopes["inf"], auth.InfluencerItem, getInfluencer, postInfluencer, putInfluencer, delInfluencer)
@@ -202,31 +208,24 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	r.GET("/getCategories", getCategories(srv))
 
-	// Deal
-	// TODO
-	r.GET("/getDealsForInfluencer/:influencerId/:lat/:long", getDealsForInfluencer(srv))
-	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
-	r.GET("/getDealsAssignedToInfluencer/:influencerId", getDealsAssignedToInfluencer(srv))
-	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
-	// Offset in hours
-	// TODO
-	r.GET("/getDealsCompletedByInfluencer/:influencerId/:offset", getDealsCompletedByInfluencer(srv))
-
 	// Budget
 	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
 	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
 	r.GET("/getStore", getStore(srv))
 
 	// Reporting
-	r.GET("/getStats/:cid", getStats(srv))
 	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
-
+	r.GET("/getCampaignStats/:cid/:days", getCampaignStats(srv))
+	r.GET("/getInfluencerStats/:infId/:days", getInfluencerStats(srv))
+	r.GET("/getRawStats/:cid", getRawStats(srv))
+	r.GET("/getCampaignInfluencerStats/:cid/:infId/:days", getCampaignInfluencerStats(srv))
 }
 
 func (srv *Server) startEngine() error {
 	return newSwayEngine(srv)
 }
 
+// Run starts the server
 func (srv *Server) Run() (err error) {
 	var wg sync.WaitGroup
 

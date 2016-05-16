@@ -66,3 +66,33 @@ func getDateRange(from, to time.Time) []string {
 func getPostDate(ts int32) string {
 	return time.Unix(int64(ts), 0).String()
 }
+
+func getDateRangeFromOffset(off int) []time.Time {
+	to := time.Now().UTC()
+	if off == -1 {
+		off = -365
+	} else if off > 0 {
+		off = -off
+	}
+	out := make([]time.Time, -off+1)
+	for i := range out {
+		out[i] = to.AddDate(0, 0, off+i)
+	}
+	return out
+}
+
+func getEngagements(st *Stats) int32 {
+	return st.Likes + st.Dislikes + st.Comments + st.Shares
+}
+
+func getViews(st *Stats, eng int32) int32 {
+	var views int32
+	if st.Views == 0 {
+		// There are no concrete views so lets gueestimate!
+		// Assume engagement rate is 4% of views!
+		views = int32(float32(eng) / 0.04)
+	} else {
+		views += st.Views
+	}
+	return views
+}

@@ -193,28 +193,34 @@ type TargetStats struct {
 }
 
 type Totals struct {
-	Influencers int32   `json:"infs,omitempty"`
-	Engagements int32   `json:"eng,omitempty"`
-	Likes       int32   `json:"likes,omitempty"`
-	Views       int32   `json:"views,omitempty"`
-	Spent       float32 `json:"spent,omitempty"`
+	Influencers int32 `json:"infs,omitempty"`
+	Engagements int32 `json:"engagements,omitempty"`
+	Likes       int32 `json:"likes,omitempty"`
+	Views       int32 `json:"views,omitempty"`
+
+	Comments int32 `json:"comments,omitempty"`
+	Shares   int32 `json:"shares,omitempty"`
+
+	Spent float32 `json:"spent,omitempty"`
 }
 
 type ReportStats struct {
-	Likes        int32   `json:"likes,omitempty"`
-	Comments     int32   `json:"comments,omitempty"`
-	Shares       int32   `json:"shares,omitempty"`
-	Views        int32   `json:"views,omitempty"`
-	Spent        float32 `json:"spent,omitempty"`
-	Perks        int32   `json:"perks,omitempty"`      // Perks sent
-	PlatformId   string  `json:"platformId,omitempty"` // Screen name for the platform used for the deal
-	Published    string  `json:"posted,omitempty"`     // Pretty string of date post was made
-	InfluencerId string  `json:"infId,omitempty"`
-	Network      string  `json:"network,omitempty"` // Social Network
+	Likes       int32   `json:"likes,omitempty"`
+	Comments    int32   `json:"comments,omitempty"`
+	Shares      int32   `json:"shares,omitempty"`
+	Views       int32   `json:"views,omitempty"`
+	Spent       float32 `json:"spent,omitempty"`
+	Perks       int32   `json:"perks,omitempty"` // Perks sent
+	Rep         float32 `json:"rep,omitempty"`
+	Engagements int32   `json:"engagements,omitempty"`
+
+	PlatformId   string `json:"platformId,omitempty"` // Screen name for the platform used for the deal
+	Published    string `json:"posted,omitempty"`     // Pretty string of date post was made
+	InfluencerId string `json:"infId,omitempty"`
+	Network      string `json:"network,omitempty"` // Social Network
 }
 
-// Generates TargetStats which will be used to generate reports
-func getTargetStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Time) (*TargetStats, error) {
+func GetTotalStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Time, onlyTotals bool) (*TargetStats, error) {
 	tg := &TargetStats{}
 
 	stats, err := GetStatsByCampaign(cid, db, cfg)
@@ -228,17 +234,8 @@ func getTargetStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.T
 		for _, d := range dates {
 			if strings.HasPrefix(k, d) {
 				// This value falls in our target range!
-
-				eng := st.Likes + st.Dislikes + st.Comments + st.Shares //+ st.Views
-
-				var views int32
-				if st.Views == 0 {
-					// There are no concrete views so lets gueestimate!
-					// Assume engagement rate is 4% of views!
-					views = int32(float32(eng) / 0.04)
-				} else {
-					views += st.Views
-				}
+				eng := getEngagements(st)
+				views := getViews(st, eng)
 
 				if tg.Total == nil {
 					tg.Total = &Totals{}
@@ -248,6 +245,12 @@ func getTargetStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.T
 				tg.Total.Likes += st.Likes
 				tg.Total.Views += views
 				tg.Total.Spent += st.Payout
+				tg.Total.Shares += st.Shares
+				tg.Total.Comments += st.Comments
+
+				if onlyTotals {
+					continue
+				}
 
 				infId, platformId, channel, postUrl := getElementsFromKey(k)
 
@@ -316,4 +319,46 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	stats.InfluencerId = infId
 
 	return data
+}
+
+func GetTotalInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid string) (*ReportStats, error) {
+	stats := &ReportStats{}
+
+	if err := db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(cfg.ReportingBucket)).ForEach(func(k, v []byte) (err error) {
+			if cid != "" && cid != string(k) {
+				return nil
+			}
+
+			var allStats map[string]*Stats
+			if err := json.Unmarshal(v, &allStats); err != nil {
+				log.Println("error when unmarshalling stats", string(v))
+				return nil
+			}
+
+			dates := getDateRange(from, to)
+			for k, st := range allStats {
+				for _, d := range dates {
+					if strings.HasPrefix(k, d+"|||"+infId+"|||") {
+						eng := getEngagements(st)
+						views := getViews(st, eng)
+
+						stats.Likes += st.Likes
+						stats.Comments += st.Comments
+						stats.Shares += st.Shares
+						stats.Views += views
+						stats.Spent += st.Payout
+						stats.Perks += st.Perks
+						stats.Engagements += eng
+					}
+				}
+			}
+
+			return
+		})
+		return nil
+	}); err != nil {
+		return stats, nil
+	}
+	return stats, nil
 }

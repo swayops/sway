@@ -7,18 +7,14 @@ import (
 
 type TalentAgency struct {
 	Id     string  `json:"id,omitempty"`
-	UserId string  `json:"userId,omitempty"`
 	Name   string  `json:"name,omitempty"`
 	Fee    float32 `json:"fee,omitempty"` // Percentage (decimal)
+	Status bool    `json:"status,omitempty"`
 }
 
 func (a *Auth) CreateTalentAgencyTx(tx *bolt.Tx, u *User, ta *TalentAgency) (err error) {
 	if ta == nil || ta.Id != "" {
 		return ErrUnexpected
-	}
-
-	if ta.UserId != u.Id {
-		return ErrInvalidUserId
 	}
 
 	if ta.Name == "" {

@@ -370,70 +370,6 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	}
 }
 
-func getCampaignAssignedDeals(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var (
-			v   []byte
-			err error
-			cmp common.Campaign
-		)
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		if err = json.Unmarshal(v, &cmp); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		deals := make([]*common.Deal, 0, 512)
-		for _, d := range cmp.Deals {
-			if d.Assigned > 0 && d.InfluencerId != "" && d.Completed == 0 {
-				deals = append(deals, d)
-			}
-		}
-
-		c.JSON(200, deals)
-	}
-}
-
-func getCampaignCompletedDeals(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var (
-			v   []byte
-			err error
-			cmp common.Campaign
-		)
-
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Params.ByName("campaignId")))
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		if err = json.Unmarshal(v, &cmp); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		deals := make([]*common.Deal, 0, 512)
-		for _, d := range cmp.Deals {
-			if d.Completed > 0 && d.InfluencerId != "" {
-				deals = append(deals, d)
-			}
-		}
-
-		c.JSON(200, deals)
-	}
-}
-
 func delCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Params.ByName("id")
@@ -444,7 +380,7 @@ func delCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			g.Active = false
+			g.Status = false
 
 			return saveCampaign(tx, g, s)
 		}); err != nil {
@@ -460,9 +396,10 @@ func delCampaign(s *Server) gin.HandlerFunc {
 type CampaignUpdate struct {
 	Geos       []*misc.GeoRecord `json:"geos,omitempty"`
 	Categories []string          `json:"categories,omitempty"`
-	Active     bool              `json:"active,omitempty"`
+	Status     bool              `json:"status,omitempty"`
 	Budget     float32           `json:"budget,omitempty"`
 	Gender     string            `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Name       string            `json:"name,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -517,11 +454,12 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.Budget = upd.Budget
 		}
 
-		cmp.Active = upd.Active
+		cmp.Status = upd.Status
 
 		cmp.Geos = upd.Geos
 		cmp.Gender = upd.Gender
 		cmp.Categories = lowerArr(upd.Categories)
+		cmp.Name = upd.Name
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -584,10 +522,12 @@ func postInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		load.Category = strings.ToLower(load.Category)
-		if _, ok := common.CATEGORIES[load.Category]; !ok {
-			c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
-			return
+		load.Categories = lowerArr(load.Categories)
+		for _, cat := range load.Categories {
+			if _, ok := common.CATEGORIES[cat]; !ok {
+				c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
+				return
+			}
 		}
 
 		inf, err := influencer.New(
@@ -598,7 +538,7 @@ func postInfluencer(s *Server) gin.HandlerFunc {
 			load.YouTubeId,
 			load.Gender,
 			load.AgencyId,
-			load.Category,
+			load.Categories,
 			load.Geo,
 			s.Cfg)
 
@@ -627,12 +567,13 @@ func postInfluencer(s *Server) gin.HandlerFunc {
 
 func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		inf, err := getInfluencerFromId(s, c.Params.ByName("id"))
+		inf, err := influencer.GetInfluencerFromId(c.Params.ByName("id"), s.db, s.Cfg)
 		if err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
-
+		// Prettify the influencer
+		inf.Clean()
 		c.JSON(200, inf)
 	}
 }
@@ -673,9 +614,14 @@ func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling influencer", string(v))
 					return nil
 				}
-				if inf.Category == targetCat {
-					influencers = append(influencers, inf)
+
+				for _, infCat := range inf.Categories {
+					if infCat == targetCat {
+						inf.Clean()
+						influencers = append(influencers, inf)
+					}
 				}
+
 				return
 			})
 			return nil
@@ -740,6 +686,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if inf.AgencyId == targetAg {
+					inf.Clean()
 					influencers = append(influencers, inf)
 				}
 				return
@@ -833,7 +780,11 @@ func setCategory(s *Server) gin.HandlerFunc {
 				return ErrUnmarshal
 			}
 
-			inf.Category = cat
+			if len(inf.Categories) == 0 {
+				inf.Categories = []string{cat}
+			} else {
+				inf.Categories = append(inf.Categories, cat)
+			}
 
 			if b, err = json.Marshal(&inf); err != nil {
 				return
@@ -927,7 +878,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 				return err
 			}
 
-			if !cmp.Active {
+			if !cmp.Status {
 				return errors.New("Campaign is no longer active")
 			}
 
@@ -1000,7 +951,7 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, g.ActiveDeals)
+		c.JSON(200, g.CleanAssignedDeals())
 	}
 }
 
@@ -1040,24 +991,7 @@ func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		offset := c.Params.ByName("influencerId")
-		if offset == "-1" {
-			c.JSON(200, g.CompletedDeals)
-		} else {
-			offsetHours, err := strconv.Atoi(offset)
-			if err != nil {
-				c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
-				return
-			}
-			minTs := int32(time.Now().Unix()) - (60 * 60 * int32(offsetHours))
-			deals := []*common.Deal{}
-			for _, d := range g.CompletedDeals {
-				if d.Completed >= minTs {
-					deals = append(deals, d)
-				}
-			}
-			c.JSON(200, deals)
-		}
+		c.JSON(200, g.CleanCompletedDeals())
 	}
 }
 
@@ -1096,7 +1030,7 @@ func getLastMonthsStore(s *Server) gin.HandlerFunc {
 }
 
 // Reporting
-func getStats(s *Server) gin.HandlerFunc {
+func getRawStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		stats, err := reporting.GetStatsByCampaign(c.Params.ByName("cid"), s.reportingDb, s.Cfg)
 		if err != nil {
@@ -1124,6 +1058,60 @@ func getCampaignReport(s *Server) gin.HandlerFunc {
 
 		if err := reporting.GenerateCampaignReport(c.Writer, s.db, s.reportingDb, cid, from, to, s.Cfg); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
+		}
+	}
+}
+
+func getCampaignStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		days, err := strconv.Atoi(c.Params.ByName("days"))
+		if err != nil || days == 0 {
+			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			return
+		}
+
+		c.JSON(200, reporting.GetCampaignBreakdown(c.Params.ByName("cid"), s.reportingDb, s.Cfg, days))
+	}
+}
+
+func getInfluencerStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		days, err := strconv.Atoi(c.Params.ByName("days"))
+		if err != nil || days == 0 {
+			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			return
+		}
+
+		infId := c.Params.ByName("infId")
+
+		var inf *influencer.Influencer
+		if inf, err = influencer.GetInfluencerFromId(infId, s.db, s.Cfg); err != nil {
+			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
+			return
+		} else {
+			c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, ""))
+			return
+		}
+	}
+}
+
+func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		days, err := strconv.Atoi(c.Params.ByName("days"))
+		if err != nil || days == 0 {
+			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			return
+		}
+
+		infId := c.Params.ByName("infId")
+
+		var inf *influencer.Influencer
+		if inf, err = influencer.GetInfluencerFromId(infId, s.db, s.Cfg); err != nil {
+			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
+			return
+		} else {
+			c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Params.ByName("cid")))
+			return
 		}
 	}
 }

@@ -20,6 +20,7 @@ func newSwayEngine(srv *Server) error {
 	// This will be used by "GetAvailableDeals"
 	// to avoid constant unmarshalling of campaigns
 	srv.Campaigns.Set(srv.db, srv.Cfg)
+
 	cTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range cTicker.C {
@@ -41,13 +42,13 @@ func newSwayEngine(srv *Server) error {
 }
 
 func run(srv *Server) error {
-	// Update all social media stats/completed deal stats
-	if err := updateStats(srv); err != nil {
+	// Update all influencer stats/completed deal stats
+	if err := updateInfluencers(srv); err != nil {
 		// Insert a file informant check
 		log.Println("Err with stats updater", err)
 		return err
 	}
-	log.Println("Stats updated!")
+	log.Println("Influencers updated!")
 
 	// Explore the influencer posts to look for completed deals!
 	if err := explore(srv); err != nil {
@@ -78,12 +79,15 @@ func run(srv *Server) error {
 	return nil
 }
 
-func updateStats(s *Server) error {
+func updateInfluencers(s *Server) error {
 	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
 	influencers := influencer.GetAllInfluencers(s.db, s.Cfg)
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
+		if inf.Id != "1" {
+			continue
+		}
 		// Influencer not updated if they have been updated
 		// within the last s.Cfg.InfluencerTTL hours
 		if err := inf.UpdateAll(s.Cfg); err != nil {
@@ -131,7 +135,7 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 
-			inf, err := getInfluencerFromId(s, deal.InfluencerId)
+			inf, err := influencer.GetInfluencerFromId(deal.InfluencerId, s.db, s.Cfg)
 			if err != nil {
 				log.Println("Missing influencer id!")
 				continue
@@ -297,7 +301,7 @@ func billing(s *Server) error {
 					return err
 				}
 
-				if cmp.Active && cmp.Budget > 0 {
+				if cmp.Status && cmp.Budget > 0 {
 					// Add fresh deals for this month
 					addDealsToCampaign(cmp)
 
