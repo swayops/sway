@@ -29,7 +29,7 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 			if a.loginUrl != "" && r.Method == "GET" && r.Header.Get("X-Requested-With") == "" {
 				c.Redirect(302, a.loginUrl)
 			} else {
-				misc.AbortWithErr(c, 401, ErrUnauthorized)
+				misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			}
 			return
 		}
@@ -138,7 +138,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 	})
 
 	if err != nil {
-		misc.AbortWithErr(c, 401, err)
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 
@@ -151,19 +151,20 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 
 // SignUpHelper handles common user sign up operations, returns a *User.
 // if nil is returned, it means it failed and already returned an http error
-func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope) (_ bool) {
+func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser) (_ bool) {
 	if sup.Type == "" {
-		sup.Type = defaultScope
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidUserType)
+		return
 	}
 	currentUser := GetCtxUser(c)
 	if currentUser != nil {
 		if !currentUser.Type.CanCreate(sup.Type) {
-			misc.AbortWithErr(c, 401, ErrUnauthorized)
+			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
 		sup.ParentId = currentUser.Id
 	} else if sup.Type != AdvertiserScope && sup.Type != InfluencerScope {
-		misc.AbortWithErr(c, 401, ErrUnauthorized)
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	} else {
 		sup.ParentId = SwayOpsAgencyId
@@ -191,7 +192,7 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
-	if a.SignUpHelper(c, &sup, AdvertiserScope) {
+	if a.SignUpHelper(c, &sup) {
 		c.JSON(200, misc.StatusOK(sup.Id))
 	}
 }
