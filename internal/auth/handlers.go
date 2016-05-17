@@ -162,7 +162,7 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope)
 			return
 		}
 		sup.ParentId = currentUser.Id
-	} else if sup.Type != AdvertiserScope {
+	} else if sup.Type != AdvertiserScope && sup.Type != InfluencerScope {
 		misc.AbortWithErr(c, 401, ErrUnauthorized)
 		return
 	} else {

@@ -20,6 +20,7 @@ func (s Scope) Valid() bool {
 	return false
 }
 
+// CanCreate returns true if the current scope can create the specific user type
 func (s Scope) CanCreate(child Scope) bool {
 	switch s {
 	case AdminScope:
@@ -32,6 +33,7 @@ func (s Scope) CanCreate(child Scope) bool {
 	return false
 }
 
+// CanOwn returns true if the current scope can create the specific item.
 func (s Scope) CanOwn(it ItemType) bool {
 	switch s {
 	case AdminScope:
