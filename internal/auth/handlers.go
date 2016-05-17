@@ -48,7 +48,7 @@ func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 		if u := GetCtxUser(c); u != nil && sm.HasAccess(u.Type, c.Request.Method) {
 			return
 		}
-		misc.AbortWithErr(c, 401, ErrUnauthorized)
+		misc.AbortWithErr(c, 405, ErrUnauthorized)
 	}
 }
 
@@ -82,8 +82,10 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				if misc.GetTxJson(tx, a.cfg.Bucket.Campaign, itemID, &cmp) != nil {
 					return nil
 				}
+				if ok = u.Type == AdvertiserScope && cmp.AdvertiserId == u.Id; ok {
+					return nil
+				}
 				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserId)
-				log.Println(cmp.AdvertiserId, adv, u.Id, u.Items)
 				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
 				return nil
 			})
@@ -93,12 +95,15 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				if misc.GetTxJson(tx, a.cfg.Bucket.Influencer, itemID, &inf) != nil {
 					return nil
 				}
+				if ok = u.Type == TalentAgencyScope && inf.AgencyId == u.Id; ok {
+					return nil
+				}
 				ok = inf.AgencyId != "" && u.OwnsItem(TalentAgencyItem, inf.AgencyId)
 				return nil
 			})
 		}
 		if !ok {
-			misc.AbortWithErr(c, 401, ErrUnauthorized)
+			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		}
 	}
 }
