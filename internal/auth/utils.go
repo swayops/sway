@@ -15,6 +15,7 @@ var (
 	ErrInvalidId        = errors.New("invalid item id")
 	ErrInvalidName      = errors.New("invalid or missing name")
 	ErrInvalidEmail     = errors.New("invalid or missing email")
+	ErrUserExists       = errors.New("the email address already exists")
 	ErrInvalidUserType  = errors.New("invalid or missing user type")
 	ErrInvalidPass      = errors.New("invalid or missing password")
 	ErrInvalidFee       = errors.New("invalid or missing fee")
@@ -39,9 +40,11 @@ func setCookie(w http.ResponseWriter, name, value string, dur time.Duration) {
 		Path:     "/",
 		Name:     name,
 		Value:    value,
-		Expires:  time.Now().Add(dur),
 		HttpOnly: true,
 		//Secure:   true,
+	}
+	if dur > 0 {
+		cookie.Expires = time.Now().Add(dur)
 	}
 	http.SetCookie(w, cookie)
 }
@@ -61,6 +64,10 @@ func getCookie(r *http.Request, name string) string {
 	} else {
 		return c.Value
 	}
+}
+
+func deleteCookie(w http.ResponseWriter, name string) {
+	setCookie(w, name, "deleted", -1)
 }
 
 func getOwnersKey(itemType ItemType, itemId string) []byte {

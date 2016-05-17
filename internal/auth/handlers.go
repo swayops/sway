@@ -108,6 +108,21 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 	}
 }
 
+func (a *Auth) SignOutHandler(c *gin.Context) {
+	tok := getCookie(c.Request, "token")
+	if tok == "" {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
+	a.db.Update(func(tx *bolt.Tx) (_ error) {
+		return a.SignOutTx(tx, tok)
+	})
+	w := c.Writer
+	deleteCookie(w, "token")
+	deleteCookie(w, "key")
+	c.JSON(200, misc.StatusOK(""))
+}
+
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`
@@ -178,6 +193,9 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser) (_ bool) {
 		return
 	}
 	if err := a.db.Update(func(tx *bolt.Tx) error {
+		if a.GetLoginTx(tx, sup.Email) != nil {
+			return ErrUserExists
+		}
 		return a.CreateUserTx(tx, &sup.User, sup.Password)
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)

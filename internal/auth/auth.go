@@ -121,6 +121,10 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 	return
 }
 
+func (a *Auth) SignOutTx(tx *bolt.Tx, stok string) error {
+	return misc.GetBucket(tx, a.cfg.Bucket.Token).Delete([]byte(stok))
+}
+
 func (a *Auth) SignIn(email, pass string) (l *Login, stok string, err error) {
 	a.db.Update(func(tx *bolt.Tx) error {
 		l, stok, err = a.SignInTx(tx, email, pass)
