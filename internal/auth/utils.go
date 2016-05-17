@@ -41,18 +41,18 @@ func setCookie(w http.ResponseWriter, name, value string, dur time.Duration) {
 		Value:    value,
 		Expires:  time.Now().Add(dur),
 		HttpOnly: true,
-		Secure:   true,
+		//Secure:   true,
 	}
 	http.SetCookie(w, cookie)
 }
 
 func refreshCookie(w http.ResponseWriter, r *http.Request, name string, dur time.Duration) {
-	cookie, err := r.Cookie(name)
+	c, err := r.Cookie(name)
 	if err != nil {
 		return
 	}
-	cookie.Expires = time.Now().Add(dur)
-	http.SetCookie(w, cookie)
+	c.Path, c.Expires = "/", time.Now().Add(dur)
+	http.SetCookie(w, c)
 }
 
 func getCookie(r *http.Request, name string) string {

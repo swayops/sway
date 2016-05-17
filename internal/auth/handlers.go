@@ -52,7 +52,6 @@ func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 	}
 }
 
-// TODO: FIX
 //	CheckOwnership returns a handler that checks the ownership of an item.
 //	params:
 //		- itemType (ex CampaignItem)
@@ -84,6 +83,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 					return nil
 				}
 				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserId)
+				log.Println(cmp.AdvertiserId, adv, u.Id, u.Items)
 				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
 				return nil
 			})
@@ -103,38 +103,6 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 	}
 }
 
-func (a *Auth) signInHelper(c *gin.Context) (*User, *Login) {
-	var li struct {
-		Email    string `json:"email" form:"email"`
-		Password string `json:"pass" form:"pass"`
-	}
-	if err := c.Bind(&li); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return nil, nil
-	}
-	var (
-		login *Login
-		user  *User
-		tok   string
-		err   error
-	)
-
-	if err := a.db.Update(func(tx *bolt.Tx) (_ error) {
-		if login, tok, err = a.SignInTx(tx, li.Email, li.Password); err != nil {
-			return
-		}
-
-		if user = a.GetUserTx(tx, login.UserId); user == nil {
-			return ErrInvalidRequest // this should never ever ever happen
-		}
-		return nil
-	}); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return nil, nil
-	}
-	return user, login
-
-}
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`
@@ -214,7 +182,7 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser, defaultScope Scope)
 
 func (a *Auth) SignUpHandler(c *gin.Context) {
 	var sup SignupUser
-	if err := c.BindJSON(&sup); err != nil {
+	if err := c.Bind(&sup); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}

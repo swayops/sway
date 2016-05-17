@@ -192,6 +192,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 			return s.auth.UpdateAdvertiserTx(tx, user, &adv)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
+			return
 		}
 		c.JSON(200, misc.StatusOK(adv.Id))
 	}

@@ -17,7 +17,7 @@ const (
 	adminEmail  = "admin@swayops.com"
 	adminPass   = "Rf_jv9hM3-"
 	agencyEmail = "agency@swayops.com"
-	agencyPass  = "Rf_jv9hM4-"
+	//agencyPass  = "Rf_jv9hM4-"
 )
 
 // Server is the main server of the sway server
