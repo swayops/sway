@@ -74,7 +74,9 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			a.db.View(func(tx *bolt.Tx) error {
 				adv := a.GetAdvertiserTx(tx, itemID)
 				if ok = adv != nil; ok {
-					ok = u.Type == AdAgencyScope && u.Id == adv.AgencyId || u.OwnsItem(AdAgencyItem, adv.AgencyId)
+					ok = u.Type == AdAgencyScope && u.Id == adv.AgencyId
+					ok = ok || u.OwnsItem(AdvertiserItem, adv.Id)
+					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyId)
 				}
 				return nil
 			})
@@ -88,7 +90,11 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 					return nil
 				}
 				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserId)
-				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
+				if ok = adv != nil; ok {
+					ok = u.Type == AdAgencyScope && u.Id == adv.AgencyId
+					ok = ok || u.OwnsItem(AdvertiserItem, adv.Id)
+					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyId)
+				}
 				return nil
 			})
 		case InfluencerItem:
@@ -100,7 +106,8 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				if ok = u.Type == TalentAgencyScope && inf.AgencyId == u.Id; ok {
 					return nil
 				}
-				ok = inf.AgencyId != "" && u.OwnsItem(TalentAgencyItem, inf.AgencyId)
+				ok = u.OwnsItem(InfluencerItem, inf.Id) // This needs to be done through the influencer creation func
+				ok = ok || u.OwnsItem(TalentAgencyItem, inf.AgencyId)
 				return nil
 			})
 		}

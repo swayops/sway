@@ -41,6 +41,10 @@ func (a *Auth) CreateAdvertiserTx(tx *bolt.Tx, user *User, adv *Advertiser) (err
 		return
 	}
 
+	if err = user.AddItem(AdvertiserItem, adv.Id).Store(a, tx); err != nil {
+		return
+	}
+
 	return misc.PutTxJson(tx, a.cfg.Bucket.Advertiser, adv.Id, adv)
 }
 
