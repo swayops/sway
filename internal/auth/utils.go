@@ -45,6 +45,8 @@ func setCookie(w http.ResponseWriter, name, value string, dur time.Duration) {
 	}
 	if dur > 0 {
 		cookie.Expires = time.Now().Add(dur)
+	} else {
+		cookie.MaxAge = -1
 	}
 	http.SetCookie(w, cookie)
 }

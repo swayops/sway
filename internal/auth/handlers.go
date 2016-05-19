@@ -73,7 +73,9 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 		case AdvertiserItem:
 			a.db.View(func(tx *bolt.Tx) error {
 				adv := a.GetAdvertiserTx(tx, itemID)
-				ok = adv != nil && u.OwnsItem(AdAgencyItem, adv.AgencyId)
+				if ok = adv != nil; ok {
+					ok = u.Type == AdAgencyScope && u.Id == adv.AgencyId || u.OwnsItem(AdAgencyItem, adv.AgencyId)
+				}
 				return nil
 			})
 		case CampaignItem:
