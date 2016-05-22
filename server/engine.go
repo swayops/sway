@@ -84,9 +84,6 @@ func updateInfluencers(s *Server) error {
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
-		if inf.Id != "1" {
-			continue
-		}
 		// Influencer not updated if they have been updated
 		// within the last s.Cfg.InfluencerTTL hours
 		if err := inf.UpdateAll(s.Cfg); err != nil {
