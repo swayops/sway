@@ -128,6 +128,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	r.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
 	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
+	r.GET("/setInviteCode/:influencerId/:inviteCode", setInviteCode(srv))
 	r.GET("/getCategories", getCategories(srv))
 
 	// Budget

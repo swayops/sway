@@ -49,6 +49,10 @@ func putTalentAgency(s *Server) gin.HandlerFunc {
 			if ag.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.TalentAgency); err != nil {
 				return
 			}
+
+			// Uses ag.Id so must be called after it has been set
+			ag.SetInviteCode()
+
 			if b, err = json.Marshal(ag); err != nil {
 				return
 			}
@@ -826,11 +830,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if load.AgencyId == "" {
-			c.JSON(400, misc.StatusErr(ErrNoAgency.Error()))
-			return
-		}
-
 		if load.Name == "" {
 			c.JSON(400, misc.StatusErr(ErrNoName.Error()))
 			return
@@ -856,7 +855,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			load.FbId,
 			load.YouTubeId,
 			load.Gender,
-			load.AgencyId,
+			load.InviteCode,
 			load.Categories,
 			load.Geo,
 			s.Cfg)
@@ -1104,6 +1103,46 @@ func setCategory(s *Server) gin.HandlerFunc {
 			} else {
 				inf.Categories = append(inf.Categories, cat)
 			}
+
+			if b, err = json.Marshal(&inf); err != nil {
+				return
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
+				return
+			}
+			return
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(inf.Id))
+	}
+}
+
+func setInviteCode(s *Server) gin.HandlerFunc {
+	// Sets the agency id for the influencer via an invite code
+	return func(c *gin.Context) {
+		agencyId := common.GetIdFromInvite(c.Params.ByName("inviteCode"))
+		if agencyId == "" {
+			agencyId = common.DEFAULT_SWAY_TALENT_AGENCY
+		}
+
+		// Alter influencer bucket
+		var (
+			err error
+			inf influencer.Influencer
+		)
+
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Params.ByName("influencerId")))
+
+			if err = json.Unmarshal(b, &inf); err != nil {
+				return ErrUnmarshal
+			}
+
+			inf.AgencyId = agencyId
 
 			if b, err = json.Marshal(&inf); err != nil {
 				return

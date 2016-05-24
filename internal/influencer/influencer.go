@@ -26,8 +26,8 @@ type InfluencerLoad struct {
 	TwitterId   string `json:"twitter,omitempty"`
 	YouTubeId   string `json:"youtube,omitempty"`
 
-	AgencyId   string          `json:"agencyId,omitempty"` // Agency this influencer belongs to
-	Geo        *misc.GeoRecord `json:"geo,omitempty"`      // User inputted geo via app
+	InviteCode string          `json:"inviteCode,omitempty"` // Encoded string showing talent agency id
+	Geo        *misc.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
 	Gender     string          `json:"gender,omitempty"`
 	Categories []string        `json:"categories,omitempty"`
 }
@@ -76,15 +76,21 @@ type Influencer struct {
 	CurrentRep float32            `json:"rep,omitempty"`
 }
 
-func New(name, twitterId, instaId, fbId, ytId, gender, agency string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(name, twitterId, instaId, fbId, ytId, gender, inviteCode string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Name:       name,
 		Id:         misc.PseudoUUID(),
-		AgencyId:   agency,
 		Geo:        geo,
 		Gender:     gender,
 		Categories: cats,
 	}
+
+	agencyId := common.GetIdFromInvite(inviteCode)
+	if agencyId == "" {
+		agencyId = common.DEFAULT_SWAY_TALENT_AGENCY
+	}
+
+	inf.AgencyId = agencyId
 
 	err := inf.NewInsta(instaId, cfg)
 	if err != nil {
