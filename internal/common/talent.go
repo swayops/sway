@@ -22,11 +22,11 @@ type TalentAgency struct {
 }
 
 func (t *TalentAgency) SetInviteCode() {
-	t.InviteCode = b64.StdEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, t.Id)))
+	t.InviteCode = b64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, t.Id)))
 }
 
 func GetIdFromInvite(code string) string {
-	dec, err := b64.StdEncoding.DecodeString(code)
+	dec, err := b64.RawURLEncoding.DecodeString(code)
 	if err != nil {
 		return ""
 	}
