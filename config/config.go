@@ -96,7 +96,7 @@ type Config struct {
 	Bucket struct {
 		User  string `json:"user"`
 		Login string `json:"login"`
-		Token string `json:"Token"`
+		Token string `json:"token"`
 
 		AdAgency     string `json:"adAgency"`
 		TalentAgency string `json:"talentAgency"`

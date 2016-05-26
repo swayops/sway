@@ -187,11 +187,12 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser) (_ bool) {
 			return
 		}
 		sup.ParentId = currentUser.Id
-	} else if sup.Type != AdvertiserScope && sup.Type != InfluencerScope {
-		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
-		return
+	} else if sup.Type == AdvertiserScope {
+		sup.ParentId = SwayOpsAdAgencyId
+	} else if sup.Type == InfluencerScope {
+		sup.ParentId = SwayOpsTalentAgencyId
 	} else {
-		sup.ParentId = SwayOpsAgencyId
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 	}
 	if sup.Password != sup.Password2 {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)

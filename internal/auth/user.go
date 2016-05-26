@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -22,8 +23,9 @@ const (
 )
 
 const (
-	AdminUserId     = "1"
-	SwayOpsAgencyId = "1"
+	AdminUserId           = "1"
+	SwayOpsAdAgencyId     = "2"
+	SwayOpsTalentAgencyId = "3"
 )
 
 type Login struct {
@@ -32,19 +34,20 @@ type Login struct {
 }
 
 type User struct {
-	Id        string   `json:"id"`
-	ParentId  string   `json:"parentId,omitempty"` // who created this user
-	Name      string   `json:"name,omitempty"`
-	Email     string   `json:"email,omitempty"`
-	Type      Scope    `json:"type,omitempty"`
-	Phone     string   `json:"phone,omitempty"`
-	Address   string   `json:"address,omitempty"`
-	Active    bool     `json:"active,omitempty"`
-	CreatedAt int64    `json:"createdAt,omitempty"`
-	UpdatedAt int64    `json:"updatedAt,omitempty"`
-	Items     []string `json:"items,omitempty"`
-	APIKey    string   `json:"apiKeys,omitempty"`
-	Salt      string   `json:"salt,omitempty"`
+	Id        string          `json:"id"`
+	ParentId  string          `json:"parentId,omitempty"` // who created this user
+	Name      string          `json:"name,omitempty"`
+	Email     string          `json:"email,omitempty"`
+	Type      Scope           `json:"type,omitempty"`
+	Phone     string          `json:"phone,omitempty"`
+	Address   string          `json:"address,omitempty"`
+	Active    bool            `json:"active,omitempty"`
+	CreatedAt int64           `json:"createdAt,omitempty"`
+	UpdatedAt int64           `json:"updatedAt,omitempty"`
+	Items     []string        `json:"items,omitempty"`
+	APIKey    string          `json:"apiKeys,omitempty"`
+	Salt      string          `json:"salt,omitempty"`
+	Meta      json.RawMessage `json:"meta,omitempty"`
 }
 
 type SignupUser struct {
@@ -64,6 +67,7 @@ func (u *User) Update(o *User) *User {
 	u.Name, u.Email, u.Phone, u.Address, u.Items = o.Name, o.Email, o.Phone, o.Address, o.Items
 	u.Active = o.Active
 	u.UpdatedAt = time.Now().UnixNano()
+	u.Meta = o.Meta
 	return u
 }
 
