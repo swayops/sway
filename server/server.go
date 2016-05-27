@@ -213,6 +213,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
 	verifyGroup.GET("/setCategory/:influencerId/:category", setCategory(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
+	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infScope, infOwnership, setInviteCode(srv))
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))

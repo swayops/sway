@@ -1,15 +1,24 @@
 package auth
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/boltdb/bolt"
+)
+
+const (
+	inviteFormat = "id::%s"
 )
 
 type TalentAgency struct {
 	Name   string  `json:"name,omitempty"`
 	Fee    float64 `json:"fee,omitempty"` // Percentage (decimal)
 	Status bool    `json:"status,omitempty"`
+
+	InviteCode string `json:"inviteCode,omitempty"`
 }
 
 func GetTalentAgency(u *User) *TalentAgency {
@@ -42,6 +51,23 @@ func (ag *TalentAgency) Check() error {
 	}
 
 	return nil
+}
+
+func (ag *TalentAgency) SetInviteCode(u *User) {
+	ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
+}
+
+func GetIdFromInvite(code string) string {
+	dec, err := base64.RawURLEncoding.DecodeString(code)
+	if err != nil {
+		return ""
+	}
+
+	parts := strings.Split(string(dec), "::")
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return ""
 }
 
 func (a *Auth) setTalentAgencyTx(tx *bolt.Tx, u *User, ag *TalentAgency) error {
