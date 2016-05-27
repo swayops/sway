@@ -1,72 +1,37 @@
 package auth
 
 import (
+	"encoding/json"
+
 	"github.com/boltdb/bolt"
-	"github.com/swayops/sway/misc"
 )
 
 type Advertiser struct {
-	Id       string `json:"id,omitempty"`
-	AgencyId string `json:"agencyId"`
-
 	Name   string `json:"name"`
 	Status string `json:"status,omitempty"`
 
-	ExchangeFee float32 `json:"exchangeFee,omitempty"` // Percentage (decimal)
-	DspFee      float32 `json:"dspFee,omitempty"`      // Percentage (decimal)
+	ExchangeFee float64 `json:"exchangeFee,omitempty"` // Percentage (decimal)
+	DspFee      float64 `json:"dspFee,omitempty"`      // Percentage (decimal)
 }
 
-func (a *Auth) CreateAdvertiserTx(tx *bolt.Tx, user *User, adv *Advertiser) (err error) {
-	if adv == nil || adv.Id != "" {
-		return ErrUnexpected
+func GetAdvertiser(u *User) *Advertiser {
+	if u.Type != AdvertiserScope {
+		return nil
 	}
-
-	if adv.ExchangeFee == 0 || adv.ExchangeFee > 0.99 {
-		return ErrInvalidFee
-	}
-
-	if adv.DspFee == 0 || adv.DspFee > 0.99 {
-		return ErrInvalidFee
-	}
-
-	if !user.OwnsItem(AdAgencyItem, adv.AgencyId) {
-		return ErrInvalidAgencyId
-	}
-
-	if adv.Name == "" {
-		return ErrInvalidName
-	}
-
-	if adv.Id, err = misc.GetNextIndex(tx, a.cfg.Bucket.Advertiser); err != nil {
-		return
-	}
-
-	if err = user.AddItem(AdvertiserItem, adv.Id).Store(a, tx); err != nil {
-		return
-	}
-
-	return misc.PutTxJson(tx, a.cfg.Bucket.Advertiser, adv.Id, adv)
-}
-
-func (a *Auth) GetAdvertiserTx(tx *bolt.Tx, advId string) *Advertiser {
 	var adv Advertiser
-	// adv.Fee == 0 is a sanity check, should never happen
-	if misc.GetTxJson(tx, a.cfg.Bucket.Advertiser, advId, &adv) != nil {
+	if json.Unmarshal(u.Meta, &adv) != nil || adv.Name == "" {
 		return nil
 	}
 	return &adv
 }
 
-func (a *Auth) UpdateAdvertiserTx(tx *bolt.Tx, u *User, adv *Advertiser) error {
-	if adv == nil || adv.Id != "" || adv.AgencyId == "" {
-		return ErrUnexpected
-	}
-	if !u.OwnsItem(AdAgencyItem, adv.AgencyId) {
-		return ErrInvalidAgencyId
-	}
+func (adv *Advertiser) setToUser(u *User) {
+	b, _ := json.Marshal(adv)
+	u.Meta = b
+}
 
-	oAdv := a.GetAdvertiserTx(tx, adv.Id)
-	if oAdv == nil || oAdv.AgencyId != adv.AgencyId {
+func (adv *Advertiser) Check() error {
+	if adv == nil {
 		return ErrUnexpected
 	}
 
@@ -77,9 +42,16 @@ func (a *Auth) UpdateAdvertiserTx(tx *bolt.Tx, u *User, adv *Advertiser) error {
 	if adv.DspFee == 0 || adv.DspFee > 0.99 {
 		return ErrInvalidFee
 	}
-	return misc.PutTxJson(tx, a.cfg.Bucket.Advertiser, adv.Id, adv)
+
+	return nil
 }
 
-func (a *Auth) DeleteAdvertiserTx(tx *bolt.Tx, u *User, advId string) error {
-	return misc.DelBucketBytes(tx, a.cfg.Bucket.Advertiser, advId)
+func (a *Auth) setAdvertiserTx(tx *bolt.Tx, user *User, adv *Advertiser) error {
+	if err := adv.Check(); err != nil {
+		return err
+	}
+
+	adv.setToUser(user)
+
+	return user.Store(a, tx)
 }

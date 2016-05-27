@@ -62,7 +62,7 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 	email = misc.TrimEmail(email)
 
 	var l Login
-	if misc.GetTxJson(tx, a.cfg.Bucket.Login, email, &l) == nil && l.UserId != "" {
+	if misc.GetTxJson(tx, a.cfg.Bucket.Login, email, &l) == nil && l.UserID != "" {
 		return &l
 	}
 	return nil
@@ -70,7 +70,7 @@ func (a *Auth) GetLoginTx(tx *bolt.Tx, email string) *Login {
 
 func (a *Auth) GetUserByEmailTx(tx *bolt.Tx, email string) *User {
 	if l := a.GetLoginTx(tx, email); l != nil {
-		return a.GetUserTx(tx, l.UserId)
+		return a.GetUserTx(tx, l.UserID)
 	}
 	return nil
 }
@@ -93,11 +93,11 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 	if misc.GetTxJson(tx, a.cfg.Bucket.Token, ri.stoken, &token) != nil || !token.IsValid(time.Now()) {
 		return nil
 	}
-	if ri.user = a.GetUserTx(tx, token.UserId); ri.user == nil {
+	if ri.user = a.GetUserTx(tx, token.UserID); ri.user == nil {
 		return nil
 	}
 	if ri.isApiKey { // for api keys, we use the id as the password so the key wouldn't break if the user change it
-		ri.hashedPass = ri.user.Id
+		ri.hashedPass = ri.user.ID
 		return &ri
 	}
 	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
@@ -116,7 +116,7 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 		return nil, "", ErrInvalidPass
 	}
 	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
-	ntok := &Token{UserId: l.UserId, Expires: time.Now().Add(TokenAge).UnixNano()}
+	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(TokenAge).UnixNano()}
 	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, ntok)
 	return
 }
@@ -134,13 +134,13 @@ func (a *Auth) SignIn(email, pass string) (l *Login, stok string, err error) {
 }
 
 type Token struct {
-	UserId  string `json:"userId"`
+	UserID  string `json:"userID `
 	Email   string `json:"email"`
 	Expires int64  `json:"expires"`
 }
 
 func (t *Token) IsValid(ts time.Time) bool {
-	return (t.UserId != "" || t.Email != "") && t.Expires == -1 || t.Expires > ts.UnixNano()
+	return (t.UserID != "" || t.Email != "") && t.Expires == -1 || t.Expires > ts.UnixNano()
 }
 
 func (t *Token) Refresh(dur time.Duration) *Token {
@@ -158,4 +158,14 @@ func (a *Auth) refreshToken(stok string, dur time.Duration) {
 		}
 		return misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, token.Refresh(dur))
 	})
+}
+
+func (a *Auth) moveChildrenTx(tx *bolt.Tx, user *User, newParentID string) {
+	for _, uid := range user.Children {
+		if u := a.GetUserTx(tx, uid); u != nil && u.ParentID == u.ID {
+			u.ParentID = SwayOpsTalentAgencyID
+			u.Store(a, tx)
+		}
+	}
+	user.Children = nil
 }

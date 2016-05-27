@@ -74,9 +74,9 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			a.db.View(func(tx *bolt.Tx) error {
 				adv := a.GetAdvertiserTx(tx, itemID)
 				if ok = adv != nil; ok {
-					ok = u.Type == AdAgencyScope && u.Id == adv.AgencyId
-					ok = ok || u.OwnsItem(AdvertiserItem, adv.Id)
-					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyId)
+					ok = u.Type == AdAgencyScope && u.ID == adv.AgencyID
+					ok = ok || u.OwnsItem(AdvertiserItem, adv.ID)
+					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyID)
 				}
 				return nil
 			})
@@ -86,14 +86,14 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				if misc.GetTxJson(tx, a.cfg.Bucket.Campaign, itemID, &cmp) != nil {
 					return nil
 				}
-				if ok = u.Type == AdvertiserScope && cmp.AdvertiserId == u.Id; ok {
+				if ok = u.Type == AdvertiserScope && cmp.AdvertiserID == u.ID; ok {
 					return nil
 				}
-				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserId)
+				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserID)
 				if ok = adv != nil; ok {
-					ok = u.Type == AdAgencyScope && u.Id == adv.AgencyId
-					ok = ok || u.OwnsItem(AdvertiserItem, adv.Id)
-					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyId)
+					ok = u.Type == AdAgencyScope && u.ID == adv.AgencyID
+					ok = ok || u.OwnsItem(AdvertiserItem, adv.ID)
+					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyID)
 				}
 				return nil
 			})
@@ -103,11 +103,11 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				if misc.GetTxJson(tx, a.cfg.Bucket.Influencer, itemID, &inf) != nil {
 					return nil
 				}
-				if ok = u.Type == TalentAgencyScope && inf.AgencyId == u.Id; ok {
+				if ok = u.Type == TalentAgencyScope && inf.AgencyID == u.ID; ok {
 					return nil
 				}
-				ok = u.OwnsItem(InfluencerItem, inf.Id) // This needs to be done through the influencer creation func
-				ok = ok || u.OwnsItem(TalentAgencyItem, inf.AgencyId)
+				ok = u.OwnsItem(InfluencerItem, inf.ID) // This needs to be done through the influencer creation func
+				ok = ok || u.OwnsItem(TalentAgencyItem, inf.AgencyID)
 				return nil
 			})
 		}
@@ -152,7 +152,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 		if login, tok, err = a.SignInTx(tx, li.Email, li.Password); err != nil {
 			return
 		}
-		u := a.GetUserTx(tx, login.UserId)
+		u := a.GetUserTx(tx, login.UserID)
 		if u == nil {
 			err = ErrInvalidRequest // this should never ever ever happen
 			return
@@ -170,7 +170,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 	w := c.Writer
 	setCookie(w, "token", tok, TokenAge)
 	setCookie(w, "key", mac, TokenAge)
-	c.JSON(200, misc.StatusOK(login.UserId))
+	c.JSON(200, misc.StatusOK(login.UserID))
 }
 
 // SignUpHelper handles common user sign up operations, returns a *User.
@@ -186,11 +186,11 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser) (_ bool) {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
-		sup.ParentId = currentUser.Id
+		sup.ParentID = currentUser.ID
 	} else if sup.Type == AdvertiserScope {
-		sup.ParentId = SwayOpsAdAgencyId
+		sup.ParentID = SwayOpsAdAgencyID
 	} else if sup.Type == InfluencerScope {
-		sup.ParentId = SwayOpsTalentAgencyId
+		sup.ParentID = SwayOpsTalentAgencyID
 	} else {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 	}
@@ -221,7 +221,7 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 		return
 	}
 	if a.SignUpHelper(c, &sup) {
-		c.JSON(200, misc.StatusOK(sup.Id))
+		c.JSON(200, misc.StatusOK(sup.ID))
 	}
 }
 
@@ -309,8 +309,8 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			if !CheckPassword(l.Password, li.Password) {
 				return ErrInvalidPass
 			}
-			if u = a.GetUserTx(tx, l.UserId); u == nil { // should never ever happen
-				return ErrInvalidId
+			if u = a.GetUserTx(tx, l.UserID); u == nil { // should never ever happen
+				return ErrInvalidID
 			}
 			return nil
 		}); err != nil {
@@ -321,7 +321,7 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 
 	if u.APIKey == "" || c.Query("renew") == "true" {
 		stok := hex.EncodeToString(misc.CreateToken(TokenLen - 8))
-		ntok := &Token{UserId: u.Id, Expires: -1}
+		ntok := &Token{UserID: u.ID, Expires: -1}
 		if err := a.db.Update(func(tx *bolt.Tx) error {
 			l := a.GetLoginTx(tx, u.Email)
 			if l == nil {
@@ -332,21 +332,21 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			misc.AbortWithErr(c, http.StatusBadRequest, err)
 			return
 		}
-		mac := CreateMAC(u.Id, stok, u.Salt)
+		mac := CreateMAC(u.ID, stok, u.Salt)
 		if err := a.db.Update(func(tx *bolt.Tx) error {
 			log.Println(u.APIKey, len(u.APIKey))
 			if len(u.APIKey) == 96 { // delete the old key
 				tx.Bucket([]byte(a.cfg.Bucket.Token)).Delete([]byte(u.APIKey[:32]))
 			}
 			u.APIKey = stok + mac
-			return misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u)
+			return misc.PutTxJson(tx, a.cfg.Bucket.User, u.ID, u)
 		}); err != nil {
 			misc.AbortWithErr(c, http.StatusBadRequest, err)
 			return
 		}
 	}
 
-	msg := misc.StatusOK(u.Id)
+	msg := misc.StatusOK(u.ID)
 	msg["key"] = u.APIKey
 	c.JSON(200, msg)
 }

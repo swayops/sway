@@ -23,19 +23,19 @@ const (
 )
 
 const (
-	AdminUserId           = "1"
-	SwayOpsAdAgencyId     = "2"
-	SwayOpsTalentAgencyId = "3"
+	AdminUserID           = "1"
+	SwayOpsAdAgencyID     = "2"
+	SwayOpsTalentAgencyID = "3"
 )
 
 type Login struct {
-	UserId   string `json:"userId"`
+	UserID   string `json:"userID `
 	Password string `json:"password"`
 }
 
 type User struct {
-	Id        string          `json:"id"`
-	ParentId  string          `json:"parentId,omitempty"` // who created this user
+	ID        string          `json:"id"`
+	ParentID  string          `json:"parentID omitempty"`
 	Name      string          `json:"name,omitempty"`
 	Email     string          `json:"email,omitempty"`
 	Type      Scope           `json:"type,omitempty"`
@@ -44,7 +44,7 @@ type User struct {
 	Active    bool            `json:"active,omitempty"`
 	CreatedAt int64           `json:"createdAt,omitempty"`
 	UpdatedAt int64           `json:"updatedAt,omitempty"`
-	Items     []string        `json:"items,omitempty"`
+	Children  []string        `json:"children,omitempty"`
 	APIKey    string          `json:"apiKeys,omitempty"`
 	Salt      string          `json:"salt,omitempty"`
 	Meta      json.RawMessage `json:"meta,omitempty"`
@@ -62,7 +62,7 @@ func (u *User) Trim() *User {
 	return u
 }
 
-// Update fills the updatable fields in the struct, fields like Created and Id should never be blindly set.
+// Update fills the updatable fields in the struct, fields like Created and ID should never be blindly set.
 func (u *User) Update(o *User) *User {
 	u.Name, u.Email, u.Phone, u.Address, u.Items = o.Name, o.Email, o.Phone, o.Address, o.Items
 	u.Active = o.Active
@@ -88,8 +88,8 @@ func (u *User) RemoveItem(it ItemType, id string) *User {
 }
 
 func (u *User) Check(newUser bool) error {
-	if newUser && len(u.Id) != 0 {
-		return ErrInvalidUserId
+	if newUser && len(u.ID) != 0 {
+		return ErrInvalidUserID
 	}
 	if len(u.Name) < 6 {
 		return ErrInvalidName
@@ -105,17 +105,33 @@ func (u *User) Check(newUser bool) error {
 }
 
 func (u *User) Store(a *Auth, tx *bolt.Tx) error {
-	return misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u)
+	return misc.PutTxJson(tx, a.cfg.Bucket.User, u.ID, u)
 }
 
 func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	u.Name = strings.TrimSpace(u.Name)
-	u.Email = strings.TrimSpace(u.Email)
+	u.Email = misc.TrimEmail(u.Email)
 
 	if err = u.Check(true); err != nil {
 		return
 	}
+	switch u.Type {
+	case AdminScope:
 
+	case AdvertiserScope:
+		err = GetAdvertiser(u).Check()
+	case AdAgencyScope:
+		err = GetAdAgency(u).Check()
+	case TalentAgencyScope:
+		err = GetTalentAgency(u).Check()
+	case InfluencerScope:
+		// TODO
+	default:
+		err = ErrUnexpected
+	}
+	if err != nil {
+		return
+	}
 	u.CreatedAt = time.Now().UnixNano()
 	u.UpdatedAt = u.CreatedAt
 	u.Salt = hex.EncodeToString(misc.CreateToken(SaltLen))
@@ -124,17 +140,17 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		return
 	}
 
-	if u.Id, err = misc.GetNextIndex(tx, a.cfg.Bucket.User); err != nil {
+	if u.ID, err = misc.GetNextIndex(tx, a.cfg.Bucket.User); err != nil {
 		return
 	}
 
-	if err = misc.PutTxJson(tx, a.cfg.Bucket.User, u.Id, u); err != nil {
+	if err = misc.PutTxJson(tx, a.cfg.Bucket.User, u.ID, u); err != nil {
 		return
 	}
 
 	// logins are always in lowercase
 	login := &Login{
-		UserId:   u.Id,
+		UserID:   u.ID,
 		Password: password,
 	}
 
@@ -144,20 +160,21 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	return
 }
 
-func (a *Auth) DelUserTx(tx *bolt.Tx, userId string) (err error) {
-	user := a.GetUserTx(tx, userId)
+func (a *Auth) DelUserTx(tx *bolt.Tx, userID string) (err error) {
+	user := a.GetUserTx(tx, userID)
 	if user == nil {
-		return ErrInvalidUserId
+		return ErrInvalidUserID
 	}
-	uid := []byte(userId)
+	uid := []byte(userID)
 	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
-	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(misc.TrimEmail(user.Email)))
+	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(user.Email))
+	// TODO
 	return
 }
 
-func (a *Auth) GetUserTx(tx *bolt.Tx, userId string) *User {
+func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {
 	var u User
-	if misc.GetTxJson(tx, a.cfg.Bucket.User, userId, &u) == nil && len(u.Salt) > 0 {
+	if misc.GetTxJson(tx, a.cfg.Bucket.User, userID&u) == nil && len(u.Salt) > 0 {
 		return &u
 	}
 	return nil

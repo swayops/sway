@@ -10,9 +10,9 @@ import (
 
 var (
 	ErrInvalidRequest   = errors.New("invalid request")
-	ErrInvalidUserId    = errors.New("invalid user id, hax0r")
-	ErrInvalidAgencyId  = errors.New("invalid agency id")
-	ErrInvalidId        = errors.New("invalid item id")
+	ErrInvalidUserID    = errors.New("invalid user id, hax0r")
+	ErrInvalidAgencyID  = errors.New("invalid agency id")
+	ErrInvalidID        = errors.New("invalid item id")
 	ErrInvalidName      = errors.New("invalid or missing name")
 	ErrInvalidEmail     = errors.New("invalid or missing email")
 	ErrUserExists       = errors.New("the email address already exists")
@@ -72,8 +72,8 @@ func deleteCookie(w http.ResponseWriter, name string) {
 	setCookie(w, name, "deleted", -1)
 }
 
-func getOwnersKey(itemType ItemType, itemId string) []byte {
-	return []byte(string(itemType) + ":" + itemId)
+func getOwnersKey(itemType ItemType, itemID string) []byte {
+	return []byte(string(itemType) + ":" + itemID)
 }
 
 func getCreds(req *http.Request) (token, key string, isApiKey bool) {
