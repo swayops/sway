@@ -13,7 +13,6 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -246,7 +245,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Tags[i] = sanitizeHash(ht)
 		}
 		cmp.Mention = sanitizeMention(cmp.Mention)
-		cmp.Categories = lowerArr(cmp.Categories)
+		cmp.Categories = common.LowerSlice(cmp.Categories)
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -406,7 +405,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.Geos = upd.Geos
 		cmp.Gender = upd.Gender
-		cmp.Categories = lowerArr(upd.Categories)
+		cmp.Categories = common.LowerSlice(upd.Categories)
 		cmp.Name = upd.Name
 
 		// Save the Campaign
@@ -852,25 +851,16 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 	// Get all deals completed by the influencer in the last X hours
 	return func(c *gin.Context) {
-		var (
-			err error
-			v   []byte
-			g   influencer.Influencer
-		)
+		var inf *auth.Influencer
 		if err := s.db.View(func(tx *bolt.Tx) error {
-			v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Param("influencerId")))
+			inf = s.auth.GetInfluencerTx(tx, nil, c.Param("influencerId"))
 			return nil
-		}); err != nil {
+		}); err != nil || inf == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		if err = json.Unmarshal(v, &g); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, g.CleanCompletedDeals())
+		c.JSON(200, inf.CleanCompletedDeals())
 	}
 }
 
@@ -963,14 +953,16 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 
 		infId := c.Param("influencerId")
 
-		var inf *influencer.Influencer
-		if inf, err = influencer.GetInfluencerFromId(infId, s.db, s.Cfg); err != nil {
+		var inf *auth.Influencer
+		s.db.View(func(tx *bolt.Tx) error {
+			inf = s.auth.GetInfluencerTx(tx, nil, infId)
+			return nil
+		})
+		if inf == nil {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
-		} else {
-			c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, ""))
-			return
 		}
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, ""))
 	}
 }
 
@@ -983,14 +975,16 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 		}
 
 		infId := c.Param("infId")
-
-		var inf *influencer.Influencer
-		if inf, err = influencer.GetInfluencerFromId(infId, s.db, s.Cfg); err != nil {
+		var inf *auth.Influencer
+		s.db.View(func(tx *bolt.Tx) error {
+			inf = s.auth.GetInfluencerTx(tx, nil, infId)
+			return nil
+		})
+		if inf == nil {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
-		} else {
-			c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid")))
-			return
 		}
+
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid")))
 	}
 }

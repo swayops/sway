@@ -98,11 +98,7 @@ type Config struct {
 		Login string `json:"login"`
 		Token string `json:"token"`
 
-		AdAgency     string `json:"adAgency"`
-		TalentAgency string `json:"talentAgency"`
-		Advertiser   string `json:"advertiser"`
-		Campaign     string `json:"campaign"`
-		Influencer   string `json:"influencer"`
+		Campaign string `json:"campaign"`
 	} `json:"bucket"`
 
 	ec *mandrill.Client

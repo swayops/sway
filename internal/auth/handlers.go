@@ -9,7 +9,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
@@ -91,19 +90,13 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			}
 
 		case InfluencerItem:
-			var ownerID string
-			a.db.View(func(tx *bolt.Tx) error {
-				var inf influencer.Influencer
-				misc.GetTxJson(tx, a.cfg.Bucket.Influencer, itemID, &inf)
-				ownerID = inf.AgencyId
-				return nil
-			})
 			switch u.Type {
 			case InfluencerScope:
-				ok = u.ID == ownerID
+				ok = u.ID == itemID
 			case TalentAgencyScope:
-				ok = u.Owns(ownerID)
+				ok = u.Owns(itemID)
 			}
+
 		}
 		if !ok {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)

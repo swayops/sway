@@ -7,10 +7,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
-	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 )
 
@@ -123,17 +121,15 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 	return 0, 0
 }
 
-func saveInfluencer(tx *bolt.Tx, inf *influencer.Influencer, cfg *config.Config) error {
-	var (
-		b   []byte
-		err error
-	)
-
-	if b, err = json.Marshal(inf); err != nil {
-		return err
+func saveInfluencer(s *Server, tx *bolt.Tx, inf *auth.Influencer) error {
+	if inf == nil || inf.Id == "" {
+		return auth.ErrInvalidID
 	}
-
-	return misc.PutBucketBytes(tx, cfg.Bucket.Influencer, inf.Id, b)
+	u := s.auth.GetUserTx(tx, inf.Id)
+	if u == nil {
+		return auth.ErrInvalidID
+	}
+	return u.StoreWithData(s.auth, tx, inf)
 }
 
 //TODO discuss with Shahzil and handle scopes
@@ -193,10 +189,10 @@ func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float64 {
 	return 0
 }
 
-func saveAllDeals(s *Server, inf *influencer.Influencer) error {
+func saveAllDeals(s *Server, inf *auth.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
-		if err := saveInfluencer(tx, inf, s.Cfg); err != nil {
+		if err := saveInfluencer(s, tx, inf); err != nil {
 			log.Println("Errored saving influencer", err)
 			return err
 		}
@@ -253,9 +249,15 @@ func sanitizeMention(str string) string {
 	return strings.ToLower(raw)
 }
 
-func lowerArr(s []string) []string {
-	for i, v := range s {
-		s[i] = strings.ToLower(v)
-	}
-	return s
+func getAllInfluencers(s *Server) []*auth.Influencer {
+	var influencers []*auth.Influencer
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+			if inf := auth.GetInfluencer(u); inf != nil {
+				influencers = append(influencers, inf)
+			}
+			return nil
+		})
+	})
+	return influencers
 }

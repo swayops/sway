@@ -11,7 +11,6 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 )
 
@@ -81,7 +80,7 @@ func run(srv *Server) error {
 
 func updateInfluencers(s *Server) error {
 	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
-	influencers := influencer.GetAllInfluencers(s.db, s.Cfg)
+	influencers := getAllInfluencers(s)
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
@@ -131,10 +130,13 @@ func depleteBudget(s *Server) error {
 			if deal.Completed == 0 {
 				continue
 			}
-
-			inf, err := influencer.GetInfluencerFromId(deal.InfluencerId, s.db, s.Cfg)
-			if err != nil {
-				log.Println("Missing influencer id!")
+			var inf *auth.Influencer
+			s.db.View(func(tx *bolt.Tx) error {
+				inf = s.auth.GetInfluencerTx(tx, nil, deal.InfluencerId)
+				return nil
+			})
+			if inf == nil {
+				log.Println("Missing influencer!")
 				continue
 			}
 
@@ -205,21 +207,15 @@ func billing(s *Server) error {
 		for _, data := range store {
 			for id, infData := range data.Influencers {
 				var (
-					inf       influencer.Influencer
-					v         []byte
+					inf       *auth.Influencer
 					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
-					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
+					inf = s.auth.GetInfluencerTx(tx, nil, id)
 					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
 					return nil
-				}); err != nil {
-					log.Println("Invoice error for influencer", err)
-					continue
-				}
-
-				if err = json.Unmarshal(v, &inf); err != nil {
-					log.Println("Invoice error for influencer", err)
+				}); err != nil || inf == nil {
+					log.Println("Invoice error for influencer", id, err)
 					continue
 				}
 
@@ -243,16 +239,13 @@ func billing(s *Server) error {
 		for _, data := range store {
 			for id, infData := range data.Influencers {
 				var (
-					inf       influencer.Influencer
+					inf       *auth.Influencer
 					agUser    *auth.User
-					v         []byte
 					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
-					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
-					if err = json.Unmarshal(v, &inf); err != nil {
-						log.Println("Invoice error for talent agency invoice", err)
-						return err
+					if inf = s.auth.GetInfluencerTx(tx, nil, id); inf == nil {
+						return nil
 					}
 
 					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
@@ -260,6 +253,11 @@ func billing(s *Server) error {
 					return nil
 				}); err != nil {
 					log.Println("Invoice error for talent agency invoice", err)
+					continue
+				}
+
+				if inf == nil {
+					log.Println("error retrieving influencer", id)
 					continue
 				}
 
