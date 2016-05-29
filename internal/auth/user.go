@@ -154,6 +154,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	u.CreatedAt = time.Now().UnixNano()
 	u.UpdatedAt = u.CreatedAt
 	u.Salt = hex.EncodeToString(misc.CreateToken(SaltLen))
+	u.Status = true // always active on creation
 
 	if password, err = HashPassword(password); err != nil {
 		return

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -203,6 +204,8 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
+	j, _ := json.MarshalIndent(sup, "", "  ")
+	log.Println(string(j))
 
 	if err := suser.Check(); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)

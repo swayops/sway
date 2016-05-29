@@ -81,10 +81,9 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			return nil
 		}
 		u := &auth.User{
-			Name:   "Sway Admin",
-			Status: true,
-			Email:  adminEmail,
-			Type:   auth.AdminScope,
+			Name:  "Sway Admin",
+			Email: adminEmail,
+			Type:  auth.AdminScope,
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
@@ -92,10 +91,9 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		log.Println("created admin user, id = ", u.ID)
 
 		u = &auth.User{
-			Name:   "Sway Advertiser Agency",
-			Status: true,
-			Email:  adminEmail,
-			Type:   auth.AdAgencyScope,
+			Name:  "Sway Advertiser Agency",
+			Email: adAdminEmail,
+			Type:  auth.AdAgencyScope,
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
@@ -103,10 +101,9 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		log.Println("created advertiser agency, id = ", u.ID)
 
 		u = &auth.User{
-			Name:   "Sway Talent Agency",
-			Status: true,
-			Email:  adminEmail,
-			Type:   auth.AdAgencyScope,
+			Name:  "Sway Talent Agency",
+			Email: talentAdminEmail,
+			Type:  auth.AdAgencyScope,
 		}
 		ag := &auth.TalentAgency{
 			Fee: 0.2,
