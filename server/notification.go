@@ -1,12 +1,22 @@
 package server
 
-import "github.com/swayops/sway/internal/influencer"
+import (
+	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/auth"
+)
 
 func notify(s *Server) error {
-	influencers := influencer.GetAllInfluencers(s.db, s.Cfg)
+	var influencers []*auth.Influencer
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+			if inf := auth.GetInfluencer(u); inf != nil {
+				influencers = append(influencers, inf)
+			}
+			return nil
+		})
+	})
 	for _, inf := range influencers {
-		_ = influencer.GetAvailableDeals(s.Campaigns, s.db, s.budgetDb, inf.Id, "", nil, false, s.Cfg)
-
+		inf.GetAvailableDeals(s.Campaigns, s.db, s.budgetDb, "", nil, false, s.Cfg)
 	}
 	return nil
 }

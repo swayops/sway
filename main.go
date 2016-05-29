@@ -30,5 +30,6 @@ func main() {
 	// Listen and Serve
 	if err = srv.Run(); err != nil {
 		log.Fatalf("Failed to listen: %v", err)
+
 	}
 }

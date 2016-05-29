@@ -78,7 +78,7 @@ func explore(srv *Server) error {
 		// If the deal has not been approved and it has gone past the
 		// dealTimeout.. put it back in the pool!
 		if minTs > deal.Assigned {
-			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
+			if err := clearDeal(srv, nil, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 				return err
 			}
 		}

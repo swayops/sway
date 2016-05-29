@@ -17,14 +17,13 @@ import (
 func clearDeal(s *Server, user *auth.User, dealId, influencerId, campaignId string, timeout bool) error {
 	// Unssign the deal & update the campaign and influencer buckets
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-		if influencerId != user.ID {
+		if user == nil || influencerId != user.ID {
 			user = s.auth.GetUserTx(tx, influencerId)
 		}
 
 		var (
 			inf = auth.GetInfluencer(user)
 			cmp common.Campaign
-			b   []byte
 		)
 		if inf == nil {
 			return auth.ErrInvalidUserID

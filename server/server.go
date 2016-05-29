@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	adminEmail  = "admin@swayops.com"
-	adminPass   = "Rf_jv9hM3-"
-	agencyEmail = "agency@swayops.com"
+	adminEmail       = "admin@swayops.com"
+	adAdminEmail     = "adAgency@swayops.com"
+	talentAdminEmail = "talentAgency@swayops.com"
+	adminPass        = "Rf_jv9hM3-"
 )
 
 // Server is the main server of the sway server
@@ -76,39 +77,45 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			}
 		}
 
-		var u *auth.User
-		if u = srv.auth.GetUserTx(tx, auth.AdminUserId); u == nil {
-			u = &auth.User{
-				Name:  "Sexy Sway Admin",
-				Email: adminEmail,
-				Type:  auth.AdminScope,
-			}
-			if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
-				return err
-			}
-			log.Println("created admin user, id = ", u.Id)
+		if srv.auth.GetUserTx(tx, auth.AdminUserID) != nil {
+			return nil
 		}
+		u := &auth.User{
+			Name:   "Sway Admin",
+			Status: true,
+			Email:  adminEmail,
+			Type:   auth.AdminScope,
+		}
+		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
+			return err
+		}
+		log.Println("created admin user, id = ", u.ID)
 
-		if srv.auth.GetTalentAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
-			ag := &auth.TalentAgency{
-				Name: "Sway Ops Talent Agency",
-				Fee:  0.2,
-			}
-			if err := srv.auth.CreateTalentAgencyTx(tx, u, ag); err != nil {
-				return err
-			}
-			log.Println("created talent agency, id = ", u.Id)
+		u = &auth.User{
+			Name:   "Sway Advertiser Agency",
+			Status: true,
+			Email:  adminEmail,
+			Type:   auth.AdAgencyScope,
 		}
+		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
+			return err
+		}
+		log.Println("created advertiser agency, id = ", u.ID)
 
-		if srv.auth.GetAdAgencyTx(tx, auth.SwayOpsAgencyId) == nil {
-			ag := &auth.AdAgency{
-				Name: "Sway Ops Ad Agency",
-			}
-			if err := srv.auth.CreateAdAgencyTx(tx, u, ag); err != nil {
-				return err
-			}
-			log.Println("created ad agency, id = ", u.Id)
+		u = &auth.User{
+			Name:   "Sway Talent Agency",
+			Status: true,
+			Email:  adminEmail,
+			Type:   auth.AdAgencyScope,
 		}
+		ag := &auth.TalentAgency{
+			Fee: 0.2,
+		}
+		u.UpdateData(srv.auth, ag)
+		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
+			return err
+		}
+		log.Println("created Talent agency, id = ", u.ID)
 
 		return nil
 	}); err != nil {

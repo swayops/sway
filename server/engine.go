@@ -324,7 +324,7 @@ func billing(s *Server) error {
 
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
-					dspFee, exchangeFee := getAdvertiserFeesFromTx(tx, s.Cfg, cmp.AdvertiserId)
+					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
 					if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
 						log.Println("Error creating budget key!", err)
 						return err
