@@ -178,17 +178,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidUserType)
 		return
 	}
-
-	if err := a.db.View(func(tx *bolt.Tx) error {
-		if a.GetLoginTx(tx, sup.Email) != nil {
-			return ErrUserExists
-		}
-		return nil
-	}); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return
-	}
-
 	curUser := GetCtxUser(c)
 	if curUser != nil {
 		if !curUser.Type.CanCreate(sup.Type) {
@@ -228,10 +217,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 	}
 
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		if a.GetLoginTx(tx, sup.Email) != nil { // checked again just in case of a race
-			return ErrUserExists
-		}
-
 		if err := a.CreateUserTx(tx, &sup.User, sup.Password); err != nil {
 			return err
 		}

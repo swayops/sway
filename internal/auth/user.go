@@ -143,7 +143,9 @@ func (u *User) StoreWithData(a *Auth, tx *bolt.Tx, data SpecUser) error {
 func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	u.Name = strings.TrimSpace(u.Name)
 	u.Email = misc.TrimEmail(u.Email)
-
+	if a.GetLoginTx(tx, u.Email) != nil {
+		return ErrEmailExists
+	}
 	if err = u.Check(true); err != nil {
 		return
 	}
