@@ -29,11 +29,11 @@ type Post struct {
 	Location *misc.GeoRecord `json:"location,omitempty"`
 
 	// Stats
-	Likes      float32 `json:"likes,omitempty"`
-	LikesDelta float32 `json:"lDelta,omitempty"`
+	Likes      float64 `json:"likes,omitempty"`
+	LikesDelta float64 `json:"lDelta,omitempty"`
 
-	Comments      float32 `json:"comments,omitempty"`
-	CommentsDelta float32 `json:"cDelta,omitempty"`
+	Comments      float64 `json:"comments,omitempty"`
+	CommentsDelta float64 `json:"cDelta,omitempty"`
 
 	// Type
 	Type string `json:"type,omitempty"` // "photo" or "video"
@@ -51,11 +51,11 @@ type PostStats struct {
 }
 
 type PostComments struct {
-	Count float32 `json:"count"`
+	Count float64 `json:"count"`
 }
 
 type PostLikes struct {
-	Count float32 `json:"count"`
+	Count float64 `json:"count"`
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {

@@ -86,18 +86,18 @@ type Location struct {
 }
 
 type Comments struct {
-	Count float32 `json:"count"`
+	Count float64 `json:"count"`
 }
 
 type Likes struct {
-	Count float32 `json:"count"`
+	Count float64 `json:"count"`
 }
 
 type Caption struct {
 	Msg string `json:"text"`
 }
 
-func getPostInfo(id string, cfg *config.Config) (float32, float32, []*Post, *misc.GeoRecord, error) {
+func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *misc.GeoRecord, error) {
 	// Info for last 30 posts
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=20
 	var latestGeo *misc.GeoRecord
@@ -121,7 +121,7 @@ func getPostInfo(id string, cfg *config.Config) (float32, float32, []*Post, *mis
 	}
 
 	var (
-		likes, comments float32
+		likes, comments float64
 		published       int64
 	)
 
@@ -183,10 +183,10 @@ type UserData struct {
 }
 
 type Counts struct {
-	Followers float32 `json:"followed_by"`
+	Followers float64 `json:"followed_by"`
 }
 
-func getUserInfo(id string, cfg *config.Config) (flw float32, url string, err error) {
+func getUserInfo(id string, cfg *config.Config) (flw float64, url string, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
 	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
 	var user BasicUser
@@ -202,7 +202,7 @@ func getUserInfo(id string, cfg *config.Config) (flw float32, url string, err er
 	if user.Data != nil {
 		url = user.Data.Website
 		if user.Data.Counts != nil {
-			flw = float32(user.Data.Counts.Followers)
+			flw = float64(user.Data.Counts.Followers)
 		}
 	}
 

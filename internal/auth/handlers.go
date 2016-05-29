@@ -170,7 +170,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 // SignUpHelper handles common user sign up operations, returns a *User.
 // if nil is returned, it means it failed and already returned an http error
 func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
-	var suser specUser
+	var suser SpecUser
 	switch sup.Type {
 	case AdvertiserScope:
 		suser = GetAdvertiser(&sup.User)

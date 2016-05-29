@@ -65,7 +65,7 @@ func getDateFromTime(t time.Time) string {
 	)
 }
 
-func degradeRep(val int32, rep float32) float32 {
+func degradeRep(val int32, rep float64) float64 {
 	if val > 0 && val < 5 {
 		rep = rep * 0.75
 	} else if val >= 5 && val < 20 {

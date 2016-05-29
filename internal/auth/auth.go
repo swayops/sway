@@ -133,8 +133,20 @@ func (a *Auth) SignIn(email, pass string) (l *Login, stok string, err error) {
 	return
 }
 
+func (a *Auth) GetUsersByTypeTx(tx *bolt.Tx, typ Scope, fn func(u *User) error) error {
+	return tx.Bucket([]byte(a.cfg.Bucket.User)).ForEach(func(k []byte, v []byte) error {
+		var u User
+		if json.Unmarshal(v, &u) == nil && (u.Type == typ || typ == AllScopes) {
+			if err := fn(&u); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 type Token struct {
-	UserID  string `json:"userID `
+	UserID  string `json:"userId"`
 	Email   string `json:"email"`
 	Expires int64  `json:"expires"`
 }

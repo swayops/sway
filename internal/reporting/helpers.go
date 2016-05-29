@@ -90,7 +90,7 @@ func getViews(st *Stats, eng int32) int32 {
 	if st.Views == 0 {
 		// There are no concrete views so lets gueestimate!
 		// Assume engagement rate is 4% of views!
-		views = int32(float32(eng) / 0.04)
+		views = int32(float64(eng) / 0.04)
 	} else {
 		views += st.Views
 	}

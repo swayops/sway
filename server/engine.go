@@ -207,7 +207,7 @@ func billing(s *Server) error {
 				var (
 					inf       influencer.Influencer
 					v         []byte
-					agencyFee float32
+					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
@@ -246,7 +246,7 @@ func billing(s *Server) error {
 					inf       influencer.Influencer
 					agUser    *auth.User
 					v         []byte
-					agencyFee float32
+					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
 					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
@@ -276,7 +276,7 @@ func billing(s *Server) error {
 				formatted := fmt.Sprintf(
 					talentAgencyInvoiceFormat,
 					agUser.Name,
-					agUser.Id,
+					agUser.ID,
 					infData.Payout*agencyFee,
 				)
 				log.Println(formatted)
@@ -312,7 +312,7 @@ func billing(s *Server) error {
 					// budget that was saved to db last month.. and that should be
 					// used now
 					var (
-						leftover, pending float32
+						leftover, pending float64
 					)
 					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, budget.GetLastMonthBudgetKey())
 					if err == nil && store != nil {

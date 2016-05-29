@@ -33,10 +33,10 @@ type InfluencerLoad struct {
 }
 
 type Influencer struct {
-	Id string `json:"id"`
+	Id string `json:"id,omitempty"`
 
 	// Name of the influencer
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
@@ -72,8 +72,8 @@ type Influencer struct {
 	Timeouts int32 `json:"timeouts,omitempty"`
 
 	// Sway Rep scores by date
-	Rep        map[string]float32 `json:"historicRep,omitempty"`
-	CurrentRep float32            `json:"rep,omitempty"`
+	Rep        map[string]float64 `json:"historicRep,omitempty"`
+	CurrentRep float64            `json:"rep,omitempty"`
 }
 
 func New(name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
@@ -241,7 +241,7 @@ func (inf *Influencer) setSwayRep() {
 	// - Timeouts
 	// - Cancellations
 
-	var rep float32
+	var rep float64
 	if inf.Facebook != nil {
 		rep += inf.Facebook.GetScore()
 	}
@@ -255,13 +255,13 @@ func (inf *Influencer) setSwayRep() {
 		rep += inf.YouTube.GetScore()
 	}
 
-	rep = rep * (1 + float32(len(inf.CompletedDeals))*float32(0.5))
+	rep = rep * (1 + float64(len(inf.CompletedDeals))*float64(0.5))
 
 	rep = degradeRep(inf.Timeouts, rep)
 	rep = degradeRep(inf.Cancellations, rep)
 
 	if inf.Rep == nil {
-		inf.Rep = make(map[string]float32)
+		inf.Rep = make(map[string]float64)
 	}
 
 	inf.Rep[getDate()] = rep
@@ -309,7 +309,7 @@ func (inf *Influencer) CleanCompletedDeals() []*common.Deal {
 	return cleanDeals
 }
 
-func (inf *Influencer) Clean() {
+func (inf *Influencer) Clean() *Influencer {
 	if inf.Facebook != nil {
 		inf.FbUsername = inf.Facebook.Id
 		inf.Facebook = nil
@@ -329,21 +329,18 @@ func (inf *Influencer) Clean() {
 	inf.ActiveDeals = nil
 	inf.CompletedDeals = nil
 	inf.Rep = nil
+
+	return inf
 }
 
-func GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, infId, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
+
 	var (
 		v   []byte
 		err error
-		inf Influencer
 	)
-
-	db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(cfg.Bucket.Influencer)).Get([]byte(infId))
-		return nil
-	})
 
 	var infDeals []*common.Deal
 	if err = json.Unmarshal(v, &inf); err != nil {

@@ -13,14 +13,14 @@ type Post struct {
 	Published FbTime `json:"published,omitempty"`
 
 	// Stats
-	Likes      float32 `json:"likes,omitempty"`
-	LikesDelta float32 `json:"lDelta,omitempty"`
+	Likes      float64 `json:"likes,omitempty"`
+	LikesDelta float64 `json:"lDelta,omitempty"`
 
-	Shares      float32 `json:"shares,omitempty"`
-	SharesDelta float32 `json:"shDelta,omitempty"`
+	Shares      float64 `json:"shares,omitempty"`
+	SharesDelta float64 `json:"shDelta,omitempty"`
 
-	Comments      float32 `json:"comments,omitempty"`
-	CommentsDelta float32 `json:"cDelta,omitempty"`
+	Comments      float64 `json:"comments,omitempty"`
+	CommentsDelta float64 `json:"cDelta,omitempty"`
 
 	// Type
 	Type string `json:"type,omitempty"` // "video", "photo", "shared_story", "link"

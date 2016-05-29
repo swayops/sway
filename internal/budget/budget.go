@@ -32,28 +32,28 @@ import (
 // }
 
 var (
-	TalentAgencyFee = float32(0.125) // 12.5%
+	TalentAgencyFee = float64(0.125) // 12.5%
 	ErrUnmarshal    = errors.New("Failed to unmarshal data!")
 	ErrNotFound     = errors.New("CID not found!")
 )
 
 type Store struct {
-	Budget    float32 `json:"budget,omitempty"`
-	Pending   float32 `json:"pending,omitempty"`  // If the budget was lowered, this budget will be used next month
-	Leftover  float32 `json:"leftover,omitempty"` // Left over budget from last month
-	Spendable float32 `json:"spendable,omitempty"`
-	Spent     float32 `json:"spent,omitempty"`
+	Budget    float64 `json:"budget,omitempty"`
+	Pending   float64 `json:"pending,omitempty"`  // If the budget was lowered, this budget will be used next month
+	Leftover  float64 `json:"leftover,omitempty"` // Left over budget from last month
+	Spendable float64 `json:"spendable,omitempty"`
+	Spent     float64 `json:"spent,omitempty"`
 
-	DspFee      float32                    `json:"dspFee,omitempty"`
-	ExchangeFee float32                    `json:"exchangeFee,omitempty"`
+	DspFee      float64                    `json:"dspFee,omitempty"`
+	ExchangeFee float64                    `json:"exchangeFee,omitempty"`
 	Influencers map[string]*InfluencerData `json:"influencers,omitempty"`
 }
 
 type InfluencerData struct {
-	Payout float32 `json:"payout,omitempty"`
+	Payout float64 `json:"payout,omitempty"`
 }
 
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float32, billing bool) error {
+func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float64, billing bool) error {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
 		key := getBudgetKey()
@@ -79,7 +79,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			days := daysInMonth(now.Year(), now.Month())
 			daysUntilEnd := days - now.Day() + 1
 
-			monthlyBudget = (cmp.Budget / float32(days)) * float32(daysUntilEnd)
+			monthlyBudget = (cmp.Budget / float64(days)) * float64(daysUntilEnd)
 		} else {
 			// TODAY IS BILLING DAY! (first of the month)
 			// Is there a newBudget (pending) value (i.e. a lower budget)?
@@ -121,7 +121,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 	return nil
 }
 
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float32) error {
+func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float64) error {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		days := daysInMonth(now.Year(), now.Month())
 		daysUntilEnd := days - now.Day() + 1
 
-		tbaBudget := (diffBudget / float32(days)) * float32(daysUntilEnd)
+		tbaBudget := (diffBudget / float64(days)) * float64(daysUntilEnd)
 
 		tbaDspFee := tbaBudget * dspFee
 		tbaExchangeFee := tbaBudget * exchangeFee
@@ -248,33 +248,33 @@ func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Stor
 		stats.Likes += int32(deal.Tweet.FavoritesDelta)
 		stats.Published = int32(deal.Tweet.CreatedAt.Unix())
 
-		store.deductSpendable(float32(deal.Tweet.RetweetsDelta) * TW_RETWEET)
-		store.deductSpendable(float32(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
+		store.deductSpendable(float64(deal.Tweet.RetweetsDelta) * TW_RETWEET)
+		store.deductSpendable(float64(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
 		stats.Likes += int32(deal.Facebook.LikesDelta)
 		stats.Shares += int32(deal.Facebook.SharesDelta)
 		stats.Comments += int32(deal.Facebook.CommentsDelta)
 		stats.Published = int32(deal.Facebook.Published.Unix())
 
-		store.deductSpendable(float32(deal.Facebook.LikesDelta) * FB_LIKE)
-		store.deductSpendable(float32(deal.Facebook.SharesDelta) * FB_SHARE)
-		store.deductSpendable(float32(deal.Facebook.CommentsDelta) * FB_COMMENT)
+		store.deductSpendable(float64(deal.Facebook.LikesDelta) * FB_LIKE)
+		store.deductSpendable(float64(deal.Facebook.SharesDelta) * FB_SHARE)
+		store.deductSpendable(float64(deal.Facebook.CommentsDelta) * FB_COMMENT)
 	} else if deal.Instagram != nil {
 		stats.Likes += int32(deal.Instagram.LikesDelta)
 		stats.Comments += int32(deal.Instagram.CommentsDelta)
 		stats.Published = deal.Instagram.Published
 
-		store.deductSpendable(float32(deal.Instagram.LikesDelta) * INSTA_LIKE)
-		store.deductSpendable(float32(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
+		store.deductSpendable(float64(deal.Instagram.LikesDelta) * INSTA_LIKE)
+		store.deductSpendable(float64(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
 		stats.Views += int32(deal.YouTube.ViewsDelta)
 		stats.Likes += int32(deal.YouTube.LikesDelta)
 		stats.Comments += int32(deal.YouTube.CommentsDelta)
 		stats.Published = deal.YouTube.Published
 
-		store.deductSpendable(float32(deal.YouTube.ViewsDelta) * YT_VIEW)
-		store.deductSpendable(float32(deal.YouTube.LikesDelta) * YT_LIKE)
-		store.deductSpendable(float32(deal.YouTube.CommentsDelta) * YT_COMMENT)
+		store.deductSpendable(float64(deal.YouTube.ViewsDelta) * YT_VIEW)
+		store.deductSpendable(float64(deal.YouTube.LikesDelta) * YT_LIKE)
+		store.deductSpendable(float64(deal.YouTube.CommentsDelta) * YT_COMMENT)
 	}
 
 	tmpSpent := oldSpendable - store.Spendable

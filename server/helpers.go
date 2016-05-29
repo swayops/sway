@@ -14,14 +14,21 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
-func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
+func clearDeal(s *Server, user *auth.User, dealId, influencerId, campaignId string, timeout bool) error {
 	// Unssign the deal & update the campaign and influencer buckets
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+		if influencerId != user.ID {
+			user = s.auth.GetUserTx(tx, influencerId)
+		}
+
 		var (
-			cmp *common.Campaign
+			inf = auth.GetInfluencer(user)
+			cmp common.Campaign
 			b   []byte
 		)
-
+		if inf == nil {
+			return auth.ErrInvalidUserID
+		}
 		err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 		if err != nil {
 			return err
@@ -38,13 +45,8 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Append to the influencer's cancellations and remove from active
-		var inf *influencer.Influencer
-		err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(influencerId)), &inf)
-		if err != nil {
-			return err
-		}
 
-		activeDeals := []*common.Deal{}
+		var activeDeals []*common.Deal
 		for _, deal := range inf.ActiveDeals {
 			if deal.Id != dealId {
 				activeDeals = append(activeDeals, deal)
@@ -59,16 +61,12 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Save the Influencer
-		if b, err = json.Marshal(inf); err != nil {
-			return err
-		}
-
-		if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
-			return err
+		if err = user.StoreWithData(s.auth, tx, inf); err != nil {
+			return
 		}
 
 		// Save the campaign
-		return saveCampaign(tx, cmp, s)
+		return saveCampaign(tx, &cmp, s)
 	}); err != nil {
 		return err
 	}
@@ -105,39 +103,25 @@ func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
 	return cmp
 }
 
-func getAdvertiserFees(s *Server, advId string) (float32, float32) {
-	var (
-		g   auth.Advertiser
-		v   []byte
-		err error
-	)
+func getAdvertiserFees(s *Server, advId string) (float64, float64) {
+	var g *auth.Advertiser
 
-	if err = s.db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(advId))
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		g = s.auth.GetAdvertiserTx(tx, nil, advId)
 		return nil
 	}); err != nil {
-		return 0, 0
-	}
-
-	if err = json.Unmarshal(v, &g); err != nil {
 		return 0, 0
 	}
 
 	return g.DspFee, g.ExchangeFee
 }
 
-func getAdvertiserFeesFromTx(tx *bolt.Tx, cfg *config.Config, advId string) (float32, float32) {
-	var (
-		g   auth.Advertiser
-		v   []byte
-		err error
-	)
-	v = tx.Bucket([]byte(cfg.Bucket.Advertiser)).Get([]byte(advId))
-	if err = json.Unmarshal(v, &g); err != nil {
-		return 0, 0
+func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, float64) {
+	if adv := a.GetAdvertiserTx(tx, nil, advId); adv != nil {
+		return adv.DspFee, adv.ExchangeFee
 	}
 
-	return g.DspFee, g.ExchangeFee
+	return 0, 0
 }
 
 func saveInfluencer(tx *bolt.Tx, inf *influencer.Influencer, cfg *config.Config) error {
@@ -203,8 +187,8 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
 
-func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float32 {
-	if ag := s.auth.GetTalentAgencyTx(tx, id); ag != nil {
+func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float64 {
+	if ag := s.auth.GetTalentAgencyTx(tx, nil, id); ag != nil {
 		return ag.Fee
 	}
 	return 0

@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
+	"github.com/boltdb/bolt"
 )
 
 const (
@@ -19,7 +21,7 @@ type TalentAgency struct {
 }
 
 func GetTalentAgency(u *User) *TalentAgency {
-	if u.Type != TalentAgencyScope {
+	if u == nil || u.Type != TalentAgencyScope {
 		return nil
 	}
 	var ag TalentAgency
@@ -31,6 +33,13 @@ func GetTalentAgency(u *User) *TalentAgency {
 		ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
 	}
 	return &ag
+}
+
+func (a *Auth) GetTalentAgencyTx(tx *bolt.Tx, curUser *User, userID string) *TalentAgency {
+	if curUser != nil && curUser.ID == userID {
+		return GetTalentAgency(curUser)
+	}
+	return GetTalentAgency(a.GetUserTx(tx, userID))
 }
 
 func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {

@@ -170,19 +170,19 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
-		putTalentAgency, putTalentAgency, delTalentAgency)
+		nil, putTalentAgency, nil)
 
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
 	// AdAgency
-	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, putAdAgency,
-		putAdAgency, delAdAgency)
+	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
+		putAdAgency, nil)
 
 	adminGroup.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 
 	// Advertiser
-	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, putAdvertiser,
-		putAdvertiser, delAdvertiser)
+	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, nil,
+		putAdvertiser, nil)
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)
@@ -205,15 +205,14 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
-		postInfluencer, putInfluencer, delInfluencer)
+		nil, putInfluencer, nil)
 
-	// TODO: ask
-	verifyGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
-	verifyGroup.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
-	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
-	verifyGroup.GET("/setCategory/:influencerId/:category", setCategory(srv))
+	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
+	adminGroup.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
+	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", infOwnership, setPlatform(srv))
+	verifyGroup.GET("/setCategory/:influencerId/:category", infOwnership, setCategory(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
-	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infScope, infOwnership, setInviteCode(srv))
+	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))

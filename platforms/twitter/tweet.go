@@ -16,32 +16,32 @@ import (
 
 type Tweets []*Tweet
 
-func (tws Tweets) Retweets() (n float32) {
+func (tws Tweets) Retweets() (n float64) {
 	for _, t := range tws {
-		n += float32(t.Retweets)
+		n += float64(t.Retweets)
 	}
 	return
 }
 
-func (tws Tweets) AvgRetweets() float32 {
-	return tws.Retweets() / float32(len(tws))
+func (tws Tweets) AvgRetweets() float64 {
+	return tws.Retweets() / float64(len(tws))
 }
 
 // likes == favorites
-func (tws Tweets) Likes() (n float32) {
+func (tws Tweets) Likes() (n float64) {
 	for _, t := range tws {
-		n += float32(t.Favorites)
+		n += float64(t.Favorites)
 	}
 	return
 }
 
-func (tws Tweets) AvgLikes() float32 {
-	return tws.Likes() / float32(len(tws))
+func (tws Tweets) AvgLikes() float64 {
+	return tws.Likes() / float64(len(tws))
 }
 
-func (tws Tweets) Followers() (f float32) {
+func (tws Tweets) Followers() (f float64) {
 	if len(tws) > 0 && tws[0].User != nil {
-		f = float32(tws[0].User.Followers)
+		f = float64(tws[0].User.Followers)
 	}
 	return
 }

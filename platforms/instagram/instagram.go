@@ -10,10 +10,10 @@ import (
 type Instagram struct {
 	UserName      string  `json:"userName"`
 	UserId        string  `json:"userId"`
-	AvgLikes      float32 `json:"avgLikes,omitempty"`    // Per post
-	AvgComments   float32 `json:"avgComments,omitempty"` // Per post
-	Followers     float32 `json:"followers,omitempty"`
-	FollowerDelta float32 `json:"fDelta,omitempty"` // Follower delta since last UpdateData run
+	AvgLikes      float64 `json:"avgLikes,omitempty"`    // Per post
+	AvgComments   float64 `json:"avgComments,omitempty"` // Per post
+	Followers     float64 `json:"followers,omitempty"`
+	FollowerDelta float64 `json:"fDelta,omitempty"` // Follower delta since last UpdateData run
 
 	LastLocation *misc.GeoRecord `json:"geo,omitempty"` // All locations since last update
 
@@ -22,7 +22,7 @@ type Instagram struct {
 
 	LinkInBio string `json:"link,omitempty"`
 
-	Score float32
+	Score float64
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
@@ -73,6 +73,6 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 	return nil
 }
 
-func (in *Instagram) GetScore() float32 {
+func (in *Instagram) GetScore() float64 {
 	return (in.Followers * 3) + (in.AvgComments * 2) + (in.AvgLikes)
 }

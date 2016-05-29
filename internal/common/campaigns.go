@@ -14,7 +14,7 @@ type Campaign struct {
 	Id   string `json:"id"` // Should not passed for putCampaign
 	Name string `json:"name"`
 
-	Budget float32 `json:"budget"` // Always monthly
+	Budget float64 `json:"budget"` // Always monthly
 
 	AdvertiserId string `json:"advertiserId"`
 	AgencyId     string `json:"agencyId"`

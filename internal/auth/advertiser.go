@@ -1,25 +1,38 @@
 package auth
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/boltdb/bolt"
+)
 
 type Advertiser struct {
-	Name   string `json:"name,omitempty"`
-	Status bool   `json:"status,omitempty"`
+	ID       string `json:"id,omitempty"`
+	AgencyID string `json:"agencyId,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Status   bool   `json:"status,omitempty"`
 
 	ExchangeFee float64 `json:"exchangeFee,omitempty"` // Percentage (decimal)
 	DspFee      float64 `json:"dspFee,omitempty"`      // Percentage (decimal)
 }
 
 func GetAdvertiser(u *User) *Advertiser {
-	if u.Type != AdvertiserScope {
+	if u == nil || u.Type != AdvertiserScope {
 		return nil
 	}
 	var adv Advertiser
 	if json.Unmarshal(u.Data, &adv) != nil || adv.ExchangeFee == 0 {
 		return nil
 	}
-	adv.Name, adv.Status = u.Name, u.Status
+	adv.ID, adv.AgencyID, adv.Name, adv.Status = u.ID, u.ParentID, u.Name, u.Status
 	return &adv
+}
+
+func (a *Auth) GetAdvertiserTx(tx *bolt.Tx, curUser *User, userID string) *Advertiser {
+	if curUser != nil && curUser.ID == userID {
+		return GetAdvertiser(curUser)
+	}
+	return GetAdvertiser(a.GetUserTx(tx, userID))
 }
 
 func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
@@ -30,7 +43,7 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	if adv.Name != "" {
 		u.Name, u.Status = adv.Name, adv.Status
 	}
-	adv.Name, adv.Status = "", false
+	adv.ID, adv.AgencyID, adv.Name, adv.Status = "", "", "", false
 	b, err := json.Marshal(adv)
 	u.Data = b
 	return err

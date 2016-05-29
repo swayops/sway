@@ -11,6 +11,7 @@ import (
 var (
 	ErrInvalidRequest   = errors.New("invalid request")
 	ErrInvalidUserID    = errors.New("invalid user id, hax0r")
+	ErrInvalidParentID  = errors.New("invalid parent id")
 	ErrInvalidAgencyID  = errors.New("invalid agency id")
 	ErrInvalidID        = errors.New("invalid item id")
 	ErrInvalidName      = errors.New("invalid or missing name")
@@ -95,7 +96,7 @@ func getCreds(req *http.Request) (token, key string, isApiKey bool) {
 	return apiKey[:32], apiKey[32:], true
 }
 
-type specUser interface {
+type SpecUser interface {
 	Check() error
 	setToUser(*Auth, *User) error
 }

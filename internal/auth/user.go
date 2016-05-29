@@ -71,6 +71,31 @@ func (u *User) Update(o *User) *User {
 	return u
 }
 
+func (u *User) UpdateData(a *Auth, su SpecUser) error {
+	switch su.(type) {
+	case *AdAgency:
+		if u.Type != AdAgencyScope {
+			return ErrInvalidUserType
+		}
+	case *TalentAgency:
+		if u.Type != TalentAgencyScope {
+			return ErrInvalidUserType
+		}
+	case *Advertiser:
+		if u.Type != AdvertiserScope {
+			return ErrInvalidUserType
+		}
+	case *Influencer:
+		if u.Type != InfluencerScope {
+			return ErrInvalidUserType
+		}
+	}
+	if err := su.Check(); err != nil {
+		return err
+	}
+	return su.setToUser(a, u)
+}
+
 // TODO sort and use binary search
 func (u *User) AddChild(id string) *User {
 	if !u.Owns(id) {
@@ -106,6 +131,13 @@ func (u *User) Check(newUser bool) error {
 
 func (u *User) Store(a *Auth, tx *bolt.Tx) error {
 	return misc.PutTxJson(tx, a.cfg.Bucket.User, u.ID, u)
+}
+
+func (u *User) StoreWithData(a *Auth, tx *bolt.Tx, data SpecUser) error {
+	if err := u.UpdateData(a, data); err != nil {
+		return err
+	}
+	return u.Store(a, tx)
 }
 
 func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
@@ -148,8 +180,16 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 }
 
 func (a *Auth) DeleteUserTx(tx *bolt.Tx, userID string) (err error) {
+	switch userID {
+	case AdminUserID, SwayOpsAdAgencyID, SwayOpsTalentAgencyID:
+		return ErrInvalidID
+	}
 	user := a.GetUserTx(tx, userID)
 	if user == nil {
+		return ErrInvalidUserID
+	}
+	parent := a.GetUserTx(tx, user.ParentID)
+	if parent == nil {
 		return ErrInvalidUserID
 	}
 	uid := []byte(userID)
@@ -161,7 +201,7 @@ func (a *Auth) DeleteUserTx(tx *bolt.Tx, userID string) (err error) {
 	case TalentAgencyScope:
 		a.moveChildrenTx(tx, user, SwayOpsTalentAgencyID)
 	}
-	return
+	return parent.RemoveChild(user.ID).Store(a, tx)
 }
 
 func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {

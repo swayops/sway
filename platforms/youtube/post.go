@@ -19,14 +19,14 @@ type Post struct {
 	Views      float64 `json:"views,omitempty"`
 	ViewsDelta float64 `json:"vDelta,omitempty"`
 
-	Likes      float32 `json:"likes,omitempty"`
-	LikesDelta float32 `json:"lDelta,omitempty"`
+	Likes      float64 `json:"likes,omitempty"`
+	LikesDelta float64 `json:"lDelta,omitempty"`
 
-	Dislikes      float32 `json:"dislikes,omitempty"`
-	DislikesDelta float32 `json:"dlDelta,omitempty"`
+	Dislikes      float64 `json:"dislikes,omitempty"`
+	DislikesDelta float64 `json:"dlDelta,omitempty"`
 
-	Comments      float32 `json:"comments,omitempty"`
-	CommentsDelta float32 `json:"cDelta,omitempty"`
+	Comments      float64 `json:"comments,omitempty"`
+	CommentsDelta float64 `json:"cDelta,omitempty"`
 
 	LastUpdated int32 `json:"lastUpdated,omitempty"`
 }
