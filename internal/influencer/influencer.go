@@ -76,7 +76,7 @@ type Influencer struct {
 	CurrentRep float32            `json:"rep,omitempty"`
 }
 
-func New(name, twitterId, instaId, fbId, ytId, gender, inviteCode string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Name:       name,
 		Id:         misc.PseudoUUID(),
@@ -85,9 +85,11 @@ func New(name, twitterId, instaId, fbId, ytId, gender, inviteCode string, cats [
 		Categories: cats,
 	}
 
-	agencyId := common.GetIdFromInvite(inviteCode)
+	// TODO move to auth
+
+	agencyId := common.GetIDFromInvite(inviteCode)
 	if agencyId == "" {
-		agencyId = common.DEFAULT_SWAY_TALENT_AGENCY
+		agencyId = defAgencyID
 	}
 
 	inf.AgencyId = agencyId

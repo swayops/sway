@@ -44,7 +44,7 @@ func GetInfluencerFromId(id string, db *bolt.DB, cfg *config.Config) (*Influence
 	}
 
 	if err = json.Unmarshal(v, &g); err != nil {
-		return &g, err
+		return nil, err
 	}
 
 	return &g, nil

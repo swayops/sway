@@ -163,7 +163,7 @@ func (a *Auth) refreshToken(stok string, dur time.Duration) {
 func (a *Auth) moveChildrenTx(tx *bolt.Tx, user *User, newParentID string) {
 	for _, uid := range user.Children {
 		if u := a.GetUserTx(tx, uid); u != nil && u.ParentID == u.ID {
-			u.ParentID = SwayOpsTalentAgencyID
+			u.ParentID = newParentID
 			u.Store(a, tx)
 		}
 	}

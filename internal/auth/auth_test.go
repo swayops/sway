@@ -5,9 +5,9 @@ import "testing"
 func TestScopes(t *testing.T) {
 	var (
 		sm = ScopeMap{
-			Admin:            {true, true, true, true},
-			AdvertiserAgency: {Post: true, Delete: true},
-			AllUsers:         {Get: true},
+			AdminScope:    {true, true, true, true},
+			AdAgencyScope: {Post: true, Delete: true},
+			AllScopes:     {Get: true},
 		}
 
 		tests = []struct {
@@ -15,16 +15,15 @@ func TestScopes(t *testing.T) {
 			m  string
 			ex bool
 		}{
-			{Admin, "GET", true},
-			{Admin, "invalid", false},
-			{AdvertiserAgency, "POST", true},
-			{AdvertiserAgency, "PUT", false},
-			{AdvertiserAgency, "DELETE", true},
-			{AdvertiserAgency, "GET", true}, // because it's inherited from AllUsers
-			{Influencer, "GET", true},
-			{Influencer, "POST", false},
-			{TalentAgency, "GET", true},
-			{TalentAgency, "POST", false},
+			{AdminScope, "GET", true},
+			{AdAgencyScope, "POST", true},
+			{AdAgencyScope, "PUT", false},
+			{AdAgencyScope, "DELETE", true},
+			{AdAgencyScope, "GET", true}, // because it's inherited from AllUsers
+			{InfluencerScope, "GET", true},
+			{InfluencerScope, "POST", false},
+			{TalentAgencyScope, "GET", true},
+			{TalentAgencyScope, "POST", false},
 		}
 	)
 

@@ -12,6 +12,14 @@ const (
 	AllScopes Scope = `*` // this is a special catch-all case for matching
 )
 
+func (s Scope) IsOneOf(os ...Scope) bool {
+	for _, o := range os {
+		if s == o {
+			return true
+		}
+	}
+	return false
+}
 func (s Scope) Valid() bool {
 	switch s {
 	case AdminScope, AdAgencyScope, TalentAgencyScope, AdvertiserScope, InfluencerScope:

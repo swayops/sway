@@ -24,6 +24,11 @@ var (
 	ErrPasswordMismatch = errors.New("password mismatch")
 	ErrUnauthorized     = errors.New("unauthorized")
 	ErrUnexpected       = errors.New("unexpected system error, our highly trained bug squashers have been summoned")
+	ErrBadGender        = errors.New("Please provide a gender ('m' or 'f')")
+	ErrNoAgency         = errors.New("Please provide an agency id")
+	ErrNoGeo            = errors.New("Please provide a geo")
+	ErrNoName           = errors.New("Please provide a name")
+	ErrBadCat           = errors.New("Please provide a valid category")
 )
 
 func GetCtxUser(c *gin.Context) *User {
@@ -88,4 +93,9 @@ func getCreds(req *http.Request) (token, key string, isApiKey bool) {
 		return "", "", false
 	}
 	return apiKey[:32], apiKey[32:], true
+}
+
+type specUser interface {
+	Check() error
+	setToUser(*Auth, *User) error
 }

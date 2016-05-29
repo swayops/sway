@@ -1,14 +1,10 @@
 package auth
 
-import (
-	"encoding/json"
-
-	"github.com/boltdb/bolt"
-)
+import "encoding/json"
 
 type Advertiser struct {
-	Name   string `json:"name"`
-	Status string `json:"status,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Status bool   `json:"status,omitempty"`
 
 	ExchangeFee float64 `json:"exchangeFee,omitempty"` // Percentage (decimal)
 	DspFee      float64 `json:"dspFee,omitempty"`      // Percentage (decimal)
@@ -19,15 +15,25 @@ func GetAdvertiser(u *User) *Advertiser {
 		return nil
 	}
 	var adv Advertiser
-	if json.Unmarshal(u.Meta, &adv) != nil || adv.Name == "" {
+	if json.Unmarshal(u.Data, &adv) != nil || adv.ExchangeFee == 0 {
 		return nil
 	}
+	adv.Name, adv.Status = u.Name, u.Status
 	return &adv
 }
 
-func (adv *Advertiser) setToUser(u *User) {
-	b, _ := json.Marshal(adv)
-	u.Meta = b
+func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
+	if adv == nil {
+		return ErrUnexpected
+	}
+
+	if adv.Name != "" {
+		u.Name, u.Status = adv.Name, adv.Status
+	}
+	adv.Name, adv.Status = "", false
+	b, err := json.Marshal(adv)
+	u.Data = b
+	return err
 }
 
 func (adv *Advertiser) Check() error {
@@ -44,14 +50,4 @@ func (adv *Advertiser) Check() error {
 	}
 
 	return nil
-}
-
-func (a *Auth) setAdvertiserTx(tx *bolt.Tx, user *User, adv *Advertiser) error {
-	if err := adv.Check(); err != nil {
-		return err
-	}
-
-	adv.setToUser(user)
-
-	return user.Store(a, tx)
 }

@@ -4,9 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
-
-	"github.com/boltdb/bolt"
 )
 
 const (
@@ -14,11 +11,11 @@ const (
 )
 
 type TalentAgency struct {
-	Name   string  `json:"name,omitempty"`
-	Fee    float64 `json:"fee,omitempty"` // Percentage (decimal)
-	Status bool    `json:"status,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Status bool   `json:"status,omitempty"`
 
-	InviteCode string `json:"inviteCode,omitempty"`
+	Fee        float64 `json:"fee,omitempty"` // Percentage (decimal)
+	InviteCode string  `json:"inviteCode,omitempty"`
 }
 
 func GetTalentAgency(u *User) *TalentAgency {
@@ -26,15 +23,27 @@ func GetTalentAgency(u *User) *TalentAgency {
 		return nil
 	}
 	var ag TalentAgency
-	if json.Unmarshal(u.Meta, &ag) != nil {
+	if json.Unmarshal(u.Data, &ag) != nil {
 		return nil
+	}
+	ag.Name, ag.Status = u.Name, u.Status
+	if ag.InviteCode == "" {
+		ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
 	}
 	return &ag
 }
 
-func (ag *TalentAgency) setToUser(u *User) {
-	b, _ := json.Marshal(ag)
-	u.Meta = b
+func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
+	if ag.Name != "" {
+		u.Name, u.Status = ag.Name, ag.Status
+	}
+	ag.Name, ag.Status = "", false
+	if ag.InviteCode == "" && u.ID != "" {
+		base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
+	}
+	b, err := json.Marshal(ag)
+	u.Data = b
+	return err
 }
 
 func (ag *TalentAgency) Check() error {
@@ -51,30 +60,4 @@ func (ag *TalentAgency) Check() error {
 	}
 
 	return nil
-}
-
-func (ag *TalentAgency) SetInviteCode(u *User) {
-	ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
-}
-
-func GetIdFromInvite(code string) string {
-	dec, err := base64.RawURLEncoding.DecodeString(code)
-	if err != nil {
-		return ""
-	}
-
-	parts := strings.Split(string(dec), "::")
-	if len(parts) == 2 {
-		return parts[1]
-	}
-	return ""
-}
-
-func (a *Auth) setTalentAgencyTx(tx *bolt.Tx, u *User, ag *TalentAgency) error {
-	if err := ag.Check(); err != nil {
-		return err
-	}
-	ag.setToUser(u)
-
-	return u.Store(a, tx)
 }

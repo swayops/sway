@@ -50,13 +50,9 @@ func putTalentAgency(s *Server) gin.HandlerFunc {
 
 func getTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var ag *auth.TalentAgency
-		s.db.View(func(tx *bolt.Tx) error {
-			ag = s.auth.GetTalentAgencyTx(tx, c.Param("id"))
-			return nil
-		})
+		ag := auth.GetTalentAgency(auth.GetCtxUser(c))
 		if ag == nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.AbortWithErr(c, 400, auth.ErrInvalidAgencyID)
 			return
 		}
 		c.JSON(200, ag)
@@ -65,9 +61,9 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 
 func delTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id, user := c.Param("id"), auth.GetCtxUser(c)
+		id := c.Param("id")
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return s.auth.DeleteTalentAgencyTx(tx, user, id)
+			return s.auth.DelUserTx(tx, id)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return

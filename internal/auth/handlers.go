@@ -60,7 +60,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 	return func(c *gin.Context) {
 		u, itemID := GetCtxUser(c), c.Param(paramName)
 		if u == nil || itemID == "" {
-			misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
+			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
 		if u.Type == AdminScope { // admin owns everything
@@ -68,48 +68,42 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 		}
 		var ok bool
 		switch itemType {
-		case AdAgencyItem, TalentAgencyItem:
-			ok = u.OwnsItem(itemType, itemID)
 		case AdvertiserItem:
-			a.db.View(func(tx *bolt.Tx) error {
-				adv := a.GetAdvertiserTx(tx, itemID)
-				if ok = adv != nil; ok {
-					ok = u.Type == AdAgencyScope && u.ID == adv.AgencyID
-					ok = ok || u.OwnsItem(AdvertiserItem, adv.ID)
-					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyID)
-				}
-				return nil
-			})
+			switch u.Type {
+			case AdvertiserScope:
+				ok = u.ID == itemID
+			case AdAgencyScope:
+				ok = u.Owns(itemID)
+			}
 		case CampaignItem:
+			var ownerID string
 			a.db.View(func(tx *bolt.Tx) error {
 				var cmp common.Campaign
-				if misc.GetTxJson(tx, a.cfg.Bucket.Campaign, itemID, &cmp) != nil {
-					return nil
-				}
-				if ok = u.Type == AdvertiserScope && cmp.AdvertiserID == u.ID; ok {
-					return nil
-				}
-				adv := a.GetAdvertiserTx(tx, cmp.AdvertiserID)
-				if ok = adv != nil; ok {
-					ok = u.Type == AdAgencyScope && u.ID == adv.AgencyID
-					ok = ok || u.OwnsItem(AdvertiserItem, adv.ID)
-					ok = ok || u.OwnsItem(AdAgencyItem, adv.AgencyID)
-				}
+				misc.GetTxJson(tx, a.cfg.Bucket.Campaign, itemID, &cmp)
+				ownerID = cmp.AdvertiserId
 				return nil
 			})
+			switch u.Type {
+			case AdvertiserScope:
+				ok = u.ID == ownerID
+			case AdAgencyScope:
+				ok = u.Owns(ownerID)
+			}
+
 		case InfluencerItem:
+			var ownerID string
 			a.db.View(func(tx *bolt.Tx) error {
 				var inf influencer.Influencer
-				if misc.GetTxJson(tx, a.cfg.Bucket.Influencer, itemID, &inf) != nil {
-					return nil
-				}
-				if ok = u.Type == TalentAgencyScope && inf.AgencyID == u.ID; ok {
-					return nil
-				}
-				ok = u.OwnsItem(InfluencerItem, inf.ID) // This needs to be done through the influencer creation func
-				ok = ok || u.OwnsItem(TalentAgencyItem, inf.AgencyID)
+				misc.GetTxJson(tx, a.cfg.Bucket.Influencer, itemID, &inf)
+				ownerID = inf.AgencyId
 				return nil
 			})
+			switch u.Type {
+			case InfluencerScope:
+				ok = u.ID == ownerID
+			case TalentAgencyScope:
+				ok = u.Owns(ownerID)
+			}
 		}
 		if !ok {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
@@ -175,38 +169,80 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 
 // SignUpHelper handles common user sign up operations, returns a *User.
 // if nil is returned, it means it failed and already returned an http error
-func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser) (_ bool) {
-	if sup.Type == "" {
+func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
+	var suser specUser
+	switch sup.Type {
+	case AdvertiserScope:
+		suser = GetAdvertiser(&sup.User)
+	case InfluencerScope:
+		suser = getInfluencerLoad(&sup.User)
+	case AdAgencyScope:
+		suser = GetAdAgency(&sup.User)
+	case TalentAgencyScope:
+		suser = GetTalentAgency(&sup.User)
+	default:
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidUserType)
 		return
 	}
-	currentUser := GetCtxUser(c)
-	if currentUser != nil {
-		if !currentUser.Type.CanCreate(sup.Type) {
+
+	if err := a.db.View(func(tx *bolt.Tx) error {
+		if a.GetLoginTx(tx, sup.Email) != nil {
+			return ErrUserExists
+		}
+		return nil
+	}); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return
+	}
+
+	curUser := GetCtxUser(c)
+	if curUser != nil {
+		if !curUser.Type.CanCreate(sup.Type) {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
-		sup.ParentID = currentUser.ID
+		sup.ParentID = curUser.ID
 	} else if sup.Type == AdvertiserScope {
 		sup.ParentID = SwayOpsAdAgencyID
 	} else if sup.Type == InfluencerScope {
 		sup.ParentID = SwayOpsTalentAgencyID
 	} else {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
 	}
+
+	if err := suser.Check(); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return
+	}
+
 	if sup.Password != sup.Password2 {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)
 		return
 	}
+
 	if len(sup.Password) < 8 {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrShortPass)
 		return
 	}
+
+	if err := suser.setToUser(a, &sup.User); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, ErrShortPass)
+		return
+	}
+
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		if a.GetLoginTx(tx, sup.Email) != nil {
+		if a.GetLoginTx(tx, sup.Email) != nil { // checked again just in case of a race
 			return ErrUserExists
 		}
-		return a.CreateUserTx(tx, &sup.User, sup.Password)
+
+		if err := a.CreateUserTx(tx, &sup.User, sup.Password); err != nil {
+			return err
+		}
+		if curUser != nil {
+			return curUser.AddChild(sup.ID).Store(a, tx)
+		}
+		return nil
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
@@ -215,12 +251,12 @@ func (a *Auth) SignUpHelper(c *gin.Context, sup *SignupUser) (_ bool) {
 }
 
 func (a *Auth) SignUpHandler(c *gin.Context) {
-	var sup SignupUser
+	var sup signupUser
 	if err := c.Bind(&sup); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
-	if a.SignUpHelper(c, &sup) {
+	if a.signUpHelper(c, &sup) {
 		c.JSON(200, misc.StatusOK(sup.ID))
 	}
 }

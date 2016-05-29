@@ -1,9 +1,19 @@
 package common
 
-type AdAgency struct {
-	// Id will be assigned by backend
-	Id   string `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+import (
+	"encoding/base64"
+	"strings"
+)
 
-	Status bool `json:"status,omitempty"`
+func GetIDFromInvite(code string) string {
+	dec, err := base64.RawURLEncoding.DecodeString(code)
+	if err != nil {
+		return ""
+	}
+
+	parts := strings.Split(string(dec), "::")
+	if len(parts) == 2 {
+		return parts[1]
+	}
+	return ""
 }

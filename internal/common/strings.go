@@ -1,5 +1,7 @@
 package common
 
+import "strings"
+
 func StringsIndexOf(hay []string, needle string) int {
 	for i, s := range hay {
 		if s == needle {
@@ -12,10 +14,19 @@ func StringsIndexOf(hay []string, needle string) int {
 // StringsRemove removes an item out of a slice, this *will* modify the original slice, YMMV
 func StringsRemove(hay []string, needle string) []string {
 	idx := StringsIndexOf(hay, needle)
-	if idx > -1 {
-		copy(hay[idx:], hay[idx+1:])
-		ln := len(hay) - 1
-		hay = hay[:ln:ln]
+	if ln := len(hay) - 1; idx > -1 {
+		if ln == 0 { // len(hay) == 1
+			return hay[:0]
+		}
+		hay[idx] = hay[ln]
+		hay = hay[:ln]
 	}
 	return hay
+}
+
+func LowerSlice(s []string) []string {
+	for i, v := range s {
+		s[i] = strings.ToLower(strings.TrimSpace(v))
+	}
+	return s
 }
