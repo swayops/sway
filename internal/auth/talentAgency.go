@@ -48,7 +48,7 @@ func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
 	}
 	ag.Name, ag.Status = "", false
 	if ag.InviteCode == "" && u.ID != "" {
-		base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
+		ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
 	}
 	b, err := json.Marshal(ag)
 	u.Data = b
