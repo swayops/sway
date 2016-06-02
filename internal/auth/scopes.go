@@ -45,7 +45,7 @@ func (s Scope) CanCreate(child Scope) bool {
 func (s Scope) CanOwn(it ItemType) bool {
 	switch s {
 	case AdminScope:
-		return it == AdAgencyItem || it == TalentAgencyItem
+		return true
 	case AdAgencyScope:
 		return it == AdvertiserItem
 	case TalentAgencyScope:
