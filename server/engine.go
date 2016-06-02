@@ -130,11 +130,7 @@ func depleteBudget(s *Server) error {
 			if deal.Completed == 0 {
 				continue
 			}
-			var inf *auth.Influencer
-			s.db.View(func(tx *bolt.Tx) error {
-				inf = s.auth.GetInfluencerTx(tx, deal.InfluencerId)
-				return nil
-			})
+			inf := s.auth.GetInfluencer(deal.InfluencerId)
 			if inf == nil {
 				log.Println("Missing influencer!")
 				continue
@@ -239,7 +235,7 @@ func billing(s *Server) error {
 		for _, data := range store {
 			for id, infData := range data.Influencers {
 				var (
-					inf       *auth.Influencer
+					inf       = s.auth.GetInfluencer(id)
 					agUser    *auth.User
 					agencyFee float64
 				)

@@ -851,11 +851,8 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 	// Get all deals completed by the influencer in the last X hours
 	return func(c *gin.Context) {
-		var inf *auth.Influencer
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, c.Param("influencerId"))
-			return nil
-		}); err != nil || inf == nil {
+		inf := s.auth.GetInfluencer(c.Param("influencerId"))
+		if inf == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
@@ -953,11 +950,7 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 
 		infId := c.Param("influencerId")
 
-		var inf *auth.Influencer
-		s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, infId)
-			return nil
-		})
+		inf := s.auth.GetInfluencer(infId)
 		if inf == nil {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
@@ -975,11 +968,7 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 		}
 
 		infId := c.Param("infId")
-		var inf *auth.Influencer
-		s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, infId)
-			return nil
-		})
+		inf := s.auth.GetInfluencer(infId)
 		if inf == nil {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
