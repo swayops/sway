@@ -36,6 +36,9 @@ func (a *Auth) GetAdAgency(userID string) (ag *AdAgency) {
 }
 
 func (ag *AdAgency) setToUser(_ *Auth, u *User) error {
+	if ag == nil {
+		return ErrUnexpected
+	}
 	if u.ID == "" {
 		panic("wtfmate?")
 	}

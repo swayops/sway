@@ -45,6 +45,9 @@ func (a *Auth) GetTalentAgency(userID string) (ag *TalentAgency) {
 }
 
 func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
+	if ag == nil {
+		return ErrUnexpected
+	}
 	if u.ID == "" {
 		panic("wtfmate?")
 	}

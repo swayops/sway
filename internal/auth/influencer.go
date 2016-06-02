@@ -83,6 +83,9 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 	if inf == nil {
 		return ErrUnexpected
 	}
+	if u.ID == "" {
+		panic("wtfmate?")
+	}
 	if inf.Name == "" {
 		inf.Name = u.Name
 	}

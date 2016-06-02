@@ -40,10 +40,12 @@ func (a *Auth) GetAdvertiser(userID string) (adv *Advertiser) {
 }
 
 func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
-	if adv == nil || u.Type == AdvertiserScope {
+	if adv == nil {
 		return ErrUnexpected
 	}
-
+	if u.ID == "" {
+		panic("wtfmate?")
+	}
 	if adv.ID == "" { // initial creation
 		adv.ID, adv.AgencyID, adv.Name, adv.Status = u.ID, u.ParentID, u.Name, u.Status
 	} else if adv.ID != u.ID {
@@ -61,11 +63,11 @@ func (adv *Advertiser) Check() error {
 		return ErrUnexpected
 	}
 
-	if adv.ExchangeFee == 0 || adv.ExchangeFee > 0.99 {
+	if adv.ExchangeFee > 0.99 {
 		return ErrInvalidFee
 	}
 
-	if adv.DspFee == 0 || adv.DspFee > 0.99 {
+	if adv.DspFee > 0.99 {
 		return ErrInvalidFee
 	}
 
