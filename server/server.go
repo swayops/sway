@@ -91,9 +91,11 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		log.Println("created admin user, id = ", u.ID)
 
 		u = &auth.User{
-			Name:  "Sway Advertiser Agency",
-			Email: adAdminEmail,
-			Type:  auth.AdAgencyScope,
+			ParentID: "1",
+			Name:     "Sway Advertiser Agency",
+			Email:    adAdminEmail,
+			Type:     auth.AdAgencyScope,
+			AdAgency: &auth.AdAgency{},
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
@@ -101,14 +103,14 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		log.Println("created advertiser agency, id = ", u.ID)
 
 		u = &auth.User{
-			Name:  "Sway Talent Agency",
-			Email: talentAdminEmail,
-			Type:  auth.AdAgencyScope,
+			ParentID: "1",
+			Name:     "Sway Talent Agency",
+			Email:    talentAdminEmail,
+			Type:     auth.TalentAgencyScope,
+			TalentAgency: &auth.TalentAgency{
+				Fee: 0.2,
+			},
 		}
-		ag := &auth.TalentAgency{
-			Fee: 0.2,
-		}
-		u.UpdateData(srv.auth, ag)
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
 		}
