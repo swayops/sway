@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -164,18 +163,8 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 // SignUpHelper handles common user sign up operations, returns a *User.
 // if nil is returned, it means it failed and already returned an http error
 func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
-	var suser SpecUser
-	switch sup.Type {
-	case AdvertiserScope:
-		suser = GetAdvertiser(&sup.User)
-	case InfluencerScope:
-		suser = getInfluencerLoad(&sup.User)
-	case AdAgencyScope:
-		suser = GetAdAgency(&sup.User)
-	case TalentAgencyScope:
-		suser = GetTalentAgency(&sup.User)
-	default:
-		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidUserType)
+	if sup.Type == AdminScope {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
 	curUser := GetCtxUser(c)
@@ -193,13 +182,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
-	j, _ := json.MarshalIndent(sup, "", "  ")
-	log.Println(string(j))
-
-	if err := suser.Check(); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return
-	}
 
 	if sup.Password != sup.Password2 {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)
@@ -207,11 +189,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 	}
 
 	if len(sup.Password) < 8 {
-		misc.AbortWithErr(c, http.StatusBadRequest, ErrShortPass)
-		return
-	}
-
-	if err := suser.setToUser(a, &sup.User); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrShortPass)
 		return
 	}

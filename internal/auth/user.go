@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -89,6 +90,8 @@ func (u *User) UpdateData(a *Auth, su SpecUser) error {
 		if u.Type != InfluencerScope {
 			return ErrInvalidUserType
 		}
+	default:
+		return fmt.Errorf("unexpected type %T", su)
 	}
 	if err := su.Check(); err != nil {
 		return err
