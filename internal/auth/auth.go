@@ -172,12 +172,13 @@ func (a *Auth) refreshToken(stok string, dur time.Duration) {
 	})
 }
 
-func (a *Auth) moveChildrenTx(tx *bolt.Tx, user *User, newParentID string) {
-	for _, uid := range user.Children {
-		if u := a.GetUserTx(tx, uid); u != nil && u.ParentID == u.ID {
-			u.ParentID = newParentID
-			u.Store(a, tx)
+func (a *Auth) moveChildrenTx(tx *bolt.Tx, oldID, newID string) error {
+	return tx.Bucket([]byte(a.cfg.Bucket.User)).ForEach(func(k []byte, v []byte) error {
+		var u User
+		if json.Unmarshal(v, &u) == nil && u.ParentID == oldID {
+			u.ParentID = newID
+			return u.Store(a, tx)
 		}
-	}
-	user.Children = nil
+		return nil
+	})
 }

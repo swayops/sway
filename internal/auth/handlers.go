@@ -72,7 +72,8 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			case AdvertiserScope:
 				ok = u.ID == itemID
 			case AdAgencyScope:
-				ok = u.Owns(itemID)
+				adv := a.GetAdvertiser(itemID)
+				ok = adv != nil && adv.AgencyID == u.ID
 			}
 		case CampaignItem:
 			cmp := common.GetCampaign(itemID, a.db, a.cfg)
@@ -80,7 +81,8 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			case AdvertiserScope:
 				ok = u.ID == cmp.AdvertiserId
 			case AdAgencyScope:
-				ok = u.Owns(cmp.AdvertiserId)
+				adv := a.GetAdvertiser(cmp.AdvertiserId)
+				ok = adv != nil && adv.AgencyID == u.ID
 			}
 
 		case InfluencerItem:
@@ -88,7 +90,8 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			case InfluencerScope:
 				ok = u.ID == itemID
 			case TalentAgencyScope:
-				ok = u.Owns(itemID)
+				inf := a.GetInfluencer(itemID)
+				ok = inf != nil && inf.AgencyId == u.ID
 			}
 
 		}
@@ -190,9 +193,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		if err := a.CreateUserTx(tx, &sup.User, sup.Password); err != nil {
 			return err
-		}
-		if curUser != nil {
-			return curUser.AddChild(sup.ID).Store(a, tx)
 		}
 		return nil
 	}); err != nil {

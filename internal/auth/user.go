@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
 )
 
@@ -45,7 +44,6 @@ type User struct {
 	Status    bool            `json:"status,omitempty"`
 	CreatedAt int64           `json:"createdAt,omitempty"`
 	UpdatedAt int64           `json:"updatedAt,omitempty"`
-	Children  []string        `json:"children,omitempty"`
 	APIKey    string          `json:"apiKeys,omitempty"`
 	Salt      string          `json:"salt,omitempty"`
 	Data      json.RawMessage `json:"Data,omitempty"`
@@ -97,22 +95,6 @@ func (u *User) UpdateData(a *Auth, su SpecUser) error {
 		return err
 	}
 	return su.setToUser(a, u)
-}
-
-// TODO sort and use binary search
-func (u *User) AddChild(id string) *User {
-	if !u.Owns(id) {
-		u.Children = append(u.Children, id)
-	}
-	return u
-}
-func (u *User) Owns(id string) bool {
-	return common.StringsIndexOf(u.Children, id) > -1
-}
-
-func (u *User) RemoveChild(id string) *User {
-	u.Children = common.StringsRemove(u.Children, id)
-	return u
 }
 
 func (u *User) Check(newUser bool) error {
@@ -211,20 +193,16 @@ func (a *Auth) DeleteUserTx(tx *bolt.Tx, userID string) (err error) {
 	if user == nil {
 		return ErrInvalidUserID
 	}
-	parent := a.GetUserTx(tx, user.ParentID)
-	if parent == nil {
-		return ErrInvalidUserID
-	}
 	uid := []byte(userID)
 	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
 	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(user.Email))
 	switch user.Type {
 	case AdAgencyScope:
-		a.moveChildrenTx(tx, user, SwayOpsAdAgencyID)
+		return a.moveChildrenTx(tx, user.ID, SwayOpsAdAgencyID)
 	case TalentAgencyScope:
-		a.moveChildrenTx(tx, user, SwayOpsTalentAgencyID)
+		return a.moveChildrenTx(tx, user.ID, SwayOpsTalentAgencyID)
 	}
-	return parent.RemoveChild(user.ID).Store(a, tx)
+	return nil
 }
 
 func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {
