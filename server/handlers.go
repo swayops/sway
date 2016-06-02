@@ -460,11 +460,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var inf *auth.Influencer
-		s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, c.Param("id"))
-			return nil
-		})
+		inf := s.auth.GetInfluencer(c.Param("id"))
 		if inf == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return

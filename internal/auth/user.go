@@ -88,6 +88,10 @@ func (u *User) UpdateData(a *Auth, su SpecUser) error {
 		if u.Type != InfluencerScope {
 			return ErrInvalidUserType
 		}
+	case *Influencer:
+		if u.Type != InfluencerScope {
+			return ErrInvalidUserType
+		}
 	default:
 		return fmt.Errorf("unexpected type %T", su)
 	}
