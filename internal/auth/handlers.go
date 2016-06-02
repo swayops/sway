@@ -75,18 +75,12 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				ok = u.Owns(itemID)
 			}
 		case CampaignItem:
-			var ownerID string
-			a.db.View(func(tx *bolt.Tx) error {
-				var cmp common.Campaign
-				misc.GetTxJson(tx, a.cfg.Bucket.Campaign, itemID, &cmp)
-				ownerID = cmp.AdvertiserId
-				return nil
-			})
+			cmp := common.GetCampaign(itemID, a.db, a.cfg)
 			switch u.Type {
 			case AdvertiserScope:
-				ok = u.ID == ownerID
+				ok = u.ID == cmp.AdvertiserId
 			case AdAgencyScope:
-				ok = u.Owns(ownerID)
+				ok = u.Owns(cmp.AdvertiserId)
 			}
 
 		case InfluencerItem:
