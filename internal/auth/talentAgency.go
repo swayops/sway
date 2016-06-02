@@ -73,7 +73,7 @@ func (ag *TalentAgency) Check() error {
 		return ErrInvalidName
 	}
 
-	if ag.Fee == 0 || ag.Fee > 0.99 {
+	if ag.Fee > 0.99 {
 		return ErrInvalidFee
 	}
 

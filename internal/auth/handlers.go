@@ -3,7 +3,6 @@ package auth
 import (
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -244,7 +243,6 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 	email := templates.ResetPassword.Render(tmplData)
 	if resp, err := a.ec.SendMessage(email, "Password Reset Request", req.Email, u.Name,
 		[]string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-		log.Printf("%v: %+v", err, resp)
 		misc.AbortWithErr(c, 500, ErrUnexpected)
 		return
 	}
@@ -322,7 +320,6 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 		}
 		mac := CreateMAC(u.ID, stok, u.Salt)
 		if err := a.db.Update(func(tx *bolt.Tx) error {
-			log.Println(u.APIKey, len(u.APIKey))
 			if len(u.APIKey) == 96 { // delete the old key
 				tx.Bucket([]byte(a.cfg.Bucket.Token)).Delete([]byte(u.APIKey[:32]))
 			}
