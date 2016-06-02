@@ -21,7 +21,7 @@ func GetAdvertiser(u *User) *Advertiser {
 		return nil
 	}
 	var adv Advertiser
-	if json.Unmarshal(u.Data, &adv) != nil || adv.ExchangeFee == 0 {
+	if json.Unmarshal(u.Data, &adv) != nil {
 		return nil
 	}
 	return &adv
