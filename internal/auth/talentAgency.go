@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 
 	"github.com/boltdb/bolt"
@@ -25,11 +24,7 @@ func GetTalentAgency(u *User) *TalentAgency {
 	if u == nil || u.Type != TalentAgencyScope {
 		return nil
 	}
-	var ag TalentAgency
-	if json.Unmarshal(u.Data, &ag) != nil {
-		return nil
-	}
-	return &ag
+	return u.TalentAgency
 }
 
 func (a *Auth) GetTalentAgencyTx(tx *bolt.Tx, userID string) *TalentAgency {
@@ -59,9 +54,8 @@ func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
 	} else {
 		u.Name, u.Status = ag.Name, ag.Status
 	}
-	b, err := json.Marshal(ag)
-	u.Data = b
-	return err
+	u.TalentAgency = ag
+	return nil
 }
 
 func (ag *TalentAgency) Check() error {

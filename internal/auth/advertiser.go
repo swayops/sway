@@ -1,10 +1,6 @@
 package auth
 
-import (
-	"encoding/json"
-
-	"github.com/boltdb/bolt"
-)
+import "github.com/boltdb/bolt"
 
 type Advertiser struct {
 	ID       string `json:"id,omitempty"`
@@ -20,11 +16,7 @@ func GetAdvertiser(u *User) *Advertiser {
 	if u == nil || u.Type != AdvertiserScope {
 		return nil
 	}
-	var adv Advertiser
-	if json.Unmarshal(u.Data, &adv) != nil {
-		return nil
-	}
-	return &adv
+	return u.Advertiser
 }
 
 func (a *Auth) GetAdvertiserTx(tx *bolt.Tx, userID string) *Advertiser {
@@ -53,9 +45,8 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	} else {
 		u.Name, u.Status = adv.Name, adv.Status
 	}
-	b, err := json.Marshal(adv)
-	u.Data = b
-	return err
+	u.Advertiser = adv
+	return nil
 }
 
 func (adv *Advertiser) Check() error {

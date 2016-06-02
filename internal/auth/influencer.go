@@ -1,26 +1,24 @@
 package auth
 
 import (
-	"encoding/json"
-
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 )
 
 type Influencer struct {
-	influencer.Influencer
+	*influencer.Influencer
 }
 
 func GetInfluencer(u *User) *Influencer {
 	if u == nil || u.Type != InfluencerScope {
 		return nil
 	}
-	var inf Influencer
-	if json.Unmarshal(u.Data, &inf) != nil || inf.Gender == "" {
+	inf := u.Influencer
+	if inf.Influencer == nil { // using a pointer here so we wouldn't create a copy on assignment in setToUser
 		return nil
 	}
-	return &inf
+	return inf
 }
 
 func (a *Auth) GetInfluencerTx(tx *bolt.Tx, userID string) *Influencer {
@@ -37,20 +35,8 @@ func (a *Auth) GetInfluencer(userID string) (inf *Influencer) {
 
 func (inf *Influencer) Check() error { return nil } // this is to fulfill the interface
 func (inf *Influencer) setToUser(_ *Auth, u *User) error {
-	j, err := json.Marshal(inf)
-	u.Data = j
-	return err
-}
-
-func getInfluencerLoad(u *User) *InfluencerLoad {
-	if u.Type != InfluencerScope {
-		return nil
-	}
-	var inf InfluencerLoad
-	if json.Unmarshal(u.Data, &inf) != nil || inf.Gender == "" {
-		return nil
-	}
-	return &inf
+	u.Influencer = inf
+	return nil
 }
 
 type InfluencerLoad struct {
@@ -114,7 +100,8 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 	} else {
 		u.Name = rinf.Name
 	}
-	j, err := json.Marshal(rinf)
-	u.Data = j
+	u.InfluencerLoad = nil
+	u.Influencer = &Influencer{rinf}
+
 	return err
 }
