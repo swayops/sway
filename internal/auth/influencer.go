@@ -20,44 +20,23 @@ func GetInfluencer(u *User) *Influencer {
 	if json.Unmarshal(u.Data, &inf) != nil || inf.Gender == "" {
 		return nil
 	}
-	inf.Id, inf.AgencyId, inf.Name = u.ID, u.ParentID, u.Name
 	return &inf
 }
 
-func (a *Auth) GetInfluencerTx(tx *bolt.Tx, curUser *User, userID string) *Influencer {
-	if curUser != nil && curUser.ID == userID {
-		return GetInfluencer(curUser)
-	}
+func (a *Auth) GetInfluencerTx(tx *bolt.Tx, userID string) *Influencer {
 	return GetInfluencer(a.GetUserTx(tx, userID))
 }
 
-func (inf *Influencer) Check() error {
-	if inf == nil {
-		return ErrUnexpected
-	}
-	if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
-		return ErrBadGender
-	}
-
-	if inf.Geo == nil {
-		return ErrNoGeo
-	}
-
-	inf.Categories = common.LowerSlice(inf.Categories)
-	for _, cat := range inf.Categories {
-		if _, ok := common.CATEGORIES[cat]; !ok {
-			return ErrBadCat
-		}
-	}
-
-	return nil
+func (a *Auth) GetInfluencer(userID string) (inf *Influencer) {
+	a.db.View(func(tx *bolt.Tx) error {
+		inf = GetInfluencer(a.GetUserTx(tx, userID))
+		return nil
+	})
+	return
 }
 
-func (inf *Influencer) setToUser(a *Auth, u *User) error {
-	if inf.Name != "" {
-		u.Name = inf.Name
-	}
-	inf.Id, inf.AgencyId, inf.Name = "", "", "" // this is a part of the user struct
+func (inf *Influencer) Check() error { return nil } // this is to fulfill the interface
+func (inf *Influencer) setToUser(_ *Auth, u *User) error {
 	j, err := json.Marshal(inf)
 	u.Data = j
 	return err
@@ -101,9 +80,13 @@ func (inf *InfluencerLoad) Check() error {
 }
 
 func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
+	if inf == nil {
+		return ErrUnexpected
+	}
 	if inf.Name == "" {
 		inf.Name = u.Name
 	}
+
 	rinf, err := influencer.New(
 		inf.Name,
 		inf.TwitterId,
@@ -119,6 +102,14 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 
 	if err != nil {
 		return err
+	}
+
+	if rinf.Id == "" { // initial creation
+		rinf.Id = u.ID
+	} else if rinf.Id != u.ID {
+		return ErrInvalidID
+	} else {
+		u.Name = rinf.Name
 	}
 	j, err := json.Marshal(rinf)
 	u.Data = j

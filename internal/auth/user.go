@@ -85,7 +85,7 @@ func (u *User) UpdateData(a *Auth, su SpecUser) error {
 		if u.Type != AdvertiserScope {
 			return ErrInvalidUserType
 		}
-	case *Influencer:
+	case *InfluencerLoad:
 		if u.Type != InfluencerScope {
 			return ErrInvalidUserType
 		}
@@ -164,6 +164,23 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 
 	if u.ID, err = misc.GetNextIndex(tx, a.cfg.Bucket.User); err != nil {
 		return
+	}
+
+	var suser SpecUser
+	switch u.Type {
+	case AdvertiserScope:
+		suser = GetAdvertiser(u)
+	case InfluencerScope:
+		suser = getInfluencerLoad(u)
+	case AdAgencyScope:
+		suser = GetAdAgency(u)
+	case TalentAgencyScope:
+		suser = GetTalentAgency(u)
+	}
+	if suser != nil {
+		if err = suser.setToUser(a, u); err != nil {
+			return
+		}
 	}
 
 	if err = misc.PutTxJson(tx, a.cfg.Bucket.User, u.ID, u); err != nil {

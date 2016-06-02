@@ -24,26 +24,33 @@ func GetAdvertiser(u *User) *Advertiser {
 	if json.Unmarshal(u.Data, &adv) != nil || adv.ExchangeFee == 0 {
 		return nil
 	}
-	adv.ID, adv.AgencyID, adv.Name, adv.Status = u.ID, u.ParentID, u.Name, u.Status
 	return &adv
 }
 
-func (a *Auth) GetAdvertiserTx(tx *bolt.Tx, curUser *User, userID string) *Advertiser {
-	if curUser != nil && curUser.ID == userID {
-		return GetAdvertiser(curUser)
-	}
+func (a *Auth) GetAdvertiserTx(tx *bolt.Tx, userID string) *Advertiser {
 	return GetAdvertiser(a.GetUserTx(tx, userID))
 }
 
+func (a *Auth) GetAdvertiser(userID string) (adv *Advertiser) {
+	a.db.View(func(tx *bolt.Tx) error {
+		adv = GetAdvertiser(a.GetUserTx(tx, userID))
+		return nil
+	})
+	return
+}
+
 func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
-	if adv == nil {
+	if adv == nil || u.Type == AdvertiserScope {
 		return ErrUnexpected
 	}
 
-	if adv.Name != "" {
+	if adv.ID == "" { // initial creation
+		adv.ID, adv.AgencyID, adv.Name, adv.Status = u.ID, u.ParentID, u.Name, u.Status
+	} else if adv.ID != u.ID {
+		return ErrInvalidID
+	} else {
 		u.Name, u.Status = adv.Name, adv.Status
 	}
-	adv.ID, adv.AgencyID, adv.Name, adv.Status = "", "", "", false
 	b, err := json.Marshal(adv)
 	u.Data = b
 	return err

@@ -13,6 +13,7 @@ const (
 )
 
 type TalentAgency struct {
+	ID     string `json:"id,omitempty"`
 	Name   string `json:"name,omitempty"`
 	Status bool   `json:"status,omitempty"`
 
@@ -28,27 +29,32 @@ func GetTalentAgency(u *User) *TalentAgency {
 	if json.Unmarshal(u.Data, &ag) != nil {
 		return nil
 	}
-	ag.Name, ag.Status = u.Name, u.Status
-	if ag.InviteCode == "" {
-		ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
-	}
 	return &ag
 }
 
-func (a *Auth) GetTalentAgencyTx(tx *bolt.Tx, curUser *User, userID string) *TalentAgency {
-	if curUser != nil && curUser.ID == userID {
-		return GetTalentAgency(curUser)
-	}
+func (a *Auth) GetTalentAgencyTx(tx *bolt.Tx, userID string) *TalentAgency {
 	return GetTalentAgency(a.GetUserTx(tx, userID))
 }
 
+func (a *Auth) GetTalentAgency(userID string) (ag *TalentAgency) {
+	a.db.View(func(tx *bolt.Tx) error {
+		ag = GetTalentAgency(a.GetUserTx(tx, userID))
+		return nil
+	})
+	return
+}
+
 func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
-	if ag.Name != "" {
-		u.Name, u.Status = ag.Name, ag.Status
+	if u.ID == "" {
+		panic("wtfmate?")
 	}
-	ag.Name, ag.Status = "", false
-	if ag.InviteCode == "" && u.ID != "" {
+	if ag.ID == "" { // initial creation
+		ag.ID, ag.Name, ag.Status = u.ID, u.Name, u.Status
 		ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
+	} else if ag.ID != u.ID {
+		return ErrInvalidID
+	} else {
+		u.Name, u.Status = ag.Name, ag.Status
 	}
 	b, err := json.Marshal(ag)
 	u.Data = b

@@ -104,7 +104,7 @@ func getAdvertiserFees(s *Server, advId string) (float64, float64) {
 	var g *auth.Advertiser
 
 	if err := s.db.View(func(tx *bolt.Tx) error {
-		g = s.auth.GetAdvertiserTx(tx, nil, advId)
+		g = s.auth.GetAdvertiserTx(tx, advId)
 		return nil
 	}); err != nil {
 		return 0, 0
@@ -114,7 +114,7 @@ func getAdvertiserFees(s *Server, advId string) (float64, float64) {
 }
 
 func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, float64) {
-	if adv := a.GetAdvertiserTx(tx, nil, advId); adv != nil {
+	if adv := a.GetAdvertiserTx(tx, advId); adv != nil {
 		return adv.DspFee, adv.ExchangeFee
 	}
 
@@ -183,7 +183,7 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 }
 
 func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float64 {
-	if ag := s.auth.GetTalentAgencyTx(tx, nil, id); ag != nil {
+	if ag := s.auth.GetTalentAgencyTx(tx, id); ag != nil {
 		return ag.Fee
 	}
 	return 0

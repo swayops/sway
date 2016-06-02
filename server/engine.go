@@ -132,7 +132,7 @@ func depleteBudget(s *Server) error {
 			}
 			var inf *auth.Influencer
 			s.db.View(func(tx *bolt.Tx) error {
-				inf = s.auth.GetInfluencerTx(tx, nil, deal.InfluencerId)
+				inf = s.auth.GetInfluencerTx(tx, deal.InfluencerId)
 				return nil
 			})
 			if inf == nil {
@@ -211,7 +211,7 @@ func billing(s *Server) error {
 					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
-					inf = s.auth.GetInfluencerTx(tx, nil, id)
+					inf = s.auth.GetInfluencerTx(tx, id)
 					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
 					return nil
 				}); err != nil || inf == nil {
@@ -244,7 +244,7 @@ func billing(s *Server) error {
 					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
-					if inf = s.auth.GetInfluencerTx(tx, nil, id); inf == nil {
+					if inf = s.auth.GetInfluencerTx(tx, id); inf == nil {
 						return nil
 					}
 

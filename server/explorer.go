@@ -33,7 +33,7 @@ func explore(srv *Server) error {
 		// Go over all assigned deals in the platform
 		var inf *auth.Influencer
 		srv.db.View(func(tx *bolt.Tx) error {
-			inf = srv.auth.GetInfluencerTx(tx, nil, deal.InfluencerId)
+			inf = srv.auth.GetInfluencerTx(tx, deal.InfluencerId)
 			return nil
 		})
 
@@ -102,7 +102,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		d.Completed = int32(time.Now().Unix())
 		cmp.Deals[d.Id] = d
 
-		inf := srv.auth.GetInfluencerTx(tx, nil, d.InfluencerId)
+		inf := srv.auth.GetInfluencerTx(tx, d.InfluencerId)
 		if inf == nil {
 			log.Println("Error unmarshalling influencer")
 			return ErrUnmarshal

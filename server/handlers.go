@@ -51,7 +51,7 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ag *auth.TalentAgency
 		s.db.View(func(tx *bolt.Tx) error {
-			ag = s.auth.GetTalentAgencyTx(tx, auth.GetCtxUser(c), c.Param("id"))
+			ag = s.auth.GetTalentAgencyTx(tx, c.Param("id"))
 			return nil
 		})
 		if ag == nil {
@@ -110,7 +110,7 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var ag *auth.AdAgency
 		s.db.View(func(tx *bolt.Tx) error {
-			ag = s.auth.GetAdAgencyTx(tx, auth.GetCtxUser(c), c.Param("id"))
+			ag = s.auth.GetAdAgencyTx(tx, c.Param("id"))
 			return nil
 		})
 		if ag == nil {
@@ -170,7 +170,7 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var adv *auth.Advertiser
 		s.db.View(func(tx *bolt.Tx) error {
-			adv = s.auth.GetAdvertiserTx(tx, auth.GetCtxUser(c), c.Param("id"))
+			adv = s.auth.GetAdvertiserTx(tx, c.Param("id"))
 			return nil
 		})
 		if adv == nil {
@@ -462,7 +462,7 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var inf *auth.Influencer
 		s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, auth.GetCtxUser(c), c.Param("id"))
+			inf = s.auth.GetInfluencerTx(tx, c.Param("id"))
 			return nil
 		})
 		if inf == nil {
@@ -822,7 +822,7 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			inf *auth.Influencer
 		)
 		if err := s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, auth.GetCtxUser(c), c.Param("influencerId"))
+			inf = s.auth.GetInfluencerTx(tx, c.Param("influencerId"))
 			return nil
 		}); err != nil || inf == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
@@ -853,7 +853,7 @@ func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var inf *auth.Influencer
 		if err := s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, nil, c.Param("influencerId"))
+			inf = s.auth.GetInfluencerTx(tx, c.Param("influencerId"))
 			return nil
 		}); err != nil || inf == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
@@ -955,7 +955,7 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 
 		var inf *auth.Influencer
 		s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, nil, infId)
+			inf = s.auth.GetInfluencerTx(tx, infId)
 			return nil
 		})
 		if inf == nil {
@@ -977,7 +977,7 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 		infId := c.Param("infId")
 		var inf *auth.Influencer
 		s.db.View(func(tx *bolt.Tx) error {
-			inf = s.auth.GetInfluencerTx(tx, nil, infId)
+			inf = s.auth.GetInfluencerTx(tx, infId)
 			return nil
 		})
 		if inf == nil {
