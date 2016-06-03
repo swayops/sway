@@ -178,7 +178,7 @@ func TestNewInfluencer(t *testing.T) {
 		// update
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
 		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
-		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil}, {"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
