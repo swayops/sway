@@ -76,10 +76,10 @@ type Influencer struct {
 	CurrentRep float64            `json:"rep,omitempty"`
 }
 
-func New(name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
+		Id:         id,
 		Name:       name,
-		Id:         misc.PseudoUUID(),
 		Geo:        geo,
 		Gender:     gender,
 		Categories: cats,

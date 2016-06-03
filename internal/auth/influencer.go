@@ -69,14 +69,19 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 	if inf == nil {
 		return ErrUnexpected
 	}
+
 	if u.ID == "" {
 		panic("wtfmate?")
 	}
+
 	if inf.Name == "" {
 		inf.Name = u.Name
+	} else {
+		u.Name = inf.Name
 	}
 
 	rinf, err := influencer.New(
+		u.ID,
 		inf.Name,
 		inf.TwitterId,
 		inf.InstagramId,
@@ -93,13 +98,6 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		return err
 	}
 
-	if rinf.Id == "" { // initial creation
-		rinf.Id = u.ID
-	} else if rinf.Id != u.ID {
-		return ErrInvalidID
-	} else {
-		u.Name = rinf.Name
-	}
 	u.InfluencerLoad = nil
 	u.Influencer = &Influencer{rinf}
 
