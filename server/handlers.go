@@ -425,35 +425,6 @@ var (
 	ErrBadCat    = errors.New("Please provide a valid category")
 )
 
-func putInfluencer(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var (
-			inf  auth.InfluencerLoad
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
-
-		if err := c.BindJSON(&inf); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.StoreWithData(s.auth, tx, &inf)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-		}
-
-		c.JSON(200, misc.StatusOK(id))
-	}
-}
-
 func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf := s.auth.GetInfluencer(c.Param("id"))
