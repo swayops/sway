@@ -631,7 +631,7 @@ func setGeo(s *Server) gin.HandlerFunc {
 		)
 
 		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&geo); err != nil || geo == nil {
+		if err = json.NewDecoder(c.Request.Body).Decode(&geo); err != nil || &geo == nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
 			return
 		}
