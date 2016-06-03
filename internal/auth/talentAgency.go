@@ -1,14 +1,8 @@
 package auth
 
 import (
-	"encoding/base64"
-	"fmt"
-
 	"github.com/boltdb/bolt"
-)
-
-const (
-	inviteFormat = "id::%s"
+	"github.com/swayops/sway/internal/common"
 )
 
 type TalentAgency struct {
@@ -48,7 +42,7 @@ func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
 	}
 	if ag.ID == "" { // initial creation
 		ag.ID, ag.Name, ag.Status = u.ID, u.Name, u.Status
-		ag.InviteCode = base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, u.ID)))
+		ag.InviteCode = common.GetCodeFromID(u.ID)
 	} else if ag.ID != u.ID {
 		return ErrInvalidID
 	} else {

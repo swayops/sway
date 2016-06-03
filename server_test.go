@@ -5,6 +5,7 @@ import (
 
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/server"
@@ -110,8 +111,10 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
 
 		// change the agency's name and fee and check if it stuck
+		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.2, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
 		{"PUT", "/talentAgency/" + ag.ExpID, &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}, 200, nil},
-		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3}},
+		// COMMENTING THE FOLLOWING LINE OUT MAKES ALL TESTS WORK.. what?!
+		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
 
 		// create a new influencer as the new agency and signin
 		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
@@ -208,6 +211,41 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
 	} {
+		tr.Run(t, rst)
+	}
+}
+
+func TestInviteCode(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.AdAgency = &auth.AdAgency{}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender:     "unicorn",
+			Geo:        &misc.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+		},
+	}
+	for _, tr := range [...]*resty.TestRequest{
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new agency and sign in
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		// sign up as a new influencer and see if you get placed under above agency via invite code
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+
+		// check influencer's agency
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+	} {
+
 		tr.Run(t, rst)
 	}
 }

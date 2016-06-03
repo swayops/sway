@@ -2,7 +2,12 @@ package common
 
 import (
 	"encoding/base64"
+	"fmt"
 	"strings"
+)
+
+const (
+	inviteFormat = "id::%s"
 )
 
 func GetIDFromInvite(code string) string {
@@ -16,4 +21,8 @@ func GetIDFromInvite(code string) string {
 		return parts[1]
 	}
 	return ""
+}
+
+func GetCodeFromID(id string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(fmt.Sprintf(inviteFormat, id)))
 }
