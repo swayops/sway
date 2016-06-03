@@ -3,7 +3,6 @@ package instagram
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -41,7 +40,7 @@ type SearchData struct {
 
 func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 	endpoint := fmt.Sprintf(searchesUrl, cfg.Instagram.Endpoint, name, cfg.Instagram.ClientId)
-	log.Println(endpoint)
+
 	var search UserSearch
 	err := misc.Request("GET", endpoint, "", &search)
 	if err != nil {
