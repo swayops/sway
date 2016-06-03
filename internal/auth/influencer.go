@@ -89,7 +89,7 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		inf.YouTubeId,
 		inf.Gender,
 		inf.InviteCode,
-		SwayOpsTalentAgencyID,
+		u.ParentID,
 		inf.Categories,
 		inf.Geo,
 		a.cfg)

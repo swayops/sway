@@ -47,7 +47,7 @@ func TestAdAgencyChain(t *testing.T) {
 		{"POST", "/signUp", ag, 401, nil},
 
 		// sign in as admin
-		{"POST", "/signIn", `{"email": "admin@swayops.com", "pass": "Rf_jv9hM3-"}`, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
 		// create new agency and sign in
 		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
@@ -76,6 +76,67 @@ func TestAdAgencyChain(t *testing.T) {
 		// sign in as a talent agency and see if we can access it
 		{"POST", "/signIn", adminTalentAgencyReq, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 401, nil},
+	} {
+		tr.Run(t, rst)
+	}
+}
+
+func TestTalentAgencyChain(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.2,
+	}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender: "unicorn",
+			Geo:    &misc.GeoRecord{},
+		},
+	}
+
+	for _, tr := range [...]*resty.TestRequest{
+		// try to directly signup as an agency
+		{"POST", "/signUp", ag, 401, nil},
+
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new agency and sign in
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+
+		// change the agency's name and fee and check if it stuck
+		{"PUT", "/talentAgency/" + ag.ExpID, &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}, 200, nil},
+		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3}},
+
+		// create a new influencer as the new agency and signin
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+
+		// update the influencer and check if the update worked
+		{"PUT", "/influencer/" + inf.ExpID, M{"id": inf.ExpID, "gender": "unicorn", "geo": M{"city": "alex"}}, 200, nil},
+		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId":   ag.ExpID,
+			"geo":        M{"city": "alex"},
+			"categories": []string{"vlogger"},
+		}},
+
+		// sign in as admin and see if they can access the influencer
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, nil},
+
+		// sign in as a different agency and see if we can access the influencer
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
+
+		// sign in as a talent agency and see if we can access it
+		{"POST", "/signIn", adminTalentAgencyReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
 	} {
 		tr.Run(t, rst)
 	}
