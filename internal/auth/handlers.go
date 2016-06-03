@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/boltdb/bolt"
@@ -57,6 +58,7 @@ func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u, itemID := GetCtxUser(c), c.Param(paramName)
+		log.Println(u.ID, u.ParentID, itemID)
 		if u == nil || itemID == "" {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
@@ -72,6 +74,10 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			goto EXIT
 		}
 		switch itemType {
+		case AdAgencyItem:
+			ok = u.ID == itemID
+		case TalentAgencyItem:
+			ok = u.ID == itemID
 		case AdvertiserItem:
 			switch utype {
 			case AdvertiserScope:
@@ -98,7 +104,8 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				inf := a.GetInfluencer(itemID)
 				ok = inf != nil && inf.AgencyId == u.ID
 			}
-
+		default:
+			log.Println("unexpected:", itemType)
 		}
 	EXIT:
 		if !ok {
