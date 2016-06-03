@@ -220,7 +220,9 @@ func TestInviteCode(t *testing.T) {
 	defer putClient(rst)
 
 	ag := getSignupUser()
-	ag.AdAgency = &auth.AdAgency{}
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.2,
+	}
 
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
