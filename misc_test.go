@@ -67,7 +67,10 @@ func TestMain(m *testing.M) {
 		defer os.RemoveAll(cfg.DBPath) // clean up
 	}
 
-	r := gin.Default()
+	// disable all the gin spam
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.Recovery())
 	srv, err := server.New(cfg, r)
 	panicIf(err)
 
@@ -111,14 +114,16 @@ type signupUser struct {
 	*auth.User
 	Password  string `json:"pass"`
 	Password2 string `json:"pass2"`
+	ExpID     string `json:"-"`
 }
 
 const defaultPass = "12345678"
 
-var counter uint32
+var counter uint32 = 3 // 3 is the highest built in user (TalentAgency)
 
 func getSignupUser() *signupUser {
-	name := fmt.Sprintf("u-%05d", atomic.AddUint32(&counter, 1))
+	id := fmt.Sprint(atomic.AddUint32(&counter, 1))
+	name := "u-" + id
 	return &signupUser{
 		&auth.User{
 			Name:  name,
@@ -126,5 +131,6 @@ func getSignupUser() *signupUser {
 		},
 		defaultPass,
 		defaultPass,
+		id,
 	}
 }

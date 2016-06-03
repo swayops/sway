@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	adminEmail       = "admin@swayops.com"
-	adAdminEmail     = "adAgency@swayops.com"
-	talentAdminEmail = "talentAgency@swayops.com"
+	AdminEmail       = "admin@swayops.com"
+	AdAdminEmail     = "adAgency@swayops.com"
+	TalentAdminEmail = "talentAgency@swayops.com"
 	adminPass        = "Rf_jv9hM3-"
 )
 
@@ -82,7 +82,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		}
 		u := &auth.User{
 			Name:  "Sway Admin",
-			Email: adminEmail,
+			Email: AdminEmail,
 			Admin: true,
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
@@ -93,7 +93,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		u = &auth.User{
 			ParentID: "1",
 			Name:     "Sway Advertiser Agency",
-			Email:    adAdminEmail,
+			Email:    AdAdminEmail,
 			AdAgency: &auth.AdAgency{},
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
@@ -104,7 +104,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		u = &auth.User{
 			ParentID: "1",
 			Name:     "Sway Talent Agency",
-			Email:    talentAdminEmail,
+			Email:    TalentAdminEmail,
 			TalentAgency: &auth.TalentAgency{
 				Fee: 0.2,
 			},

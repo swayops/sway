@@ -46,7 +46,7 @@ func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 		if u := GetCtxUser(c); u != nil && sm.HasAccess(u.Type(), c.Request.Method) {
 			return
 		}
-		misc.AbortWithErr(c, 405, ErrUnauthorized)
+		misc.AbortWithErr(c, 401, ErrUnauthorized)
 	}
 }
 

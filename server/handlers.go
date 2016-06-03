@@ -168,11 +168,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 
 func getAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var adv *auth.Advertiser
-		s.db.View(func(tx *bolt.Tx) error {
-			adv = s.auth.GetAdvertiserTx(tx, c.Param("id"))
-			return nil
-		})
+		adv := s.auth.GetAdvertiser(c.Param("id"))
 		if adv == nil {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
