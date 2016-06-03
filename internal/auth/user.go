@@ -154,7 +154,7 @@ func (u *User) Type() Scope {
 		cnt++
 		typ = AdvertiserScope
 	}
-	if u.InfluencerLoad != nil {
+	if u.InfluencerLoad != nil || u.Influencer != nil {
 		cnt++
 		typ = InfluencerScope
 	}

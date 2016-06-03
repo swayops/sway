@@ -5,6 +5,7 @@ import (
 
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/server"
 )
@@ -92,6 +93,37 @@ func TestNewAdvertiser(t *testing.T) {
 		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
 		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
+	} {
+		tr.Run(t, rst)
+	}
+}
+
+func TestNewInfluencer(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender: "unicorn",
+			Geo:    &misc.GeoRecord{},
+		},
+	}
+	for _, tr := range [...]*resty.TestRequest{
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+
+		// update
+		{"PUT", "/influencer/" + inf.ExpID, M{"id": inf.ExpID, "gender": "unicorn", "geo": M{"city": "alex"}}, 200, nil},
+		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId":   auth.SwayOpsTalentAgencyID,
+			"geo":        M{"city": "alex"},
+			"categories": []string{"vlogger"},
+		}},
+
+		// try to load it as a different user
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
 	} {
 		tr.Run(t, rst)
 	}
