@@ -488,47 +488,6 @@ func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 	}
 }
 
-// func setFloor(s *Server) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		raw := c.Param("floor")
-// 		floor, err := strconv.ParseFloat(raw, 64)
-// 		if err != nil {
-// 			log.Println("ERR", err)
-// 			c.JSON(500, misc.StatusErr("Invalid floor price"))
-// 			return
-// 		}
-
-// 		// Alter influencer bucket
-// 		var (
-// 			inf influencer.Influencer
-// 		)
-
-// 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-// 			b := tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(c.Param("influencerId")))
-
-// 			if err = json.Unmarshal(b, &inf); err != nil {
-// 				return ErrUnmarshal
-// 			}
-
-// 			inf.FloorPrice = float64(floor)
-
-// 			if b, err = json.Marshal(&inf); err != nil {
-// 				return
-// 			}
-
-// 			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
-// 				return
-// 			}
-// 			return
-// 		}); err != nil {
-// 			c.JSON(500, misc.StatusErr(err.Error()))
-// 			return
-// 		}
-
-// 		c.JSON(200, misc.StatusOK(inf.Id))
-// 	}
-// }
-
 func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAg := c.Param("agencyId")
@@ -653,6 +612,46 @@ func setInviteCode(s *Server) gin.HandlerFunc {
 
 			inf.AgencyId = agencyId
 
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func setGeo(s *Server) gin.HandlerFunc {
+	// Sets the default geo for the influencer
+	return func(c *gin.Context) {
+		var (
+			geo misc.GeoRecord
+			err error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&geo); err != nil || geo == nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+			user  = auth.GetCtxUser(c)
+		)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			inf.Geo = &geo
+
+			// Save the influencer
 			return user.StoreWithData(s.auth, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
