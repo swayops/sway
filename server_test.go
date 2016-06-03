@@ -124,7 +124,7 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"vlogger"},
-			"geo":        M{"city": "alex"},
+			"geo":        M{"city": "hell"},
 			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
@@ -176,11 +176,11 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"PUT", "/influencer/" + inf.ExpID, M{"id": inf.ExpID, "gender": "unicorn", "geo": M{"city": "alex"}}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"id": inf.ExpID, "gender": "unicorn", "geo": M{"city": "hell"}}, 200, nil},
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
-			"geo":        M{"city": "alex"},
+			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
 		}},
 
