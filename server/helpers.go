@@ -101,16 +101,10 @@ func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
 }
 
 func getAdvertiserFees(s *Server, advId string) (float64, float64) {
-	var g *auth.Advertiser
-
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		g = s.auth.GetAdvertiserTx(tx, advId)
-		return nil
-	}); err != nil {
-		return 0, 0
+	if g := s.auth.GetAdvertiser(advId); g != nil {
+		return g.DspFee, g.ExchangeFee
 	}
-
-	return g.DspFee, g.ExchangeFee
+	return 0, 0
 }
 
 func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, float64) {
