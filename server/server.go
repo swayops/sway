@@ -209,7 +209,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
-		nil, putInfluencer, nil)
+		nil, nil, nil)
 
 	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
 	adminGroup.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))

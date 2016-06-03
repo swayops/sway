@@ -118,11 +118,9 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"PUT", "/influencer/" + inf.ExpID, M{"id": inf.ExpID, "gender": "unicorn", "geo": M{"city": "alex"}}, 200, nil},
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
-			"geo":        M{"city": "alex"},
 			"categories": []string{"vlogger"},
 		}},
 
