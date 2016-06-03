@@ -152,10 +152,28 @@ func TestNewAdvertiser(t *testing.T) {
 		DspFee:      0.5,
 		ExchangeFee: 0.2,
 	}
+	ag := getSignupUser()
+	ag.AdAgency = &auth.AdAgency{}
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
 		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
+
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
+
+		// sign in as admin and access the advertiser
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
+
+		// create a new agency
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, nil},
+
+		// test if a random agency can access it
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 401, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -193,3 +211,9 @@ func TestNewInfluencer(t *testing.T) {
 		tr.Run(t, rst)
 	}
 }
+
+/* TODO:
+- campaigns
+- extended TestInfluencer like advertiser
+- test influencer with invite codes
+*/
