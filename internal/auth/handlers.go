@@ -58,7 +58,6 @@ func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u, itemID := GetCtxUser(c), c.Param(paramName)
-		log.Println(u.ID, u.ParentID, itemID)
 		if u == nil || itemID == "" {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
