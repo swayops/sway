@@ -83,7 +83,7 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		u := &auth.User{
 			Name:  "Sway Admin",
 			Email: adminEmail,
-			Type:  auth.AdminScope,
+			Admin: true,
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
@@ -94,7 +94,6 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			ParentID: "1",
 			Name:     "Sway Advertiser Agency",
 			Email:    adAdminEmail,
-			Type:     auth.AdAgencyScope,
 			AdAgency: &auth.AdAgency{},
 		}
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
@@ -106,7 +105,6 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			ParentID: "1",
 			Name:     "Sway Talent Agency",
 			Email:    talentAdminEmail,
-			Type:     auth.TalentAgencyScope,
 			TalentAgency: &auth.TalentAgency{
 				Fee: 0.2,
 			},

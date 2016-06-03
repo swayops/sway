@@ -37,7 +37,6 @@ type User struct {
 	ParentID  string `json:"parentId,omitempty"`
 	Name      string `json:"name,omitempty"`
 	Email     string `json:"email,omitempty"`
-	Type      Scope  `json:"type,omitempty"`
 	Phone     string `json:"phone,omitempty"`
 	Address   string `json:"address,omitempty"`
 	Status    bool   `json:"status,omitempty"`
@@ -45,6 +44,7 @@ type User struct {
 	UpdatedAt int64  `json:"updatedAt,omitempty"`
 	APIKey    string `json:"apiKeys,omitempty"`
 	Salt      string `json:"salt,omitempty"`
+	Admin     bool   `json:"admin,omitempty"`
 	//	Data      json.RawMessage `json:"Data,omitempty"`
 
 	AdAgency     *AdAgency     `json:"adAgency,omitempty"`
@@ -77,25 +77,26 @@ func (u *User) Update(o *User) *User {
 }
 
 func (u *User) UpdateData(a *Auth, su SpecUser) error {
+	utype := u.Type()
 	switch su.(type) {
 	case *AdAgency:
-		if u.Type != AdAgencyScope {
+		if utype != AdAgencyScope {
 			return ErrInvalidUserType
 		}
 	case *TalentAgency:
-		if u.Type != TalentAgencyScope {
+		if utype != TalentAgencyScope {
 			return ErrInvalidUserType
 		}
 	case *Advertiser:
-		if u.Type != AdvertiserScope {
+		if utype != AdvertiserScope {
 			return ErrInvalidUserType
 		}
 	case *InfluencerLoad:
-		if u.Type != InfluencerScope {
+		if utype != InfluencerScope {
 			return ErrInvalidUserType
 		}
 	case *Influencer:
-		if u.Type != InfluencerScope {
+		if utype != InfluencerScope {
 			return ErrInvalidUserType
 		}
 	default:
@@ -117,7 +118,7 @@ func (u *User) Check(newUser bool) error {
 	if len(u.Email) < 6 /* a@a.ab */ || strings.Index(u.Email, "@") == -1 {
 		return ErrInvalidEmail
 	}
-	if !u.Type.Valid() {
+	if u.Type() == InvalidScope {
 		return ErrInvalidUserType
 	}
 	// other checks?
@@ -133,6 +134,34 @@ func (u *User) StoreWithData(a *Auth, tx *bolt.Tx, data SpecUser) error {
 		return err
 	}
 	return u.Store(a, tx)
+}
+
+func (u *User) Type() Scope {
+	if u.Admin {
+		return AdminScope
+	}
+
+	cnt, typ := 0, InvalidScope
+	if u.AdAgency != nil {
+		cnt++
+		typ = AdAgencyScope
+	}
+	if u.TalentAgency != nil {
+		cnt++
+		typ = TalentAgencyScope
+	}
+	if u.Advertiser != nil {
+		cnt++
+		typ = AdvertiserScope
+	}
+	if u.InfluencerLoad != nil {
+		cnt++
+		typ = InfluencerScope
+	}
+	if cnt == 1 {
+		return typ
+	}
+	return InvalidScope
 }
 
 func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
@@ -163,7 +192,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	}
 
 	var suser SpecUser
-	switch u.Type {
+	switch u.Type() {
 	case AdvertiserScope:
 		if u.Advertiser != nil {
 			suser = u.Advertiser
@@ -221,7 +250,7 @@ func (a *Auth) DeleteUserTx(tx *bolt.Tx, userID string) (err error) {
 	uid := []byte(userID)
 	misc.GetBucket(tx, a.cfg.Bucket.User).Delete(uid)
 	misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(user.Email))
-	switch user.Type {
+	switch user.Type() {
 	case AdAgencyScope:
 		return a.moveChildrenTx(tx, user.ID, SwayOpsAdAgencyID)
 	case TalentAgencyScope:

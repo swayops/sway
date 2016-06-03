@@ -43,7 +43,7 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 // CheckScopes returns a gin handler that checks user access against the provided ScopeMap
 func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if u := GetCtxUser(c); u != nil && sm.HasAccess(u.Type, c.Request.Method) {
+		if u := GetCtxUser(c); u != nil && sm.HasAccess(u.Type(), c.Request.Method) {
 			return
 		}
 		misc.AbortWithErr(c, 405, ErrUnauthorized)
@@ -61,13 +61,19 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
-		if u.Type == AdminScope { // admin owns everything
+		if u.Admin { // admin owns everything
 			return
 		}
-		var ok bool
+		var (
+			ok    bool
+			utype = u.Type()
+		)
+		if utype == InvalidScope {
+			goto EXIT
+		}
 		switch itemType {
 		case AdvertiserItem:
-			switch u.Type {
+			switch utype {
 			case AdvertiserScope:
 				ok = u.ID == itemID
 			case AdAgencyScope:
@@ -76,7 +82,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			}
 		case CampaignItem:
 			cmp := common.GetCampaign(itemID, a.db, a.cfg)
-			switch u.Type {
+			switch utype {
 			case AdvertiserScope:
 				ok = u.ID == cmp.AdvertiserId
 			case AdAgencyScope:
@@ -85,7 +91,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			}
 
 		case InfluencerItem:
-			switch u.Type {
+			switch utype {
 			case InfluencerScope:
 				ok = u.ID == itemID
 			case TalentAgencyScope:
@@ -94,6 +100,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 			}
 
 		}
+	EXIT:
 		if !ok {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		}
@@ -159,44 +166,26 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 // SignUpHelper handles common user sign up operations, returns a *User.
 // if nil is returned, it means it failed and already returned an http error
 func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
-	if sup.Type == AdminScope {
+	if sup.Admin {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
-	if sup.Type == "" {
-		var cnt int
-		if sup.AdAgency != nil {
-			cnt++
-			sup.Type = AdAgencyScope
-		}
-		if sup.TalentAgency != nil {
-			cnt++
-			sup.Type = TalentAgencyScope
-		}
-		if sup.Advertiser != nil {
-			cnt++
-			sup.Type = AdvertiserScope
-		}
-		if sup.InfluencerLoad != nil {
-			cnt++
-			sup.Type = InfluencerScope
-		}
-		if cnt != 1 { // sanity check in case people try to get creative
-			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
-			return
-		}
-	}
 
+	typ := sup.Type()
+	if typ == InvalidScope {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
 	curUser := GetCtxUser(c)
 	if curUser != nil {
-		if !curUser.Type.CanCreate(sup.Type) {
+		if !curUser.Type().CanCreate(sup.Type()) {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
 		sup.ParentID = curUser.ID
-	} else if sup.Type == AdvertiserScope {
+	} else if typ == AdvertiserScope {
 		sup.ParentID = SwayOpsAdAgencyID
-	} else if sup.Type == InfluencerScope {
+	} else if typ == InfluencerScope {
 		sup.ParentID = SwayOpsTalentAgencyID
 	} else {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)

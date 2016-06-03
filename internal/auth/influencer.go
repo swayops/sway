@@ -11,7 +11,7 @@ type Influencer struct {
 }
 
 func GetInfluencer(u *User) *Influencer {
-	if u == nil || u.Type != InfluencerScope {
+	if u == nil || u.Influencer == nil {
 		return nil
 	}
 	inf := u.Influencer

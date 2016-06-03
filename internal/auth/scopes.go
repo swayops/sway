@@ -3,13 +3,14 @@ package auth
 type Scope string
 
 const (
+	AllScopes Scope = `*` // this is a special catch-all case for matching
+
+	InvalidScope      Scope = ""
 	AdminScope        Scope = `admin`
 	AdAgencyScope     Scope = `advAgency`
 	AdvertiserScope   Scope = `advertiser`
 	TalentAgencyScope Scope = `talentAgency`
 	InfluencerScope   Scope = `influencer`
-
-	AllScopes Scope = `*` // this is a special catch-all case for matching
 )
 
 func (s Scope) IsOneOf(os ...Scope) bool {

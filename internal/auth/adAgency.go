@@ -9,7 +9,7 @@ type AdAgency struct {
 }
 
 func GetAdAgency(u *User) *AdAgency {
-	if u == nil || u.Type != AdAgencyScope {
+	if u == nil {
 		return nil
 	}
 	return u.AdAgency

@@ -13,7 +13,7 @@ type Advertiser struct {
 }
 
 func GetAdvertiser(u *User) *Advertiser {
-	if u == nil || u.Type != AdvertiserScope {
+	if u == nil {
 		return nil
 	}
 	return u.Advertiser

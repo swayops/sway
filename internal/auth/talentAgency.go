@@ -21,7 +21,7 @@ type TalentAgency struct {
 }
 
 func GetTalentAgency(u *User) *TalentAgency {
-	if u == nil || u.Type != TalentAgencyScope {
+	if u == nil {
 		return nil
 	}
 	return u.TalentAgency
