@@ -163,6 +163,30 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
+	if sup.Type == "" {
+		var cnt int
+		if sup.AdAgency != nil {
+			cnt++
+			sup.Type = AdAgencyScope
+		}
+		if sup.TalentAgency != nil {
+			cnt++
+			sup.Type = TalentAgencyScope
+		}
+		if sup.Advertiser != nil {
+			cnt++
+			sup.Type = AdvertiserScope
+		}
+		if sup.InfluencerLoad != nil {
+			cnt++
+			sup.Type = InfluencerScope
+		}
+		if cnt != 1 { // sanity check in case people try to get creative
+			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+			return
+		}
+	}
+
 	curUser := GetCtxUser(c)
 	if curUser != nil {
 		if !curUser.Type.CanCreate(sup.Type) {
