@@ -176,12 +176,14 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"PUT", "/influencer/" + inf.ExpID, M{"id": inf.ExpID, "gender": "unicorn", "geo": M{"city": "hell"}}, 200, nil},
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil}, {"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
+			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
 		// try to load it as a different user
