@@ -12,11 +12,13 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/server"
 )
 
@@ -29,6 +31,7 @@ var (
 	insecureTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+
 	ts   *httptest.Server
 	rstP = sync.Pool{
 		New: func() interface{} {
@@ -38,6 +41,11 @@ var (
 		},
 	}
 )
+
+func init() {
+	flag.Parse()
+	resty.LogRequests = *printResp
+}
 
 func TestMain(m *testing.M) {
 	log.SetFlags(log.Lshortfile | log.Ltime)
@@ -92,56 +100,31 @@ func panicIf(err error) {
 	}
 }
 
-func getClient() *resty.Client {
-	rst := rstP.Get().(*resty.Client)
-	return rst
-}
+func getClient() *resty.Client { return rstP.Get().(*resty.Client) }
 
 func putClient(c *resty.Client) {
 	c.Reset()
 	rstP.Put(c)
 }
 
-func R(status int, v interface{}) (r resty.Reply) {
-	r.Status = status
-	switch v := v.(type) {
-	case []byte:
-		r.Value = v
-	case string:
-		r.Value = []byte(v)
-	case nil:
-	default:
-		r.Value, r.Err = json.Marshal(v)
-	}
-	return
+type signupUser struct {
+	*auth.User
+	Password  string `json:"pass"`
+	Password2 string `json:"pass2"`
 }
 
-type testReq struct {
-	method, path string
-	data         interface{}
-	expected     resty.Reply
-}
+const defaultPass = "12345678"
 
-func (tr *testReq) String() string {
-	return tr.method + " " + tr.path
-}
+var counter uint32
 
-func (tr *testReq) run(t *testing.T, c *resty.Client) {
-	r := c.Do(tr.method, tr.path, tr.data, nil)
-	if *printResp {
-		t.Logf("%s: %s", tr.String(), r.Value)
-	}
-	ex := &tr.expected
-	switch {
-	case ex.Err != nil:
-		t.Fatalf("%s: %v, %s", tr.String(), ex.Err, r.Value)
-	case r.Err != nil:
-		t.Fatalf("%s: error: %v, status: %d, resp: %s", tr.String(), r.Err, r.Status, r.Value)
-	case ex.Status != 0 && r.Status != 200, r.Status != ex.Status:
-		t.Fatalf("%s: wanted %d, got %d: %s", tr.String(), ex.Status, r.Status, r.Value)
-	case ex.Value != nil:
-		if err := compareRes(r.Value, ex.Value); err != nil {
-			t.Fatalf("%s: %v", tr.String(), err)
-		}
+func getSignupUser() *signupUser {
+	name := fmt.Sprintf("u-%05d", atomic.AddUint32(&counter, 1))
+	return &signupUser{
+		&auth.User{
+			Name:  name,
+			Email: name + "@a.b",
+		},
+		defaultPass,
+		defaultPass,
 	}
 }
