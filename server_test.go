@@ -121,11 +121,13 @@ func TestTalentAgencyChain(t *testing.T) {
 
 		// update the influencer and check if the update worked
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
 		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"vlogger"},
 			"geo":        M{"city": "hell"},
+			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
 		// sign in as admin and see if they can access the influencer
@@ -195,13 +197,13 @@ func TestNewInfluencer(t *testing.T) {
 
 		// update
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
-		//{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
 		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
-			//"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
 		// try to load it as a different user
