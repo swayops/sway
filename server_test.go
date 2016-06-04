@@ -113,7 +113,6 @@ func TestTalentAgencyChain(t *testing.T) {
 		// change the agency's name and fee and check if it stuck
 		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.2, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
 		{"PUT", "/talentAgency/" + ag.ExpID, &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}, 200, nil},
-		// COMMENTING THE FOLLOWING LINE OUT MAKES ALL TESTS WORK.. what?!
 		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
 
 		// create a new influencer as the new agency and signin
@@ -122,13 +121,11 @@ func TestTalentAgencyChain(t *testing.T) {
 
 		// update the influencer and check if the update worked
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
-		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
 		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"vlogger"},
 			"geo":        M{"city": "hell"},
-			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
 		// sign in as admin and see if they can access the influencer
@@ -198,13 +195,13 @@ func TestNewInfluencer(t *testing.T) {
 
 		// update
 		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
-		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		//{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
 		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
-			"twitter":    M{"id": "SwayOps_com"},
+			//"twitter":    M{"id": "SwayOps_com"},
 		}},
 
 		// try to load it as a different user
@@ -220,7 +217,9 @@ func TestInviteCode(t *testing.T) {
 	defer putClient(rst)
 
 	ag := getSignupUser()
-	ag.AdAgency = &auth.AdAgency{}
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.2,
+	}
 
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
