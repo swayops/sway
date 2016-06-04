@@ -128,15 +128,7 @@ func (a *Auth) SignOutHandler(c *gin.Context) {
 	c.JSON(200, misc.StatusOK(""))
 }
 
-func (a *Auth) SignInHandler(c *gin.Context) {
-	var li struct {
-		Email    string `json:"email" form:"email"`
-		Password string `json:"pass" form:"pass"`
-	}
-	if err := c.Bind(&li); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return
-	}
+func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	var (
 		login *Login
 		salt  string
@@ -145,7 +137,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 	)
 
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
-		if login, tok, err = a.SignInTx(tx, li.Email, li.Password); err != nil {
+		if login, tok, err = a.SignInTx(tx, email, pass); err != nil {
 			return
 		}
 		u := a.GetUserTx(tx, login.UserID)
@@ -167,6 +159,18 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 	setCookie(w, "token", tok, TokenAge)
 	setCookie(w, "key", mac, TokenAge)
 	c.JSON(200, misc.StatusOK(login.UserID))
+	return true
+}
+func (a *Auth) SignInHandler(c *gin.Context) {
+	var li struct {
+		Email    string `json:"email" form:"email"`
+		Password string `json:"pass" form:"pass"`
+	}
+	if err := c.Bind(&li); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return
+	}
+	signInHelper(a, c, li.Email, li.Password)
 }
 
 // SignUpHelper handles common user sign up operations, returns a *User.
@@ -226,7 +230,12 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
-	if a.signUpHelper(c, &sup) {
+	if !a.signUpHelper(c, &sup) {
+		return
+	}
+	if c.Query("autologin") != "" {
+		signInHelper(a, c, sup.Email, sup.Password)
+	} else {
 		c.JSON(200, misc.StatusOK(sup.ID))
 	}
 }

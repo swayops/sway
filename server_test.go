@@ -157,8 +157,7 @@ func TestNewAdvertiser(t *testing.T) {
 	ag := getSignupUser()
 	ag.AdAgency = &auth.AdAgency{}
 	for _, tr := range [...]*resty.TestRequest{
-		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
-		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
+		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
 		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
