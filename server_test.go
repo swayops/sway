@@ -392,5 +392,13 @@ func TestCampaigns(t *testing.T) {
 
 		tr.Run(t, rst)
 	}
+}
 
+func TestDeals(t *testing.T) {
+}
+
+func TestBudget(t *testing.T) {
+}
+
+func TestReporting(t *testing.T) {
 }
