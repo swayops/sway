@@ -28,19 +28,27 @@ func (a *Auth) GetAdAgency(userID string) (ag *AdAgency) {
 }
 
 func (ag *AdAgency) setToUser(_ *Auth, u *User) error {
+	// Newly created/updated user is passed in
 	if ag == nil {
 		return ErrUnexpected
 	}
 	if u.ID == "" {
 		panic("wtfmate?")
 	}
-	if ag.ID == "" || ag.Name == "" { // initial creation
+	if ag.ID == "" || ag.Name == "" {
+		// Initial creation:
+		// Copy the newly created user's name and status to
+		// the agency
 		ag.Name, ag.Status = u.Name, u.Status
 	} else if ag.ID != u.ID {
 		return ErrInvalidID
 	} else if ag.Name != "" {
+		// Update the user properties when the
+		// agency has been updated
 		u.Name, u.Status = ag.Name, ag.Status
 	}
+
+	// Make sure IDs are congruent each create/update
 	ag.ID = u.ID
 	u.AdAgency = ag
 	return nil

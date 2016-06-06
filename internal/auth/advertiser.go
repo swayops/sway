@@ -32,19 +32,27 @@ func (a *Auth) GetAdvertiser(userID string) (adv *Advertiser) {
 }
 
 func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
+	// Newly created/updated user is passed in
 	if adv == nil {
 		return ErrUnexpected
 	}
 	if u.ID == "" {
 		panic("wtfmate?")
 	}
-	if adv.ID == "" || adv.Name == "" { // initial creation
+	if adv.ID == "" || adv.Name == "" {
+		// Initial creation:
+		// Copy the newly created user's name and status to
+		// the advertiser
 		adv.Name, adv.Status = u.Name, u.Status
 	} else if adv.ID != u.ID {
 		return ErrInvalidID
 	} else {
+		// Update the user properties when the
+		// agency has been updated
 		u.Name, u.Status = adv.Name, adv.Status
 	}
+
+	// Make sure IDs are congruent each create/update
 	adv.ID, adv.AgencyID = u.ID, u.ParentID
 	u.Advertiser = adv
 	return nil
