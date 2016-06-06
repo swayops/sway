@@ -262,7 +262,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		// Create their budget key
-		dspFee, exchangeFee := getAdvertiserFees(s, cmp.AdvertiserId)
+		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 		if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, dspFee, exchangeFee, false); err != nil {
 			log.Println("Error creating budget key!", err)
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -394,7 +394,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if cmp.Budget != upd.Budget {
 			// Update their budget!
-			dspFee, exchangeFee := getAdvertiserFees(s, cmp.AdvertiserId)
+			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 			if err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, upd.Budget, dspFee, exchangeFee); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))

@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"crypto/tls"
@@ -19,13 +19,12 @@ import (
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
-	"github.com/swayops/sway/server"
 )
 
 type M map[string]interface{}
 
 var (
-	printResp = flag.Bool("pr", false, "print responses")
+	printResp = flag.Bool("pr", os.Getenv("PR") != "", "print responses")
 	keepTmp   = flag.Bool("k", false, "keep tmp dir")
 
 	insecureTransport = &http.Transport{
@@ -40,6 +39,8 @@ var (
 			return rst
 		},
 	}
+
+	srv *Server
 )
 
 func init() {
@@ -53,7 +54,7 @@ func TestMain(m *testing.M) {
 	var code int = 1
 	defer func() { os.Exit(code) }()
 
-	cfg, err := config.New("config/config.json")
+	cfg, err := config.New("../config/config.json")
 	panicIf(err)
 
 	cfg.Sandbox = true // always set it to true just in case
@@ -70,7 +71,7 @@ func TestMain(m *testing.M) {
 	// disable all the gin spam
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	_, err = server.New(cfg, r)
+	srv, err = New(cfg, r)
 	panicIf(err)
 
 	ts = httptest.NewTLSServer(r)

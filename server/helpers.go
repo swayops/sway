@@ -100,8 +100,8 @@ func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
 	return cmp
 }
 
-func getAdvertiserFees(s *Server, advId string) (float64, float64) {
-	if g := s.auth.GetAdvertiser(advId); g != nil {
+func getAdvertiserFees(a *auth.Auth, advId string) (float64, float64) {
+	if g := a.GetAdvertiser(advId); g != nil {
 		return g.DspFee, g.ExchangeFee
 	}
 	return 0, 0

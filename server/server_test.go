@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"testing"
@@ -8,13 +8,12 @@ import (
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
-	"github.com/swayops/sway/server"
 )
 
 var (
-	adminReq             = M{"email": server.AdminEmail, "pass": "Rf_jv9hM3-"}
-	adminAdAgencyReq     = M{"email": server.AdAdminEmail, "pass": "Rf_jv9hM3-"}
-	adminTalentAgencyReq = M{"email": server.TalentAdminEmail, "pass": "Rf_jv9hM3-"}
+	adminReq             = M{"email": AdminEmail, "pass": adminPass}
+	adminAdAgencyReq     = M{"email": AdAdminEmail, "pass": adminPass}
+	adminTalentAgencyReq = M{"email": TalentAdminEmail, "pass": adminPass}
 )
 
 func TestAdminLogin(t *testing.T) {
@@ -44,6 +43,7 @@ func TestAdminLogin(t *testing.T) {
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 		{"GET", "/apiKey", nil, 200, nil},
+		{"GET", "/getStore", nil, 500, nil},
 
 		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
 
@@ -62,6 +62,7 @@ func TestAdminLogin(t *testing.T) {
 	} {
 		tr.Run(t, rst)
 	}
+
 }
 
 // this includes child advertiser tests
@@ -226,6 +227,11 @@ func TestNewAdvertiser(t *testing.T) {
 	}
 
 	counter--
+
+	if df, ef := getAdvertiserFees(srv.auth, adv.ExpID); df != 0.2 || ef != 0.3 {
+		t.Fatal("getAdvertiserFees failed", df, ef)
+	}
+
 }
 
 func TestNewInfluencer(t *testing.T) {
