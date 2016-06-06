@@ -429,7 +429,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budget
 
 		// Social Media Checks
 		if cmp.Twitter && inf.Twitter != nil {
-			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.Twitter, inf.Twitter.Id) {
+			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Twitter, inf.Twitter.Id) {
 				continue
 			}
 
@@ -441,7 +441,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budget
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
-			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.Facebook, inf.Facebook.Id) {
+			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Facebook, inf.Facebook.Id) {
 				continue
 			}
 
@@ -453,7 +453,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budget
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
-			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.Instagram, inf.Instagram.UserName) {
+			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Instagram, inf.Instagram.UserName) {
 				continue
 			}
 
@@ -465,7 +465,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budget
 		}
 
 		if cmp.YouTube && inf.YouTube != nil {
-			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.YouTube, inf.YouTube.UserName) {
+			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.YouTube, inf.YouTube.UserName) {
 				continue
 			}
 
