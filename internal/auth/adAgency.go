@@ -34,13 +34,14 @@ func (ag *AdAgency) setToUser(_ *Auth, u *User) error {
 	if u.ID == "" {
 		panic("wtfmate?")
 	}
-	if ag.ID == "" { // initial creation
-		ag.ID, ag.Name, ag.Status = u.ID, u.Name, u.Status
+	if ag.ID == "" || ag.Name == "" { // initial creation
+		ag.Name, ag.Status = u.Name, u.Status
 	} else if ag.ID != u.ID {
 		return ErrInvalidID
-	} else {
+	} else if ag.Name != "" {
 		u.Name, u.Status = ag.Name, ag.Status
 	}
+	ag.ID = u.ID
 	u.AdAgency = ag
 	return nil
 }

@@ -217,6 +217,10 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		return ErrInvalidRequest
 	}
 
+	if err = suser.Check(); err != nil {
+		return
+	}
+
 	if err = suser.setToUser(a, u); err != nil {
 		return
 	}

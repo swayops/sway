@@ -40,14 +40,14 @@ func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
 	if u.ID == "" {
 		panic("wtfmate?")
 	}
-	if ag.ID == "" { // initial creation
+	if ag.ID == "" || ag.Name == "" { // initial creation
 		ag.ID, ag.Name, ag.Status = u.ID, u.Name, u.Status
 	} else if ag.ID != u.ID {
 		return ErrInvalidID
 	} else {
 		u.Name, u.Status = ag.Name, ag.Status
 	}
-	ag.InviteCode = common.GetCodeFromID(u.ID)
+	ag.ID, ag.InviteCode = u.ID, common.GetCodeFromID(u.ID)
 	u.TalentAgency = ag
 	return nil
 }
@@ -55,10 +55,6 @@ func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
 func (ag *TalentAgency) Check() error {
 	if ag == nil {
 		return ErrUnexpected
-	}
-
-	if ag.Name == "" {
-		return ErrInvalidName
 	}
 
 	if ag.Fee > 0.99 {

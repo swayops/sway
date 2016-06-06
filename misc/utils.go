@@ -24,7 +24,7 @@ var (
 
 	nilTime time.Time
 
-	rnd     struct {
+	rnd struct {
 		sync.Mutex
 		*rand.Rand
 	}

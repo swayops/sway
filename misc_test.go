@@ -99,7 +99,7 @@ func compareRes(a, b []byte) error {
 
 func panicIf(err error) {
 	if err != nil {
-		log.Panicln(err)
+		log.Panic(err)
 	}
 }
 

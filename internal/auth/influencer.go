@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"strings"
+
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
@@ -47,7 +49,9 @@ func (inf *InfluencerLoad) Check() error {
 	if inf == nil {
 		return ErrUnexpected
 	}
-	if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
+	switch strings.ToLower(inf.Gender) {
+	case "m", "f", "unicorn":
+	default:
 		return ErrBadGender
 	}
 

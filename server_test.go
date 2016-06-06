@@ -190,7 +190,16 @@ func TestNewInfluencer(t *testing.T) {
 			Geo:    &misc.GeoRecord{},
 		},
 	}
+	badInf := getSignupUser()
+	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender: "purple",
+			Geo:    &misc.GeoRecord{},
+		},
+	}
 	for _, tr := range [...]*resty.TestRequest{
+		{"POST", "/signUp", badInf, 400, nil},
+
 		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
@@ -208,6 +217,9 @@ func TestNewInfluencer(t *testing.T) {
 		// try to load it as a different user
 		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
+
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -253,5 +265,4 @@ func TestInviteCode(t *testing.T) {
 /* TODO:
 - campaigns
 - extended TestInfluencer like advertiser
-- test influencer with invite codes
 */
