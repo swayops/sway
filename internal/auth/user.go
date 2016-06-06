@@ -270,3 +270,11 @@ func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {
 	}
 	return nil
 }
+
+func (a *Auth) GetUser(userID string) (u *User) {
+	a.db.View(func(tx *bolt.Tx) error {
+		u = a.GetUserTx(tx, userID)
+		return nil
+	})
+	return
+}

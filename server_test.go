@@ -34,6 +34,7 @@ func TestAdminLogin(t *testing.T) {
 func TestAdAgencyChain(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
+
 	ag := getSignupUser()
 	ag.AdAgency = &auth.AdAgency{}
 
@@ -150,13 +151,16 @@ func TestTalentAgencyChain(t *testing.T) {
 func TestNewAdvertiser(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
+
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:      0.5,
 		ExchangeFee: 0.2,
 	}
+
 	ag := getSignupUser()
 	ag.AdAgency = &auth.AdAgency{}
+
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
@@ -184,6 +188,7 @@ func TestNewAdvertiser(t *testing.T) {
 func TestNewInfluencer(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
+
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
@@ -192,6 +197,7 @@ func TestNewInfluencer(t *testing.T) {
 			TwitterId: "justinbieber",
 		},
 	}
+
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
@@ -237,8 +243,8 @@ func TestNewInfluencer(t *testing.T) {
 		tr.Run(t, rst)
 	}
 
-	// this decreases the counter sign the user id didn't increase in the
-	// server because of the bad gender error.
+	// this decreases the user id counter since the user id didn't increase in the
+	// server because of the bad gender error in badInf.
 	counter--
 }
 
@@ -260,7 +266,7 @@ func TestInviteCode(t *testing.T) {
 			TwitterId:  "justinbieber",
 		},
 	}
-	t.Logf("exp agID %s, exp infID %s", ag.ExpID, inf.ExpID)
+
 	for _, tr := range [...]*resty.TestRequest{
 		// sign in as admin
 		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
@@ -282,10 +288,66 @@ func TestInviteCode(t *testing.T) {
 }
 
 func TestCampaigns(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.AdAgency = &auth.AdAgency{}
+
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.5,
+		ExchangeFee: 0.2,
+	}
+	cmp := common.Campaign{
+		AdvertiserId: adv.ExpID,
+		Budget:       10.5,
+		Name:         "The Day Walker",
+		Instagram:    true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Tags:         []string{"#mmmm"},
+	}
+	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
+	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
+	badAdvId := cmp
+	badAdvId.AdvertiserId = "1"
+
+	for _, tr := range [...]*resty.TestRequest{
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		{"POST", "/signUp?autologin=true", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
+
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, M{
+			"id":       adv.ExpID,
+			"agencyId": ag.ExpID,
+		}},
+
+		{"POST", "/campaign", &cmp, 200, nil},
+		{"PUT", "/campaign/1", cmpUpdate1, 200, nil},
+		{"GET", "/campaign/1", nil, 200, M{
+			"name":         "Blade V",
+			"agencyId":     ag.ExpID,
+			"advertiserId": adv.ExpID,
+		}},
+
+		// access the campaign with the agency
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+		{"PUT", "/campaign/1", cmpUpdate2, 200, nil},
+		{"GET", "/campaign/1", nil, 200, M{"name": "Blade VI?"}},
+
+		// sign in as a different ad agency and try to access the campaign
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/campaign/1", nil, 401, nil},
+
+		// try to create a campaign with a bad advertiser id
+		{"POST", "/campaign", &badAdvId, 400, nil},
+	} {
+
+		tr.Run(t, rst)
+	}
 
 }
-
-/* TODO:
-- campaigns
-- extended TestInfluencer like advertiser
-*/

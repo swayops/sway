@@ -197,8 +197,9 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 func postCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			cmp common.Campaign
-			err error
+			cuser = auth.GetCtxUser(c)
+			cmp   common.Campaign
+			err   error
 		)
 
 		defer c.Request.Body.Close()
@@ -217,15 +218,19 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if cmp.AdvertiserId == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
-			return
+		if cuser.Admin {
+			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil {
+				c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+				return
+			}
+		} else if cuser.AdAgency != nil {
+			agID := cuser.ID
+			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil || cuser.ParentID != agID {
+				c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+				return
+			}
 		}
-
-		if cmp.AgencyId == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
-			return
-		}
+		cmp.AdvertiserId, cmp.AgencyId = cuser.ID, cuser.ParentID
 
 		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
 			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
@@ -353,7 +358,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			err error
 			b   []byte
 		)
-		cId := c.Param("campaignId")
+		cId := c.Param("id")
 		if cId == "" {
 			c.JSON(400, misc.StatusErr("Please provide a valid campaign ID"))
 			return

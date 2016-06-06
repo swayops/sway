@@ -48,7 +48,7 @@ func (s Scope) CanOwn(it ItemType) bool {
 	case AdminScope:
 		return true
 	case AdAgencyScope:
-		return it == AdvertiserItem
+		return it == AdvertiserItem || it == CampaignItem
 	case TalentAgencyScope:
 		return it == InfluencerItem
 	case AdvertiserScope:
