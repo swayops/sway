@@ -70,17 +70,13 @@ func TestMain(m *testing.M) {
 	// disable all the gin spam
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
-	r.Use(gin.Recovery())
-	srv, err := server.New(cfg, r)
+	_, err := server.New(cfg, r)
 	panicIf(err)
 
 	ts = httptest.NewTLSServer(r)
-	defer ts.CloseClientConnections()
 	defer ts.Close()
 
 	code = m.Run()
-
-	_ = srv
 }
 
 func compareRes(a, b []byte) error {

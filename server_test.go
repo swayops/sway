@@ -195,6 +195,11 @@ func TestNewAdvertiser(t *testing.T) {
 	ag := getSignupUser()
 	ag.AdAgency = &auth.AdAgency{}
 
+	badAdv := getSignupUser()
+	badAdv.Advertiser = &auth.Advertiser{
+		DspFee: 2,
+	}
+
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
@@ -214,9 +219,13 @@ func TestNewAdvertiser(t *testing.T) {
 		// test if a random agency can access it
 		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 401, nil},
+
+		{"POST", "/signUp", badAdv, 400, nil},
 	} {
 		tr.Run(t, rst)
 	}
+
+	counter--
 }
 
 func TestNewInfluencer(t *testing.T) {
