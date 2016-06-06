@@ -7,6 +7,9 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+// AUTH:
+// https://api.instagram.com/oauth/authorize/?client_id={{CLIENT_ID}}&redirect_uri=http://lol:8080&response_type=token&scope=basic+public_content
+
 type Instagram struct {
 	UserName      string  `json:"userName"`
 	UserId        string  `json:"userId"`

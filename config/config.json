@@ -39,7 +39,7 @@
 
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
-		"clientId": "5941ed0c28874764a5d86fb47984aceb"
+		"accessToken": "2267093891.06e94d5.71775c6edf804a1ba08ee52eb3e021e3"
 	},
 
 	"twitter": {

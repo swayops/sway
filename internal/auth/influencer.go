@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"strings"
-
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
@@ -49,9 +47,7 @@ func (inf *InfluencerLoad) Check() error {
 	if inf == nil {
 		return ErrUnexpected
 	}
-	switch strings.ToLower(inf.Gender) {
-	case "m", "f", "unicorn":
-	default:
+	if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
 		return ErrBadGender
 	}
 
@@ -64,6 +60,10 @@ func (inf *InfluencerLoad) Check() error {
 		if _, ok := common.CATEGORIES[cat]; !ok {
 			return ErrBadCat
 		}
+	}
+
+	if len(inf.InstagramId)+len(inf.FbId)+len(inf.TwitterId)+len(inf.YouTubeId) == 0 {
+		return ErrPlatform
 	}
 
 	return nil

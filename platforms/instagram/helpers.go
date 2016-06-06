@@ -17,10 +17,10 @@ type Meta struct {
 
 const (
 	postCount    = 30.0
-	searchesUrl  = "%susers/search?q=%s&client_id=%s"
-	followersUrl = "%susers/%s/?client_id=%s"
-	postUrl      = "%susers/%s/media/recent/?client_id=%s&count=30"
-	postIdUrl    = "%smedia/%s?client_id=%s"
+	searchesUrl  = "%susers/search?q=%s&access_token=%s"
+	followersUrl = "%susers/%s/?access_token=%s"
+	postUrl      = "%susers/%s/media/recent/?access_token=%s&count=30"
+	postIdUrl    = "%smedia/%s?access_token=%s"
 )
 
 var (
@@ -39,7 +39,7 @@ type SearchData struct {
 }
 
 func getUserIdFromName(name string, cfg *config.Config) (string, error) {
-	endpoint := fmt.Sprintf(searchesUrl, cfg.Instagram.Endpoint, name, cfg.Instagram.ClientId)
+	endpoint := fmt.Sprintf(searchesUrl, cfg.Instagram.Endpoint, name, cfg.Instagram.AccessToken)
 
 	var search UserSearch
 	err := misc.Request("GET", endpoint, "", &search)
@@ -104,7 +104,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *mis
 
 	posts := []*Post{}
 
-	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
+	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.AccessToken)
 
 	var media UserPost
 	err := misc.Request("GET", endpoint, "", &media)
@@ -188,7 +188,7 @@ type Counts struct {
 
 func getUserInfo(id string, cfg *config.Config) (flw float64, url string, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
-	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.ClientId)
+	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.AccessToken)
 	var user BasicUser
 	err = misc.Request("GET", endpoint, "", &user)
 	if err != nil {

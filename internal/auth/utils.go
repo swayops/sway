@@ -30,6 +30,7 @@ var (
 	ErrNoGeo            = errors.New("Please provide a geo")
 	ErrNoName           = errors.New("Please provide a name")
 	ErrBadCat           = errors.New("Please provide a valid category")
+	ErrPlatform         = errors.New("Please provide atleast one social media platform id")
 )
 
 func GetCtxUser(c *gin.Context) *User {

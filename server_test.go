@@ -94,8 +94,9 @@ func TestTalentAgencyChain(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender: "unicorn",
-			Geo:    &misc.GeoRecord{},
+			Gender:    "unicorn",
+			Geo:       &misc.GeoRecord{},
+			TwitterId: "justinbieber",
 		},
 	}
 
@@ -186,8 +187,9 @@ func TestNewInfluencer(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender: "unicorn",
-			Geo:    &misc.GeoRecord{},
+			Gender:    "unicorn",
+			Geo:       &misc.GeoRecord{},
+			TwitterId: "justinbieber",
 		},
 	}
 	badInf := getSignupUser()
@@ -211,6 +213,16 @@ func TestNewInfluencer(t *testing.T) {
 			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
 			"twitter":    M{"id": "SwayOps_com"},
+		}},
+
+		// Add a social media platofrm
+		{"GET", "/setPlatform/" + inf.ExpID + "/facebook/" + "justinbieber", nil, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId":   auth.SwayOpsTalentAgencyID,
+			"geo":        M{"city": "hell"},
+			"categories": []string{"vlogger"},
+			"twitter":    M{"id": "SwayOps_com"},
+			"facebook":   M{"id": "justinbieber"},
 		}},
 
 		// try to load it as a different user
@@ -245,6 +257,7 @@ func TestInviteCode(t *testing.T) {
 			Gender:     "unicorn",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "justinbieber",
 		},
 	}
 	t.Logf("exp agID %s, exp infID %s", ag.ExpID, inf.ExpID)

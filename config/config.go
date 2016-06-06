@@ -83,8 +83,8 @@ type Config struct {
 	} `json:"youtube"`
 
 	Instagram struct {
-		Endpoint string `json:"endpoint"`
-		ClientId string `json:"clientId"`
+		Endpoint    string `json:"endpoint"`
+		AccessToken string `json:"accessToken"`
 	} `json:"instagram"`
 
 	Facebook struct {

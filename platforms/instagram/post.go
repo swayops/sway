@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	postInfoUrl = "%smedia/%s?client_id=%s"
+	postInfoUrl = "%smedia/%s?access_token=%s"
 )
 
 var (
@@ -71,7 +71,7 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	// 	return nil
 	// }
 
-	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.ClientId)
+	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.AccessToken)
 
 	var post DataByPost
 	err := misc.Request("GET", endpoint, "", &post)
