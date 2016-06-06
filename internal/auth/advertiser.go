@@ -39,13 +39,13 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 		panic("wtfmate?")
 	}
 	if adv.ID == "" || adv.Name == "" { // initial creation
-		adv.AgencyID, adv.Name, adv.Status = u.ParentID, u.Name, u.Status
+		adv.Name, adv.Status = u.Name, u.Status
 	} else if adv.ID != u.ID {
 		return ErrInvalidID
 	} else {
 		u.Name, u.Status = adv.Name, adv.Status
 	}
-	adv.ID = u.ID
+	adv.ID, adv.AgencyID = u.ID, u.ParentID
 	u.Advertiser = adv
 	return nil
 }

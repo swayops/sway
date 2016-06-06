@@ -41,7 +41,7 @@ func (ag *TalentAgency) setToUser(_ *Auth, u *User) error {
 		panic("wtfmate?")
 	}
 	if ag.ID == "" || ag.Name == "" { // initial creation
-		ag.ID, ag.Name, ag.Status = u.ID, u.Name, u.Status
+		ag.Name, ag.Status = u.Name, u.Status
 	} else if ag.ID != u.ID {
 		return ErrInvalidID
 	} else {
