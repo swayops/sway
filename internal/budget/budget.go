@@ -220,7 +220,6 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 		}
 		return
 	}); err != nil {
-		log.Println("Error when getting store", err)
 		return nil, err
 	}
 

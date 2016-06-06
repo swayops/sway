@@ -40,9 +40,27 @@ type Campaign struct {
 
 	Perks string `json:"perks,omitempty"` // Perks need to be specced out
 
+	Whitelist *TargetList `json:"whitelist,omitempty"`
+	Blacklist *TargetList `json:"blacklist,omitempty"`
+
 	// Internal attribute set by putCampaign and un/assignDeal
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID
 	Deals map[string]*Deal `json:"deals,omitempty"`
+}
+
+type TargetList struct {
+	Twitter   []string `json:"twitter,omitempty"`
+	Facebook  []string `json:"facebook,omitempty"`
+	Instagram []string `json:"instagram,omitempty"`
+	YouTube   []string `json:"youtube,omitempty"`
+}
+
+func (tl *TargetList) Sanitize() *TargetList {
+	tl.Twitter = LowerSlice(tl.Twitter)
+	tl.Facebook = LowerSlice(tl.Facebook)
+	tl.Instagram = LowerSlice(tl.Instagram)
+	tl.YouTube = LowerSlice(tl.YouTube)
+	return tl
 }
 
 func (cmp *Campaign) IsValid() bool {

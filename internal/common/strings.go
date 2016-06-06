@@ -11,6 +11,10 @@ func StringsIndexOf(hay []string, needle string) int {
 	return -1
 }
 
+func IsInList(hay []string, needle string) bool {
+	return StringsIndexOf(hay, needle) >= 0
+}
+
 // StringsRemove removes an item out of a slice, this *will* modify the original slice, YMMV
 func StringsRemove(hay []string, needle string) []string {
 	idx := StringsIndexOf(hay, needle)

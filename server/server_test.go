@@ -356,8 +356,11 @@ func TestCampaigns(t *testing.T) {
 		Gender:       "mf",
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
+		Whitelist: &common.TargetList{
+			Instagram: []string{"someguy"},
+		},
 	}
-	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
+	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true, "whitelist":{"instagram": ["justinbieber"]}}`
 	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
 	badAdvId := cmp
 	badAdvId.AdvertiserId = "1"
@@ -381,6 +384,7 @@ func TestCampaigns(t *testing.T) {
 			"name":         "Blade V",
 			"agencyId":     ag.ExpID,
 			"advertiserId": adv.ExpID,
+			"whitelist":    M{"instagram": []string{"justinbieber"}},
 		}},
 
 		// access the campaign with the agency

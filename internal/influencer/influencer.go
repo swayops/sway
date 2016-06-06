@@ -428,20 +428,51 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budget
 		}
 
 		// Social Media Checks
-		// Values are potential price points TBD
 		if cmp.Twitter && inf.Twitter != nil {
+			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.Twitter, inf.Twitter.Id) {
+				continue
+			}
+
+			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Instagram, inf.Instagram.UserName) {
+				continue
+			}
+
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
+			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.Facebook, inf.Facebook.Id) {
+				continue
+			}
+
+			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Instagram, inf.Instagram.UserName) {
+				continue
+			}
+
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
+			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.Instagram, inf.Instagram.UserName) {
+				continue
+			}
+
+			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Instagram, inf.Instagram.UserName) {
+				continue
+			}
+
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
 		}
 
 		if cmp.YouTube && inf.YouTube != nil {
+			if cmp.Whitelist != nil && common.IsInList(cmp.Whitelist.YouTube, inf.YouTube.UserName) {
+				continue
+			}
+
+			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.YouTube, inf.YouTube.UserName) {
+				continue
+			}
+
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 
 		}
