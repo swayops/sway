@@ -20,11 +20,45 @@ var (
 func TestAdminLogin(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.AdAgency = &auth.AdAgency{}
+
+	adv := getSignupUser()
+	adv.ParentID = ag.ExpID
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.5,
+		ExchangeFee: 0.2,
+	}
+
+	ag2 := getSignupUser()
+	ag2.AdAgency = &auth.AdAgency{}
+
+	adv2 := getSignupUser()
+	adv2.ParentID = ag.ExpID
+	adv2.Advertiser = &auth.Advertiser{
+		DspFee:      0.5,
+		ExchangeFee: 0.2,
+	}
+
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 		{"GET", "/apiKey", nil, 200, nil},
-		{"GET", "/signOut", nil, 200, nil},
-		{"GET", "/apiKey", nil, 401, nil},
+
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		// create advertiser as admin and set agency to ag.ExpID
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+
+		// create another agency and try to create an advertiser with the old agency's id
+		{"POST", "/signUp?autologin=true", ag2, 200, misc.StatusOK(ag2.ExpID)},
+		{"POST", "/signUp", adv2, 200, misc.StatusOK(adv2.ExpID)}, // should work but switch the parent id to ag2's
+		{"GET", "/advertiser/" + adv2.ExpID, nil, 200, M{
+			"agencyId": ag2.ExpID,
+		}},
 	} {
 		tr.Run(t, rst)
 	}

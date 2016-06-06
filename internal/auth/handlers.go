@@ -75,8 +75,10 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 		switch itemType {
 		case AdAgencyItem:
 			ok = u.ID == itemID
+
 		case TalentAgencyItem:
 			ok = u.ID == itemID
+
 		case AdvertiserItem:
 			switch utype {
 			case AdvertiserScope:
@@ -85,6 +87,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				adv := a.GetAdvertiser(itemID)
 				ok = adv != nil && adv.AgencyID == u.ID
 			}
+
 		case CampaignItem:
 			cmp := common.GetCampaign(itemID, a.db, a.cfg)
 			switch utype {
@@ -103,6 +106,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 				inf := a.GetInfluencer(itemID)
 				ok = inf != nil && inf.AgencyId == u.ID
 			}
+
 		default:
 			log.Println("unexpected:", itemType)
 		}
@@ -192,7 +196,23 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 			misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 			return
 		}
-		sup.ParentID = curUser.ID
+
+		if curUser.Admin {
+			// if the admin is creating a user they either have to specify the parent id or
+			// it will be automatically set to the sway agency
+			if sup.ParentID == "" {
+				switch typ {
+				case AdvertiserScope:
+					sup.ParentID = SwayOpsAdAgencyID
+				case InfluencerScope:
+					sup.ParentID = SwayOpsTalentAgencyID
+				default:
+					sup.ParentID = curUser.ID
+				}
+			}
+		} else {
+			sup.ParentID = curUser.ID
+		}
 	} else if typ == AdvertiserScope {
 		sup.ParentID = SwayOpsAdAgencyID
 	} else if typ == InfluencerScope {
