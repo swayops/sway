@@ -197,9 +197,8 @@ func TestNewInfluencer(t *testing.T) {
 			Geo:    &misc.GeoRecord{},
 		},
 	}
-	for _, tr := range [...]*resty.TestRequest{
-		{"POST", "/signUp", badInf, 400, nil},
 
+	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
@@ -220,9 +219,15 @@ func TestNewInfluencer(t *testing.T) {
 
 		{"POST", "/signIn", adminReq, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, nil},
+
+		{"POST", "/signUp", badInf, 400, nil},
 	} {
 		tr.Run(t, rst)
 	}
+
+	// this decreases the counter sign the user id didn't increase in the
+	// server because of the bad gender error.
+	counter--
 }
 
 func TestInviteCode(t *testing.T) {
@@ -242,6 +247,7 @@ func TestInviteCode(t *testing.T) {
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 		},
 	}
+	t.Logf("exp agID %s, exp infID %s", ag.ExpID, inf.ExpID)
 	for _, tr := range [...]*resty.TestRequest{
 		// sign in as admin
 		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
@@ -260,6 +266,10 @@ func TestInviteCode(t *testing.T) {
 
 		tr.Run(t, rst)
 	}
+}
+
+func TestCampaigns(t *testing.T) {
+
 }
 
 /* TODO:

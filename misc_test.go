@@ -11,8 +11,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"strconv"
 	"sync"
-	"sync/atomic"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -119,10 +119,11 @@ type signupUser struct {
 
 const defaultPass = "12345678"
 
-var counter uint32 = 3 // 3 is the highest built in user (TalentAgency)
+var counter int = 3 // 3 is the highest built in user (TalentAgency)
 
 func getSignupUser() *signupUser {
-	id := fmt.Sprint(atomic.AddUint32(&counter, 1))
+	counter++
+	id := strconv.Itoa(counter)
 	name := "u-" + id
 	return &signupUser{
 		&auth.User{

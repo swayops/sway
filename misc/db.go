@@ -60,5 +60,7 @@ func GetNextIndex(tx *bolt.Tx, bucket string) (string, error) {
 	b := GetBucket(tx, "index")
 	ov := b.Get(key)
 	n := new(big.Int).SetBytes(ov)
-	return n.String(), b.Put(key, n.Add(n, one).Bytes())
+	nv := new(big.Int).Add(n, one).Bytes()
+	b.Put(key, nv)
+	return n.String(), nil
 }

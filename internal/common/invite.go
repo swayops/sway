@@ -15,7 +15,6 @@ func GetIDFromInvite(code string) string {
 	if err != nil {
 		return ""
 	}
-
 	parts := strings.Split(string(dec), "::")
 	if len(parts) == 2 {
 		return parts[1]
