@@ -26,8 +26,8 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 		return err
 	}
 
-	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&respData)
+	resp.Body.Close()
 	if err != nil {
 		log.Println("Error when unmarshalling from:", endpoint, err)
 		return err
@@ -36,9 +36,17 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 }
 
 func StatusOK(id string) gin.H {
+	if len(id) == 0 {
+		return gin.H{"status": "success"}
+	}
 	return gin.H{"status": "success", "id": id}
 }
 
 func StatusErr(msg string) gin.H {
 	return gin.H{"status": "error", "msg": msg}
+}
+
+func AbortWithErr(c *gin.Context, code int, err error) {
+	c.JSON(code, StatusErr(err.Error()))
+	c.Abort()
 }

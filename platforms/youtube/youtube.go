@@ -11,18 +11,18 @@ type YouTube struct {
 	UserName string `json:"name"`
 	UserId   string `json:"id"`
 
-	AvgLikes    float32 `json:"avgLikes,omitempty"`
-	AvgDislikes float32 `json:"avgDislikes,omitempty"`
+	AvgLikes    float64 `json:"avgLikes,omitempty"`
+	AvgDislikes float64 `json:"avgDislikes,omitempty"`
 
 	AvgViews        float64 `json:"avgViews,omitempty"`
-	AvgComments     float32 `json:"avgComments,omitempty"`
-	Subscribers     float32 `json:"avgSubs,omitempty"`  // float32 for GetScore equation
-	SubscriberDelta float32 `json:"subDelta,omitempty"` // Follower delta since last UpdateData run
+	AvgComments     float64 `json:"avgComments,omitempty"`
+	Subscribers     float64 `json:"avgSubs,omitempty"`  // float64 for GetScore equation
+	SubscriberDelta float64 `json:"subDelta,omitempty"` // Follower delta since last UpdateData run
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
-	Score float32 `json:"score,omitempty"`
+	Score float64 `json:"score,omitempty"`
 }
 
 func New(name string, cfg *config.Config) (*YouTube, error) {
@@ -69,6 +69,6 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 	return nil
 }
 
-func (yt *YouTube) GetScore() float32 {
-	return (yt.Subscribers * 2.5) + (yt.AvgComments * 1.5) + float32(yt.AvgLikes) + float32(yt.AvgViews)
+func (yt *YouTube) GetScore() float64 {
+	return (yt.Subscribers * 2.5) + (yt.AvgComments * 1.5) + float64(yt.AvgLikes) + float64(yt.AvgViews)
 }

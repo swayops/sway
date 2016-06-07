@@ -8,20 +8,32 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
 )
 
+const (
+	AdminEmail       = "admin@swayops.com"
+	AdAdminEmail     = "adAgency@swayops.com"
+	TalentAdminEmail = "talentAgency@swayops.com"
+	adminPass        = "Rf_j@Z9hM3-"
+)
+
+// Server is the main server of the sway server
 type Server struct {
 	Cfg         *config.Config
 	r           *gin.Engine
 	db          *bolt.DB
 	budgetDb    *bolt.DB
 	reportingDb *bolt.DB
+	auth        *auth.Auth
 
 	Campaigns *common.Campaigns
 }
 
+// New returns a new Server or an error
+// TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
@@ -33,6 +45,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		db:          db,
 		budgetDb:    budgetDb,
 		reportingDb: reportingDb,
+		auth:        auth.New(db, cfg),
 		Campaigns:   common.NewCampaigns(),
 	}
 
@@ -40,6 +53,8 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	go srv.auth.PurgeInvalidTokens()
 
 	if err = srv.startEngine(); err != nil {
 		return nil, err
@@ -52,7 +67,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 
 func (srv *Server) initializeDBs(cfg *config.Config) error {
 	if err := srv.db.Update(func(tx *bolt.Tx) error {
-		for _, val := range cfg.Bucket.All {
+		for _, val := range cfg.AllBuckets() {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
@@ -61,6 +76,44 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 				return err
 			}
 		}
+
+		if srv.auth.GetUserTx(tx, auth.AdminUserID) != nil {
+			return nil
+		}
+		u := &auth.User{
+			Name:  "Sway Admin",
+			Email: AdminEmail,
+			Admin: true,
+		}
+		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
+			return err
+		}
+		log.Println("created admin user, id = ", u.ID)
+
+		u = &auth.User{
+			ParentID: "1",
+			Name:     "Sway Advertiser Agency",
+			Email:    AdAdminEmail,
+			AdAgency: &auth.AdAgency{},
+		}
+		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
+			return err
+		}
+		log.Println("created advertiser agency, id = ", u.ID)
+
+		u = &auth.User{
+			ParentID: "1",
+			Name:     "Sway Talent Agency",
+			Email:    TalentAdminEmail,
+			TalentAgency: &auth.TalentAgency{
+				Fee: 0.2,
+			},
+		}
+		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
+			return err
+		}
+		log.Println("created Talent agency, id = ", u.ID)
+
 		return nil
 	}); err != nil {
 		return err
@@ -89,65 +142,104 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 	}); err != nil {
 		return err
 	}
-
 	return nil
 }
 
+//TODO should this be in the config?
+var scopes = map[string]auth.ScopeMap{
+	"talentAgency": {auth.TalentAgencyScope: {Get: true, Post: true, Put: true, Delete: true}},
+	"inf": {
+		auth.TalentAgencyScope: {Get: true, Post: true, Put: true, Delete: true},
+		auth.InfluencerScope:   {Get: true, Post: true, Put: true, Delete: true},
+	},
+	"adAgency": {auth.AdAgencyScope: {Get: true, Post: true, Put: true, Delete: true}},
+	"adv": {
+		auth.AdAgencyScope:   {Get: true, Post: true, Put: true, Delete: true},
+		auth.AdvertiserScope: {Get: true, Post: true, Put: true, Delete: true},
+	},
+}
+
 func (srv *Server) initializeRoutes(r *gin.Engine) {
+	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
+	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
+
+	// /apiKey easier takes the GET request of a logged in user or
+	// POST with the user's email/password
+	verifyGroup.GET("/apiKey", srv.auth.APIKeyHandler)
+	r.POST("/apiKey", srv.auth.APIKeyHandler)
+
+	verifyGroup.GET("/signOut", srv.auth.SignOutHandler)
+	r.POST("/signIn", srv.auth.SignInHandler)
+	r.POST("/signUp", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
+
 	// Talent Agency
-	createRoutes(r, srv, "/talentAgency", getTalentAgency, putTalentAgency, delTalentAgency)
-	r.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
-	r.POST("/updateTalentAgency/:id", updateTalentAgency(srv))
+	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
+		nil, putTalentAgency, nil)
+
+	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
 	// AdAgency
-	createRoutes(r, srv, "/adAgency", getAdAgency, putAdAgency, delAdAgency)
-	r.GET("/getAllAdAgencies", getAllAdAgencies(srv))
-	r.POST("/updateAdAgency/:id", updateAdAgency(srv))
+	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
+		putAdAgency, nil)
+
+	adminGroup.GET("/getAllAdAgencies", getAllAdAgencies(srv))
 
 	// Advertiser
-	createRoutes(r, srv, "/advertiser", getAdvertiser, putAdvertiser, delAdvertiser)
-	r.GET("/getAdvertisersByAgency/:id", getAdvertisersByAgency(srv))
-	r.POST("/updateAdvertiser/:id", updateAdvertiser(srv))
+	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, nil,
+		putAdvertiser, nil)
+
+	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
+		getAdvertisersByAgency, nil, nil, nil)
 
 	// Campaigns
-	// delCampaign only sets active to false!
-	createRoutes(r, srv, "/campaign", getCampaign, putCampaign, delCampaign)
-	r.GET("/getCampaignsByAdvertiser/:id", getCampaignsByAdvertiser(srv))
-	r.POST("/updateCampaign/:campaignId", updateCampaign(srv))
+	createRoutes(verifyGroup, srv, "/campaign", "id", scopes["adv"], auth.CampaignItem, getCampaign, postCampaign,
+		putCampaign, delCampaign)
+
+	createRoutes(verifyGroup, srv, "/getCampaignsByAdvertiser", "id", scopes["adv"], auth.AdAgencyItem,
+		getCampaignsByAdvertiser, nil, nil, nil)
 
 	// Deal
-	r.GET("/getDeals/:influencerId/:lat/:long", getDealsForInfluencer(srv))
-	r.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", assignDeal(srv))
-	r.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
-	r.GET("/getDealsAssigned/:influencerId", getDealsAssignedToInfluencer(srv))
-	r.GET("/getDealsCompleted/:influencerId", getDealsCompletedByInfluencer(srv))
+	infScope := srv.auth.CheckScopes(scopes["inf"])
+	infOwnership := srv.auth.CheckOwnership(auth.InfluencerItem, "influencerId")
+	verifyGroup.GET("/getDeals/:influencerId/:lat/:long", infScope, infOwnership, getDealsForInfluencer(srv))
+	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
+	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
+	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
+	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 
 	// Influencers
-	createRoutes(r, srv, "/influencer", getInfluencer, putInfluencer, delInfluencer)
-	r.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
-	r.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
-	r.GET("/setPlatform/:influencerId/:platform/:id", setPlatform(srv))
-	r.GET("/setCategory/:influencerId/:category", setCategory(srv))
-	r.GET("/setInviteCode/:influencerId/:inviteCode", setInviteCode(srv))
-	r.GET("/getCategories", getCategories(srv))
+	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
+		nil, nil, nil)
+
+	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
+	adminGroup.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
+	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", infOwnership, setPlatform(srv))
+	verifyGroup.GET("/setCategory/:influencerId/:category", infOwnership, setCategory(srv))
+	verifyGroup.GET("/getCategories", getCategories(srv))
+	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
+	verifyGroup.POST("/setGeo/:influencerId", infOwnership, setGeo(srv))
 
 	// Budget
-	r.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
-	r.GET("/getLastMonthsStore", getLastMonthsStore(srv))
-	r.GET("/getStore", getStore(srv))
+	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
+	adminGroup.GET("/getLastMonthsStore", getLastMonthsStore(srv))
+	adminGroup.GET("/getStore", getStore(srv))
 
 	// Reporting
-	r.GET("/getCampaignReport/:cid/:from/:to/:filename", getCampaignReport(srv))
-	r.GET("/getCampaignStats/:cid/:days", getCampaignStats(srv))
-	r.GET("/getInfluencerStats/:infId/:days", getInfluencerStats(srv))
-	r.GET("/getRawStats/:cid", getRawStats(srv))
-	r.GET("/getCampaignInfluencerStats/:cid/:infId/:days", getCampaignInfluencerStats(srv))
+	advScope := srv.auth.CheckScopes(scopes["adv"])
+	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
+	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
+	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
+	verifyGroup.GET("/getRawStats/:cid", advScope, campOwnership, getRawStats(srv))
+	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
+
+	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
 }
 
 func (srv *Server) startEngine() error {
 	return newSwayEngine(srv)
 }
 
+// Run starts the server
 func (srv *Server) Run() (err error) {
 	var wg sync.WaitGroup
 

@@ -10,17 +10,17 @@ import (
 type Facebook struct {
 	Id string `json:"id"`
 
-	AvgLikes    float32 `json:"avgLikes,omitempty"`
-	AvgComments float32 `json:"avgComments,omitempty"`
-	AvgShares   float32 `json:"avgShares,omitempty"`
+	AvgLikes    float64 `json:"avgLikes,omitempty"`
+	AvgComments float64 `json:"avgComments,omitempty"`
+	AvgShares   float64 `json:"avgShares,omitempty"`
 
-	Followers     float32 `json:"followers,omitempty"`     // float32 for GetScore equation
-	FollowerDelta float32 `json:"followerDelta,omitempty"` // Follower delta since last UpdateData run
+	Followers     float64 `json:"followers,omitempty"`     // float64 for GetScore equation
+	FollowerDelta float64 `json:"followerDelta,omitempty"` // Follower delta since last UpdateData run
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
-	Score float32 `json:"score,omitempty"`
+	Score float64 `json:"score,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (*Facebook, error) {
@@ -60,6 +60,6 @@ func (fb *Facebook) UpdateData(cfg *config.Config) error {
 	return nil
 }
 
-func (fb *Facebook) GetScore() float32 {
+func (fb *Facebook) GetScore() float64 {
 	return (fb.Followers * 3) + (fb.AvgShares * 2) + (fb.AvgComments * 2) + (fb.AvgLikes)
 }

@@ -43,7 +43,7 @@ var (
 )
 
 type Stats struct {
-	Payout    float32 `json:"payout,omitempty"`
+	Payout    float64 `json:"payout,omitempty"`
 	Likes     int32   `json:"likes,omitempty"`
 	Dislikes  int32   `json:"dislikes,omitempty"`
 	Comments  int32   `json:"comments,omitempty"`
@@ -201,7 +201,7 @@ type Totals struct {
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 
-	Spent float32 `json:"spent,omitempty"`
+	Spent float64 `json:"spent,omitempty"`
 }
 
 type ReportStats struct {
@@ -209,9 +209,9 @@ type ReportStats struct {
 	Comments    int32   `json:"comments,omitempty"`
 	Shares      int32   `json:"shares,omitempty"`
 	Views       int32   `json:"views,omitempty"`
-	Spent       float32 `json:"spent,omitempty"`
+	Spent       float64 `json:"spent,omitempty"`
 	Perks       int32   `json:"perks,omitempty"` // Perks sent
-	Rep         float32 `json:"rep,omitempty"`
+	Rep         float64 `json:"rep,omitempty"`
 	Engagements int32   `json:"engagements,omitempty"`
 
 	PlatformId   string `json:"platformId,omitempty"` // Screen name for the platform used for the deal

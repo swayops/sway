@@ -20,14 +20,14 @@ const (
 type Tumblr struct {
 	Id string `json:"id"`
 
-	AvgReblogs     float32 `json:"avgRb,omitempty"`
-	AvgLikes       float32 `json:"avgLikes,omitempty"`
-	AvgInteraction float32 `json:"avgInt,omitempty"`
+	AvgReblogs     float64 `json:"avgRb,omitempty"`
+	AvgLikes       float64 `json:"avgLikes,omitempty"`
+	AvgInteraction float64 `json:"avgInt,omitempty"`
 
 	LastPostId  string  `json:"lastPost,omitempty"`    // the id of the last tweet
 	LatestPosts Posts   `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score       float32 `json:"score,omitempty"`
+	Score       float64 `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
 }
@@ -80,7 +80,7 @@ func (tr *Tumblr) getPosts(endpoint, pid string, offset int) (posts Posts, err e
 	return resp.Response.Posts, nil
 }
 
-func (tr *Tumblr) GetScore() float32 {
+func (tr *Tumblr) GetScore() float64 {
 	return (tr.AvgReblogs * 2) + (tr.AvgLikes * 2) + tr.AvgInteraction
 }
 

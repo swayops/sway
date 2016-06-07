@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 )
 
@@ -80,7 +80,7 @@ func run(srv *Server) error {
 
 func updateInfluencers(s *Server) error {
 	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
-	influencers := influencer.GetAllInfluencers(s.db, s.Cfg)
+	influencers := getAllInfluencers(s)
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
@@ -130,10 +130,9 @@ func depleteBudget(s *Server) error {
 			if deal.Completed == 0 {
 				continue
 			}
-
-			inf, err := influencer.GetInfluencerFromId(deal.InfluencerId, s.db, s.Cfg)
-			if err != nil {
-				log.Println("Missing influencer id!")
+			inf := s.auth.GetInfluencer(deal.InfluencerId)
+			if inf == nil {
+				log.Println("Missing influencer!")
 				continue
 			}
 
@@ -204,24 +203,18 @@ func billing(s *Server) error {
 		for _, data := range store {
 			for id, infData := range data.Influencers {
 				var (
-					inf       influencer.Influencer
-					v         []byte
-					agencyFee float32
+					inf       *auth.Influencer
+					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
-					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
+					inf = s.auth.GetInfluencerTx(tx, id)
+					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
 					return nil
-				}); err != nil {
-					log.Println("Invoice error for influencer", err)
+				}); err != nil || inf == nil {
+					log.Println("Invoice error for influencer", id, err)
 					continue
 				}
 
-				if err = json.Unmarshal(v, &inf); err != nil {
-					log.Println("Invoice error for influencer", err)
-					continue
-				}
-
-				agencyFee = getTalentAgencyFee(s, inf.AgencyId)
 				if agencyFee == 0 {
 					log.Println("error retrieving agency fee for", inf.Id)
 					continue
@@ -242,31 +235,33 @@ func billing(s *Server) error {
 		for _, data := range store {
 			for id, infData := range data.Influencers {
 				var (
-					ag        common.TalentAgency
-					inf       influencer.Influencer
-					v         []byte
-					agencyFee float32
+					inf       = s.auth.GetInfluencer(id)
+					agUser    *auth.User
+					agencyFee float64
 				)
 				if err := s.db.View(func(tx *bolt.Tx) error {
-					v = tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(id))
-					if err = json.Unmarshal(v, &inf); err != nil {
-						log.Println("Invoice error for talent agency invoice", err)
-						return err
+					if inf = s.auth.GetInfluencerTx(tx, id); inf == nil {
+						return nil
 					}
 
-					v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(inf.AgencyId))
-					if err = json.Unmarshal(v, &ag); err != nil {
-						log.Println("Invoice error for talent agency invoice", err)
-						return err
-					}
-
+					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
+					agUser = s.auth.GetUserTx(tx, inf.AgencyId)
 					return nil
 				}); err != nil {
 					log.Println("Invoice error for talent agency invoice", err)
 					continue
 				}
 
-				agencyFee = getTalentAgencyFee(s, inf.AgencyId)
+				if inf == nil {
+					log.Println("error retrieving influencer", id)
+					continue
+				}
+
+				if agUser == nil {
+					log.Println("error retrieving agency", inf.AgencyId)
+					continue
+				}
+
 				if agencyFee == 0 {
 					log.Println("error retrieving agency fee for", inf.Id)
 					continue
@@ -274,8 +269,8 @@ func billing(s *Server) error {
 
 				formatted := fmt.Sprintf(
 					talentAgencyInvoiceFormat,
-					ag.Name,
-					ag.Id,
+					agUser.Name,
+					agUser.ID,
 					infData.Payout*agencyFee,
 				)
 				log.Println(formatted)
@@ -311,7 +306,7 @@ func billing(s *Server) error {
 					// budget that was saved to db last month.. and that should be
 					// used now
 					var (
-						leftover, pending float32
+						leftover, pending float64
 					)
 					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, budget.GetLastMonthBudgetKey())
 					if err == nil && store != nil {
@@ -323,7 +318,7 @@ func billing(s *Server) error {
 
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
-					dspFee, exchangeFee := getAdvertiserFeesFromTx(tx, s.Cfg, cmp.AdvertiserId)
+					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
 					if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
 						log.Println("Error creating budget key!", err)
 						return err

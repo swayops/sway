@@ -21,7 +21,7 @@ const (
 	TW_FAVORITE = 0.05
 )
 
-func (store *Store) deductSpendable(val float32) {
+func (store *Store) deductSpendable(val float64) {
 	if store.Spendable <= 0 || val <= 0 {
 		return
 	}

@@ -7,20 +7,25 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
-	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 )
 
-func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
+func clearDeal(s *Server, user *auth.User, dealId, influencerId, campaignId string, timeout bool) error {
 	// Unssign the deal & update the campaign and influencer buckets
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-		var (
-			cmp *common.Campaign
-			b   []byte
-		)
+		if user == nil || influencerId != user.ID {
+			user = s.auth.GetUserTx(tx, influencerId)
+		}
 
+		var (
+			inf = auth.GetInfluencer(user)
+			cmp common.Campaign
+		)
+		if inf == nil {
+			return auth.ErrInvalidUserID
+		}
 		err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 		if err != nil {
 			return err
@@ -37,13 +42,8 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Append to the influencer's cancellations and remove from active
-		var inf *influencer.Influencer
-		err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Influencer)).Get([]byte(influencerId)), &inf)
-		if err != nil {
-			return err
-		}
 
-		activeDeals := []*common.Deal{}
+		var activeDeals []*common.Deal
 		for _, deal := range inf.ActiveDeals {
 			if deal.Id != dealId {
 				activeDeals = append(activeDeals, deal)
@@ -58,16 +58,12 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Save the Influencer
-		if b, err = json.Marshal(inf); err != nil {
-			return err
-		}
-
-		if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Influencer, inf.Id, b); err != nil {
-			return err
+		if err = user.StoreWithData(s.auth, tx, inf); err != nil {
+			return
 		}
 
 		// Save the campaign
-		return saveCampaign(tx, cmp, s)
+		return saveCampaign(tx, &cmp, s)
 	}); err != nil {
 		return err
 	}
@@ -104,54 +100,63 @@ func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
 	return cmp
 }
 
-func getAdvertiserFees(s *Server, advId string) (float32, float32) {
-	var (
-		g   common.Advertiser
-		v   []byte
-		err error
-	)
-
-	if err = s.db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(s.Cfg.Bucket.Advertiser)).Get([]byte(advId))
-		return nil
-	}); err != nil {
-		return 0, 0
+func getAdvertiserFees(a *auth.Auth, advId string) (float64, float64) {
+	if g := a.GetAdvertiser(advId); g != nil {
+		return g.DspFee, g.ExchangeFee
 	}
-
-	if err = json.Unmarshal(v, &g); err != nil {
-		return 0, 0
-	}
-
-	return g.DspFee, g.ExchangeFee
+	return 0, 0
 }
 
-func getAdvertiserFeesFromTx(tx *bolt.Tx, cfg *config.Config, advId string) (float32, float32) {
-	var (
-		g   common.Advertiser
-		v   []byte
-		err error
-	)
-
-	v = tx.Bucket([]byte(cfg.Bucket.Advertiser)).Get([]byte(advId))
-
-	if err = json.Unmarshal(v, &g); err != nil {
-		return 0, 0
+func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, float64) {
+	if adv := a.GetAdvertiserTx(tx, advId); adv != nil {
+		return adv.DspFee, adv.ExchangeFee
 	}
 
-	return g.DspFee, g.ExchangeFee
+	return 0, 0
 }
 
-func saveInfluencer(tx *bolt.Tx, inf *influencer.Influencer, cfg *config.Config) error {
-	var (
-		b   []byte
-		err error
-	)
-
-	if b, err = json.Marshal(inf); err != nil {
-		return err
+func saveInfluencer(s *Server, tx *bolt.Tx, inf *auth.Influencer) error {
+	if inf == nil || inf.Id == "" {
+		return auth.ErrInvalidID
 	}
+	u := s.auth.GetUserTx(tx, inf.Id)
+	if u == nil {
+		return auth.ErrInvalidID
+	}
+	return u.StoreWithData(s.auth, tx, inf)
+}
 
-	return misc.PutBucketBytes(tx, cfg.Bucket.Influencer, inf.Id, b)
+//TODO discuss with Shahzil and handle scopes
+func createRoutes(r *gin.RouterGroup, srv *Server, endpoint, idName string, scopes auth.ScopeMap, ownershipItemType auth.ItemType,
+	get, post, put, del func(*Server) gin.HandlerFunc) {
+
+	sh := srv.auth.CheckScopes(scopes)
+	epPlusId := endpoint + "/:" + idName
+	if ownershipItemType != "" {
+		oh := srv.auth.CheckOwnership(ownershipItemType, idName)
+		if get != nil {
+			r.GET(epPlusId, sh, oh, get(srv))
+		}
+		if put != nil {
+			r.PUT(epPlusId, sh, oh, put(srv))
+		}
+		if del != nil {
+			r.DELETE(epPlusId, sh, oh, del(srv))
+		}
+	} else {
+		if get != nil {
+			r.GET(epPlusId, sh, get(srv))
+		}
+		if put != nil {
+			r.PUT(epPlusId, sh, put(srv))
+		}
+		if del != nil {
+			r.DELETE(epPlusId, sh, del(srv))
+		}
+	}
+	if post != nil {
+		r.POST(endpoint, sh, post(srv))
+	}
 }
 
 func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
@@ -171,30 +176,17 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
 
-func getTalentAgencyFee(s *Server, id string) float32 {
-	var (
-		v   []byte
-		err error
-		ag  common.TalentAgency
-	)
-
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(s.Cfg.Bucket.TalentAgency)).Get([]byte(id))
-		return nil
-	}); err != nil {
-		return 0
+func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float64 {
+	if ag := s.auth.GetTalentAgencyTx(tx, id); ag != nil {
+		return ag.Fee
 	}
-
-	if err = json.Unmarshal(v, &ag); err != nil {
-		return 0
-	}
-	return ag.Fee
+	return 0
 }
 
-func saveAllDeals(s *Server, inf *influencer.Influencer) error {
+func saveAllDeals(s *Server, inf *auth.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
-		if err := saveInfluencer(tx, inf, s.Cfg); err != nil {
+		if err := saveInfluencer(s, tx, inf); err != nil {
 			log.Println("Errored saving influencer", err)
 			return err
 		}
@@ -227,12 +219,6 @@ func saveAllDeals(s *Server, inf *influencer.Influencer) error {
 	return nil
 }
 
-func createRoutes(r *gin.Engine, srv *Server, endpoint string, get, post, del func(*Server) gin.HandlerFunc) {
-	r.GET(endpoint+"/:id", get(srv))
-	r.POST(endpoint, post(srv))
-	r.DELETE(endpoint+"/:id", del(srv))
-}
-
 func sanitizeHash(str string) string {
 	// Removes #
 	raw := strings.Map(func(r rune) rune {
@@ -257,9 +243,15 @@ func sanitizeMention(str string) string {
 	return strings.ToLower(raw)
 }
 
-func lowerArr(s []string) []string {
-	for i, v := range s {
-		s[i] = strings.ToLower(v)
-	}
-	return s
+func getAllInfluencers(s *Server) []*auth.Influencer {
+	var influencers []*auth.Influencer
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+			if inf := auth.GetInfluencer(u); inf != nil {
+				influencers = append(influencers, inf)
+			}
+			return nil
+		})
+	})
+	return influencers
 }

@@ -32,7 +32,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 	return tg
 }
 
-func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offset int, rep map[string]float32, currentRep float32, cid string) map[string]*ReportStats {
+func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offset int, rep map[string]float64, currentRep float64, cid string) map[string]*ReportStats {
 	// Retrieves influencer totals for the range and influencer stats by day
 	tg := make(map[string]*ReportStats)
 

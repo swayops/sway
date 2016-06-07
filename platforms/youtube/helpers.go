@@ -117,7 +117,7 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 	return "", ErrUnknown
 }
 
-func getUserStats(id string, cfg *config.Config) (float64, float32, float32, error) {
+func getUserStats(id string, cfg *config.Config) (float64, float64, float64, error) {
 	endpoint := fmt.Sprintf(dataUrl, cfg.YouTube.Endpoint, id, cfg.YouTube.ClientId)
 
 	var data Data
@@ -158,7 +158,7 @@ func getUserStats(id string, cfg *config.Config) (float64, float32, float32, err
 	return views / float64(videos), comments / videos, subs, nil
 }
 
-func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float32, err error) {
+func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float64, err error) {
 	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
 
 	var list Data
@@ -222,7 +222,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 		}
 	}
 
-	length := float32(len(posts))
+	length := float64(len(posts))
 	avgLikes = avgLikes / length
 	avgDislikes = avgDislikes / length
 
@@ -231,7 +231,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 
 var ErrStats = errors.New("Unable to retrieve video stats")
 
-func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float32, err error) {
+func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float64, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
 
 	var vData Data
@@ -289,11 +289,11 @@ func getCount64(val string) (float64, error) {
 	return v, nil
 }
 
-func getCount(val string) (float32, error) {
+func getCount(val string) (float64, error) {
 	v, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return 0, err
 	}
 
-	return float32(v), nil
+	return float64(v), nil
 }

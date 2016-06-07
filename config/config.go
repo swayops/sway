@@ -5,7 +5,10 @@ import (
 	"errors"
 	"log"
 	"os"
+	"reflect"
 	"time"
+
+	"github.com/missionMeteora/mandrill"
 )
 
 var (
@@ -25,6 +28,7 @@ func New(loc string) (*Config, error) {
 		log.Println("Config error", err)
 		return nil, err
 	}
+	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	return &c, nil
 }
 
@@ -38,11 +42,24 @@ type Config struct {
 	BudgetBucket    string `json:"budgetBucket"`
 	ReportingDBName string `json:"reportingDbName"`
 	ReportingBucket string `json:"reportingBucket"`
+	AuthDBName      string `json:"authDbName"`
+
+	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
+	APIPath   string `json:"apiPath"`
+
+	Sandbox bool `json:"sandbox"`
 
 	DealTimeout   int32         `json:"dealTimeout"`   // In days
 	EngineUpdate  time.Duration `json:"engineUpdate"`  // In hours
 	StatsInterval time.Duration `json:"statsInterval"` // In seconds
 	InfluencerTTL int32         `json:"influencerTtl"` // In hours
+
+	Mandrill struct {
+		APIKey     string `json:"apiKey"`
+		SubAccount string `json:"subAccount"`
+		FromEmail  string `json:"fromEmail"`
+		FromName   string `json:"fromName"`
+	} `json:"mandrill"`
 
 	Twitter struct {
 		Endpoint     string `json:"endpoint"`
@@ -66,8 +83,8 @@ type Config struct {
 	} `json:"youtube"`
 
 	Instagram struct {
-		Endpoint string `json:"endpoint"`
-		ClientId string `json:"clientId"`
+		Endpoint    string `json:"endpoint"`
+		AccessToken string `json:"accessToken"`
 	} `json:"instagram"`
 
 	Facebook struct {
@@ -77,14 +94,29 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
-		User         string   `json:"user"`
-		AdAgency     string   `json:"adAgency"`
-		TalentAgency string   `json:"talentAgency"`
-		Advertiser   string   `json:"advertiser"`
-		Campaign     string   `json:"campaign"`
-		Influencer   string   `json:"influencer"`
-		All          []string `json:"all"`
+		User  string `json:"user"`
+		Login string `json:"login"`
+		Token string `json:"token"`
+
+		Campaign string `json:"campaign"`
 	} `json:"bucket"`
 
+	ec *mandrill.Client
+
 	JsonXlsxPath string `json:"jsonXlsxPath"`
+}
+
+func (c *Config) AllBuckets() []string {
+	rv := reflect.ValueOf(c.Bucket)
+	out := make([]string, 0, rv.NumField())
+	for i := 0; i < cap(out); i++ {
+		if v := rv.Field(i).String(); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+func (c *Config) MailClient() *mandrill.Client {
+	return c.ec
 }

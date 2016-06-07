@@ -28,16 +28,16 @@ var (
 type Twitter struct {
 	Id string `json:"id"`
 
-	AvgRetweets   float32 `json:"avgRt,omitempty"`
-	AvgLikes      float32 `json:"avgLikes,omitempty"`
-	Followers     float32 `json:"followers,omitempty"` // float32 for GetScore equation
-	FollowerDelta float32 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
+	AvgRetweets   float64 `json:"avgRt,omitempty"`
+	AvgLikes      float64 `json:"avgLikes,omitempty"`
+	Followers     float64 `json:"followers,omitempty"` // float64 for GetScore equation
+	FollowerDelta float64 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
 
 	LastLocation *misc.GeoRecord `json:"geo,omitempty"`
 	LastTweetId  string          `json:"lastTw,omitempty"`      // the id of the last tweet
 	LatestTweets Tweets          `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
 	LastUpdated  int32           `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float32         `json:"score,omitempty"`
+	Score        float64         `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
 }
@@ -111,7 +111,7 @@ func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
 	return
 }
 
-func (tw *Twitter) GetScore() float32 {
+func (tw *Twitter) GetScore() float64 {
 	return (tw.Followers * 3) + (tw.AvgRetweets * 2) + (tw.AvgLikes * 2)
 }
 

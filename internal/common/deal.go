@@ -55,7 +55,7 @@ type Deal struct {
 	// Only filled in GetAvailableDeals for the influencer to see
 	// and is saved to show how much the influencer was offered
 	// when the deal was assigned
-	Spendable float32 `json:"spendable,omitempty"`
+	Spendable float64 `json:"spendable,omitempty"`
 }
 
 func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {

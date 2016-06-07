@@ -29,7 +29,7 @@ type Data struct {
 }
 
 type Summary struct {
-	Count float32 `json:"total_count"`
+	Count float64 `json:"total_count"`
 }
 
 //
@@ -40,12 +40,12 @@ type SharesData struct {
 }
 
 type Share struct {
-	Count float32 `json:"count"`
+	Count float64 `json:"count"`
 }
 
 //
 
-func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float32, fbPosts []*Post, err error) {
+func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float64, fbPosts []*Post, err error) {
 	//https://graph.facebook.com/dayoutubeguy/posts?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0
 	// gets last 25 posts
 	endpoint := fmt.Sprintf(postUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
@@ -93,7 +93,7 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float3
 		fbPosts = append(fbPosts, fbPost)
 	}
 
-	total := float32(len(fbPosts))
+	total := float64(len(fbPosts))
 	likes = likes / total
 	comments = comments / total
 	shares = shares / total
@@ -101,7 +101,7 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float3
 	return
 }
 
-func getLikes(id string, cfg *config.Config) (lk float32, err error) {
+func getLikes(id string, cfg *config.Config) (lk float64, err error) {
 	// https://graph.facebook.com/212270682131283_1171691606189181/likes?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
 	endpoint := fmt.Sprintf(likesUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	var likes PostData
@@ -115,7 +115,7 @@ func getLikes(id string, cfg *config.Config) (lk float32, err error) {
 	return
 }
 
-func getComments(id string, cfg *config.Config) (cm float32, err error) {
+func getComments(id string, cfg *config.Config) (cm float64, err error) {
 	// https://graph.facebook.com/v2.5/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
 	endpoint := fmt.Sprintf(commentsUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	var comments PostData
@@ -129,7 +129,7 @@ func getComments(id string, cfg *config.Config) (cm float32, err error) {
 	return
 }
 
-func getShares(id string, cfg *config.Config) (shares float32, pType string, err error) {
+func getShares(id string, cfg *config.Config) (shares float64, pType string, err error) {
 	// https://graph.facebook.com/v2.5/212270682131283_1171691606189181/comments?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&summary=true
 	endpoint := fmt.Sprintf(sharesUrl, cfg.Facebook.Endpoint, id)
 	var post SharesData
@@ -147,10 +147,10 @@ func getShares(id string, cfg *config.Config) (shares float32, pType string, err
 }
 
 type FollowerData struct {
-	Likes float32 `json:"likes"`
+	Likes float64 `json:"likes"`
 }
 
-func getFollowers(id string, cfg *config.Config) (fl float32, err error) {
+func getFollowers(id string, cfg *config.Config) (fl float64, err error) {
 	//https://graph.facebook.com/v2.5/cocacola?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0&fields=likes
 	endpoint := fmt.Sprintf(followersUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	var data FollowerData

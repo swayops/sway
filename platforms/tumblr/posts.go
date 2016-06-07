@@ -28,14 +28,14 @@ func (ts Timestamp) Time() time.Time {
 
 type Posts []*Post
 
-func (posts Posts) Avgs() (reblog, likes, total float32) {
+func (posts Posts) Avgs() (reblog, likes, total float64) {
 	for _, p := range posts {
 		r, l, t := p.Counts()
 		reblog += r
 		likes += l
 		total += t
 	}
-	ln := float32(len(posts))
+	ln := float64(len(posts))
 	return reblog / ln, likes / ln, total / ln
 }
 
@@ -55,7 +55,7 @@ type Note struct {
 }
 
 // Counts returns the number of reblogs/likes of the most recent 50 notes, API limitation. :(
-func (p *Post) Counts() (reblog, likes, total float32) {
+func (p *Post) Counts() (reblog, likes, total float64) {
 	for i := range p.Notes {
 		switch p.Notes[i].Type {
 		case "like":
@@ -66,7 +66,7 @@ func (p *Post) Counts() (reblog, likes, total float32) {
 			log.Printf("unknown type: %s", p.Notes[i].Type)
 		}
 	}
-	total = float32(p.NoteCount)
+	total = float64(p.NoteCount)
 	return
 }
 

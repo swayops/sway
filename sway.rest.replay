@@ -1,0 +1,40 @@
+set url http://localhost:8080/
+
+// Advertiser signup
+POST /signUp `{"email":"a1@m.c","pass":"12345678","pass2":"12345678", "name":"the man", "type":"advertiser", "data": { "exchangeFee": 0.2, "dspFee": 0.2}}`
+
+200 `{"id":"4","status":"success"}`
+
+POST /signUp `{"email":"realBoobs@boobies.inc","pass":"123456789","pass2":"123456789", "name":"the man","type":"advertiser"}`
+400 `{"msg":"the email address already exists","status":"error"}`
+
+POST /signUp `{"email":"fakeBoobs@boobies.inc","pass":"123456789","pass2":"123456789", "name":"the man","type":"advertiser"}`
+200 `{"id":"3","status":"success"}`
+
+POST /signIn `{"email":"realBoobs@boobies.inc", "pass":"123456789"}`
+200 `{"id":"2","status":"success"}`
+
+POST /campaign '{"advertiserId":"2","budget":10, "name":"campaign name","agencyId":"1","active":true, "instagram": true, "gender":"mf", "mention": "x"}'
+200 `{"id":"1","status":"success"}`
+
+POST /signIn `{"email":"fakeBoobs@boobies.inc", "pass":"123456789"}`
+200 `{"id":"3","status":"success"}`
+
+GET /campaign/1
+401 `{"msg":"unauthorized","status":"error"}`
+
+POST /signIn `{"email":"realBoobs@boobies.inc", "pass":"123456789"}`
+200 `{"id":"2","status":"success"}`
+
+GET /campaign/1
+200 `{"id":"1","name":"campaign name","budget":10,"advertiserId":"2","agencyId":"1","status":false,"mention":"x","gender":"mf","instagram":true}`
+
+POST /signUp `{"email":"hugeBoobs@boobies.inc", "pass":"123456789", "pass2": "123456789", "name": "the man is always watching", "type": "influencer"}`
+401 {"msg":"unauthorized","status":"error"}
+// ^ because the current logged in user is an advertiser and can't create an influencer
+
+GET /signOut
+200 `{"status":"success"}`
+
+POST /signUp `{"email":"hugeBoobs@boobies.inc", "pass":"123456789", "pass2": "123456789", "name": "the man is always watching", "type": "influencer"}`
+200 `{"id":"4","status":"success"}`

@@ -4,7 +4,8 @@ var CATEGORIES = map[string]struct{}{
 	"vlogger": struct{}{},
 }
 
-func GetCategories() (out []string) {
+func GetCategories() []string {
+	out := make([]string, 0, len(CATEGORIES))
 	for k, _ := range CATEGORIES {
 		out = append(out, k)
 	}
