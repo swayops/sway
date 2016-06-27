@@ -1,14 +1,10 @@
 package server
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/reporting"
@@ -66,21 +62,12 @@ func run(srv *Server) error {
 	}
 	log.Println("Budgets depleted!")
 
-	// Will run the first of every month to
-	// refresh our budget dbs, budgets,
-	// and send out invoices
-	if err := billing(srv); err != nil {
-		// Insert a file informant check
-		log.Println("Err with billing!", err)
-		return err
-	}
-
 	return nil
 }
 
 func updateInfluencers(s *Server) error {
 	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
-	influencers := getAllInfluencers(s)
+	influencers := getAllInfluencers(s, false)
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
@@ -114,6 +101,8 @@ func depleteBudget(s *Server) error {
 	// go over completed deals..
 	// Iterate over all
 
+	var spentDelta float64
+
 	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
 	// Iterate over all active campaigns
 	for _, cmp := range activeCampaigns {
@@ -136,20 +125,33 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 
-			// Get stats for this deal for today! We'll need it to increment
-			// stat values in AdjustStore!
+			// Get stats for this deal for today! We'll need it so that stats
+			// can be incremented in AdjustStore!
 			stats, statsKey, err := reporting.GetStats(deal, s.reportingDb, s.Cfg, inf.GetPlatformId(deal))
 			if err != nil {
 				// Insert file informant notification
 				log.Println("Unable to retrieve stats!")
 				continue
 			}
+			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
+			store, stats, spentDelta = budget.AdjustStore(store, deal, stats, inf.AgencyId, agencyFee)
 
-			store, stats = budget.AdjustStore(store, deal, stats)
-			// Save the stats store since it's been updated
+			// Save the influencer since pending payout has been increased
+			if spentDelta > 0 {
+				if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+					inf.PendingPayout += spentDelta * (1 - agencyFee)
+					user := s.auth.GetUserTx(tx, inf.Id)
+					return user.StoreWithData(s.auth, tx, inf)
+				}); err != nil {
+					log.Println("Failed to update influencer!", err.Error())
+					// insert file informant
+					continue
+				}
+			}
 			if err := reporting.SaveStats(stats, deal, s.reportingDb, s.Cfg, statsKey, inf.GetPlatformId(deal)); err != nil {
 				log.Println("Err saving stats!", err)
 			}
+
 			updatedStore = true
 		}
 
@@ -162,176 +164,5 @@ func depleteBudget(s *Server) error {
 
 	}
 
-	return nil
-}
-
-const (
-	cmpInvoiceFormat          = "Campaign ID: %s, Email: test@sway.com, Phone: 123456789, Spent: %f, DSPFee: %f, ExchangeFee: %f, Total: %f"
-	infInvoiceFormat          = "Influencer Name: %s, Influencer ID: %s, Email: test@sway.com, Payout: %f"
-	talentAgencyInvoiceFormat = "Agency Name: %s, Agency ID: %s, Email: test@sway.com, Payout: %f"
-)
-
-var ErrEmptyStore = errors.New("Empty store when billing!")
-
-func billing(s *Server) error {
-	// If it's the first day and billing
-	// has not yet run in the last week...
-	if budget.ShouldBill(s.budgetDb, s.Cfg) {
-		// Now that it's a new month.. get last month's budget store
-		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
-		if err != nil || len(store) == 0 {
-			// Insert file informant check
-			return ErrEmptyStore
-		}
-
-		// Campaign Invoice
-		log.Println("Advertiser Invoice")
-		for cId, data := range store {
-			formatted := fmt.Sprintf(
-				cmpInvoiceFormat,
-				cId,
-				data.Spent,
-				data.DspFee,
-				data.ExchangeFee,
-				data.Spent+data.DspFee+data.ExchangeFee,
-			)
-			log.Println(formatted)
-		}
-
-		// Influencer Invoice
-		log.Println("Influencer Invoice")
-		for _, data := range store {
-			for id, infData := range data.Influencers {
-				var (
-					inf       *auth.Influencer
-					agencyFee float64
-				)
-				if err := s.db.View(func(tx *bolt.Tx) error {
-					inf = s.auth.GetInfluencerTx(tx, id)
-					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
-					return nil
-				}); err != nil || inf == nil {
-					log.Println("Invoice error for influencer", id, err)
-					continue
-				}
-
-				if agencyFee == 0 {
-					log.Println("error retrieving agency fee for", inf.Id)
-					continue
-				}
-
-				formatted := fmt.Sprintf(
-					infInvoiceFormat,
-					inf.Name,
-					id,
-					infData.Payout*(1-agencyFee),
-				)
-				log.Println(formatted)
-			}
-		}
-
-		// Talent Agency Invoice
-		log.Println("Talent Agency Invoice")
-		for _, data := range store {
-			for id, infData := range data.Influencers {
-				var (
-					inf       = s.auth.GetInfluencer(id)
-					agUser    *auth.User
-					agencyFee float64
-				)
-				if err := s.db.View(func(tx *bolt.Tx) error {
-					if inf = s.auth.GetInfluencerTx(tx, id); inf == nil {
-						return nil
-					}
-
-					agencyFee = s.getTalentAgencyFee(tx, inf.AgencyId)
-					agUser = s.auth.GetUserTx(tx, inf.AgencyId)
-					return nil
-				}); err != nil {
-					log.Println("Invoice error for talent agency invoice", err)
-					continue
-				}
-
-				if inf == nil {
-					log.Println("error retrieving influencer", id)
-					continue
-				}
-
-				if agUser == nil {
-					log.Println("error retrieving agency", inf.AgencyId)
-					continue
-				}
-
-				if agencyFee == 0 {
-					log.Println("error retrieving agency fee for", inf.Id)
-					continue
-				}
-
-				formatted := fmt.Sprintf(
-					talentAgencyInvoiceFormat,
-					agUser.Name,
-					agUser.ID,
-					infData.Payout*agencyFee,
-				)
-				log.Println(formatted)
-			}
-		}
-
-		// TRANSFER PROCESS TO NEW MONTH
-		// - We wil now add fresh deals for the new month
-		// - Leftover budget from last month will be trans
-		// Create a new budget key (if there isn't already one)
-		// do a put on all the active campaigns in the system
-		// flush all unassigned deals
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-				cmp := &common.Campaign{}
-				if err := json.Unmarshal(v, cmp); err != nil {
-					log.Println("error when unmarshalling campaign", string(v))
-					return err
-				}
-
-				if cmp.Status && cmp.Budget > 0 {
-					// Add fresh deals for this month
-					addDealsToCampaign(cmp)
-
-					if err = saveCampaign(tx, cmp, s); err != nil {
-						log.Println("Error saving campaign for billing", err)
-						return
-					}
-
-					// This will carry over any left over spendable too
-					// It will also look to check if there's a pending (lowered)
-					// budget that was saved to db last month.. and that should be
-					// used now
-					var (
-						leftover, pending float64
-					)
-					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, budget.GetLastMonthBudgetKey())
-					if err == nil && store != nil {
-						leftover = store.Spendable
-						pending = store.Pending
-					} else {
-						log.Println("Last months store not found for", cmp.Id)
-					}
-
-					// Create their budget key for this month in the DB
-					// NOTE: last month's leftover spendable will be carried over
-					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
-					if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
-						log.Println("Error creating budget key!", err)
-						return err
-					}
-				}
-				return
-			})
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		return budget.UpdateLastBill(s.budgetDb, s.Cfg)
-	}
 	return nil
 }

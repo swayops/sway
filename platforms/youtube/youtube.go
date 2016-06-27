@@ -57,7 +57,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 		return err
 	}
 
-	p, lk, dlk, err := getPosts(yt.UserName, 10, cfg)
+	p, lk, dlk, err := getPosts(yt.UserName, 5, cfg)
 	if err != nil {
 		return err
 	}

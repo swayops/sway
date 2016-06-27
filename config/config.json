@@ -18,11 +18,7 @@
 		"user": "user",
 		"login": "login",
 		"token": "token",
-		"adAgency": "adAgency",
-		"talentAgency": "talentAgency",
-		"advertiser": "advertiser",
-		"campaign": "campaign",
-		"influencer": "influencer"
+		"campaign": "campaign"
 	},
 
 	"mandrill": {
@@ -39,7 +35,7 @@
 
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
-		"accessToken": "2267093891.06e94d5.71775c6edf804a1ba08ee52eb3e021e3"
+		"accessToken": "3418302142.8016227.5815d22ac12c44bcb29dbbf7dfb53353"
 	},
 
 	"twitter": {

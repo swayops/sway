@@ -129,6 +129,7 @@ func GetAllActiveCampaigns(db *bolt.DB, cfg *config.Config) map[string]*Campaign
 	}); err != nil {
 		log.Println("Err getting all active campaigns", err)
 	}
+
 	return campaignList
 }
 func GetCampaign(cid string, db *bolt.DB, cfg *config.Config) *Campaign {

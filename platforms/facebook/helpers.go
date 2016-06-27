@@ -56,7 +56,14 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 		return
 	}
 
-	for _, p := range posts.Data {
+	var filtered []*Data
+	if len(posts.Data) > 10 {
+		filtered = posts.Data[0:10]
+	} else {
+		filtered = posts.Data
+	}
+
+	for _, p := range filtered {
 		fbPost := &Post{
 			Id:          p.Id,
 			Caption:     p.Caption,

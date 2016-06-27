@@ -1,7 +1,6 @@
 package influencer
 
 import (
-	"encoding/json"
 	"log"
 	"strings"
 
@@ -13,13 +12,14 @@ import (
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
+	"github.com/swayops/sway/platforms/lob"
 	"github.com/swayops/sway/platforms/twitter"
 	"github.com/swayops/sway/platforms/youtube"
 )
 
 // The json struct accepted by the putInfluencer method
 type InfluencerLoad struct {
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty"` // Full name
 
 	InstagramId string `json:"instagram,omitempty"`
 	FbId        string `json:"facebook,omitempty"`
@@ -30,13 +30,17 @@ type InfluencerLoad struct {
 	Geo        *misc.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
 	Gender     string          `json:"gender,omitempty"`
 	Categories []string        `json:"categories,omitempty"`
+
+	Address *lob.AddressLoad `json:"address,omitempty"`
 }
 
 type Influencer struct {
 	Id string `json:"id,omitempty"`
 
-	// Name of the influencer
+	// Full name of the influencer
 	Name string `json:"name,omitempty"`
+
+	Address *lob.AddressLoad `json:"address,omitempty"`
 
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
@@ -74,9 +78,16 @@ type Influencer struct {
 	// Sway Rep scores by date
 	Rep        map[string]float64 `json:"historicRep,omitempty"`
 	CurrentRep float64            `json:"rep,omitempty"`
+
+	PendingPayout  float64 `json:"pendingPayout,omitempty"`
+	RequestedCheck bool    `json:"requestedCheck,omitempty"`
+	// Last check that was mailed
+	LastCheck int32 `json:"lastCheck,omitempty"`
+	// Lob check ids mailed out to this influencer
+	Checks []*lob.Check `json:"checks,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, address *lob.AddressLoad, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:         id,
 		Name:       name,
@@ -85,7 +96,14 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 		Categories: cats,
 	}
 
-	// TODO move to auth
+	if address != nil {
+		addr, err := lob.VerifyAddress(address)
+		if err != nil {
+			return nil, err
+		}
+		log.Println(addr)
+		inf.Address = addr
+	}
 
 	agencyId := common.GetIDFromInvite(inviteCode)
 	if agencyId == "" {
@@ -115,7 +133,6 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 	}
 
 	inf.setSwayRep()
-
 	return inf, nil
 }
 
@@ -333,20 +350,12 @@ func (inf *Influencer) Clean() *Influencer {
 	return inf
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, db, budgetDb *bolt.DB, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
-
 	var (
-		v   []byte
-		err error
+		infDeals []*common.Deal
 	)
-
-	var infDeals []*common.Deal
-	if err = json.Unmarshal(v, &inf); err != nil {
-		log.Println("Error unmarshalling influencer", err)
-		return infDeals
-	}
 
 	if geo == nil && !skipGeo {
 		if inf.Geo != nil {

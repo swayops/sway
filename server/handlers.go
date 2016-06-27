@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
+	"github.com/swayops/sway/platforms/lob"
 )
 
 ///////// Talent Agencies ///////////
@@ -31,6 +33,7 @@ func putTalentAgency(s *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
+
 		if err := s.db.Update(func(tx *bolt.Tx) error {
 			if id != user.ID {
 				user = s.auth.GetUserTx(tx, id)
@@ -482,7 +485,7 @@ func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 
 func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		targetAg := c.Param("agencyId")
+		targetAg := c.Param("id")
 		var influencers []*auth.Influencer
 		s.db.View(func(tx *bolt.Tx) error {
 			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
@@ -654,6 +657,52 @@ func setGeo(s *Server) gin.HandlerFunc {
 	}
 }
 
+func setAddress(s *Server) gin.HandlerFunc {
+	// Sets the address for the influencer
+	return func(c *gin.Context) {
+		var (
+			addr lob.AddressLoad
+			err  error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&addr); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		cleanAddr, err := lob.VerifyAddress(&addr)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+			user  = auth.GetCtxUser(c)
+		)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			inf.Address = cleanAddr
+
+			// Save the influencer
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 func getCategories(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, common.GetCategories())
@@ -690,7 +739,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := inf.GetAvailableDeals(s.Campaigns, s.db, s.budgetDb, "",
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "",
 			misc.GetGeoFromCoords(lat, long, time.Now().Unix()), false, s.Cfg)
 		c.JSON(200, deals)
 	}
@@ -732,7 +781,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		// via our GetAvailableDeals func
 		var found bool
 		foundDeal := &common.Deal{}
-		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.db, s.budgetDb, dealId, nil, true, s.Cfg)
+		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				found = true
@@ -958,5 +1007,235 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid")))
+	}
+}
+
+// Billing
+
+const (
+	cmpInvoiceFormat          = "Campaign ID: %s, Email: test@sway.com, Phone: 123456789, Spent: %f, DSPFee: %f, ExchangeFee: %f, Total: %f"
+	infInvoiceFormat          = "Influencer Name: %s, Influencer ID: %s, Email: test@sway.com, Payout: %f"
+	talentAgencyInvoiceFormat = "Agency ID: %s, Email: test@sway.com, Payout: %f, Influencer ID: %s, Campaign ID: %s"
+)
+
+var (
+	ErrBilling    = "There was an error running billing!"
+	ErrEmptyStore = "Empty store when billing!"
+)
+
+func runBilling(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		now := time.Now().UTC()
+		if now.Day() != 1 {
+			// Can only run billing on the first of the month!
+			c.JSON(500, misc.StatusErr("Cannot run billing today!"))
+			return
+		}
+
+		if c.Query("pw") != "muchodinero" {
+			// Hide deals otherwise output will get massive
+			c.JSON(500, misc.StatusErr("Not allowed to run billing!"))
+			return
+		}
+
+		// Now that it's a new month.. get last month's budget store
+		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
+		if err != nil || len(store) == 0 {
+			// Insert file informant check
+			c.JSON(500, misc.StatusErr(ErrEmptyStore))
+			return
+		}
+
+		// Campaign Invoice
+		log.Println("Advertiser Invoice")
+		for cId, data := range store {
+			formatted := fmt.Sprintf(
+				cmpInvoiceFormat,
+				cId,
+				data.Spent,
+				data.DspFee,
+				data.ExchangeFee,
+				data.Spent+data.DspFee+data.ExchangeFee,
+			)
+			log.Println(formatted)
+		}
+
+		// Talent Agency Invoice
+		log.Println("Talent Agency Invoice")
+		for cid, data := range store {
+			for infId, infData := range data.Influencers {
+				formatted := fmt.Sprintf(
+					talentAgencyInvoiceFormat,
+					infData.AgencyId,
+					infData.AgencyFee,
+					infId,
+					cid,
+				)
+				log.Println(formatted)
+			}
+		}
+
+		// TRANSFER PROCESS TO NEW MONTH
+		// - We wil now add fresh deals for the new month
+		// - Leftover budget from last month will be trans
+		// Create a new budget key (if there isn't already one)
+		// do a put on all the active campaigns in the system
+		// flush all unassigned deals
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				cmp := &common.Campaign{}
+				if err := json.Unmarshal(v, cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return err
+				}
+
+				// Transfer over budgets for anyone regardless of status
+				// because they could set to active mid-month and would
+				// not have the full month's budget they have set (since
+				// they could have started the campaign mid-month and would
+				// have only a portion of their monthly budget)
+				if cmp.Budget > 0 {
+					// Add fresh deals for this month
+					addDealsToCampaign(cmp)
+
+					if err = saveCampaign(tx, cmp, s); err != nil {
+						log.Println("Error saving campaign for billing", err)
+						return
+					}
+
+					// This will carry over any left over spendable too
+					// It will also look to check if there's a pending (lowered)
+					// budget that was saved to db last month.. and that should be
+					// used now
+					var (
+						leftover, pending float64
+					)
+					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, budget.GetLastMonthBudgetKey())
+					if err == nil && store != nil {
+						leftover = store.Spendable
+						pending = store.Pending
+					} else {
+						log.Println("Last months store not found for", cmp.Id)
+					}
+
+					// Create their budget key for this month in the DB
+					// NOTE: last month's leftover spendable will be carried over
+					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
+					if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
+						log.Println("Error creating budget key!", err)
+						return err
+					}
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(ErrBilling))
+			return
+		}
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func getPendingChecks(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(200, getAllInfluencers(s, true))
+	}
+}
+
+var ErrPayout = errors.New("Nothing to payout!")
+
+func approveCheck(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Delete the check and entry, send to lob
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			user := s.auth.GetUserTx(tx, infId)
+
+			inf := auth.GetInfluencer(user)
+			if inf == nil || !inf.RequestedCheck {
+				return auth.ErrInvalidID
+			}
+
+			if inf.PendingPayout == 0 {
+				return ErrPayout
+			}
+
+			check, err := lob.CreateCheck(inf.Name, inf.Address, inf.PendingPayout)
+			if err != nil {
+				return err
+			}
+
+			inf.Checks = append(inf.Checks, check)
+			inf.PendingPayout = 0
+			inf.RequestedCheck = false
+			inf.LastCheck = int32(time.Now().Unix())
+
+			// Save the influencer
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+var (
+	ErrInvalidFunds = errors.New("Must have atleast $50 USD to be paid out!")
+	ErrThirtyDays   = errors.New("Must wait atleast 30 days since last check to receive a payout!")
+	ErrAddress      = errors.New("Please set an address for your profile!")
+)
+
+const THIRTY_DAYS = 60 * 60 * 24 * 30 // Thirty days in seconds
+
+func requestCheck(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Delete the check and entry, send to lob
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		now := int32(time.Now().Unix())
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			user := s.auth.GetUserTx(tx, infId)
+
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			if inf.PendingPayout < 50 {
+				return ErrInvalidFunds
+			}
+
+			if inf.LastCheck > 0 && inf.LastCheck > now-THIRTY_DAYS {
+				return ErrThirtyDays
+			}
+
+			if inf.Address == nil {
+				return ErrThirtyDays
+			}
+
+			inf.RequestedCheck = true
+
+			// Save the influencer
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		// Insert log
+		c.JSON(200, misc.StatusOK(infId))
 	}
 }
