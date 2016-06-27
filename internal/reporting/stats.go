@@ -18,7 +18,7 @@ import (
 // {
 //     "1": { // Campaign ID
 //         "2016-10-30||1||JennaMarbles||Instagram||http://www.instagram.com/post": { // Date::Name::Platform::postUrl
-//             "payout": 3.4,
+//             "payout": 3.4, // Includes agency fee
 //             "likes": 0,
 //             "comments": 0,
 //             "shares": 0,

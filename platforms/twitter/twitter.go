@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	timelineUrl        = `%sstatuses/user_timeline.json?exclude_replies=true&screen_name=%s`
+	timelineUrl        = `%sstatuses/user_timeline.json?exclude_replies=true&screen_name=%s&count=20`
 	timelineSinceIdUrl = `%sstatuses/user_timeline.json?exclude_replies=true&screen_name=%s&since_id=%s`
 	tweetUrl           = `%sstatuses/show.json?include_entities=false&trim_user=true&id=%s`
 )

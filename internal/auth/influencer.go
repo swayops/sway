@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"strings"
+
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
@@ -47,6 +49,11 @@ func (inf *InfluencerLoad) Check() error {
 	if inf == nil {
 		return ErrUnexpected
 	}
+
+	if len(strings.Split(inf.Name, " ")) < 2 {
+		return ErrName
+	}
+
 	if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
 		return ErrBadGender
 	}
@@ -96,6 +103,7 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		u.ParentID,
 		inf.Categories,
 		inf.Geo,
+		inf.Address,
 		a.cfg)
 
 	if err != nil {

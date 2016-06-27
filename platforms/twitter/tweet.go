@@ -94,8 +94,8 @@ type Tweet struct {
 		} `json:"urls,omitempty"`
 	} `json:"entities,omitempty"`
 
-	Text            string `json:"text"`
-	RetweetedStatus *Tweet `json:"retweeted_status,omitempty"`
+	Text string `json:"text"`
+	// RetweetedStatus *Tweet `json:"retweeted_status,omitempty"`
 
 	LastUpdated int32  `json:"lastUpdated,omitempty"`
 	PostURL     string `json:"postURL,omitempty"`

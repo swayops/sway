@@ -23,18 +23,19 @@ import (
 // 			"exchangeFee": 4, // amount exchange took
 // 			"spendable": 10,
 // 			"influencers": {
-// 				"JennaMarbles": {
+// 				"123123": {
 // 					"payout": 3.4,
+// 					"agencyFee": 1.2,
+// 					"talentAgency": "23",
 // 				}
-// 			}
+// 			},
 // 		}
 // 	}
 // }
 
 var (
-	TalentAgencyFee = float64(0.125) // 12.5%
-	ErrUnmarshal    = errors.New("Failed to unmarshal data!")
-	ErrNotFound     = errors.New("CID not found!")
+	ErrUnmarshal = errors.New("Failed to unmarshal data!")
+	ErrNotFound  = errors.New("CID not found!")
 )
 
 type Store struct {
@@ -44,13 +45,16 @@ type Store struct {
 	Spendable float64 `json:"spendable,omitempty"`
 	Spent     float64 `json:"spent,omitempty"`
 
-	DspFee      float64                    `json:"dspFee,omitempty"`
-	ExchangeFee float64                    `json:"exchangeFee,omitempty"`
-	Influencers map[string]*InfluencerData `json:"influencers,omitempty"`
+	DspFee      float64             `json:"dspFee,omitempty"`
+	ExchangeFee float64             `json:"exchangeFee,omitempty"`
+	Influencers map[string]*Payment `json:"influencers,omitempty"`
 }
 
-type InfluencerData struct {
-	Payout float64 `json:"payout,omitempty"`
+type Payment struct {
+	Payout   float64 `json:"payout,omitempty"`
+	AgencyId string  `json:"agencyId,omitempty"`
+	// Agency Fee at the time payout was calculated
+	AgencyFee float64 `json:"agencyFee,omitempty"`
 }
 
 func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float64, billing bool) error {
@@ -106,14 +110,14 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		}
 
 		if b, err = json.Marshal(&st); err != nil {
-			return
+			return err
 		}
 
 		if err = misc.PutBucketBytes(tx, cfg.BudgetBucket, key, b); err != nil {
-			return
+			return err
 		}
 
-		return
+		return nil
 	}); err != nil {
 		log.Println("Error when creating budget key", err)
 		return err
@@ -206,6 +210,7 @@ func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid string, forceDate string
 }
 
 func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*Store, error) {
+	// Gets budget store keyed off of Campaign ID for a given month
 	var st map[string]*Store
 
 	if err := db.View(func(tx *bolt.Tx) (err error) {
@@ -226,15 +231,15 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 	return st, nil
 }
 
-func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Store, *reporting.Stats) {
+func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats, agencyId string, agencyFee float64) (*Store, *reporting.Stats, float64) {
 	if store.Influencers == nil {
-		store.Influencers = make(map[string]*InfluencerData)
+		store.Influencers = make(map[string]*Payment)
 	}
 
 	infData, ok := store.Influencers[deal.InfluencerId]
 	if !ok {
 		// Saving the pointer once
-		infData = &InfluencerData{}
+		infData = &Payment{}
 		store.Influencers[deal.InfluencerId] = infData
 	}
 
@@ -276,14 +281,17 @@ func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Stor
 		store.deductSpendable(float64(deal.YouTube.CommentsDelta) * YT_COMMENT)
 	}
 
-	tmpSpent := oldSpendable - store.Spendable
+	spentDelta := oldSpendable - store.Spendable
+	store.Spent += spentDelta
 
-	store.Spent += tmpSpent
-	infData.Payout += tmpSpent
+	infPayout := spentDelta * (1 - agencyFee)
+	infData.Payout += infPayout
+	infData.AgencyFee += spentDelta - infPayout
+	infData.AgencyId = agencyId
 
-	stats.Payout += tmpSpent
+	stats.Payout += spentDelta
 
-	return store, stats
+	return store, stats, spentDelta
 }
 
 func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {

@@ -175,6 +175,8 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
 		nil, putTalentAgency, nil)
+	// NOTE: Check with Ahmed and make this so that talent agencies can view this shit
+	verifyGroup.GET("/getInfluencersByAgency/:id", getInfluencersByAgency(srv))
 
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
@@ -212,12 +214,13 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 		nil, nil, nil)
 
 	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
-	adminGroup.GET("/getInfluencersByAgency/:agencyId", getInfluencersByAgency(srv))
 	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", infOwnership, setPlatform(srv))
 	verifyGroup.GET("/setCategory/:influencerId/:category", infOwnership, setCategory(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
 	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
 	verifyGroup.POST("/setGeo/:influencerId", infOwnership, setGeo(srv))
+	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
+	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
@@ -231,8 +234,12 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
 	verifyGroup.GET("/getRawStats/:cid", advScope, campOwnership, getRawStats(srv))
 	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
-
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
+
+	adminGroup.GET("/billing", runBilling(srv))
+	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
+	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
+
 }
 
 func (srv *Server) startEngine() error {

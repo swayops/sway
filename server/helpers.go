@@ -1,8 +1,10 @@
 package server
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"log"
+	"math"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -169,6 +171,8 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 		return err
 	}
 
+	// Insert Log //
+
 	// Update the campaign store as well so things don't mess up
 	// until the next cache update!
 	s.Campaigns.SetCampaign(cmp.Id, cmp)
@@ -176,7 +180,18 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
 
-func (s *Server) getTalentAgencyFee(tx *bolt.Tx, id string) float64 {
+func (s *Server) getTalentAgencyFee(id string) float64 {
+	var agencyFee float64
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		agencyFee = s.getTalentAgencyFeeTx(tx, id)
+		return nil
+	}); err != nil {
+		return 0
+	}
+	return agencyFee
+}
+
+func (s *Server) getTalentAgencyFeeTx(tx *bolt.Tx, id string) float64 {
 	if ag := s.auth.GetTalentAgencyTx(tx, id); ag != nil {
 		return ag.Fee
 	}
@@ -243,15 +258,34 @@ func sanitizeMention(str string) string {
 	return strings.ToLower(raw)
 }
 
-func getAllInfluencers(s *Server) []*auth.Influencer {
+func getAllInfluencers(s *Server, checksOnly bool) []*auth.Influencer {
 	var influencers []*auth.Influencer
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-				influencers = append(influencers, inf)
+				if checksOnly {
+					if inf.RequestedCheck {
+						influencers = append(influencers, inf)
+					}
+				} else {
+					influencers = append(influencers, inf)
+				}
 			}
 			return nil
 		})
 	})
 	return influencers
+}
+
+func Float64Frombytes(bytes []byte) float64 {
+	bits := binary.LittleEndian.Uint64(bytes)
+	float := math.Float64frombits(bits)
+	return float
+}
+
+func Float64ToBytes(float float64) []byte {
+	bits := math.Float64bits(float)
+	bytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(bytes, bits)
+	return bytes
 }

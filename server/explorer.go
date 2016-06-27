@@ -169,9 +169,9 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
-		if int32(tw.CreatedAt.Unix()) < deal.Assigned {
-			continue
-		}
+		// if int32(tw.CreatedAt.Unix()) < deal.Assigned {
+		// 	continue
+		// }
 
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {

@@ -12,10 +12,10 @@ const (
 )
 
 type GeoRecord struct {
-	City    string `json:"city,omitempty"`
-	State   string `json:"state,omitempty"`
+	City string `json:"city,omitempty"`
+	// State   string `json:"state,omitempty"`
 	Country string `json:"country,omitempty"`
-	Zip     string `json:"zip,omitempty"`
+	// Zip     string `json:"zip,omitempty"`
 
 	Latitude   float64 `json:"lat,omitempty"`
 	Longtitude float64 `json:"long,omitempty"`
@@ -52,11 +52,11 @@ func GetGeoFromCoords(lat, long float64, ts int64) *GeoRecord {
 		for _, result := range output.Results {
 			for _, val := range result.AddressComponents {
 				for _, cat := range val.Types {
-					if cat == "postal_code" {
-						geo.Zip = val.LongName
-					} else if cat == "administrative_area_level_1" {
-						geo.State = val.ShortName
-					} else if cat == "locality" {
+					// if cat == "postal_code" {
+					// 	geo.Zip = val.LongName
+					// } else if cat == "administrative_area_level_1" {
+					// 	geo.State = val.ShortName
+					if cat == "locality" {
 						geo.City = val.LongName
 					} else if cat == "country" {
 						geo.Country = val.LongName // i.e. United States, United Kingdom
