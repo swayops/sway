@@ -9,7 +9,6 @@ func getBudgetKey() string {
 }
 
 func GetLastMonthBudgetKey() string {
-	return getBudgetKey()
 	return getBudgetKeyOffset(1)
 }
 
