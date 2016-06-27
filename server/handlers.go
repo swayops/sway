@@ -1060,29 +1060,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 			log.Println(formatted)
 		}
 
-		// Influencer Invoice
-		// log.Println("Influencer Invoice")
-		// for _, data := range store {
-		// 	for infId, infData := range data.Influencers {
-		// 			// Save the influencer
-		// 			user := s.auth.GetUserTx(tx, infId)
-		// 			inf := auth.GetInfluencer(user)
-		// 			if inf == nil {
-		// 				return auth.ErrInvalidID
-		// 			}
-
-		// 			inf.PendingPayout += infData.Payout * (1 - agencyFee)
-
-		// 		// formatted := fmt.Sprintf(
-		// 		// 	infInvoiceFormat,
-		// 		// 	inf.Name,
-		// 		// 	id,
-		// 		// 	infData.Payout*(1-agencyFee),
-		// 		// )
-		// 		// log.Println(formatted)
-		// 	}
-		// }
-
 		// Talent Agency Invoice
 		log.Println("Talent Agency Invoice")
 		for cid, data := range store {
@@ -1177,14 +1154,6 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("invalid influencer id"))
 			return
 		}
-
-		// VERIFY ADDRESS METHOD WHEREVER SET ADDR IS CALLED
-		// QUERY FOR SSN
-
-		// Send check via lob first and make sure there are no errors
-		// Insert log
-		// Store ID
-		// Test address logic
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			user := s.auth.GetUserTx(tx, infId)
