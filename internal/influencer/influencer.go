@@ -506,6 +506,8 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		if err == nil && store != nil && store.Spendable > 0 && store.Spent < store.Budget {
 			deal.Spendable = store.Spendable
 			filtered = append(filtered, deal)
+		} else {
+			log.Println(err, store)
 		}
 	}
 

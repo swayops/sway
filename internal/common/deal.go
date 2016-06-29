@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -56,6 +57,50 @@ type Deal struct {
 	// and is saved to show how much the influencer was offered
 	// when the deal was assigned
 	Spendable float64 `json:"spendable,omitempty"`
+
+	// Keyed on month.. showing payouts calculated by month
+	Payment map[string]*Money `json:"infPayout,omitempty"`
+}
+
+type Money struct {
+	// How much has been paid out to the influencer for this deal?
+	Influencer float64 `json:"infPayout,omitempty"`
+	// How much has been paid out to the agency for this deal?
+	Agency   float64 `json:"agencyPayout,omitempty"`
+	AgencyId string  `json:"agencyId,omitempty"`
+}
+
+func (d *Deal) Pay(inf, agency float64, agId string) {
+	if d.Payment == nil {
+		d.Payment = make(map[string]*Money)
+	}
+	key := getMonthKey(0)
+	data, ok := d.Payment[key]
+	if !ok {
+		data = &Money{}
+		d.Payment[key] = data
+	}
+
+	data.Influencer += inf
+	data.Agency += agency
+	data.AgencyId = agId
+}
+
+func (d *Deal) GetPayout(offset int) (m *Money) {
+	key := getMonthKey(offset)
+	if d.Payment == nil {
+		return
+	}
+	m, _ = d.Payment[key]
+	return
+}
+
+func getMonthKey(offset int) string {
+	now := time.Now().UTC()
+	if offset > 0 {
+		offset = -offset
+	}
+	return now.AddDate(0, offset, 0).Format("01-2006")
 }
 
 func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {

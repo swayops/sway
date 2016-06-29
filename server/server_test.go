@@ -130,6 +130,7 @@ func TestTalentAgencyChain(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:      "John Smith",
 			Gender:    "unicorn",
 			Geo:       &misc.GeoRecord{},
 			TwitterId: "justinbieber",
@@ -241,6 +242,7 @@ func TestNewInfluencer(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:      "John Smith",
 			Gender:    "unicorn",
 			Geo:       &misc.GeoRecord{},
 			TwitterId: "justinbieber",
@@ -250,6 +252,7 @@ func TestNewInfluencer(t *testing.T) {
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:   "John Smith",
 			Gender: "purple",
 			Geo:    &misc.GeoRecord{},
 		},
@@ -309,6 +312,7 @@ func TestInviteCode(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "John Smith",
 			Gender:     "unicorn",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
@@ -405,6 +409,75 @@ func TestCampaigns(t *testing.T) {
 }
 
 func TestDeals(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.2,
+	}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "John Smith",
+			Gender:     "m",
+			Geo:        &misc.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "justinbieber",
+		},
+	}
+
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.2,
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       1000.5,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Tags:         []string{"#mmmm"},
+		Whitelist: &common.TargetList{
+			Twitter: []string{"justinbieber"},
+		},
+	}
+
+	for _, tr := range [...]*resty.TestRequest{
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new talent agency and sign in
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		// sign up as a new influencer and see if you get placed under above agency via invite code
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+
+		// check influencer's agency
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+
+		// sign in as admin again
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new advertiser and sign in
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		// create a new campaign
+		{"POST", "/campaign", &cmp, 200, nil},
+
+		// sign in as influencer and get deals for the influencer
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+		{"GET", "/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "` + cmp.Id + `"}`},
+	} {
+
+		tr.Run(t, rst)
+	}
 }
 
 func TestBudget(t *testing.T) {

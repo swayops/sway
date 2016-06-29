@@ -134,14 +134,22 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
-			store, stats, spentDelta = budget.AdjustStore(store, deal, stats, inf.AgencyId, agencyFee)
+			store, stats, spentDelta = budget.AdjustStore(store, deal, stats)
 
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-					inf.PendingPayout += spentDelta * (1 - agencyFee)
-					user := s.auth.GetUserTx(tx, inf.Id)
-					return user.StoreWithData(s.auth, tx, inf)
+					payout := spentDelta * (1 - agencyFee)
+					inf.PendingPayout += payout
+
+					// Update payment values for this completed deal
+					for _, cDeal := range inf.CompletedDeals {
+						if cDeal.Id == deal.Id {
+							cDeal.Pay(payout, spentDelta-payout, inf.AgencyId)
+						}
+					}
+					// Save the deal in influencers and camaigns
+					return saveAllDeals(s, inf)
 				}); err != nil {
 					log.Println("Failed to update influencer!", err.Error())
 					// insert file informant
