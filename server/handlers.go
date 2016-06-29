@@ -783,13 +783,23 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 		// Lets quickly make sure that this deal is still available
 		// via our GetAvailableDeals func
-		var found bool
+		var (
+			found, dbg bool
+		)
+
 		foundDeal := &common.Deal{}
+		if c.Query("dbg") == "1" {
+			// In debug state.. all deals are recovered and random is assigned from the campaign given
+			dealId = ""
+			dbg = true
+		}
 		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
-			if deal.Spendable > 0 && deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
-				found = true
-				foundDeal = deal
+			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
+				if dbg || deal.Id == dealId {
+					found = true
+					foundDeal = deal
+				}
 			}
 		}
 

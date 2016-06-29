@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/swayops/resty"
@@ -473,7 +474,24 @@ func TestDeals(t *testing.T) {
 
 		// sign in as influencer and get deals for the influencer
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
-		{"GET", "/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "` + cmp.Id + `"}`},
+		{"GET", "/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
+
+		// assign yourself a deal
+		{"GET", "/assignDeal/" + inf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
+
+		// check deal assigned in influencer and campaign
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
+		{"GET", "/campaign/2", nil, 200, fmt.Sprintf(`{"influencerId": "%s"}`, inf.ExpID)},
+
+		// force approve the deal
+		// check for money in completed deals (fees and inf)
+		// look at deal payment breakdown by month shit
+		// verify talent agency id
+		// check for money in pending payout
+		// check for money in campaign deals (fees and inf)
+		// check for spent increased on budget and spendable decreased
+		// check get influencer stats
+		// check get campaign stats
 	} {
 
 		tr.Run(t, rst)
