@@ -65,7 +65,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// TODAY IS NOT BILLING DAY! (first of the month)
 			// This function could be run could be mid-month.. (new campaign)
 			// so we need to calculate what the given
-			// (monthly) budget wouldx be for the days left.
+			// (monthly) budget would be for the days left.
 			now := time.Now().UTC()
 			days := daysInMonth(now.Year(), now.Month())
 			daysUntilEnd := days - now.Day() + 1
