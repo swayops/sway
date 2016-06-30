@@ -240,6 +240,8 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
 
+	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
+	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 }
 
 func (srv *Server) startEngine() error {

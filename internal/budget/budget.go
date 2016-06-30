@@ -22,13 +22,6 @@ import (
 // 			"dspFee": 4, // amount dsp took
 // 			"exchangeFee": 4, // amount exchange took
 // 			"spendable": 10,
-// 			"influencers": {
-// 				"123123": {
-// 					"payout": 3.4,
-// 					"agencyFee": 1.2,
-// 					"talentAgency": "23",
-// 				}
-// 			},
 // 		}
 // 	}
 // }
@@ -45,20 +38,14 @@ type Store struct {
 	Spendable float64 `json:"spendable,omitempty"`
 	Spent     float64 `json:"spent,omitempty"`
 
-	DspFee      float64             `json:"dspFee,omitempty"`
-	ExchangeFee float64             `json:"exchangeFee,omitempty"`
-	Influencers map[string]*Payment `json:"influencers,omitempty"`
+	DspFee      float64 `json:"dspFee,omitempty"`
+	ExchangeFee float64 `json:"exchangeFee,omitempty"`
 }
 
-type Payment struct {
-	Payout   float64 `json:"payout,omitempty"`
-	AgencyId string  `json:"agencyId,omitempty"`
-	// Agency Fee at the time payout was calculated
-	AgencyFee float64 `json:"agencyFee,omitempty"`
-}
-
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float64, billing bool) error {
+func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float64, billing bool) (float64, error) {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
+	var spendable float64
+
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
 		key := getBudgetKey()
 		b := tx.Bucket([]byte(cfg.BudgetBucket)).Get([]byte(key))
@@ -101,10 +88,11 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		// Also.. no need for an influencers struct because
 		// this is either a brand new campaign or its billing
 		// day
+		spendable = leftover + monthlyBudget - (dspCut + exchangeCut)
 		st[cmp.Id] = &Store{
 			Budget:      monthlyBudget,
 			Leftover:    leftover,
-			Spendable:   leftover + monthlyBudget - (dspCut + exchangeCut),
+			Spendable:   spendable,
 			DspFee:      dspCut,
 			ExchangeFee: exchangeCut,
 		}
@@ -120,9 +108,9 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		return nil
 	}); err != nil {
 		log.Println("Error when creating budget key", err)
-		return err
+		return 0, err
 	}
-	return nil
+	return spendable, nil
 }
 
 func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float64) error {
@@ -163,7 +151,6 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			Spent:       store.Spent,
 			DspFee:      store.DspFee + tbaDspFee,
 			ExchangeFee: store.ExchangeFee + tbaExchangeFee,
-			Influencers: store.Influencers,
 		}
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
@@ -176,7 +163,6 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			DspFee:      store.DspFee,
 			ExchangeFee: store.ExchangeFee,
 			Pending:     newBudget,
-			Influencers: store.Influencers,
 		}
 	}
 
@@ -231,18 +217,7 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 	return st, nil
 }
 
-func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats, agencyId string, agencyFee float64) (*Store, *reporting.Stats, float64) {
-	if store.Influencers == nil {
-		store.Influencers = make(map[string]*Payment)
-	}
-
-	infData, ok := store.Influencers[deal.InfluencerId]
-	if !ok {
-		// Saving the pointer once
-		infData = &Payment{}
-		store.Influencers[deal.InfluencerId] = infData
-	}
-
+func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Store, *reporting.Stats, float64) {
 	// Add logging here eventually!
 
 	oldSpendable := store.Spendable
@@ -284,13 +259,7 @@ func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats, agency
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
 
-	infPayout := spentDelta * (1 - agencyFee)
-	infData.Payout += infPayout
-	infData.AgencyFee += spentDelta - infPayout
-	infData.AgencyId = agencyId
-
 	stats.Payout += spentDelta
-
 	return store, stats, spentDelta
 }
 

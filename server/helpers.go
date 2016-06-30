@@ -73,7 +73,7 @@ func clearDeal(s *Server, user *auth.User, dealId, influencerId, campaignId stri
 	return nil
 }
 
-func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
+func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaign {
 	// Assuming each deal will be paying out max of $5
 	// Lower this if you want less deals
 
@@ -90,7 +90,7 @@ func addDealsToCampaign(cmp *common.Campaign) *common.Campaign {
 
 	// Budget is always monthly
 	// Keeping it low because acceptance rate is low
-	maxDeals := int(cmp.Budget / 1.5)
+	maxDeals := int(spendable / 1.5)
 	for i := 0; i < maxDeals; i++ {
 		d := &common.Deal{
 			Id:           misc.PseudoUUID(),
@@ -172,7 +172,6 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	}
 
 	// Insert Log //
-
 	// Update the campaign store as well so things don't mess up
 	// until the next cache update!
 	s.Campaigns.SetCampaign(cmp.Id, cmp)

@@ -3,8 +3,9 @@ package common
 import "strings"
 
 func StringsIndexOf(hay []string, needle string) int {
+	needle = strings.ToLower(needle)
 	for i, s := range hay {
-		if s == needle {
+		if strings.ToLower(s) == needle {
 			return i
 		}
 	}

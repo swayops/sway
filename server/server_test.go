@@ -1,12 +1,15 @@
 package server
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 )
 
@@ -130,6 +133,7 @@ func TestTalentAgencyChain(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:      "John Smith",
 			Gender:    "unicorn",
 			Geo:       &misc.GeoRecord{},
 			TwitterId: "justinbieber",
@@ -241,6 +245,7 @@ func TestNewInfluencer(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:      "John Smith",
 			Gender:    "unicorn",
 			Geo:       &misc.GeoRecord{},
 			TwitterId: "justinbieber",
@@ -250,6 +255,7 @@ func TestNewInfluencer(t *testing.T) {
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:   "John Smith",
 			Gender: "purple",
 			Geo:    &misc.GeoRecord{},
 		},
@@ -309,6 +315,7 @@ func TestInviteCode(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "John Smith",
 			Gender:     "unicorn",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
@@ -399,16 +406,359 @@ func TestCampaigns(t *testing.T) {
 		// try to create a campaign with a bad advertiser id
 		{"POST", "/campaign", &badAdvId, 400, nil},
 	} {
-
 		tr.Run(t, rst)
 	}
 }
 
 func TestDeals(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.1,
+	}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "John Smith",
+			Gender:     "m",
+			Geo:        &misc.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "breakingnews",
+		},
+	}
+
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       5000.5,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Tags:         []string{"#mmmm"},
+		Whitelist: &common.TargetList{
+			Twitter: []string{"BreakingNews", "CNN"},
+		},
+	}
+
+	for _, tr := range [...]*resty.TestRequest{
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new talent agency and sign in
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		// sign up as a new influencer and see if you get placed under above agency via invite code
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+
+		// check influencer's agency
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+
+		// sign in as admin again
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new advertiser and sign in
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		// create a new campaign
+		{"POST", "/campaign", &cmp, 200, nil},
+
+		// sign in as influencer and get deals for the influencer
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+		{"GET", "/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
+
+		// assign yourself a deal
+		{"GET", "/assignDeal/" + inf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
+
+		// check deal assigned in influencer and campaign
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"GET", "/campaign/2?deals=true", nil, 200, resty.PartialMatch(fmt.Sprintf(`"influencerId":"%s"`, inf.ExpID))},
+
+		// force approve the deal
+		{"GET", "/forceApprove/" + inf.ExpID + "/2", nil, 200, misc.StatusOK(inf.ExpID)},
+
+		// make sure it's put into completed
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, `{"completedDeals":[{"campaignId": "2"}]}`},
+	} {
+		tr.Run(t, rst)
+	}
+
+	verifyDeal(t, "2", inf.ExpID, ag.ExpID, rst, false)
+
+	// Sign up as a second influencer and do a deal! Need to see
+	// cumulative stats
+	newInf := getSignupUser()
+	newInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "Wolf Blitzer",
+			Gender:     "m",
+			Geo:        &misc.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "CNN",
+		},
+	}
+	for _, tr := range [...]*resty.TestRequest{
+		// sign up as a new influencer and see if you get placed under above agency via invite code
+		{"POST", "/signUp", newInf, 200, misc.StatusOK(newInf.ExpID)},
+
+		// check influencer's agency
+		{"GET", "/influencer/" + newInf.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+
+		{"GET", "/getDeals/" + newInf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
+
+		// assign yourself a deal
+		{"GET", "/assignDeal/" + newInf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
+
+		// check deal assigned in influencer and campaign
+		{"GET", "/influencer/" + newInf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"GET", "/campaign/2?deals=true", nil, 200, resty.PartialMatch(fmt.Sprintf(`"influencerId":"%s"`, newInf.ExpID))},
+
+		// force approve the deal
+		{"GET", "/forceApprove/" + newInf.ExpID + "/2", nil, 200, misc.StatusOK(newInf.ExpID)},
+
+		// make sure it's put into completed
+		{"GET", "/influencer/" + newInf.ExpID, nil, 200, `{"completedDeals":[{"campaignId": "2"}]}`},
+	} {
+		tr.Run(t, rst)
+	}
+
+	verifyDeal(t, "2", newInf.ExpID, ag.ExpID, rst, true)
+
+	// Check reporting for just the second influencer
+	var load influencer.Influencer
+	r := rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	var breakdownB map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	checkReporting(t, breakdownB, 0, load.CompletedDeals[0], true)
+
+	// Verify combined reporting because campaign reports will include both
+	var newStore budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/2", nil, &newStore)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	var breakdownA map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	totalA := breakdownA["total"]
+	totalB := breakdownB["total"]
+
+	totalShares := totalA.Shares + totalB.Shares
+	totalLikes := totalA.Likes + totalB.Likes
+	totalSpend := totalA.Spent + totalB.Spent
+
+	if totalSpend != newStore.Spent {
+		t.Error("Combined spend does not match budget db!")
+	}
+
+	var cmpBreakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	totalCmp := cmpBreakdown["total"]
+	if delta := totalCmp.Spent - totalSpend; delta > 0.25 || delta < -0.25 {
+		t.Error("Combined spend does not match campaign report!")
+	}
+
+	if totalCmp.Shares != totalShares {
+		t.Error("Combined shares do not match campaign report!")
+	}
+
+	if totalCmp.Likes != totalLikes {
+		t.Error("Combined likes do not match campaign report!")
+	}
+
+	if totalCmp.Influencers != 2 {
+		t.Error("Influencer count incorrect!")
+	}
+
+	var cmpInfBreakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	totalCmpInf := cmpInfBreakdown["total"]
+	if totalCmpInf.Likes != totalB.Likes {
+		t.Error("Combined likes do not match campaign report!")
+	}
+
+	if totalCmpInf.Shares != totalB.Shares {
+		t.Error("Combined shares do not match campaign report!")
+	}
 }
 
-func TestBudget(t *testing.T) {
+func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skipReporting bool) {
+	var oldStore budget.Store
+	r := rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &oldStore)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	checkStore(t, &oldStore, nil)
+
+	// deplete budget according to the payout
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// check for money in completed deals (fees and inf)
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	if len(load.CompletedDeals) != 1 {
+		t.Error("Could not find completed deal!")
+	}
+
+	doneDeal := load.CompletedDeals[0]
+	checkDeal(t, doneDeal, &load, agId, cmpId)
+
+	var newStore budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &newStore)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if newStore.Spent == 0 {
+		t.Error("Spent not incremented correctly in budget")
+	}
+	checkStore(t, &newStore, &oldStore)
+
+	// check for money in campaign deals (fees and inf)
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	doneDeal = cmpLoad.Deals[load.CompletedDeals[0].Id]
+	if doneDeal == nil {
+		t.Error("Cannot find done deal in campaign!")
+	}
+
+	checkDeal(t, doneDeal, &load, agId, cmpId)
+
+	if !skipReporting {
+		// check get campaign stats
+		var breakdown map[string]*reporting.Totals
+		r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &breakdown)
+		if r.Status != 200 {
+			t.Error("Bad status code!")
+		}
+		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
+
+		// check get influencer stats
+		r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+infId+"/10", nil, &breakdown)
+		if r.Status != 200 {
+			t.Error("Bad status code!")
+		}
+		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
+	}
 }
 
-func TestReporting(t *testing.T) {
+func checkStore(t *testing.T, store, compareStore *budget.Store) {
+	if dspFee := store.DspFee / (store.Spendable + store.Spent + store.ExchangeFee + store.DspFee); dspFee > 0.21 || dspFee < 0.19 {
+		t.Error("Unexpected DSP fee", dspFee)
+	}
+
+	if exchangeFee := store.ExchangeFee / (store.Spendable + store.Spent + store.ExchangeFee + store.DspFee); exchangeFee > 0.11 || exchangeFee < 0.09 {
+		t.Error("Unexpected Exchange fee", exchangeFee)
+	}
+
+	if compareStore != nil {
+		oldV := store.Spent + store.Spendable
+		newV := compareStore.Spendable + compareStore.Spent
+		if newV != oldV {
+			t.Error("Spendable and spent not synchronized!")
+		}
+	}
+}
+
+func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer, agId, campaignId string) {
+	if doneDeal.CampaignId != campaignId {
+		t.Error("Campaign ID not assigned!")
+	}
+
+	if doneDeal.Assigned == 0 || doneDeal.Completed == 0 {
+		t.Error("Deal timestamps missing!")
+	}
+
+	if doneDeal.InfluencerId != load.Id {
+		t.Error("Deal ID missing!")
+	}
+
+	var m *common.Payout
+	if m = doneDeal.GetPayout(0); m != nil {
+		if m.AgencyId != agId {
+			t.Error("Payout to wrong talent agency!")
+		}
+		if m.Influencer == 0 {
+			t.Error("No influencer payout!")
+
+		}
+		if m.Agency == 0 {
+			t.Error("No agency payout!")
+		}
+		// Should be 10% as stated earlier on talent agency initialization
+		if agencyFee := m.Agency / (m.Agency + m.Influencer); agencyFee > 0.11 || agencyFee < 0.09 {
+			t.Error("Unexpected agency fee", agencyFee)
+		}
+	} else {
+		t.Error("Could not find completed deal payout!")
+	}
+
+	if load.PendingPayout != m.Influencer {
+		t.Error("Unexpected pending payout!")
+	}
+
+	if m = doneDeal.GetPayout(1); m != nil {
+		t.Error("How the hell are you getting payouts from last month?")
+	}
+}
+
+func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend float64, doneDeal *common.Deal, skipSpend bool) {
+	total := breakdown["total"]
+	dayTotal := breakdown[reporting.GetDate()]
+	rt := int32(doneDeal.Tweet.Retweets)
+
+	if rt != dayTotal.Shares || rt != total.Shares {
+		t.Error("Shares do not match!")
+	}
+
+	likes := int32(doneDeal.Tweet.Favorites)
+	if likes != dayTotal.Likes || likes != total.Likes {
+		t.Error("Likes do not match!")
+	}
+
+	if !skipSpend && total.Spent != spend {
+		t.Error("Spend values do not match!")
+	}
 }

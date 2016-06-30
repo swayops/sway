@@ -233,6 +233,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 		}
+
 		// cuser is always an advertiser
 		cmp.AdvertiserId, cmp.AgencyId = cuser.ID, cuser.ParentID
 
@@ -263,17 +264,20 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
 				return
 			}
-			addDealsToCampaign(&cmp)
+
+			// Create their budget key
+			// NOTE: Create budget key requires cmp.Id be set
+			var spendable float64
+			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
+			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, dspFee, exchangeFee, false); err != nil {
+				log.Println("Error creating budget key!", err)
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			addDealsToCampaign(&cmp, spendable)
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		// Create their budget key
-		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-		if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, dspFee, exchangeFee, false); err != nil {
-			log.Println("Error creating budget key!", err)
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
@@ -779,13 +783,23 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 		// Lets quickly make sure that this deal is still available
 		// via our GetAvailableDeals func
-		var found bool
+		var (
+			found, dbg bool
+		)
+
 		foundDeal := &common.Deal{}
+		if c.Query("dbg") == "1" {
+			// In debug state.. all deals are recovered and random is assigned from the campaign given
+			dealId = ""
+			dbg = true
+		}
 		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
-			if deal.Spendable > 0 && deal.Id == dealId && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
-				found = true
-				foundDeal = deal
+			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
+				if dbg || deal.Id == dealId {
+					found = true
+					foundDeal = deal
+				}
 			}
 		}
 
@@ -824,7 +838,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 
 			foundDeal.AssignedPlatform = mediaPlatform
-			cmp.Deals[dealId] = foundDeal
+			cmp.Deals[foundDeal.Id] = foundDeal
 
 			// Append to the influencer's active deals
 			inf.ActiveDeals = append(inf.ActiveDeals, foundDeal)
@@ -1015,7 +1029,7 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 const (
 	cmpInvoiceFormat          = "Campaign ID: %s, Email: test@sway.com, Phone: 123456789, Spent: %f, DSPFee: %f, ExchangeFee: %f, Total: %f"
 	infInvoiceFormat          = "Influencer Name: %s, Influencer ID: %s, Email: test@sway.com, Payout: %f"
-	talentAgencyInvoiceFormat = "Agency ID: %s, Email: test@sway.com, Payout: %f, Influencer ID: %s, Campaign ID: %s"
+	talentAgencyInvoiceFormat = "Agency ID: %s, Email: test@sway.com, Payout: %f, Influencer ID: %s, Campaign ID: %s, Deal ID: %s"
 )
 
 var (
@@ -1062,18 +1076,31 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 		// Talent Agency Invoice
 		log.Println("Talent Agency Invoice")
-		for cid, data := range store {
-			for infId, infData := range data.Influencers {
-				formatted := fmt.Sprintf(
-					talentAgencyInvoiceFormat,
-					infData.AgencyId,
-					infData.AgencyFee,
-					infId,
-					cid,
-				)
-				log.Println(formatted)
-			}
-		}
+		s.db.View(func(tx *bolt.Tx) error {
+			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+				inf := auth.GetInfluencer(u)
+				if inf == nil {
+					return nil
+				}
+
+				for _, d := range inf.CompletedDeals {
+					// Get payouts for last month since it's the first
+					if money := d.GetPayout(1); money != nil {
+						formatted := fmt.Sprintf(
+							talentAgencyInvoiceFormat,
+							money.AgencyId,
+							money.Agency,
+							d.InfluencerId,
+							d.CampaignId,
+							d.Id,
+						)
+						log.Println(formatted)
+					}
+				}
+
+				return nil
+			})
+		})
 
 		// TRANSFER PROCESS TO NEW MONTH
 		// - We wil now add fresh deals for the new month
@@ -1096,14 +1123,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 				// they could have started the campaign mid-month and would
 				// have only a portion of their monthly budget)
 				if cmp.Budget > 0 {
-					// Add fresh deals for this month
-					addDealsToCampaign(cmp)
-
-					if err = saveCampaign(tx, cmp, s); err != nil {
-						log.Println("Error saving campaign for billing", err)
-						return
-					}
-
 					// This will carry over any left over spendable too
 					// It will also look to check if there's a pending (lowered)
 					// budget that was saved to db last month.. and that should be
@@ -1121,9 +1140,18 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
+					var spendable float64
 					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
-					if err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
 						log.Println("Error creating budget key!", err)
+						return err
+					}
+
+					// Add fresh deals for this month
+					addDealsToCampaign(cmp, spendable)
+
+					if err = saveCampaign(tx, cmp, s); err != nil {
+						log.Println("Error saving campaign for billing", err)
 						return err
 					}
 				}
@@ -1237,5 +1265,95 @@ func requestCheck(s *Server) gin.HandlerFunc {
 		}
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+var ErrDealNotFound = errors.New("Deal not found!")
+
+func forceApproveAny(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Delete the check and entry, send to lob
+		infId := c.Param("influencerId")
+		campaignId := c.Param("campaignId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		var (
+			inf  *auth.Influencer
+			user = auth.GetCtxUser(c)
+			err  error
+		)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+
+			if inf = auth.GetInfluencer(user); inf == nil {
+				return auth.ErrInvalidID
+			}
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var found *common.Deal
+		for _, deal := range inf.ActiveDeals {
+			if deal.CampaignId == campaignId {
+				found = deal
+			}
+		}
+		if found == nil {
+			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
+			return
+		}
+
+		switch found.AssignedPlatform {
+		case platform.Twitter:
+			if inf.Twitter != nil && len(inf.Twitter.LatestTweets) > 0 {
+				if err = s.ApproveTweet(inf.Twitter.LatestTweets[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		case platform.Facebook:
+			if inf.Facebook != nil && len(inf.Facebook.LatestPosts) > 0 {
+				if err = s.ApproveFacebook(inf.Facebook.LatestPosts[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		case platform.Instagram:
+			if inf.Instagram != nil && len(inf.Instagram.LatestPosts) > 0 {
+				if err = s.ApproveInstagram(inf.Instagram.LatestPosts[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		case platform.YouTube:
+			if inf.YouTube != nil && len(inf.YouTube.LatestPosts) > 0 {
+				if err = s.ApproveYouTube(inf.YouTube.LatestPosts[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		default:
+			c.JSON(500, misc.StatusErr(ErrPlatform.Error()))
+			return
+		}
+		c.JSON(200, misc.StatusOK(infId))
+
+	}
+}
+
+func forceDeplete(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if err := depleteBudget(s); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, misc.StatusOK(""))
 	}
 }
