@@ -540,12 +540,12 @@ func TestDeals(t *testing.T) {
 
 	// Check reporting for just the second influencer
 	var load influencer.Influencer
-	r := rst.Do("GET", "/influencer/"+newInf.ExpID, nil, &load)
+	r := rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 	var breakdownB map[string]*reporting.Totals
-	r = rst.Do("GET", "/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
+	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -553,13 +553,13 @@ func TestDeals(t *testing.T) {
 
 	// Verify combined reporting because campaign reports will include both
 	var newStore budget.Store
-	r = rst.Do("GET", "/getBudgetInfo/2", nil, &newStore)
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/2", nil, &newStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 
 	var breakdownA map[string]*reporting.Totals
-	r = rst.Do("GET", "/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
+	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -576,7 +576,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	var cmpBreakdown map[string]*reporting.Totals
-	r = rst.Do("GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -599,7 +599,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	var cmpInfBreakdown map[string]*reporting.Totals
-	r = rst.Do("GET", "/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
+	r = rst.DoTesting(t, "GET", "/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -616,21 +616,21 @@ func TestDeals(t *testing.T) {
 
 func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skipReporting bool) {
 	var oldStore budget.Store
-	r := rst.Do("GET", "/getBudgetInfo/"+cmpId, nil, &oldStore)
+	r := rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &oldStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 	checkStore(t, &oldStore, nil)
 
 	// deplete budget according to the payout
-	r = rst.Do("GET", "/forceDeplete", nil, nil)
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 
 	// check for money in completed deals (fees and inf)
 	var load influencer.Influencer
-	r = rst.Do("GET", "/influencer/"+infId, nil, &load)
+	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -642,7 +642,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	checkDeal(t, doneDeal, &load, agId, cmpId)
 
 	var newStore budget.Store
-	r = rst.Do("GET", "/getBudgetInfo/"+cmpId, nil, &newStore)
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &newStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -654,7 +654,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 
 	// check for money in campaign deals (fees and inf)
 	var cmpLoad common.Campaign
-	r = rst.Do("GET", "/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -669,14 +669,14 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	if !skipReporting {
 		// check get campaign stats
 		var breakdown map[string]*reporting.Totals
-		r = rst.Do("GET", "/getCampaignStats/2/10", nil, &breakdown)
+		r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &breakdown)
 		if r.Status != 200 {
 			t.Error("Bad status code!")
 		}
 		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
 
 		// check get influencer stats
-		r = rst.Do("GET", "/getInfluencerStats/"+infId+"/10", nil, &breakdown)
+		r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+infId+"/10", nil, &breakdown)
 		if r.Status != 200 {
 			t.Error("Bad status code!")
 		}
@@ -715,7 +715,7 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		t.Error("Deal ID missing!")
 	}
 
-	var m *common.Money
+	var m *common.Payout
 	if m = doneDeal.GetPayout(0); m != nil {
 		if m.AgencyId != agId {
 			t.Error("Payout to wrong talent agency!")

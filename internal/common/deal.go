@@ -59,10 +59,10 @@ type Deal struct {
 	Spendable float64 `json:"spendable,omitempty"`
 
 	// Keyed on month.. showing payouts calculated by month
-	Payment map[string]*Money `json:"infPayout,omitempty"`
+	Payment map[string]*Payout `json:"infPayout,omitempty"`
 }
 
-type Money struct {
+type Payout struct {
 	// How much has been paid out to the influencer for this deal?
 	Influencer float64 `json:"infPayout,omitempty"`
 	// How much has been paid out to the agency for this deal?
@@ -72,12 +72,12 @@ type Money struct {
 
 func (d *Deal) Pay(inf, agency float64, agId string) {
 	if d.Payment == nil {
-		d.Payment = make(map[string]*Money)
+		d.Payment = make(map[string]*Payout)
 	}
 	key := getMonthKey(0)
 	data, ok := d.Payment[key]
 	if !ok {
-		data = &Money{}
+		data = &Payout{}
 		d.Payment[key] = data
 	}
 
@@ -86,7 +86,7 @@ func (d *Deal) Pay(inf, agency float64, agId string) {
 	data.AgencyId = agId
 }
 
-func (d *Deal) GetPayout(offset int) (m *Money) {
+func (d *Deal) GetPayout(offset int) (m *Payout) {
 	key := getMonthKey(offset)
 	if d.Payment == nil {
 		return
