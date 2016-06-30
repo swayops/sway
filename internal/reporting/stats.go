@@ -248,6 +248,9 @@ func GetTotalStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Ti
 				tg.Total.Shares += st.Shares
 				tg.Total.Comments += st.Comments
 
+				// This assumes each influencer can do the deal once
+				tg.Total.Influencers++
+
 				if onlyTotals {
 					continue
 				}
@@ -297,7 +300,6 @@ func fillReportStats(key string, data map[string]*ReportStats, st *Stats, views 
 	stats.Perks += st.Perks
 	stats.InfluencerId = infId
 	stats.Network = channel
-
 	return data
 }
 

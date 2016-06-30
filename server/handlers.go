@@ -838,7 +838,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 
 			foundDeal.AssignedPlatform = mediaPlatform
-			cmp.Deals[dealId] = foundDeal
+			cmp.Deals[foundDeal.Id] = foundDeal
 
 			// Append to the influencer's active deals
 			inf.ActiveDeals = append(inf.ActiveDeals, foundDeal)
@@ -1265,5 +1265,95 @@ func requestCheck(s *Server) gin.HandlerFunc {
 		}
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+var ErrDealNotFound = errors.New("Deal not found!")
+
+func forceApproveAny(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Delete the check and entry, send to lob
+		infId := c.Param("influencerId")
+		campaignId := c.Param("campaignId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		var (
+			inf  *auth.Influencer
+			user = auth.GetCtxUser(c)
+			err  error
+		)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+
+			if inf = auth.GetInfluencer(user); inf == nil {
+				return auth.ErrInvalidID
+			}
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var found *common.Deal
+		for _, deal := range inf.ActiveDeals {
+			if deal.CampaignId == campaignId {
+				found = deal
+			}
+		}
+		if found == nil {
+			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
+			return
+		}
+
+		switch found.AssignedPlatform {
+		case platform.Twitter:
+			if inf.Twitter != nil && len(inf.Twitter.LatestTweets) > 0 {
+				if err = s.ApproveTweet(inf.Twitter.LatestTweets[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		case platform.Facebook:
+			if inf.Facebook != nil && len(inf.Facebook.LatestPosts) > 0 {
+				if err = s.ApproveFacebook(inf.Facebook.LatestPosts[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		case platform.Instagram:
+			if inf.Instagram != nil && len(inf.Instagram.LatestPosts) > 0 {
+				if err = s.ApproveInstagram(inf.Instagram.LatestPosts[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		case platform.YouTube:
+			if inf.YouTube != nil && len(inf.YouTube.LatestPosts) > 0 {
+				if err = s.ApproveYouTube(inf.YouTube.LatestPosts[0], found); err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		default:
+			c.JSON(500, misc.StatusErr(ErrPlatform.Error()))
+			return
+		}
+		c.JSON(200, misc.StatusOK(infId))
+
+	}
+}
+
+func forceDeplete(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if err := depleteBudget(s); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, misc.StatusOK(""))
 	}
 }

@@ -4,7 +4,7 @@ import "strings"
 
 func StringsIndexOf(hay []string, needle string) int {
 	for i, s := range hay {
-		if s == needle {
+		if strings.ToLower(s) == strings.ToLower(needle) {
 			return i
 		}
 	}
@@ -12,7 +12,7 @@ func StringsIndexOf(hay []string, needle string) int {
 }
 
 func IsInList(hay []string, needle string) bool {
-	return StringsIndexOf(hay, needle) >= 0
+	return StringsIndexOf(hay, strings.ToLower(needle)) >= 0
 }
 
 // StringsRemove removes an item out of a slice, this *will* modify the original slice, YMMV

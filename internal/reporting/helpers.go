@@ -10,7 +10,7 @@ import (
 
 const dateFormat = "%d-%02d-%02d"
 
-func getDate() string {
+func GetDate() string {
 	return getDateFromTime(time.Now().UTC())
 }
 
@@ -41,7 +41,7 @@ func getStatsKey(deal *common.Deal, platformId string) string {
 		return ""
 	}
 
-	return fmt.Sprintf("%s|||%s|||%s|||%s|||%s", getDate(), deal.InfluencerId, platformId, platform, url)
+	return fmt.Sprintf("%s|||%s|||%s|||%s|||%s", GetDate(), deal.InfluencerId, platformId, platform, url)
 }
 
 func getElementsFromKey(s string) (string, string, string, string) {

@@ -172,7 +172,6 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 	}
 
 	// Insert Log //
-
 	// Update the campaign store as well so things don't mess up
 	// until the next cache update!
 	s.Campaigns.SetCampaign(cmp.Id, cmp)

@@ -260,7 +260,6 @@ func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Stor
 	store.Spent += spentDelta
 
 	stats.Payout += spentDelta
-
 	return store, stats, spentDelta
 }
 
