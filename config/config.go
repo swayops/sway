@@ -44,8 +44,9 @@ type Config struct {
 	ReportingBucket string `json:"reportingBucket"`
 	AuthDBName      string `json:"authDbName"`
 
-	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
-	APIPath   string `json:"apiPath"`
+	ServerURL     string `json:"serverURL"` // this is mainly used for internal directs
+	APIPath       string `json:"apiPath"`
+	DashboardPath string `json:"dashboardPath"`
 
 	Sandbox bool `json:"sandbox"`
 

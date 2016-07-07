@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 	"log"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -160,6 +162,19 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
+	idx := filepath.Join(srv.Cfg.DashboardPath, "index.html")
+	r.Use(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			return
+		}
+		if strings.HasPrefix(c.Request.URL.Path, "/app/") {
+			return
+		}
+		c.File(idx)
+	})
+
+	r.Static("/app", filepath.Join(srv.Cfg.DashboardPath, "app"))
+
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
 
