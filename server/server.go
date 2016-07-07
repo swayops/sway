@@ -163,17 +163,25 @@ var scopes = map[string]auth.ScopeMap{
 
 func (srv *Server) initializeRoutes(r *gin.Engine) {
 	idx := filepath.Join(srv.Cfg.DashboardPath, "index.html")
+	syscfg := filepath.Join(srv.Cfg.DashboardPath, "systemjs.config.js")
 	r.Use(func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+		p := c.Request.URL.Path
+		switch {
+		case strings.HasPrefix(p, "/api/"), strings.HasPrefix(p, "/app/"),
+			strings.HasPrefix(p, "/node_modules/"), strings.HasPrefix(p, "/static/"):
 			return
+		case p == "/systemjs.config.js":
+			c.File(syscfg)
+		default:
+			c.File(idx)
 		}
-		if strings.HasPrefix(c.Request.URL.Path, "/app/") {
-			return
-		}
-		c.File(idx)
+
+		c.Abort()
 	})
 
 	r.Static("/app", filepath.Join(srv.Cfg.DashboardPath, "app"))
+	r.Static("/node_modules", filepath.Join(srv.Cfg.DashboardPath, "node_modules"))
+	r.Static("/static", filepath.Join(srv.Cfg.DashboardPath, "static"))
 
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
