@@ -165,11 +165,9 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
 	r.Use(func(c *gin.Context) {
 		p := c.Request.URL.Path[1:]
-		log.Println("p", p)
 		if idx := strings.Index(p, "/"); idx > -1 {
 			p = p[:idx]
 		}
-		log.Println("p", p)
 		switch p {
 		case "static", "api", "favicon.ico":
 			return

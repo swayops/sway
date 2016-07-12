@@ -16,37 +16,47 @@ import (
 const (
 	vary            = "Vary"
 	acceptEncoding  = "Accept-Encoding"
+	contentType     = "Content-Type"
 	contentEncoding = "Content-Encoding"
 )
 
 func staticGzipServe(dir string) func(c *gin.Context) {
-	serveAndAbort := func(c *gin.Context, fp string) {
-		if filepath.Ext(fp) == ".gz" {
-			c.Header("Content-Encoding", "gzip")
-		}
-		c.File(fp)
+	acceptsGzip := func(c *gin.Context) bool {
+		return strings.Contains(c.Request.Header.Get(acceptEncoding), "gzip")
 	}
 	return func(c *gin.Context) {
-		supportsGzip := strings.Contains(c.Request.Header.Get(acceptEncoding), "gzip")
-		fp := filepath.Join(dir, c.Param("fp"))
-		ext := filepath.Ext(fp)
-		c.Header("Vary", "Accept-Encoding")
-		c.Header("Content-Type", mime.TypeByExtension(ext))
-		if !supportsGzip || ext == ".gz" {
-			serveAndAbort(c, fp)
+		var (
+			fp   = filepath.Join(dir, c.Param("fp"))
+			ext  = strings.ToLower(filepath.Ext(fp))
+			typ  = mime.TypeByExtension(ext)
+			pass bool
+		)
+
+		c.Header(vary, acceptEncoding)
+		c.Header(contentType, typ)
+
+		switch ext {
+		case ".jpg", ".png", ".pdf", ".gz", ".jpeg", ".gif", ".woff", ".ttf", ".eot", ".mp4":
+			pass = true
+		}
+
+		if pass || !acceptsGzip(c) {
+			c.File(fp)
 			return
 		}
+
+		c.Header(contentEncoding, "gzip")
+
 		if gzfp := fp + ".gz"; fileExists(gzfp) {
-			serveAndAbort(c, gzfp)
+			c.File(gzfp)
 			return
 		}
+
 		gzw := gzipWriterPool.Get().(*gzip.Writer)
 		gzw.Reset(c.Writer)
-		defer func() {
-			gzw.Close()
-			gzipWriterPool.Put(gzw)
-		}()
 		http.ServeFile(gzipResponseWriter{gzw, c.Writer}, c.Request, fp)
+		gzw.Close()
+		gzipWriterPool.Put(gzw)
 	}
 }
 
@@ -71,9 +81,6 @@ type gzipResponseWriter struct {
 
 // Write appends data to the gzip writer.
 func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	if _, ok := w.Header()["Content-Encoding"]; !ok {
-		w.Header().Set("Content-Encoding", "gzip")
-	}
 	return w.gw.Write(b)
 }
 
