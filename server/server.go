@@ -162,28 +162,25 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 func (srv *Server) initializeRoutes(r gin.IRouter) {
-	idx := filepath.Join(srv.Cfg.DashboardPath, "index.html")
-	syscfg := filepath.Join(srv.Cfg.DashboardPath, "systemjs.config.js")
+	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
 	r.Use(func(c *gin.Context) {
-		p := c.Request.URL.Path
-		switch {
-		case strings.HasPrefix(p, "/api/"), strings.HasPrefix(p, "/app/"),
-			strings.HasPrefix(p, "/node_modules/"), strings.HasPrefix(p, "/static/"):
-			return
-		case p == "/systemjs.config.js":
-			c.File(syscfg)
-		case strings.HasSuffix(p, ".js"), strings.HasSuffix(p, ".css"):
-			c.AbortWithStatus(404)
-		default:
-			c.File(idx)
+		p := c.Request.URL.Path[1:]
+		log.Println("p", p)
+		if idx := strings.Index(p, "/"); idx > -1 {
+			p = p[:idx]
 		}
-
+		log.Println("p", p)
+		switch p {
+		case "static", "api", "favicon.ico":
+			return
+		}
+		c.File(idxFile)
 		c.Abort()
 	})
 
-	r.Static("/app", filepath.Join(srv.Cfg.DashboardPath, "app"))
-	r.Static("/node_modules", filepath.Join(srv.Cfg.DashboardPath, "node_modules"))
-	r.Static("/static", filepath.Join(srv.Cfg.DashboardPath, "static"))
+	staticGzer := staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+	r.HEAD("/static/*fp", staticGzer)
+	r.GET("/static/*fp", staticGzer)
 
 	r = r.Group(srv.Cfg.APIPath)
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
