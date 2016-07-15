@@ -60,7 +60,7 @@ func TestMain(m *testing.M) {
 	cfg.Sandbox = true // always set it to true just in case
 
 	cfg.DBPath, err = ioutil.TempDir("", "sway-srv")
-	cfg.APIPath = "/"
+	//cfg.APIPath = "/"
 	panicIf(err)
 
 	if *keepTmp {
