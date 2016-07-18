@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/internal/auth"
@@ -11,6 +12,8 @@ import (
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/platforms/hellosign"
+	"github.com/swayops/sway/platforms/lob"
 )
 
 var (
@@ -760,5 +763,91 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 
 	if !skipSpend && total.Spent != spend {
 		t.Error("Spend values do not match!")
+	}
+}
+
+func TestTaxes(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.1,
+	}
+
+	inf := getSignupUserWithEmail("shahzilsway@gmail.com") //throw away email
+	inf.InfluencerLoad = &auth.InfluencerLoad{             // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "John Smith",
+			Gender:     "m",
+			Geo:        &misc.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "breakingnews",
+			Address: &lob.AddressLoad{
+				AddressOne: "8 Saint Elias",
+				City:       "Trabuco Canyon",
+				State:      "CA",
+				Country:    "US",
+			},
+		},
+	}
+
+	for _, tr := range [...]*resty.TestRequest{
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new talent agency and sign in
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		// sign up as a new influencer and see if you get placed under above agency via invite code
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+
+		// check influencer's agency
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+	} {
+		tr.Run(t, rst)
+	}
+
+	// Check reporting for just the second influencer
+	var load influencer.Influencer
+	r := rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code for initial check!")
+	}
+
+	if load.SignatureId != "" || load.HasSigned {
+		t.Error("Unexpected signing!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/emailTaxForm/"+inf.ExpID, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code for email!")
+	}
+
+	var uload influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &uload)
+	if r.Status != 200 {
+		t.Error("Bad status code second influencer check!")
+	}
+
+	if uload.SignatureId == "" {
+		t.Error("No signature id assigned!")
+	}
+
+	if uload.RequestedTax == 0 {
+		t.Error("No tax request timestamp!")
+	}
+
+	val, err := hellosign.HasSigned(inf.ExpID, uload.SignatureId)
+	if val || err != nil {
+		t.Error("Error getting signed value!")
+	}
+
+	// Cleanup
+	time.Sleep(5 * time.Second)
+	if r, err := hellosign.Cancel(uload.SignatureId); err != nil || r != 200 {
+		t.Error("Hellosign cancel error")
 	}
 }
