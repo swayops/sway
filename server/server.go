@@ -219,6 +219,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.GET("/getCategories", getCategories(srv))
 	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
 	verifyGroup.POST("/setGeo/:influencerId", infOwnership, setGeo(srv))
+	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 
@@ -242,6 +243,8 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
+
+	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
 }
 
 func (srv *Server) startEngine() error {

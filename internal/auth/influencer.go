@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/boltdb/bolt"
-	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 )
 
@@ -54,20 +53,23 @@ func (inf *InfluencerLoad) Check() error {
 		return ErrName
 	}
 
-	if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
-		return ErrBadGender
-	}
+	// Not required at sign up now..
+	// Admin will audit and set these
 
-	if inf.Geo == nil {
-		return ErrNoGeo
-	}
+	// if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
+	// 	return ErrBadGender
+	// }
 
-	inf.Categories = common.LowerSlice(inf.Categories)
-	for _, cat := range inf.Categories {
-		if _, ok := common.CATEGORIES[cat]; !ok {
-			return ErrBadCat
-		}
-	}
+	// if inf.Geo == nil {
+	// 	return ErrNoGeo
+	// }
+
+	// inf.Categories = common.LowerSlice(inf.Categories)
+	// for _, cat := range inf.Categories {
+	// 	if _, ok := common.CATEGORIES[cat]; !ok {
+	// 		return ErrBadCat
+	// 	}
+	// }
 
 	if len(inf.InstagramId)+len(inf.FbId)+len(inf.TwitterId)+len(inf.YouTubeId) == 0 {
 		return ErrPlatform
