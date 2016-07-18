@@ -4,9 +4,11 @@ import (
 	"log"
 	"time"
 
+	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/platforms/hellosign"
 )
 
 func newSwayEngine(srv *Server) error {
@@ -29,6 +31,15 @@ func newSwayEngine(srv *Server) error {
 			if err := run(srv); err != nil {
 				log.Println("Err running engine", err)
 			}
+		}
+	}()
+
+	// Every hour, check to see if the user has completed
+	// the tax form signature request
+	sigTicker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for range sigTicker.C {
+			auditTaxes(srv)
 		}
 	}()
 
@@ -87,6 +98,7 @@ func updateInfluencers(s *Server) error {
 
 		time.Sleep(s.Cfg.StatsInterval * time.Second)
 
+		// Also saves influencers!
 		if err := saveAllDeals(s, inf); err != nil {
 			return err
 		}
@@ -171,4 +183,29 @@ func depleteBudget(s *Server) error {
 	}
 
 	return nil
+}
+
+func auditTaxes(srv *Server) {
+	for _, inf := range getAllInfluencers(srv, false) {
+		if inf.SignatureId != "" && !inf.HasSigned {
+			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
+			if err != nil {
+				log.Println("Error from HelloSign", err)
+				continue
+			}
+			if inf.HasSigned != val {
+				if err := srv.db.Update(func(tx *bolt.Tx) error {
+					inf.HasSigned = val
+					// Save the influencer since we just updated it's social media data
+					if err := saveInfluencer(srv, tx, inf); err != nil {
+						log.Println("Errored saving influencer", err)
+						return err
+					}
+					return nil
+				}); err != nil {
+					log.Println("Error when saving influencer", err)
+				}
+			}
+		}
+	}
 }

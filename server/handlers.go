@@ -17,6 +17,7 @@ import (
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
+	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/lob"
 )
 
@@ -610,6 +611,40 @@ func setInviteCode(s *Server) gin.HandlerFunc {
 			}
 
 			inf.AgencyId = agencyId
+
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func setGender(s *Server) gin.HandlerFunc {
+	// Sets the gender for the influencer id
+	return func(c *gin.Context) {
+		gender := strings.ToLower(c.Params.ByName("gender"))
+		if gender != "m" && gender != "f" && gender != "unicorn" {
+			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+			user  = auth.GetCtxUser(c)
+		)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			inf.Gender = gender
 
 			return user.StoreWithData(s.auth, tx, inf)
 		}); err != nil {
@@ -1220,6 +1255,7 @@ var (
 	ErrInvalidFunds = errors.New("Must have atleast $50 USD to be paid out!")
 	ErrThirtyDays   = errors.New("Must wait atleast 30 days since last check to receive a payout!")
 	ErrAddress      = errors.New("Please set an address for your profile!")
+	ErrTax          = errors.New("Please fill out all necessary tax forms!")
 )
 
 const THIRTY_DAYS = 60 * 60 * 24 * 30 // Thirty days in seconds
@@ -1252,7 +1288,11 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			}
 
 			if inf.Address == nil {
-				return ErrThirtyDays
+				return ErrAddress
+			}
+
+			if !inf.HasSigned {
+				return ErrTax
 			}
 
 			inf.RequestedCheck = true
@@ -1355,5 +1395,52 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func emailTaxForm(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Delete the check and entry, send to lob
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		now := int32(time.Now().Unix())
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			user := s.auth.GetUserTx(tx, infId)
+
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			if inf.Address == nil {
+				return ErrAddress
+			}
+
+			var isAmerican bool
+			if strings.ToLower(inf.Address.Country) == "us" {
+				isAmerican = true
+			}
+
+			sigId, err := hellosign.SendSignatureRequest(inf.Name, user.Email, inf.Id, isAmerican, s.Cfg.Sandbox)
+			if err != nil {
+				return err
+			}
+
+			inf.SignatureId = sigId
+			inf.RequestedTax = now
+
+			// Save the influencer
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		// Insert log
+		c.JSON(200, misc.StatusOK(infId))
 	}
 }

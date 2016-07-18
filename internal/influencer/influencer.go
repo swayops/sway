@@ -1,7 +1,6 @@
 package influencer
 
 import (
-	"log"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -85,6 +84,11 @@ type Influencer struct {
 	LastCheck int32 `json:"lastCheck,omitempty"`
 	// Lob check ids mailed out to this influencer
 	Checks []*lob.Check `json:"checks,omitempty"`
+
+	// Tax Information
+	SignatureId  string `json:"sigId,omitempty"`
+	HasSigned    bool   `json:"hasSigned,omitempty"`
+	RequestedTax int32  `json:"taxRequest,omitempty"`
 }
 
 func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, address *lob.AddressLoad, cfg *config.Config) (*Influencer, error) {
@@ -101,7 +105,6 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 		if err != nil {
 			return nil, err
 		}
-		log.Println(addr)
 		inf.Address = addr
 	}
 
