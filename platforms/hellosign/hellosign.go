@@ -13,9 +13,10 @@ const (
 	sigReqEndpoint = "https://api.hellosign.com/v3/signature_request/"
 	cancelEndpoint = "https://api.hellosign.com/v3/signature_request/cancel/"
 
-	hsAuth     = "cfa7339e122ca1d94641391c784c923e625aeb13991d921b32a6a30b9bc06382"
-	w9Template = "1cb37cfcb61c9a7c43fe944a39136144996526a7" // within US
-	w8Template = "test2"                                    // international
+	hsAuth     = "89a57c85020b2608057c3e2a2061cbc1b002b76a10523e6af31314b54bc9b4e2" // Test
+	w9Template = "94ecc279cd3b90bf3a332c3d23b849d0f92f1155"                         // within US
+	w8Template = "8d5901931472b242341178a8a3d3c9e3db87a193"                         // international
+
 )
 
 var (
