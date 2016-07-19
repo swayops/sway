@@ -16,12 +16,11 @@ const (
 	hsAuth     = "89a57c85020b2608057c3e2a2061cbc1b002b76a10523e6af31314b54bc9b4e2" // Test
 	w9Template = "94ecc279cd3b90bf3a332c3d23b849d0f92f1155"                         // within US
 	w8Template = "8d5901931472b242341178a8a3d3c9e3db87a193"                         // international
-
 )
 
 var (
 	ErrResponse = errors.New("Empty response!")
-	ErrId       = errors.New("Influencer ID in meta datadoes not match!!")
+	ErrId       = errors.New("Influencer ID in meta data does not match!!")
 )
 
 type Response struct {
