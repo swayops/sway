@@ -150,15 +150,20 @@ func depleteBudget(s *Server) error {
 
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
-				payout := spentDelta * (1 - agencyFee)
-				inf.PendingPayout += payout
+				infPayout := spentDelta * (1 - agencyFee)
+				agencyPayout := spentDelta - infPayout
+				inf.PendingPayout += infPayout
 
 				// Update payment values for this completed deal
 				for _, cDeal := range inf.CompletedDeals {
 					if cDeal.Id == deal.Id {
-						cDeal.Pay(payout, spentDelta-payout, inf.AgencyId)
+						cDeal.Pay(infPayout, agencyPayout, inf.AgencyId)
 					}
 				}
+
+				stats.InfPayout += infPayout
+				stats.AgencyPayout += agencyPayout
+				stats.TalentAgency = inf.AgencyId
 
 				// Save the deal in influencers and campaigns
 				if err := saveAllDeals(s, inf); err != nil {

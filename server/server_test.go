@@ -574,7 +574,7 @@ func TestDeals(t *testing.T) {
 	totalLikes := totalA.Likes + totalB.Likes
 	totalSpend := totalA.Spent + totalB.Spent
 
-	if totalSpend != newStore.Spent {
+	if agencyCut := (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
 		t.Error("Combined spend does not match budget db!")
 	}
 
@@ -585,7 +585,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	totalCmp := cmpBreakdown["total"]
-	if delta := totalCmp.Spent - totalSpend; delta > 0.25 || delta < -0.25 {
+	if delta := totalCmp.Spent - newStore.Spent; delta > 0.25 || delta < -0.25 {
 		t.Error("Combined spend does not match campaign report!")
 	}
 
@@ -676,6 +676,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 		if r.Status != 200 {
 			t.Error("Bad status code!")
 		}
+
 		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
 
 		// check get influencer stats
@@ -748,21 +749,26 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 }
 
 func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend float64, doneDeal *common.Deal, skipSpend bool) {
-	total := breakdown["total"]
+	report := breakdown["total"]
 	dayTotal := breakdown[reporting.GetDate()]
 	rt := int32(doneDeal.Tweet.Retweets)
 
-	if rt != dayTotal.Shares || rt != total.Shares {
+	if rt != dayTotal.Shares || rt != report.Shares {
 		t.Error("Shares do not match!")
 	}
 
 	likes := int32(doneDeal.Tweet.Favorites)
-	if likes != dayTotal.Likes || likes != total.Likes {
+	if likes != dayTotal.Likes || likes != report.Likes {
 		t.Error("Likes do not match!")
 	}
 
-	if !skipSpend && total.Spent != spend {
-		t.Error("Spend values do not match!")
+	if !skipSpend {
+		if report.Spent != spend {
+			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
+			if talentFee := (spend - report.Spent) / report.Spent; talentFee > 0.12 || talentFee < 0.08 {
+				t.Error("Spend values do not match!")
+			}
+		}
 	}
 }
 

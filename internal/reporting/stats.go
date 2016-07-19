@@ -43,14 +43,17 @@ var (
 )
 
 type Stats struct {
-	Payout    float64 `json:"payout,omitempty"`
-	Likes     int32   `json:"likes,omitempty"`
-	Dislikes  int32   `json:"dislikes,omitempty"`
-	Comments  int32   `json:"comments,omitempty"`
-	Shares    int32   `json:"shares,omitempty"`
-	Views     int32   `json:"views,omitempty"`
-	Perks     int32   `json:"perks,omitempty"`  // Number of perks sent out
-	Published int32   `json:"posted,omitempty"` // Epoch ts
+	InfPayout    float64 `json:"infPayout,omitempty"`
+	AgencyPayout float64 `json:"agPayout,omitempty"`
+	TalentAgency string  `json:"talent,omitempty"`
+
+	Likes     int32 `json:"likes,omitempty"`
+	Dislikes  int32 `json:"dislikes,omitempty"`
+	Comments  int32 `json:"comments,omitempty"`
+	Shares    int32 `json:"shares,omitempty"`
+	Views     int32 `json:"views,omitempty"`
+	Perks     int32 `json:"perks,omitempty"`  // Number of perks sent out
+	Published int32 `json:"posted,omitempty"` // Epoch ts
 }
 
 func GetStats(deal *common.Deal, db *bolt.DB, cfg *config.Config, platformId string) (*Stats, string, error) {
@@ -220,7 +223,7 @@ type ReportStats struct {
 	Network      string `json:"network,omitempty"` // Social Network
 }
 
-func GetTotalStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Time, onlyTotals bool) (*TargetStats, error) {
+func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Time, onlyTotals bool) (*TargetStats, error) {
 	tg := &TargetStats{}
 
 	stats, err := GetStatsByCampaign(cid, db, cfg)
@@ -244,7 +247,7 @@ func GetTotalStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Ti
 				tg.Total.Engagements += eng
 				tg.Total.Likes += st.Likes
 				tg.Total.Views += views
-				tg.Total.Spent += st.Payout
+				tg.Total.Spent += st.InfPayout + st.AgencyPayout
 				tg.Total.Shares += st.Shares
 				tg.Total.Comments += st.Comments
 
@@ -296,7 +299,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *Stats, views 
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += views
-	stats.Spent += st.Payout
+	stats.Spent += st.InfPayout + st.AgencyPayout
 	stats.Perks += st.Perks
 	stats.InfluencerId = infId
 	stats.Network = channel
@@ -314,7 +317,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += views
-	stats.Spent += st.Payout
+	stats.Spent += st.InfPayout + st.AgencyPayout
 	stats.Perks += st.Perks
 	stats.PlatformId = platformId
 	stats.Published = getPostDate(st.Published)
@@ -323,7 +326,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	return data
 }
 
-func GetTotalInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid string) (*ReportStats, error) {
+func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid string) (*ReportStats, error) {
 	stats := &ReportStats{}
 
 	if err := db.View(func(tx *bolt.Tx) error {
@@ -349,7 +352,7 @@ func GetTotalInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from
 						stats.Comments += st.Comments
 						stats.Shares += st.Shares
 						stats.Views += views
-						stats.Spent += st.Payout
+						stats.Spent += st.InfPayout
 						stats.Perks += st.Perks
 						stats.Engagements += eng
 					}

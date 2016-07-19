@@ -23,7 +23,7 @@ func GenerateCampaignReport(res http.ResponseWriter, db, statsDb *bolt.DB, cid s
 	}
 
 	// NOTE: report is inclusive of "from" and "to"
-	st, err := GetTotalStats(cid, statsDb, cfg, from, to, false)
+	st, err := GetCampaignStats(cid, statsDb, cfg, from, to, false)
 	if err != nil {
 		return err
 	}
