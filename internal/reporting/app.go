@@ -16,7 +16,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 
 	// Insert day stats for the range
 	for _, d := range dateRange {
-		tot, err := GetTotalStats(cid, db, cfg, d, d, true)
+		tot, err := GetCampaignStats(cid, db, cfg, d, d, true)
 		if err == nil && tot != nil && tot.Total != nil {
 			tg[getDateFromTime(d)] = tot.Total
 			val, _ := tg["total"]
@@ -51,7 +51,7 @@ func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offse
 
 	// Insert day stats for the range
 	for _, d := range dateRange {
-		r, err := GetTotalInfluencerStats(infId, db, cfg, d, d, cid)
+		r, err := GetInfluencerStats(infId, db, cfg, d, d, cid)
 		if err == nil && r != nil && r.Spent != 0 {
 			key := getDateFromTime(d)
 
