@@ -290,7 +290,8 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 
 	email := templates.ResetPassword.Render(tmplData)
 	if resp, err := a.ec.SendMessage(email, "Password Reset Request", req.Email, u.Name,
-		[]string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		[]string{"reset password"}); err != nil {
+		log.Printf("error sending reset email to %s: %+v: %v", email, resp.Message, err)
 		misc.AbortWithErr(c, 500, ErrUnexpected)
 		return
 	}

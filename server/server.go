@@ -193,6 +193,9 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.POST("/signIn", srv.auth.SignInHandler)
 	r.POST("/signUp", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
 
+	r.POST("/forgotPassword", srv.auth.ReqResetHandler)
+	r.POST("/resetPassword", srv.auth.ResetHandler)
+
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
 		nil, putTalentAgency, nil)
