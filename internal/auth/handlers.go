@@ -165,6 +165,7 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	c.JSON(200, misc.StatusOK(login.UserID))
 	return true
 }
+
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`

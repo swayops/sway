@@ -64,8 +64,9 @@ type signupUser struct {
 
 // Trim returns a browser-safe version of the User, mainly hiding salt, and maybe possibly apiKeys
 func (u *User) Trim() *User {
-	u.Salt = ""
-	return u
+	ou := *u
+	ou.Salt = ""
+	return &ou
 }
 
 // Update fills the updatable fields in the struct, fields like Created and ID should never be blindly set.

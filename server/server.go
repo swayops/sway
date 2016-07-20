@@ -196,6 +196,10 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.POST("/forgotPassword", srv.auth.ReqResetHandler)
 	r.POST("/resetPassword", srv.auth.ResetHandler)
 
+	verifyGroup.GET("/user/:id", func(c *gin.Context) {
+		c.JSON(200, auth.GetCtxUser(c).Trim())
+	})
+
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
 		nil, putTalentAgency, nil)
