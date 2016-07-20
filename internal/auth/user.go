@@ -73,7 +73,7 @@ func (u *User) Trim() *User {
 func (u *User) Update(o *User) *User {
 	u.Name, u.Email, u.Phone, u.Address = o.Name, o.Email, o.Phone, o.Address
 	u.Status = o.Status
-	u.UpdatedAt = time.Now().UnixNano()
+	u.UpdatedAt = time.Now().Unix()
 	return u
 }
 
@@ -179,7 +179,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		return
 	}
 
-	u.CreatedAt = time.Now().UnixNano()
+	u.CreatedAt = time.Now().Unix()
 	u.UpdatedAt = u.CreatedAt
 	u.Salt = hex.EncodeToString(misc.CreateToken(SaltLen))
 	u.Status = true // always active on creation
