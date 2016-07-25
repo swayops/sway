@@ -163,16 +163,20 @@ var scopes = map[string]auth.ScopeMap{
 
 func (srv *Server) initializeRoutes(r gin.IRouter) {
 	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
+	favIcoFile := filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
 	r.Use(func(c *gin.Context) {
 		p := c.Request.URL.Path[1:]
 		if idx := strings.Index(p, "/"); idx > -1 {
 			p = p[:idx]
 		}
+		serve := idxFile
 		switch p {
-		case "static", "api", "favicon.ico":
+		case "favicon.ico":
+			serve = favIcoFile
+		case "static", "api":
 			return
 		}
-		c.File(idxFile)
+		c.File(serve)
 		c.Abort()
 	})
 
