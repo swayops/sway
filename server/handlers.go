@@ -128,11 +128,11 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 
 func getAllAdAgencies(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var all []*auth.AdAgency
+		var all []*auth.User
 		s.db.View(func(tx *bolt.Tx) error {
 			return s.auth.GetUsersByTypeTx(tx, auth.AdAgencyScope, func(u *auth.User) error {
-				if ag := auth.GetAdAgency(u); ag != nil {
-					all = append(all, ag)
+				if u.AdAgency != nil { // should always be true, but just in case
+					all = append(all, u.Trim())
 				}
 				return nil
 			})
