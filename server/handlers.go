@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -1442,5 +1443,36 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 		}
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func userProfile(srv *Server) gin.HandlerFunc {
+	checkAdAgency := srv.auth.CheckOwnership(auth.AdAgencyItem, "id")
+	checkTalentAgency := srv.auth.CheckOwnership(auth.TalentAgencyItem, "id")
+
+	return func(c *gin.Context) {
+		cu := auth.GetCtxUser(c)
+		id := c.Param("id")
+		switch {
+		case cu.Admin:
+		case cu.AdAgency != nil:
+			checkAdAgency(c)
+		case cu.TalentAgency != nil:
+			checkTalentAgency(c)
+		case cu.ID == id:
+			c.JSON(200, cu.Trim())
+			return
+		default:
+			misc.AbortWithErr(c, http.StatusUnauthorized, auth.ErrUnauthorized)
+		}
+		if c.IsAborted() {
+			return
+		}
+		if cu = srv.auth.GetUser(id); cu != nil {
+			c.JSON(200, cu.Trim())
+		} else {
+			misc.AbortWithErr(c, http.StatusNotFound, auth.ErrInvalidUserID)
+		}
+
 	}
 }
