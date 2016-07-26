@@ -24,7 +24,6 @@ import (
 //             "shares": 0,
 //             "views": 30,
 //             "dislikes": 45,
-//             "perks": 2
 //         },
 //         "2016-10-30||2||NigaHiga||Facebook||facebook.com/post": { // Date::InfId::Platform::postUrl
 //             "payout": 3.4,
@@ -33,7 +32,6 @@ import (
 //             "shares": 0,
 //             "views": 30,
 //             "dislikes": 45,
-//             "perks": 2
 //         }
 //     }
 // }
@@ -52,7 +50,6 @@ type Stats struct {
 	Comments  int32 `json:"comments,omitempty"`
 	Shares    int32 `json:"shares,omitempty"`
 	Views     int32 `json:"views,omitempty"`
-	Perks     int32 `json:"perks,omitempty"`  // Number of perks sent out
 	Published int32 `json:"posted,omitempty"` // Epoch ts
 }
 
@@ -213,7 +210,6 @@ type ReportStats struct {
 	Shares      int32   `json:"shares,omitempty"`
 	Views       int32   `json:"views,omitempty"`
 	Spent       float64 `json:"spent,omitempty"`
-	Perks       int32   `json:"perks,omitempty"` // Perks sent
 	Rep         float64 `json:"rep,omitempty"`
 	Engagements int32   `json:"engagements,omitempty"`
 
@@ -300,7 +296,6 @@ func fillReportStats(key string, data map[string]*ReportStats, st *Stats, views 
 	stats.Shares += st.Shares
 	stats.Views += views
 	stats.Spent += st.InfPayout + st.AgencyPayout
-	stats.Perks += st.Perks
 	stats.InfluencerId = infId
 	stats.Network = channel
 	return data
@@ -318,7 +313,6 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	stats.Shares += st.Shares
 	stats.Views += views
 	stats.Spent += st.InfPayout + st.AgencyPayout
-	stats.Perks += st.Perks
 	stats.PlatformId = platformId
 	stats.Published = getPostDate(st.Published)
 	stats.InfluencerId = infId
@@ -353,7 +347,6 @@ func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to 
 						stats.Shares += st.Shares
 						stats.Views += views
 						stats.Spent += st.InfPayout
-						stats.Perks += st.Perks
 						stats.Engagements += eng
 					}
 				}

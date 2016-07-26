@@ -50,7 +50,7 @@ type Deal struct {
 	Mention string   `json:"mention,omitempty"`
 	Link    string   `json:"link,omitempty"`
 	Task    string   `json:"task,omitempty"`
-	Perks   string   `json:"perks,omitempty"` // Perks need to be specced out
+	Perk    *Perk    `json:"perk,omitempty"`
 
 	// How much this campaign has left to spend for the month
 	// Only filled in GetAvailableDeals for the influencer to see

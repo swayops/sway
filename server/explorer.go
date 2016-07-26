@@ -42,6 +42,11 @@ func explore(srv *Server) error {
 			continue
 		}
 
+		if deal.Perk != nil && !deal.Perk.Status {
+			// Perk hasn't been sent!
+			continue
+		}
+
 		switch deal.AssignedPlatform {
 		case platform.Twitter:
 			if tweet := findTwitterMatch(inf, deal); tweet != nil {
@@ -95,7 +100,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 			return err
 		}
 
-		if !cmp.Status {
+		if !cmp.IsValid() {
 			return errors.New("Campaign is no longer active")
 		}
 
@@ -169,20 +174,20 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
-		if int32(tw.CreatedAt.Unix()) < deal.Assigned {
-			continue
-		}
+		// if int32(tw.CreatedAt.Unix()) < deal.Assigned {
+		// 	continue
+		// }
 
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
 			postTags := tw.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
-					if hashtag == tg {
+					if strings.EqualFold(hashtag, tg) {
 						foundHash = true
 					}
 				}
-				if strings.Contains(tw.Text, tg) {
+				if containsFold(tw.Text, tg) {
 					foundHash = true
 				}
 			}
@@ -195,7 +200,7 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 
 		if deal.Mention != "" {
 			for _, mt := range tw.Mentions() {
-				if mt == deal.Mention {
+				if strings.EqualFold(mt, deal.Mention) {
 					foundMention = true
 				}
 			}
@@ -209,11 +214,11 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 
 		if deal.Link != "" {
 			for _, l := range tw.Urls() {
-				if l == deal.Link {
+				if strings.EqualFold(l, deal.Link) {
 					foundLink = true
 				}
 			}
-			if strings.Contains(tw.Text, deal.Link) {
+			if containsFold(tw.Text, deal.Link) {
 				foundLink = true
 			}
 
@@ -247,11 +252,11 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
 			postTags := post.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
-					if hashtag == tg {
+					if strings.EqualFold(hashtag, tg) {
 						foundHash = true
 					}
 				}
-				if strings.Contains(post.Caption, tg) {
+				if containsFold(post.Caption, tg) {
 					foundHash = true
 				}
 			}
@@ -263,7 +268,7 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
 		}
 
 		if deal.Mention != "" {
-			if strings.Contains(post.Caption, deal.Mention) {
+			if containsFold(post.Caption, deal.Mention) {
 				foundMention = true
 			}
 
@@ -275,7 +280,7 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
 		}
 
 		if deal.Link != "" {
-			if strings.Contains(post.Caption, deal.Link) {
+			if containsFold(post.Caption, deal.Link) {
 				foundLink = true
 			}
 
@@ -308,11 +313,11 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post
 		if len(deal.Tags) > 0 {
 			for _, tg := range deal.Tags {
 				for _, hashtag := range post.Hashtags {
-					if strings.ToLower(hashtag) == tg {
+					if strings.EqualFold(hashtag, tg) {
 						foundHash = true
 					}
 				}
-				if strings.Contains(post.Caption, tg) {
+				if containsFold(post.Caption, tg) {
 					foundHash = true
 				}
 			}
@@ -325,7 +330,7 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post
 		}
 
 		if deal.Mention != "" {
-			if strings.Contains(post.Caption, deal.Mention) {
+			if containsFold(post.Caption, deal.Mention) {
 				foundMention = true
 			}
 
@@ -337,7 +342,7 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post
 		}
 
 		if deal.Link != "" {
-			if strings.Contains(deal.Link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, deal.Link) {
+			if containsFold(deal.Link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, deal.Link) {
 				foundLink = true
 			}
 
@@ -371,7 +376,7 @@ func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
 			postTags := post.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
-					if strings.Contains(strings.ToLower(hashtag), tg) {
+					if containsFold(strings.ToLower(hashtag), tg) {
 						foundHash = true
 					}
 				}
@@ -384,7 +389,7 @@ func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
 		}
 
 		if deal.Mention != "" {
-			if strings.Contains(post.Description, deal.Mention) {
+			if containsFold(post.Description, deal.Mention) {
 				foundMention = true
 			}
 
@@ -396,7 +401,7 @@ func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
 		}
 
 		if deal.Link != "" {
-			if strings.Contains(post.Description, deal.Link) {
+			if containsFold(post.Description, deal.Link) {
 				foundLink = true
 			}
 
@@ -413,4 +418,10 @@ func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
 	}
 
 	return nil
+}
+
+func containsFold(haystack, needle string) bool {
+	haystack = strings.TrimSpace(haystack)
+	needle = strings.TrimSpace(needle)
+	return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
 }

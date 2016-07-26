@@ -49,7 +49,7 @@ func (inf *InfluencerLoad) Check() error {
 		return ErrUnexpected
 	}
 
-	if len(strings.Split(inf.Name, " ")) < 2 {
+	if inf.Name != "" && len(strings.Split(inf.Name, " ")) < 2 {
 		return ErrName
 	}
 

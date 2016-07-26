@@ -19,7 +19,8 @@ type Campaign struct {
 	AdvertiserId string `json:"advertiserId"`
 	AgencyId     string `json:"agencyId"`
 
-	Status bool `json:"status"`
+	Status   bool `json:"status"`
+	Approved bool `json:"approved"` // Set to false when admin receives all perks (or there are no perks)
 
 	// Social Media Post/User Requirements
 	Tags    []string          `json:"hashtags,omitempty"`
@@ -38,7 +39,7 @@ type Campaign struct {
 	// Categories the client is targeting
 	Categories []string `json:"categories,omitempty"`
 
-	Perks string `json:"perks,omitempty"` // Perks need to be specced out
+	Perks *Perk `json:"perks,omitempty"`
 
 	Whitelist *TargetList `json:"whitelist,omitempty"`
 	Blacklist *TargetList `json:"blacklist,omitempty"`
@@ -64,7 +65,7 @@ func (tl *TargetList) Sanitize() *TargetList {
 }
 
 func (cmp *Campaign) IsValid() bool {
-	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status
+	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved
 }
 
 type Campaigns struct {

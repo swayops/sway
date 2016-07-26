@@ -241,6 +241,12 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
 
+	// Perks
+	adminGroup.GET("/getPendingCampaigns", getPendingCampaigns(srv))
+	adminGroup.GET("/approveCampaign/:id", approveCampaign(srv))
+	adminGroup.GET("/getPendingPerks", getPendingPerks(srv))
+	adminGroup.GET("/approvePerk/:influencerId/:campaignId", approvePerk(srv))
+
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 

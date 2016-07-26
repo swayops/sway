@@ -370,7 +370,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				geo = inf.Twitter.LastLocation
 			}
 		}
-
 	}
 
 	for _, cmp := range campaigns.GetStore() {
@@ -495,7 +494,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			targetDeal.Mention = cmp.Mention
 			targetDeal.Link = cmp.Link
 			targetDeal.Task = cmp.Task
-			targetDeal.Perks = cmp.Perks
+			if cmp.Perks != nil {
+				targetDeal.Perk = &common.Perk{
+					Name:     cmp.Perks.Name,
+					Category: cmp.Perks.Category,
+					Count:    1}
+			}
+
 			infDeals = append(infDeals, targetDeal)
 		}
 	}
