@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"strings"
-
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/influencer"
 )
@@ -49,12 +47,12 @@ func (inf *InfluencerLoad) Check() error {
 		return ErrUnexpected
 	}
 
-	if inf.Name != "" && len(strings.Split(inf.Name, " ")) < 2 {
-		return ErrName
-	}
+	// if inf.Name != "" && len(strings.Split(inf.Name, " ")) < 2 {
+	// 	return ErrName
+	// }
 
 	// Not required at sign up now..
-	// Admin will audit and set these
+	// Admin will audit and set gender, geo and categories
 
 	// if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
 	// 	return ErrBadGender
@@ -87,15 +85,9 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		panic("wtfmate?")
 	}
 
-	if inf.Name == "" {
-		inf.Name = u.Name
-	} else {
-		u.Name = inf.Name
-	}
-
 	rinf, err := influencer.New(
 		u.ID,
-		inf.Name,
+		u.Name,
 		inf.TwitterId,
 		inf.InstagramId,
 		inf.FbId,

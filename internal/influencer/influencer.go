@@ -18,8 +18,6 @@ import (
 
 // The json struct accepted by the putInfluencer method
 type InfluencerLoad struct {
-	Name string `json:"name,omitempty"` // Full name
-
 	InstagramId string `json:"instagram,omitempty"`
 	FbId        string `json:"facebook,omitempty"`
 	TwitterId   string `json:"twitter,omitempty"`
