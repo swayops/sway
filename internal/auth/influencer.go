@@ -47,10 +47,6 @@ func (inf *InfluencerLoad) Check() error {
 		return ErrUnexpected
 	}
 
-	// if inf.Name != "" && len(strings.Split(inf.Name, " ")) < 2 {
-	// 	return ErrName
-	// }
-
 	// Not required at sign up now..
 	// Admin will audit and set gender, geo and categories
 
