@@ -199,17 +199,41 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 }
 
 func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
+	type advWithCounts struct {
+		*auth.User
+		NumCampaigns int `json:"numCmps"`
+	}
 	return func(c *gin.Context) {
-		targetAgency := c.Param("id")
-		var advertisers []*auth.Advertiser
+		var (
+			targetAgency = c.Param("id")
+			advertisers  []*advWithCounts
+			counts       = map[string]int{}
+		)
 		s.db.View(func(tx *bolt.Tx) error {
-			return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
-				if adv := auth.GetAdvertiser(u); adv != nil && adv.AgencyID == targetAgency {
-					advertisers = append(advertisers, adv)
+			s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
+				if u.Advertiser != nil && u.ParentID == targetAgency {
+					advertisers = append(advertisers, &advWithCounts{u, 0})
+					counts[u.ID] = 0
 				}
 				return nil
 			})
+			return tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp struct {
+					AdvertiserId string `json:"advertiserId"`
+				}
+				if json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if _, ok := counts[cmp.AdvertiserId]; ok {
+					counts[cmp.AdvertiserId]++
+				}
+				return
+			})
 		})
+		for _, adv := range advertisers {
+			adv.NumCampaigns = counts[adv.ID]
+		}
 		c.JSON(200, advertisers)
 	}
 }
