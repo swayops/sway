@@ -127,16 +127,32 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 }
 
 func getAllAdAgencies(s *Server) gin.HandlerFunc {
+	type userWithCounts struct {
+		*auth.User
+		SubCount int `json:"subCount"`
+	}
 	return func(c *gin.Context) {
-		var all []*auth.User
+		var (
+			all    []*userWithCounts
+			counts map[string]int
+			uids   []string
+		)
+
 		s.db.View(func(tx *bolt.Tx) error {
-			return s.auth.GetUsersByTypeTx(tx, auth.AdAgencyScope, func(u *auth.User) error {
+			s.auth.GetUsersByTypeTx(tx, auth.AdAgencyScope, func(u *auth.User) error {
 				if u.AdAgency != nil { // should always be true, but just in case
-					all = append(all, u.Trim())
+					all = append(all, &userWithCounts{u.Trim(), 0})
+					uids = append(uids, u.ID)
 				}
 				return nil
 			})
+			counts = s.auth.GetChildCountsTx(tx, uids...)
+			return nil
 		})
+
+		for _, u := range all {
+			u.SubCount = counts[u.ID]
+		}
 		c.JSON(200, all)
 	}
 }
