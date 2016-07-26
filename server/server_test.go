@@ -136,7 +136,6 @@ func TestTalentAgencyChain(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:      "John Smith",
 			Gender:    "unicorn",
 			Geo:       &misc.GeoRecord{},
 			TwitterId: "justinbieber",
@@ -248,7 +247,6 @@ func TestNewInfluencer(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:      "John Smith",
 			Gender:    "unicorn",
 			Geo:       &misc.GeoRecord{},
 			TwitterId: "justinbieber",
@@ -258,7 +256,6 @@ func TestNewInfluencer(t *testing.T) {
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:   "John Smith",
 			Gender: "purple",
 			Geo:    &misc.GeoRecord{},
 		},
@@ -318,7 +315,6 @@ func TestInviteCode(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:       "John Smith",
 			Gender:     "unicorn",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
@@ -425,7 +421,6 @@ func TestDeals(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:       "John Smith",
 			Gender:     "m",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
@@ -504,7 +499,6 @@ func TestDeals(t *testing.T) {
 	newInf := getSignupUser()
 	newInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:       "Wolf Blitzer",
 			Gender:     "m",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
@@ -785,7 +779,6 @@ func TestTaxes(t *testing.T) {
 	inf := getSignupUserWithEmail("shahzilsway@gmail.com") //throw away email
 	inf.InfluencerLoad = &auth.InfluencerLoad{             // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:       "John Smith",
 			Gender:     "m",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
@@ -871,7 +864,6 @@ func TestPerks(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Name:       "John Smith",
 			Gender:     "m",
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
