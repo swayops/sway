@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -278,6 +279,35 @@ func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {
 func (a *Auth) GetUser(userID string) (u *User) {
 	a.db.View(func(tx *bolt.Tx) error {
 		u = a.GetUserTx(tx, userID)
+		return nil
+	})
+	return
+}
+
+func (a *Auth) GetChildCountsTx(tx *bolt.Tx, uids ...string) map[string]int {
+	counts := make(map[string]int, len(uids))
+	for _, uid := range uids {
+		counts[uid] = 0
+	}
+
+	misc.GetBucket(tx, a.cfg.Bucket.User).ForEach(func(_, v []byte) error {
+		var u struct {
+			ParentID string `json:"parentID"`
+		}
+		json.Unmarshal(v, &u)
+		if _, ok := counts[u.ParentID]; ok {
+			counts[u.ParentID]++
+		}
+		return nil
+	})
+
+	return counts
+}
+
+func (a *Auth) GetChildCounts(uids ...string) (out map[string]int) {
+
+	a.db.View(func(tx *bolt.Tx) error {
+		out = a.GetChildCountsTx(tx, uids...)
 		return nil
 	})
 	return
