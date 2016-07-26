@@ -71,7 +71,6 @@ func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offse
 			val.Shares += r.Shares
 			val.Views += r.Views
 			val.Spent += r.Spent
-			val.Perks += r.Perks
 			val.Engagements += r.Engagements
 		}
 	}

@@ -141,7 +141,6 @@ func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[stri
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
-		"Perks Sent",
 	)
 
 	var totalEng float64
@@ -161,7 +160,6 @@ func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[stri
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),
-			st.Perks,
 		)
 	}
 }

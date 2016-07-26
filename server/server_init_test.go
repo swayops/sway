@@ -121,7 +121,7 @@ var counter int = 3 // 3 is the highest built in user (TalentAgency)
 func getSignupUser() *signupUser {
 	counter++
 	id := strconv.Itoa(counter)
-	name := "u-" + id
+	name := "John " + id
 	return &signupUser{
 		&auth.User{
 			Name:  name,
@@ -136,7 +136,7 @@ func getSignupUser() *signupUser {
 func getSignupUserWithEmail(email string) *signupUser {
 	counter++
 	id := strconv.Itoa(counter)
-	name := "u-" + id
+	name := "John " + id
 	return &signupUser{
 		&auth.User{
 			Name:  name,

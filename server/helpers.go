@@ -88,9 +88,18 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaig
 		cmp.Deals = make(map[string]*common.Deal)
 	}
 
-	// Budget is always monthly
-	// Keeping it low because acceptance rate is low
-	maxDeals := int(spendable / 1.5)
+	var maxDeals int
+	// If there are perks assigned, # of deals are capped
+	// at the # of available perks
+
+	if cmp.Perks != nil {
+		maxDeals = cmp.Perks.Count
+	} else {
+		// Budget is always monthly
+		// Keeping it low because acceptance rate is low
+		maxDeals = int(spendable / 1.5)
+	}
+
 	for i := 0; i < maxDeals; i++ {
 		d := &common.Deal{
 			Id:           misc.PseudoUUID(),
@@ -99,6 +108,7 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaig
 		}
 		cmp.Deals[d.Id] = d
 	}
+
 	return cmp
 }
 
@@ -197,7 +207,7 @@ func (s *Server) getTalentAgencyFeeTx(tx *bolt.Tx, id string) float64 {
 	return 0
 }
 
-func saveAllDeals(s *Server, inf *auth.Influencer) error {
+func saveAllCompletedDeals(s *Server, inf *auth.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
 		if err := saveInfluencer(s, tx, inf); err != nil {
@@ -209,6 +219,42 @@ func saveAllDeals(s *Server, inf *auth.Influencer) error {
 		// Since we just updated the deal metrics for the influencer,
 		// lets also update the deal values in the campaign
 		for _, deal := range inf.CompletedDeals {
+			var cmp *common.Campaign
+			err := json.Unmarshal((cmpB).Get([]byte(deal.CampaignId)), &cmp)
+			if err != nil {
+				log.Println("Err unmarshalling campaign", err)
+				continue
+			}
+			if _, ok := cmp.Deals[deal.Id]; ok {
+				// Replace the old deal saved with the new one
+				cmp.Deals[deal.Id] = deal
+			}
+
+			// Save the campaign!
+			if err := saveCampaign(tx, cmp, s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		log.Println("Error when saving influencer", err)
+		return err
+	}
+	return nil
+}
+
+func saveAllActiveDeals(s *Server, inf *auth.Influencer) error {
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		// Save the influencer since we just updated it's social media data
+		if err := saveInfluencer(s, tx, inf); err != nil {
+			log.Println("Errored saving influencer", err)
+			return err
+		}
+
+		cmpB := tx.Bucket([]byte(s.Cfg.Bucket.Campaign))
+		// Since we just updated the deal metrics for the influencer,
+		// lets also update the deal values in the campaign
+		for _, deal := range inf.ActiveDeals {
 			var cmp *common.Campaign
 			err := json.Unmarshal((cmpB).Get([]byte(deal.CampaignId)), &cmp)
 			if err != nil {
