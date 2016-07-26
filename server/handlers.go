@@ -261,6 +261,13 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Blacklist = cmp.Blacklist.Sanitize()
 		}
 
+		// If there are perks.. campaign is in pending until admin approval
+		if cmp.Perks != nil {
+			cmp.Approved = false
+		} else {
+			cmp.Approved = true
+		}
+
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
@@ -799,7 +806,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		)
 
 		if _, ok := platform.ALL_PLATFORMS[mediaPlatform]; !ok {
-			c.JSON(200, misc.StatusErr("This platform was not found"))
+			c.JSON(500, misc.StatusErr("This platform was not found"))
 			return
 		}
 
@@ -840,7 +847,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		}
 
 		if !found {
-			c.JSON(200, misc.StatusErr("Unforunately, the requested deal is no longer available!"))
+			c.JSON(500, misc.StatusErr("Unforunately, the requested deal is no longer available!"))
 			return
 		}
 
@@ -854,8 +861,33 @@ func assignDeal(s *Server) gin.HandlerFunc {
 				return err
 			}
 
-			if !cmp.Status {
+			if !cmp.IsValid() {
 				return errors.New("Campaign is no longer active")
+			}
+
+			// Check if any perks are left to give this dude
+			if cmp.Perks != nil {
+				if cmp.Perks.Count == 0 {
+					return errors.New("Deal is no longer available!")
+				}
+
+				if inf.Address == nil {
+					return errors.New("Please enter a valid address in your profile before accepting this deal")
+				}
+
+				// Now that we know there is a deal for this dude..
+				// and they have an address.. schedule a perk order!
+
+				cmp.Perks.Count -= 1
+				foundDeal.Perk = &common.Perk{
+					Name:     cmp.Perks.Name,
+					Category: cmp.Perks.Category,
+					Count:    1,
+					InfId:    inf.Id,
+					InfName:  inf.Name,
+					Address:  inf.Address,
+					Status:   false,
+				}
 			}
 
 			foundDeal.InfluencerId = infId
@@ -890,7 +922,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 			return nil
 		}); err != nil {
-			c.JSON(200, misc.StatusErr(err.Error()))
+			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -922,7 +954,7 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		campaignId := c.Param("campaignId")
 		user := auth.GetCtxUser(c)
 		if err := clearDeal(s, user, dealId, influencerId, campaignId, false); err != nil {
-			c.JSON(200, misc.StatusErr(err.Error()))
+			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -1083,7 +1115,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 		}
 
 		if c.Query("pw") != "muchodinero" {
-			// Hide deals otherwise output will get massive
 			c.JSON(500, misc.StatusErr("Not allowed to run billing!"))
 			return
 		}
@@ -1208,6 +1239,60 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getPendingCampaigns(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var campaigns []*common.Campaign
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if !cmp.Approved {
+					// Hide deals
+					cmp.Deals = nil
+					campaigns = append(campaigns, &cmp)
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+		c.JSON(200, campaigns)
+	}
+}
+
+func getPendingPerks(s *Server) gin.HandlerFunc {
+	// Get list of perks that need to be mailed out
+	return func(c *gin.Context) {
+		perks := make(map[string][]*common.Perk)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+
+				for _, d := range cmp.Deals {
+					if d.Perk != nil && !d.Perk.Status {
+						perks[cmp.Id] = append(perks[cmp.Id], d.Perk)
+					}
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+		c.JSON(200, perks)
+	}
+}
+
 var ErrPayout = errors.New("Nothing to payout!")
 
 func approveCheck(s *Server) gin.HandlerFunc {
@@ -1244,6 +1329,88 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			// Save the influencer
 			return user.StoreWithData(s.auth, tx, inf)
 		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func approveCampaign(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			cmp common.Campaign
+			err error
+			b   []byte
+		)
+		cId := c.Param("id")
+		if cId == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid campaign ID"))
+			return
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(cId))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &cmp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			return
+		}
+
+		cmp.Approved = true
+
+		// Save the Campaign
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveCampaign(tx, &cmp, s)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(cmp.Id))
+	}
+}
+
+func approvePerk(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Delete the check and entry, send to lob
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		cid := c.Param("campaignId")
+		if cid == "" {
+			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			return
+		}
+
+		var inf *auth.Influencer
+		if err := s.db.View(func(tx *bolt.Tx) (err error) {
+			user := s.auth.GetUserTx(tx, infId)
+
+			inf = auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		for _, d := range inf.ActiveDeals {
+			if d.CampaignId == cid && d.Perk != nil {
+				d.Perk.Status = true
+			}
+		}
+
+		if err := saveAllActiveDeals(s, inf); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}

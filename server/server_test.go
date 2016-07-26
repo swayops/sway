@@ -552,6 +552,7 @@ func TestDeals(t *testing.T) {
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
+
 	checkReporting(t, breakdownB, 0, load.CompletedDeals[0], true)
 
 	// Verify combined reporting because campaign reports will include both
@@ -672,7 +673,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	if !skipReporting {
 		// check get campaign stats
 		var breakdown map[string]*reporting.Totals
-		r = rst.DoTesting(t, "GET", "/api/v1/getCampaignStats/2/10", nil, &breakdown)
+		r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cmpId+"/10", nil, &breakdown)
 		if r.Status != 200 {
 			t.Error("Bad status code!")
 		}
@@ -856,4 +857,345 @@ func TestTaxes(t *testing.T) {
 	if r, err := hellosign.Cancel(uload.SignatureId); err != nil || r != 200 {
 		t.Error("Hellosign cancel error")
 	}
+}
+
+func TestPerks(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.1,
+	}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Name:       "John Smith",
+			Gender:     "m",
+			Geo:        &misc.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "breakingnews",
+			Address: &lob.AddressLoad{
+				AddressOne: "8 Saint Elias",
+				City:       "Trabuco Canyon",
+				State:      "CA",
+				Country:    "US",
+			},
+		},
+	}
+
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       100.5,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Tags:         []string{"#mmmm"},
+		Whitelist: &common.TargetList{
+			Twitter: []string{"BreakingNews", "CNN"},
+		},
+		Perks: &common.Perk{Name: "Nike Air Shoes", Category: "product", Count: 5},
+	}
+
+	for _, tr := range [...]*resty.TestRequest{
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new talent agency and sign in
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+
+		// sign up as a new influencer and see if you get placed under above agency via invite code
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+
+		// check influencer's agency
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
+			"agencyId": ag.ExpID,
+		}},
+
+		// sign in as admin again
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
+		// create new advertiser and sign in
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		// create a new campaign
+		{"POST", "/campaign", &cmp, 200, nil},
+
+		// sign in as admin again
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+	} {
+		tr.Run(t, rst)
+	}
+
+	// make sure number of deals allowed = number of perks
+	var cmpLoad common.Campaign
+	r := rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(cmpLoad.Deals) != cmp.Perks.Count {
+		t.Error("Unexpected number of deals!")
+	}
+
+	if cmp.IsValid() {
+		t.Error("Campaign should not be valid!")
+	}
+
+	if cmp.Approved {
+		t.Error("Campaign should not be approved!")
+	}
+
+	// make sure influencer getting no deals since the campaign is still pending
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	deals = getDeals("3", deals)
+	if len(deals) > 0 {
+		t.Error("Unexpected number of deals!")
+	}
+
+	// check admin endpoints for campaign approval
+	var cmps []*common.Campaign
+	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &cmps)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(cmps) != 1 {
+		t.Error("Unexpected number of pending campaigns")
+	}
+
+	if cmps[0].Id != "3" {
+		t.Error("Unexpected campaign id!")
+	}
+
+	if cmps[0].Approved {
+		t.Error("Unexpected approval value!")
+	}
+
+	// approve campaign
+	r = rst.DoTesting(t, "GET", "/approveCampaign/3", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// verify pending campaigns is empty!
+	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &cmps)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(cmps) != 0 {
+		t.Error("Pending campaigns shouldnt be here!")
+	}
+
+	// make sure approved value is correct!
+	r = rst.DoTesting(t, "GET", "/campaign/3", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if !cmpLoad.Approved {
+		t.Error("Admin approval didnt work!")
+	}
+
+	// get deals for influencer
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	deals = getDeals("3", deals)
+	if len(deals) == 0 {
+		t.Error("Unexpected number of deals!")
+	}
+
+	tgDeal := deals[0]
+	if tgDeal.CampaignId != "3" {
+		t.Error("Unexpected campaign id!")
+	}
+
+	if tgDeal.Perk == nil {
+		t.Error("Should have a perk attached!")
+	}
+
+	if tgDeal.Perk.Count != 1 {
+		t.Error("Incorrect reporting of perk count")
+	}
+
+	if tgDeal.Perk.InfId != "" || tgDeal.Perk.Status {
+		t.Error("Incorrect perk values set!")
+	}
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id+"/twitter", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// check campaign perk status and count (make sure both were updated)
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(load.ActiveDeals) != 1 {
+		t.Error("Unexpected number of active deals!")
+	}
+
+	tgDeal = load.ActiveDeals[0]
+	if tgDeal.Perk == nil {
+		t.Error("No perk assigned!")
+	}
+
+	if tgDeal.Perk.Status {
+		t.Error("Unexpected perk status!")
+	}
+
+	if tgDeal.Perk.InfId != inf.ExpID {
+		t.Error("Incorrect inf id set for perk!")
+	}
+
+	if tgDeal.Perk.Address == nil {
+		t.Error("No address set for perk!")
+	}
+
+	if tgDeal.CampaignId != "3" {
+		t.Error("Unexpected campaign id for deal!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if cmpLoad.Perks == nil {
+		t.Error("Campaign has no perks man!")
+	}
+
+	if cmpLoad.Perks.Count != 4 {
+		t.Error("Campaign perk count did not decrement!")
+	}
+
+	cmpDeal, ok := cmpLoad.Deals[tgDeal.Id]
+	if !ok || cmpDeal.Perk == nil {
+		t.Error("Unexpected campaign deal value!")
+	}
+
+	if cmpDeal.Perk.InfId != inf.ExpID {
+		t.Error("Influencer ID not assigned to campaign deal")
+	}
+
+	if cmpDeal.Perk.Address == nil {
+		t.Error("Unexpected deal address")
+	}
+
+	if cmpDeal.Perk.Status {
+		t.Error("Campaign deal should not be approved yet!")
+	}
+
+	// get pending perk sendouts for admin
+	var pendingPerks map[string][]*common.Perk
+	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &pendingPerks)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(pendingPerks) != 1 {
+		t.Error("Unexpected number of perks.. should have 1!")
+	}
+
+	pk, ok := pendingPerks["3"]
+	if !ok {
+		t.Error("Perk request not found")
+	}
+
+	if len(pk) != 1 {
+		t.Error("Unexpected number of perks")
+	}
+
+	if pk[0].Status {
+		t.Error("Incorrect perk status value!")
+	}
+
+	if pk[0].Address == nil {
+		t.Error("No address for perk!")
+	}
+
+	// approve sendout
+	r = rst.DoTesting(t, "GET", "/approvePerk/"+inf.ExpID+"/3", nil, &pendingPerks)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// make sure get pending perk doesnt have that perk request now
+	var emptyPerks map[string][]*common.Perk
+	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &emptyPerks)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(emptyPerks) != 0 {
+		t.Error("Pending perk still leftover!")
+	}
+
+	// make sure status is now true on campaign and influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	tgDeal = load.ActiveDeals[0]
+	if tgDeal.Perk == nil {
+		t.Error("No perk assigned!")
+	}
+
+	if !tgDeal.Perk.Status {
+		t.Error("Deal perk status should be true!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	cmpDeal, ok = cmpLoad.Deals[tgDeal.Id]
+	if !ok || cmpDeal.Perk == nil {
+		t.Error("Unexpected campaign deal value!")
+	}
+
+	if !cmpDeal.Perk.Status {
+		t.Error("Campaign deal should be approved now!")
+	}
+
+	// force approve
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/3", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	// verify deal
+	verifyDeal(t, "3", inf.ExpID, ag.ExpID, rst, false)
+}
+
+func getDeals(cid string, deals []*common.Deal) []*common.Deal {
+	out := []*common.Deal{}
+	for _, d := range deals {
+		if d.CampaignId == cid {
+			out = append(out, d)
+		}
+	}
+	return out
 }

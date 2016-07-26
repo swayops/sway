@@ -99,7 +99,7 @@ func updateInfluencers(s *Server) error {
 		time.Sleep(s.Cfg.StatsInterval * time.Second)
 
 		// Also saves influencers!
-		if err := saveAllDeals(s, inf); err != nil {
+		if err := saveAllCompletedDeals(s, inf); err != nil {
 			return err
 		}
 	}
@@ -166,7 +166,7 @@ func depleteBudget(s *Server) error {
 				stats.TalentAgency = inf.AgencyId
 
 				// Save the deal in influencers and campaigns
-				if err := saveAllDeals(s, inf); err != nil {
+				if err := saveAllCompletedDeals(s, inf); err != nil {
 					// Insert file informant notification
 					log.Println("Error saving deals!", err)
 				}
