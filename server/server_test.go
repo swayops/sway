@@ -163,12 +163,12 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
 		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
 		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
-			"categories": []string{"vlogger"},
+			"categories": []string{"business"},
 			"geo":        M{"city": "hell"},
 			"twitter":    M{"id": "SwayOps_com"},
 		}},
@@ -247,9 +247,10 @@ func TestNewInfluencer(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:    "unicorn",
-			Geo:       &misc.GeoRecord{},
-			TwitterId: "justinbieber",
+			Gender:      "unicorn",
+			Geo:         &misc.GeoRecord{},
+			TwitterId:   "justinbieber",
+			InstagramId: "justinbieber",
 		},
 	}
 
@@ -266,13 +267,13 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
 		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
 		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
-			"categories": []string{"vlogger"},
+			"categories": []string{"business"},
 			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
@@ -281,7 +282,7 @@ func TestNewInfluencer(t *testing.T) {
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
-			"categories": []string{"vlogger"},
+			"categories": []string{"business"},
 			"twitter":    M{"id": "SwayOps_com"},
 			"facebook":   M{"id": "justinbieber"},
 		}},
@@ -503,6 +504,7 @@ func TestDeals(t *testing.T) {
 			Geo:        &misc.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "CNN",
+			Categories: []string{"business"},
 		},
 	}
 	for _, tr := range [...]*resty.TestRequest{
@@ -535,9 +537,26 @@ func TestDeals(t *testing.T) {
 
 	verifyDeal(t, "2", newInf.ExpID, ag.ExpID, rst, true)
 
+	// The first user was incomplete ("no categories")
+	// They should be returned in get incomplete influencers
+	var pendingInf []influencer.Influencer
+	r := rst.DoTesting(t, "GET", "/getIncompleteInfluencers", nil, &pendingInf)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	for _, i := range pendingInf {
+		if i.Id == newInf.ExpID {
+			t.Error("Unexpected influencer in incomplete list!")
+		}
+		if i.Id == inf.ExpID {
+			t.Error("Unexpected influencer in incomplete list!")
+		}
+	}
+
 	// Check reporting for just the second influencer
 	var load influencer.Influencer
-	r := rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
+	r = rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}

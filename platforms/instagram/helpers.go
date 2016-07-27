@@ -19,7 +19,7 @@ const (
 	postCount    = 30.0
 	searchesUrl  = "%susers/search?q=%s&access_token=%s"
 	followersUrl = "%susers/%s/?access_token=%s"
-	postUrl      = "%susers/%s/media/recent/?access_token=%s&count=30"
+	postUrl      = "%susers/%s/media/recent/?access_token=%s&count=10"
 	postIdUrl    = "%smedia/%s?access_token=%s"
 )
 
@@ -98,12 +98,11 @@ type Caption struct {
 }
 
 func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *misc.GeoRecord, error) {
-	// Info for last 30 posts
-	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=20
+	// Info for last 10 posts
+	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=10
 	var latestGeo *misc.GeoRecord
 
 	posts := []*Post{}
-
 	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.AccessToken)
 
 	var media UserPost
@@ -125,7 +124,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *mis
 		published       int64
 	)
 
-	// Last 30 posts
+	// Last 10 posts
 	for _, post := range media.Data {
 		published, err = strconv.ParseInt(post.Published, 10, 64)
 		if err != nil {
