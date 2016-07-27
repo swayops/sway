@@ -2,6 +2,7 @@ package influencer
 
 import (
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -43,10 +44,11 @@ type Influencer struct {
 	AgencyId string `json:"agencyId,omitempty"`
 
 	// References to the social media accounts this influencer owns
-	Facebook  *facebook.Facebook   `json:"facebook,omitempty"`
-	Instagram *instagram.Instagram `json:"instagram,omitempty"`
-	Twitter   *twitter.Twitter     `json:"twitter,omitempty"`
-	YouTube   *youtube.YouTube     `json:"youtube,omitempty"`
+	Facebook         *facebook.Facebook   `json:"facebook,omitempty"`
+	Instagram        *instagram.Instagram `json:"instagram,omitempty"`
+	Twitter          *twitter.Twitter     `json:"twitter,omitempty"`
+	YouTube          *youtube.YouTube     `json:"youtube,omitempty"`
+	LastSocialUpdate int32                `json:"lastSocialUpdate,omitempty"`
 
 	// Used for the API exclusively (in the influencer's Clean method)
 	FbUsername      string `json:"fbUsername,omitempty"`
@@ -134,6 +136,8 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 	}
 
 	inf.setSwayRep()
+	inf.LastSocialUpdate = int32(time.Now().Unix())
+
 	return inf, nil
 }
 
@@ -182,6 +186,30 @@ func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
 }
 
 func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
+	// Used by sway engine to periodically update influencer data
+
+	// Always allow updates if they have an active deal
+	if len(inf.ActiveDeals) == 0 {
+		// Don't update social media stats for people with no active deals
+		// and that have been updated in the last 14 days
+		if misc.WithinLast(inf.LastSocialUpdate, 24*14) {
+			return nil
+		}
+
+		var latest int32
+		for _, d := range inf.CompletedDeals {
+			if d.Completed > latest {
+				latest = d.Completed
+			}
+		}
+		// This person has not done a deal in the last 60
+		// days and is not currently in a deal.. skip!
+		if len(inf.CompletedDeals) > 0 && misc.WithinLast(latest, 24*60) {
+			return nil
+		}
+
+	}
+
 	if inf.Facebook != nil {
 		if err = inf.Facebook.UpdateData(cfg); err != nil {
 			return err
@@ -204,6 +232,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	}
 
 	inf.setSwayRep()
+	inf.LastSocialUpdate = int32(time.Now().Unix())
 
 	return nil
 }
@@ -361,6 +390,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	if geo == nil && !skipGeo {
 		if inf.Geo != nil {
 			geo = inf.Geo
+		} else if inf.Address != nil {
+			geo = &misc.GeoRecord{
+				City:    inf.Address.City,
+				Country: inf.Address.Country,
+			}
 		} else {
 			if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
 				geo = inf.Instagram.LastLocation

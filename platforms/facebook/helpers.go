@@ -47,7 +47,7 @@ type Share struct {
 
 func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float64, fbPosts []*Post, err error) {
 	//https://graph.facebook.com/dayoutubeguy/posts?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0
-	// gets last 25 posts
+	// gets last 20 posts
 	endpoint := fmt.Sprintf(postUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	var posts PostData
 	err = misc.Request("GET", endpoint, "", &posts)
