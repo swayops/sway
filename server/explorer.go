@@ -171,12 +171,10 @@ func (srv *Server) ApproveYouTube(post *youtube.Post, d *common.Deal) error {
 }
 
 func hasReqHash(text string, hashtags []string) bool {
-	if len(hashtags) > 0 {
-		for _, tg := range hashtags {
-			for _, reqHash := range requiredHash {
-				if strings.EqualFold(tg, reqHash) {
-					return true
-				}
+	for _, tg := range hashtags {
+		for _, reqHash := range requiredHash {
+			if strings.EqualFold(tg, reqHash) {
+				return true
 			}
 		}
 	}
