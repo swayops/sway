@@ -117,9 +117,6 @@ func (u *User) Check(newUser bool) error {
 	if u.Name == "" {
 		return ErrInvalidName
 	}
-	if len(strings.Split(u.Name, " ")) < 2 {
-		return ErrInvalidName
-	}
 	if len(u.Email) < 6 /* a@a.ab */ || strings.Index(u.Email, "@") == -1 {
 		return ErrInvalidEmail
 	}
