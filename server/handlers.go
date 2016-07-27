@@ -212,7 +212,7 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 		s.db.View(func(tx *bolt.Tx) error {
 			s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
 				if u.Advertiser != nil && u.ParentID == targetAgency {
-					advertisers = append(advertisers, &advWithCounts{u, 0})
+					advertisers = append(advertisers, &advWithCounts{u.Trim(), 0})
 					counts[u.ID] = 0
 				}
 				return nil
