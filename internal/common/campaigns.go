@@ -79,8 +79,8 @@ func NewCampaigns() *Campaigns {
 	}
 }
 
-func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config) {
-	cmps := GetAllActiveCampaigns(db, cfg)
+func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) {
+	cmps := GetAllActiveCampaigns(db, cfg, adv, ag)
 	p.mux.Lock()
 	p.store = cmps
 	p.mux.Unlock()
@@ -109,7 +109,7 @@ func (p *Campaigns) Get(id string) (*Campaign, bool) {
 	return val, ok
 }
 
-func GetAllActiveCampaigns(db *bolt.DB, cfg *config.Config) map[string]*Campaign {
+func GetAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) map[string]*Campaign {
 	// Returns a list of active campaign IDs in the system
 	campaignList := make(map[string]*Campaign)
 
@@ -120,7 +120,10 @@ func GetAllActiveCampaigns(db *bolt.DB, cfg *config.Config) map[string]*Campaign
 				log.Println("error when unmarshalling campaign", string(v))
 				return nil
 			}
-			if cmp.IsValid() {
+
+			activeAdv := adv[cmp.AdvertiserId]
+			activeAg := ag[cmp.AgencyId]
+			if cmp.IsValid() && activeAdv && activeAg {
 				campaignList[cmp.Id] = cmp
 			}
 

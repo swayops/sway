@@ -17,6 +17,8 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+var requiredHash = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement"}
+
 func explore(srv *Server) error {
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
@@ -168,6 +170,26 @@ func (srv *Server) ApproveYouTube(post *youtube.Post, d *common.Deal) error {
 	return srv.CompleteDeal(d)
 }
 
+func hasReqHash(text string, hashtags []string) bool {
+	for _, tg := range hashtags {
+		for _, reqHash := range requiredHash {
+			if strings.EqualFold(tg, reqHash) {
+				return true
+			}
+		}
+	}
+
+	if len(text) > 0 {
+		for _, reqHash := range requiredHash {
+			if containsFold(text, reqHash) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 	if inf.Twitter == nil {
 		return nil
@@ -178,9 +200,14 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 			continue
 		}
 
+		postTags := tw.Hashtags()
+		// check for required hashes!
+		if !hasReqHash(tw.Text, postTags) {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
-			postTags := tw.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
 					if strings.EqualFold(hashtag, tg) {
@@ -247,9 +274,13 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
 			continue
 		}
 
+		postTags := post.Hashtags()
+		if !hasReqHash(post.Caption, postTags) {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
-			postTags := post.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
 					if strings.EqualFold(hashtag, tg) {
@@ -306,6 +337,10 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post
 
 	for _, post := range inf.Instagram.LatestPosts {
 		if post.Published < deal.Assigned {
+			continue
+		}
+
+		if !hasReqHash(post.Caption, post.Hashtags) {
 			continue
 		}
 
@@ -371,14 +406,22 @@ func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
 			continue
 		}
 
+		postTags := post.Hashtags()
+		if !hasReqHash(post.Description, postTags) {
+			continue
+		}
+
 		var foundHash, foundMention, foundLink bool
 		if len(deal.Tags) > 0 {
-			postTags := post.Hashtags()
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
 					if containsFold(strings.ToLower(hashtag), tg) {
 						foundHash = true
 					}
+				}
+
+				if containsFold(post.Description, tg) {
+					foundHash = true
 				}
 			}
 			if !foundHash {

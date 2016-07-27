@@ -15,12 +15,12 @@ func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
 	// This will be used by "GetAvailableDeals"
 	// to avoid constant unmarshalling of campaigns
-	srv.Campaigns.Set(srv.db, srv.Cfg)
+	srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
 
 	cTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range cTicker.C {
-			srv.Campaigns.Set(srv.db, srv.Cfg)
+			srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
 		}
 	}()
 
@@ -76,7 +76,7 @@ func run(srv *Server) error {
 }
 
 func updateInfluencers(s *Server) error {
-	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
+	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg, getActiveAdvertisers(s), getActiveAdAgencies(s))
 	influencers := getAllInfluencers(s, false)
 
 	// Traverses all influencers and updates their social media stats
@@ -114,7 +114,7 @@ func depleteBudget(s *Server) error {
 
 	var spentDelta float64
 
-	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg)
+	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg, getActiveAdvertisers(s), getActiveAdAgencies(s))
 	// Iterate over all active campaigns
 	for _, cmp := range activeCampaigns {
 		// Get this month's store for this campaign

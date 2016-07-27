@@ -322,6 +322,32 @@ func getAllInfluencers(s *Server, checksOnly bool) []*auth.Influencer {
 	return influencers
 }
 
+func getActiveAdvertisers(s *Server) map[string]bool {
+	out := make(map[string]bool)
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
+			if adv := auth.GetAdvertiser(u); adv != nil && adv.Status {
+				out[adv.ID] = true
+			}
+			return nil
+		})
+	})
+	return out
+}
+
+func getActiveAdAgencies(s *Server) map[string]bool {
+	out := make(map[string]bool)
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.AdAgencyScope, func(u *auth.User) error {
+			if ag := auth.GetAdAgency(u); ag != nil && ag.Status {
+				out[ag.ID] = true
+			}
+			return nil
+		})
+	})
+	return out
+}
+
 func Float64Frombytes(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint64(bytes)
 	float := math.Float64frombits(bits)

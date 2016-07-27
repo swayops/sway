@@ -790,6 +790,23 @@ func setAddress(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var influencers []*auth.Influencer
+		s.db.View(func(tx *bolt.Tx) error {
+			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+				if inf := auth.GetInfluencer(u); inf != nil {
+					if inf.Geo == nil && inf.Gender == "" && len(inf.Categories) == 0 {
+						influencers = append(influencers, inf)
+					}
+				}
+				return nil
+			})
+		})
+		c.JSON(200, influencers)
+	}
+}
+
 func getCategories(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(200, common.GetCategories())

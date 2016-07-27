@@ -208,8 +208,8 @@ func (t *TwitterTime) MarshalJSON() ([]byte, error) {
 }
 
 type User struct {
-	Id            string `json:"id_str"`
-	Followers     uint32 `json:"followers_count"`
-	Friends       uint32 `json:"friends_count"`
-	StatusesCount uint32 `json:"statuses_count"`
+	Id        string `json:"id_str"`
+	Followers uint32 `json:"followers_count"`
+	// Friends   uint32 `json:"friends_count"`
+	// StatusesCount uint32 `json:"statuses_count"`
 }
