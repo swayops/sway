@@ -47,22 +47,22 @@ func TestAdminLogin(t *testing.T) {
 	}
 
 	for _, tr := range [...]*resty.TestRequest{
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
-		{"GET", "/api/v1/apiKey", nil, 200, nil},
-		{"GET", "/api/v1/getStore", nil, 500, nil},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"GET", "/apiKey", nil, 200, nil},
+		{"GET", "/getStore", nil, 500, nil},
 
-		{"POST", "/api/v1/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
 
 		// create advertiser as admin and set agency to ag.ExpID
-		{"POST", "/api/v1/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, M{
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, M{
 			"agencyId": ag.ExpID,
 		}},
 
 		// create another agency and try to create an advertiser with the old agency's id
-		{"POST", "/api/v1/signUp?autologin=true", ag2, 200, misc.StatusOK(ag2.ExpID)},
-		{"POST", "/api/v1/signUp", adv2, 200, misc.StatusOK(adv2.ExpID)}, // should work but switch the parent id to ag2's
-		{"GET", "/api/v1/advertiser/" + adv2.ExpID, nil, 200, M{
+		{"POST", "/signUp?autologin=true", ag2, 200, misc.StatusOK(ag2.ExpID)},
+		{"POST", "/signUp", adv2, 200, misc.StatusOK(adv2.ExpID)}, // should work but switch the parent id to ag2's
+		{"GET", "/advertiser/" + adv2.ExpID, nil, 200, M{
 			"agencyId": ag2.ExpID,
 		}},
 	} {
@@ -87,38 +87,38 @@ func TestAdAgencyChain(t *testing.T) {
 
 	for _, tr := range [...]*resty.TestRequest{
 		// try to directly signup as an agency
-		{"POST", "/api/v1/signUp", ag, 401, nil},
+		{"POST", "/signUp", ag, 401, nil},
 
 		// sign in as admin
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
 		// create new agency and sign in
-		{"POST", "/api/v1/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
-		{"POST", "/api/v1/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
 
 		// change the agency's name
-		{"PUT", "/api/v1/adAgency/" + ag.ExpID, &auth.AdAgency{ID: ag.ExpID, Name: "the rain man", Status: true}, 200, nil},
-		{"GET", "/api/v1/adAgency/" + ag.ExpID, nil, 200, M{"name": "the rain man"}},
+		{"PUT", "/adAgency/" + ag.ExpID, &auth.AdAgency{ID: ag.ExpID, Name: "the rain man", Status: true}, 200, nil},
+		{"GET", "/adAgency/" + ag.ExpID, nil, 200, M{"name": "the rain man"}},
 
 		// create a new advertiser as the new agency and signin
-		{"POST", "/api/v1/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
-		{"POST", "/api/v1/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
 
 		// update the advertiser and check if the update worked
-		{"PUT", "/api/v1/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.2, ExchangeFee: 0.3}},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.2, ExchangeFee: 0.3}},
 
 		// sign in as admin and see if they can access the advertiser
-		{"POST", "/api/v1/signIn", adminReq, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, ID: adv.ExpID}},
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, ID: adv.ExpID}},
 
 		// sign in as a different agency and see if we can access the advertiser
-		{"POST", "/api/v1/signIn", adminAdAgencyReq, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 401, nil},
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 401, nil},
 
 		// sign in as a talent agency and see if we can access it
-		{"POST", "/api/v1/signIn", adminTalentAgencyReq, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 401, nil},
+		{"POST", "/signIn", adminTalentAgencyReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 401, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -144,29 +144,29 @@ func TestTalentAgencyChain(t *testing.T) {
 
 	for _, tr := range [...]*resty.TestRequest{
 		// try to directly signup as an agency
-		{"POST", "/api/v1/signUp", ag, 401, nil},
+		{"POST", "/signUp", ag, 401, nil},
 
 		// sign in as admin
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
 		// create new agency and sign in
-		{"POST", "/api/v1/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
-		{"POST", "/api/v1/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
 
 		// change the agency's name and fee and check if it stuck
-		{"GET", "/api/v1/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.2, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
-		{"PUT", "/api/v1/talentAgency/" + ag.ExpID, &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}, 200, nil},
-		{"GET", "/api/v1/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
+		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.2, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
+		{"PUT", "/talentAgency/" + ag.ExpID, &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}, 200, nil},
+		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
 
 		// create a new influencer as the new agency and signin
-		{"POST", "/api/v1/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
-		{"POST", "/api/v1/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"GET", "/api/v1/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
-		{"GET", "/api/v1/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
-		{"POST", "/api/v1/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, M{
+		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"vlogger"},
 			"geo":        M{"city": "hell"},
@@ -174,16 +174,16 @@ func TestTalentAgencyChain(t *testing.T) {
 		}},
 
 		// sign in as admin and see if they can access the influencer
-		{"POST", "/api/v1/signIn", adminReq, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, nil},
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, nil},
 
 		// sign in as a different agency and see if we can access the influencer
-		{"POST", "/api/v1/signIn", adminAdAgencyReq, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 401, nil},
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
 
 		// sign in as a talent agency and see if we can access it
-		{"POST", "/api/v1/signIn", adminTalentAgencyReq, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 401, nil},
+		{"POST", "/signIn", adminTalentAgencyReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -208,26 +208,26 @@ func TestNewAdvertiser(t *testing.T) {
 	}
 
 	for _, tr := range [...]*resty.TestRequest{
-		{"POST", "/api/v1/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
+		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
-		{"PUT", "/api/v1/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
 
 		// sign in as admin and access the advertiser
-		{"POST", "/api/v1/signIn", adminReq, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
 
 		// create a new agency
-		{"POST", "/api/v1/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
 
-		{"POST", "/api/v1/signIn", adminAdAgencyReq, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, nil},
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, nil},
 
 		// test if a random agency can access it
-		{"POST", "/api/v1/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 401, nil},
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 401, nil},
 
-		{"POST", "/api/v1/signUp", badAdv, 400, nil},
+		{"POST", "/signUp", badAdv, 400, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -262,14 +262,14 @@ func TestNewInfluencer(t *testing.T) {
 	}
 
 	for _, tr := range [...]*resty.TestRequest{
-		{"POST", "/api/v1/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
-		{"POST", "/api/v1/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"GET", "/api/v1/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
-		{"GET", "/api/v1/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
-		{"POST", "/api/v1/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, M{
+		{"GET", "/setCategory/" + inf.ExpID + "/vlogger", nil, 200, nil},
+		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
@@ -277,8 +277,8 @@ func TestNewInfluencer(t *testing.T) {
 		}},
 
 		// Add a social media platofrm
-		{"GET", "/api/v1/setPlatform/" + inf.ExpID + "/facebook/" + "justinbieber", nil, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, M{
+		{"GET", "/setPlatform/" + inf.ExpID + "/facebook/" + "justinbieber", nil, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"geo":        M{"city": "hell"},
 			"categories": []string{"vlogger"},
@@ -287,13 +287,13 @@ func TestNewInfluencer(t *testing.T) {
 		}},
 
 		// try to load it as a different user
-		{"POST", "/api/v1/signIn", adminAdAgencyReq, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 401, nil},
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},
 
-		{"POST", "/api/v1/signIn", adminReq, 200, nil},
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, nil},
+		{"POST", "/signIn", adminReq, 200, nil},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, nil},
 
-		{"POST", "/api/v1/signUp", badInf, 400, nil},
+		{"POST", "/signUp", badInf, 400, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -324,16 +324,16 @@ func TestInviteCode(t *testing.T) {
 
 	for _, tr := range [...]*resty.TestRequest{
 		// sign in as admin
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
 		// create new agency and sign in
-		{"POST", "/api/v1/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
 
 		// sign up as a new influencer and see if you get placed under above agency via invite code
-		{"POST", "/api/v1/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
 
 		// check influencer's agency
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, M{
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId": ag.ExpID,
 		}},
 	} {
@@ -373,20 +373,20 @@ func TestCampaigns(t *testing.T) {
 
 	for _, tr := range [...]*resty.TestRequest{
 		// sign in as admin
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
-		{"POST", "/api/v1/signUp?autologin=true", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signUp?autologin=true", ag, 200, misc.StatusOK(ag.ExpID)},
 
-		{"POST", "/api/v1/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
+		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
-		{"GET", "/api/v1/advertiser/" + adv.ExpID, nil, 200, M{
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, M{
 			"id":       adv.ExpID,
 			"agencyId": ag.ExpID,
 		}},
 
-		{"POST", "/api/v1/campaign", &cmp, 200, nil},
-		{"PUT", "/api/v1/campaign/1", cmpUpdate1, 200, nil},
-		{"GET", "/api/v1/campaign/1", nil, 200, M{
+		{"POST", "/campaign", &cmp, 200, nil},
+		{"PUT", "/campaign/1", cmpUpdate1, 200, nil},
+		{"GET", "/campaign/1", nil, 200, M{
 			"name":         "Blade V",
 			"agencyId":     ag.ExpID,
 			"advertiserId": adv.ExpID,
@@ -394,16 +394,16 @@ func TestCampaigns(t *testing.T) {
 		}},
 
 		// access the campaign with the agency
-		{"POST", "/api/v1/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
-		{"PUT", "/api/v1/campaign/1", cmpUpdate2, 200, nil},
-		{"GET", "/api/v1/campaign/1", nil, 200, M{"name": "Blade VI?"}},
+		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
+		{"PUT", "/campaign/1", cmpUpdate2, 200, nil},
+		{"GET", "/campaign/1", nil, 200, M{"name": "Blade VI?"}},
 
 		// sign in as a different ad agency and try to access the campaign
-		{"POST", "/api/v1/signIn", adminAdAgencyReq, 200, nil},
-		{"GET", "/api/v1/campaign/1", nil, 401, nil},
+		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
+		{"GET", "/campaign/1", nil, 401, nil},
 
 		// try to create a campaign with a bad advertiser id
-		{"POST", "/api/v1/campaign", &badAdvId, 400, nil},
+		{"POST", "/campaign", &badAdvId, 400, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -450,44 +450,44 @@ func TestDeals(t *testing.T) {
 
 	for _, tr := range [...]*resty.TestRequest{
 		// sign in as admin
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
 		// create new talent agency and sign in
-		{"POST", "/api/v1/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
+		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
 
 		// sign up as a new influencer and see if you get placed under above agency via invite code
-		{"POST", "/api/v1/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
+		{"POST", "/signUp", inf, 200, misc.StatusOK(inf.ExpID)},
 
 		// check influencer's agency
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, M{
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId": ag.ExpID,
 		}},
 
 		// sign in as admin again
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 
 		// create new advertiser and sign in
-		{"POST", "/api/v1/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
+		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
 		// create a new campaign
-		{"POST", "/api/v1/campaign", &cmp, 200, nil},
+		{"POST", "/campaign", &cmp, 200, nil},
 
 		// sign in as influencer and get deals for the influencer
-		{"POST", "/api/v1/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
-		{"GET", "/api/v1/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+		{"GET", "/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
 
 		// assign yourself a deal
-		{"GET", "/api/v1/assignDeal/" + inf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
+		{"GET", "/assignDeal/" + inf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
 
 		// check deal assigned in influencer and campaign
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
-		{"GET", "/api/v1/campaign/2?deals=true", nil, 200, resty.PartialMatch(fmt.Sprintf(`"influencerId":"%s"`, inf.ExpID))},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"GET", "/campaign/2?deals=true", nil, 200, resty.PartialMatch(fmt.Sprintf(`"influencerId":"%s"`, inf.ExpID))},
 
 		// force approve the deal
-		{"GET", "/api/v1/forceApprove/" + inf.ExpID + "/2", nil, 200, misc.StatusOK(inf.ExpID)},
+		{"GET", "/forceApprove/" + inf.ExpID + "/2", nil, 200, misc.StatusOK(inf.ExpID)},
 
 		// make sure it's put into completed
-		{"GET", "/api/v1/influencer/" + inf.ExpID, nil, 200, `{"completedDeals":[{"campaignId": "2"}]}`},
+		{"GET", "/influencer/" + inf.ExpID, nil, 200, `{"completedDeals":[{"campaignId": "2"}]}`},
 	} {
 		tr.Run(t, rst)
 	}
@@ -507,28 +507,28 @@ func TestDeals(t *testing.T) {
 	}
 	for _, tr := range [...]*resty.TestRequest{
 		// sign up as a new influencer and see if you get placed under above agency via invite code
-		{"POST", "/api/v1/signUp", newInf, 200, misc.StatusOK(newInf.ExpID)},
+		{"POST", "/signUp", newInf, 200, misc.StatusOK(newInf.ExpID)},
 
 		// check influencer's agency
-		{"GET", "/api/v1/influencer/" + newInf.ExpID, nil, 200, M{
+		{"GET", "/influencer/" + newInf.ExpID, nil, 200, M{
 			"agencyId": ag.ExpID,
 		}},
 
-		{"GET", "/api/v1/getDeals/" + newInf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
+		{"GET", "/getDeals/" + newInf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
 
 		// assign yourself a deal
-		{"GET", "/api/v1/assignDeal/" + newInf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
+		{"GET", "/assignDeal/" + newInf.ExpID + "/2/0/twitter?dbg=1", nil, 200, nil},
 
 		// check deal assigned in influencer and campaign
-		{"GET", "/api/v1/influencer/" + newInf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
-		{"POST", "/api/v1/signIn", adminReq, 200, misc.StatusOK("1")},
-		{"GET", "/api/v1/campaign/2?deals=true", nil, 200, resty.PartialMatch(fmt.Sprintf(`"influencerId":"%s"`, newInf.ExpID))},
+		{"GET", "/influencer/" + newInf.ExpID, nil, 200, `{"activeDeals":[{"campaignId": "2"}]}`},
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"GET", "/campaign/2?deals=true", nil, 200, resty.PartialMatch(fmt.Sprintf(`"influencerId":"%s"`, newInf.ExpID))},
 
 		// force approve the deal
-		{"GET", "/api/v1/forceApprove/" + newInf.ExpID + "/2", nil, 200, misc.StatusOK(newInf.ExpID)},
+		{"GET", "/forceApprove/" + newInf.ExpID + "/2", nil, 200, misc.StatusOK(newInf.ExpID)},
 
 		// make sure it's put into completed
-		{"GET", "/api/v1/influencer/" + newInf.ExpID, nil, 200, `{"completedDeals":[{"campaignId": "2"}]}`},
+		{"GET", "/influencer/" + newInf.ExpID, nil, 200, `{"completedDeals":[{"campaignId": "2"}]}`},
 	} {
 		tr.Run(t, rst)
 	}
@@ -537,12 +537,12 @@ func TestDeals(t *testing.T) {
 
 	// Check reporting for just the second influencer
 	var load influencer.Influencer
-	r := rst.DoTesting(t, "GET", "/api/v1/influencer/"+newInf.ExpID, nil, &load)
+	r := rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 	var breakdownB map[string]*reporting.Totals
-	r = rst.DoTesting(t, "GET", "/api/v1/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
+	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -551,13 +551,13 @@ func TestDeals(t *testing.T) {
 
 	// Verify combined reporting because campaign reports will include both
 	var newStore budget.Store
-	r = rst.DoTesting(t, "GET", "/api/v1/getBudgetInfo/2", nil, &newStore)
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/2", nil, &newStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 
 	var breakdownA map[string]*reporting.Totals
-	r = rst.DoTesting(t, "GET", "/api/v1/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
+	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -574,7 +574,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	var cmpBreakdown map[string]*reporting.Totals
-	r = rst.DoTesting(t, "GET", "/api/v1/getCampaignStats/2/10", nil, &cmpBreakdown)
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -597,7 +597,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	var cmpInfBreakdown map[string]*reporting.Totals
-	r = rst.DoTesting(t, "GET", "/api/v1/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
+	r = rst.DoTesting(t, "GET", "/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -614,21 +614,21 @@ func TestDeals(t *testing.T) {
 
 func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skipReporting bool) {
 	var oldStore budget.Store
-	r := rst.DoTesting(t, "GET", "/api/v1/getBudgetInfo/"+cmpId, nil, &oldStore)
+	r := rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &oldStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 	checkStore(t, &oldStore, nil)
 
 	// deplete budget according to the payout
-	r = rst.DoTesting(t, "GET", "/api/v1/forceDeplete", nil, nil)
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
 
 	// check for money in completed deals (fees and inf)
 	var load influencer.Influencer
-	r = rst.DoTesting(t, "GET", "/api/v1/influencer/"+infId, nil, &load)
+	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -640,7 +640,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	checkDeal(t, doneDeal, &load, agId, cmpId)
 
 	var newStore budget.Store
-	r = rst.DoTesting(t, "GET", "/api/v1/getBudgetInfo/"+cmpId, nil, &newStore)
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &newStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -652,7 +652,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 
 	// check for money in campaign deals (fees and inf)
 	var cmpLoad common.Campaign
-	r = rst.DoTesting(t, "GET", "/api/v1/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 	}
@@ -675,7 +675,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
 
 		// check get influencer stats
-		r = rst.DoTesting(t, "GET", "/api/v1/getInfluencerStats/"+infId+"/10", nil, &breakdown)
+		r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+infId+"/10", nil, &breakdown)
 		if r.Status != 200 {
 			t.Error("Bad status code!")
 		}

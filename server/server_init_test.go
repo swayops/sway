@@ -34,7 +34,7 @@ var (
 	ts   *httptest.Server
 	rstP = sync.Pool{
 		New: func() interface{} {
-			rst := resty.NewClient(ts.URL)
+			rst := resty.NewClient(ts.URL + "/api/v1/")
 			rst.HTTPClient.Transport = insecureTransport
 			return rst
 		},
