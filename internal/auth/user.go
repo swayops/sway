@@ -117,12 +117,20 @@ func (u *User) Check(newUser bool) error {
 	if u.Name == "" {
 		return ErrInvalidName
 	}
+
 	if len(u.Email) < 6 /* a@a.ab */ || strings.Index(u.Email, "@") == -1 {
 		return ErrInvalidEmail
 	}
-	if u.Type() == InvalidScope {
+
+	switch u.Type() {
+	case InvalidScope:
 		return ErrInvalidUserType
+	case InfluencerScope:
+		if len(strings.Split(u.Name, " ")) < 2 {
+			return ErrInvalidName
+		}
 	}
+
 	// other checks?
 	return nil
 }
