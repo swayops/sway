@@ -7,10 +7,10 @@ const resetTmpl = `
 	{{/ Sandbox }}
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hey "{{socialHandle}}",
+		Hey again,
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Just wanted to follow up with a few deals that would be available for you based on my previous email. These are deals you fit based on your fan analytics, follower counts, avg engagement rates, etc. As your personal brand and Sway reputation grows you will begin to see much larger opportunities inside of the influencer portal. Here are a few options for you:
+		Hope your doing well. Just wanted to reach out as we are excited to announce there are new Sways that requested your participation and I wanted to get your interest level:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">
@@ -28,10 +28,10 @@ const resetTmpl = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access these you simply need to go into our our influencer app at {{signIn URL}} and hit the "Accept Endorsement" button. Feel free to call or email me with any questions.
+		In order to access these you simply need to go into our influencer app at {{signIn URL}} and hit the "Accept Endorsement" button.<br/> Feel free to call or email me with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Very excited to work with you,<br/>
+		All the best,<br/>
 		~ Nicholas Waken<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
