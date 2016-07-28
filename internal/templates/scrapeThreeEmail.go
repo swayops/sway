@@ -20,7 +20,7 @@ const resetTmpl = `
 			<th align="left">Campaign name:</th>
 		</tr>
 	    <tr>
-	    	<td align="left" valign="middle"><img src="" height="50"></td>
+	    	<td align="left" valign="middle"><img src="{{CampaignImage}}" height="50"></td>
 	    	<td align="left" valign="middle">{{AdvertiserName}}</td>
 	    	<td align="left" valign="middle">{{AdvertiserName}}</td>
 	    </tr>
@@ -28,7 +28,7 @@ const resetTmpl = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access these you simply need to go into our influencer app at {{signIn URL}} and hit the "Accept Endorsement" button.<br/> Feel free to call or email me with any questions.
+		In order to access these you simply need to go into our influencer app at {{signUp URL}} and hit the "Accept Endorsement" button.<br/> Feel free to call or email me with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>

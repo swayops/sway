@@ -20,7 +20,7 @@ const resetTmpl = `
 			<th align="left">Campaign name:</th>
 		</tr>
 	    <tr>
-	    	<td align="left" valign="middle"><img src="" height="50"></td>
+	    	<td align="left" valign="middle"><img src="{{CampaignImage}}" height="50"></td>
 	    	<td align="left" valign="middle">{{AdvertiserName}}</td>
 	    	<td align="left" valign="middle">{{AdvertiserName}}</td>
 	    </tr>
