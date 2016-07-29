@@ -1,6 +1,6 @@
 package templates
 
-const resetTmpl = `
+const scrapeThreeTmpl = `
 <div>
 	{{# Sandbox }}
 		<p style="font-size:14px; color:#000000; margin:0 0 12px 0; font-weight: 600;">**NOTE: #sandboxLife #dontFreakOutThisIsATest **</p>
@@ -43,4 +43,4 @@ const resetTmpl = `
 </div>
 `
 
-var ResetPassword = MustacheMust(resetTmpl)
+var ScrapeThree = MustacheMust(scrapeThreeTmpl)

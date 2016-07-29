@@ -1,6 +1,6 @@
 package templates
 
-const resetTmpl = `
+const scrapeOneTmpl = `
 <div>
 	{{# Sandbox }}
 		<p style="font-size:14px; color:#000000; margin:0 0 12px 0; font-weight: 600;">**NOTE: #sandboxLife #dontFreakOutThisIsATest **</p>
@@ -13,7 +13,7 @@ const resetTmpl = `
 		My company makes software that connects social media influencers with brands.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		I thought I would ping you because we have a few big advertisers coming through in the next 45 days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
+		I thought I would ping you because we have a few big advertisers coming through in the next 45 days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		We generally make modeling agencies or independent influencers double the revenue they would normally bring in through your avg social post. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, 1099's, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
@@ -31,4 +31,4 @@ const resetTmpl = `
 </div>
 `
 
-var ResetPassword = MustacheMust(resetTmpl)
+var ScrapeOne = MustacheMust(scrapeOneTmpl)
