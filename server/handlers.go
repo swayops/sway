@@ -68,16 +68,32 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 }
 
 func getAllTalentAgencies(s *Server) gin.HandlerFunc {
+	type userWithCounts struct {
+		*auth.User
+		SubCount int `json:"subCount"`
+	}
 	return func(c *gin.Context) {
-		var all []*auth.TalentAgency
+		var (
+			all    []*userWithCounts
+			counts map[string]int
+			uids   []string
+		)
+
 		s.db.View(func(tx *bolt.Tx) error {
-			return s.auth.GetUsersByTypeTx(tx, auth.TalentAgencyScope, func(u *auth.User) error {
-				if ag := auth.GetTalentAgency(u); ag != nil {
-					all = append(all, ag)
+			s.auth.GetUsersByTypeTx(tx, auth.TalentAgencyScope, func(u *auth.User) error {
+				if u.TalentAgency != nil {
+					all = append(all, &userWithCounts{u.Trim(), 0})
+					uids = append(uids, u.ID)
 				}
 				return nil
 			})
+			counts = s.auth.GetChildCountsTx(tx, uids...)
+			return nil
 		})
+
+		for _, u := range all {
+			u.SubCount = counts[u.ID]
+		}
 		c.JSON(200, all)
 	}
 }
