@@ -225,7 +225,10 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 			advertisers  []*advWithCounts
 			counts       = map[string]int{}
 		)
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			if u := s.auth.GetUserTx(tx, targetAgency); u == nil || u.Type() != auth.AdAgencyScope {
+				return auth.ErrInvalidUserID
+			}
 			s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
 				if u.Advertiser != nil && u.ParentID == targetAgency {
 					advertisers = append(advertisers, &advWithCounts{u.Trim(), 0})
@@ -246,7 +249,10 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 				}
 				return
 			})
-		})
+		}); err != nil {
+			misc.AbortWithErr(c, 404, err)
+			return
+		}
 		for _, adv := range advertisers {
 			adv.NumCampaigns = counts[adv.ID]
 		}
@@ -556,7 +562,10 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAg := c.Param("id")
 		var influencers []*auth.Influencer
-		s.db.View(func(tx *bolt.Tx) error {
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			if u := s.auth.GetUserTx(tx, targetAg); u == nil || u.Type() != auth.TalentAgencyScope {
+				return auth.ErrInvalidUserID
+			}
 			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 				inf := auth.GetInfluencer(u)
 				if inf == nil {
@@ -568,7 +577,9 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 				}
 				return nil
 			})
-		})
+		}); err != nil {
+			misc.AbortWithErr(c, 404, err)
+		}
 		c.JSON(200, influencers)
 	}
 }
