@@ -66,7 +66,9 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		in.AvgLikes = likes
 		in.AvgComments = cm
 		in.LatestPosts = posts
-		in.LastLocation = geo
+		if geo != nil {
+			in.LastLocation = geo
+		}
 	} else {
 		return err
 	}

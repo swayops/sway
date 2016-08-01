@@ -89,7 +89,6 @@ func (sc *Scrap) Email(campaigns *common.Campaigns, sDb, budgetDb *bolt.DB, cfg 
 		sentTs = int32(time.Now().Unix())
 	} else if len(sc.SentEmails) == 1 {
 		// Send second email if it's been more than 26 hours
-		// CHECK WITH NICK ON THIS DELAY
 		if !misc.WithinLast(sc.SentEmails[0].Timestamp, 26) {
 			if !cfg.Sandbox {
 				email := templates.ScrapDealOne.Render(map[string]interface{}{"Name": name, "deal": OrderedDeals(ordered)})
@@ -102,7 +101,6 @@ func (sc *Scrap) Email(campaigns *common.Campaigns, sDb, budgetDb *bolt.DB, cfg 
 		}
 	} else if len(sc.SentEmails) == 2 {
 		// Send third email if it's been more than 14 days
-		// CHECK WITH NICK ON THIS DELAY
 		if !misc.WithinLast(sc.SentEmails[1].Timestamp, 24*14) {
 			if !cfg.Sandbox {
 				email := templates.ScrapDealTwo.Render(map[string]interface{}{"Name": name, "deal": OrderedDeals(ordered)})
