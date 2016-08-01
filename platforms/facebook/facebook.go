@@ -31,7 +31,7 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 
 func (fb *Facebook) UpdateData(cfg *config.Config) error {
 	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(fb.LastUpdated, cfg.InfluencerTTL) {
+	if misc.WithinLast(fb.LastUpdated, 12) {
 		return nil
 	}
 

@@ -21,6 +21,10 @@ type Deal struct {
 	CampaignId   string `json:"campaignId"`
 	AdvertiserId string `json:"advertiserId"`
 
+	CampaignName  string `json:"cmpName,omitempty"`
+	CampaignImage string `json:"cmpImg,omitempty"`
+	Company       string `json:"company,omitempty"`
+
 	// Platform determined by GetAvailableDeals with value as potential pricepoint
 	// This is also saved/reset in the un/assign handlers
 	Platforms []string `json:"platforms,omitempty"`

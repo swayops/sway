@@ -1,13 +1,17 @@
 package server
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/hellosign"
 )
 
@@ -16,7 +20,6 @@ func newSwayEngine(srv *Server) error {
 	// This will be used by "GetAvailableDeals"
 	// to avoid constant unmarshalling of campaigns
 	srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
-
 	cTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range cTicker.C {
@@ -25,7 +28,7 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Update social media profiles every X hours
-	ticker := time.NewTicker(srv.Cfg.EngineUpdate * time.Hour)
+	ticker := time.NewTicker(4 * time.Hour)
 	go func() {
 		for range ticker.C {
 			if err := run(srv); err != nil {
@@ -43,17 +46,25 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	emailTicker := time.NewTicker(6 * time.Hour)
+	go func() {
+		for range emailTicker.C {
+			emailDeals(srv)
+		}
+	}()
+
 	return nil
 }
 
 func run(srv *Server) error {
+	log.Println("Initiating engine run @", int32(time.Now().Unix()))
+
 	// Update all influencer stats/completed deal stats
 	if err := updateInfluencers(srv); err != nil {
 		// Insert a file informant check
 		log.Println("Err with stats updater", err)
 		return err
 	}
-	log.Println("Influencers updated!")
 
 	// Explore the influencer posts to look for completed deals!
 	if err := explore(srv); err != nil {
@@ -61,7 +72,6 @@ func run(srv *Server) error {
 		log.Println("Error exploring!", err)
 		return err
 	}
-	log.Println("Posts explored!")
 
 	// Iterate over deltas for completed deals
 	// and deplete budgets
@@ -70,8 +80,8 @@ func run(srv *Server) error {
 		log.Println("Err with depleting budgets!", err)
 		return err
 	}
-	log.Println("Budgets depleted!")
 
+	log.Println("Completed engine run @", int32(time.Now().Unix()), "\n")
 	return nil
 }
 
@@ -82,21 +92,19 @@ func updateInfluencers(s *Server) error {
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
 		// Influencer not updated if they have been updated
-		// within the last s.Cfg.InfluencerTTL hours
+		// within the last 12 hours
 		if err := inf.UpdateAll(s.Cfg); err != nil {
 			return err
 		}
 
 		// Inserting a request interval so we don't hit our API
 		// limits with platforms!
-		time.Sleep(s.Cfg.StatsInterval * time.Second)
+		time.Sleep(5 * time.Second)
 
 		// Update data for all completed deal posts
 		if err := inf.UpdateCompletedDeals(s.Cfg, activeCampaigns); err != nil {
 			return err
 		}
-
-		time.Sleep(s.Cfg.StatsInterval * time.Second)
 
 		// Also saves influencers!
 		if err := saveAllCompletedDeals(s, inf); err != nil {
@@ -191,6 +199,7 @@ func depleteBudget(s *Server) error {
 }
 
 func auditTaxes(srv *Server) {
+	var sigsFound int32
 	for _, inf := range getAllInfluencers(srv, false) {
 		if inf.SignatureId != "" && !inf.HasSigned {
 			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
@@ -201,6 +210,9 @@ func auditTaxes(srv *Server) {
 			if inf.HasSigned != val {
 				if err := srv.db.Update(func(tx *bolt.Tx) error {
 					inf.HasSigned = val
+					if val {
+						sigsFound += 1
+					}
 					// Save the influencer since we just updated it's social media data
 					if err := saveInfluencer(srv, tx, inf); err != nil {
 						log.Println("Errored saving influencer", err)
@@ -213,4 +225,113 @@ func auditTaxes(srv *Server) {
 			}
 		}
 	}
+	if sigsFound > 0 {
+		log.Println(sigsFound, "signatures found!\n")
+	}
+}
+
+func emailDeals(s *Server) error {
+	if !s.Cfg.Sandbox {
+		log.Println("Initiating email run @", int32(time.Now().Unix()))
+	}
+
+	// Email Influencers
+	var influencers []*auth.Influencer
+	// If an influencer was made in the last day
+	// this map will be added to.. and will be used
+	// to delete that scrap later in this func
+	emailMap := make(map[string]bool)
+
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+			if inf := auth.GetInfluencer(u); inf != nil {
+
+				if misc.WithinLast(inf.CreatedAt, 24) {
+					emailMap[inf.EmailAddress] = true
+				}
+
+				if inf.DealPing {
+					influencers = append(influencers, inf)
+				}
+			}
+			return nil
+		})
+	})
+
+	var infEmails int32
+	for _, inf := range influencers {
+		var (
+			emailed bool
+			err     error
+		)
+		if emailed, err = inf.Email(s.Campaigns, s.budgetDb, s.Cfg); err != nil {
+			log.Println("Error emailing influencer!", err)
+			continue
+		}
+
+		// Don't save TS if we didnt email foo!
+		if !emailed {
+			continue
+		}
+
+		infEmails += 1
+		// Save the last email timestamp
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			inf.LastEmail = int32(time.Now().Unix())
+			// Save the influencer since we just updated it's social media data
+			if err := saveInfluencer(s, tx, inf); err != nil {
+				log.Println("Errored saving influencer", err)
+				return err
+			}
+			return nil
+		}); err != nil {
+			log.Println("Error when saving influencer", err)
+		}
+	}
+
+	// Email Scraps
+	var (
+		scraps                 []*influencer.Scrap
+		scrapEmails, deletions int32
+	)
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
+			var sc influencer.Scrap
+			if err := json.Unmarshal(v, &sc); err != nil {
+				log.Println("error when unmarshalling scrap", string(v))
+				return nil
+			}
+			signedUp := emailMap[sc.EmailAddress]
+			// AHMED!!!! LEAVING THIS AS A REMINDER FOR WHEN YOU REVIEW
+			// THIS IS OK RIGHT? THE DEL INSIDE A FOREACH
+			// WORKS FINE..WANT TO CONFIRM!
+			if signedUp {
+				deletions += 1
+				return misc.DelBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id)
+			} else {
+				scraps = append(scraps, &sc)
+			}
+			return
+		})
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	for _, sc := range scraps {
+		if err := sc.Email(s.Campaigns, s.db, s.budgetDb, s.Cfg); err != nil {
+			log.Println("Error emailing scrap!", err)
+			continue
+		}
+		scrapEmails += 1
+	}
+
+	if !s.Cfg.Sandbox {
+		log.Println(len(emailMap), "influencers signed up over the last 2 days")
+		log.Println(infEmails, "influencers emailed")
+		log.Println(scrapEmails, "scraps emailed, and", deletions, "scraps deleted")
+		log.Println("Finished email run @", int32(time.Now().Unix()), "\n")
+	}
+
+	return nil
 }

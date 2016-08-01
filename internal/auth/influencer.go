@@ -81,6 +81,9 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		panic("wtfmate?")
 	}
 
+	// Convert createdAt from nano to seconds
+	created := int32(u.CreatedAt / 1000000000)
+
 	rinf, err := influencer.New(
 		u.ID,
 		u.Name,
@@ -91,9 +94,12 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		inf.Gender,
 		inf.InviteCode,
 		u.ParentID,
+		u.Email,
 		inf.Categories,
 		inf.Geo,
 		inf.Address,
+		inf.DealPing,
+		created,
 		a.cfg)
 
 	if err != nil {

@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
@@ -9,6 +11,7 @@ import (
 )
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
 	cfg, err := config.New("config/config.json")
 	if err != nil {
 		log.Fatal(err)

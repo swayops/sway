@@ -57,7 +57,7 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 
 func (tw *Twitter) UpdateData(cfg *config.Config) error {
 	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(tw.LastUpdated, cfg.InfluencerTTL) {
+	if misc.WithinLast(tw.LastUpdated, 12) {
 		return nil
 	}
 

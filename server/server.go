@@ -199,6 +199,8 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	createRoutes(verifyGroup, srv, "/getCampaignsByAdvertiser", "id", scopes["adv"], auth.AdAgencyItem,
 		getCampaignsByAdvertiser, nil, nil, nil)
+	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
+	r.Static("images", srv.Cfg.ImagesDir)
 
 	// Deal
 	infScope := srv.auth.CheckScopes(scopes["inf"])
@@ -220,6 +222,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
 	verifyGroup.POST("/setGeo/:influencerId", infOwnership, setGeo(srv))
 	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
+	verifyGroup.POST("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 
@@ -241,7 +244,9 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
 
+	// Get influencers who haven't had biodata filled by admin
 	adminGroup.GET("/getIncompleteInfluencers", getIncompleteInfluencers(srv))
+
 	// Perks
 	adminGroup.GET("/getPendingCampaigns", getPendingCampaigns(srv))
 	adminGroup.GET("/approveCampaign/:id", approveCampaign(srv))
@@ -252,6 +257,14 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 
 	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
+
+	// Scraps
+	adminGroup.GET("/scrap/:id", getScrap(srv))
+	adminGroup.POST("/scrap", postScrap(srv))
+	adminGroup.PUT("/scrap/:id", putScrap(srv))
+	adminGroup.GET("/getIncompleteScraps", getIncompleteScraps(srv))
+	// Run emailing of deals right now
+	adminGroup.GET("/forceEmail", forceEmail(srv))
 }
 
 func (srv *Server) startEngine() error {

@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"reflect"
-	"time"
 
 	"github.com/missionMeteora/mandrill"
 )
@@ -29,6 +28,7 @@ func New(loc string) (*Config, error) {
 		return nil, err
 	}
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
+	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
 	return &c, nil
 }
 
@@ -49,16 +49,13 @@ type Config struct {
 
 	Sandbox bool `json:"sandbox"`
 
-	DealTimeout   int32         `json:"dealTimeout"`   // In days
-	EngineUpdate  time.Duration `json:"engineUpdate"`  // In hours
-	StatsInterval time.Duration `json:"statsInterval"` // In seconds
-	InfluencerTTL int32         `json:"influencerTtl"` // In hours
-
 	Mandrill struct {
-		APIKey     string `json:"apiKey"`
-		SubAccount string `json:"subAccount"`
-		FromEmail  string `json:"fromEmail"`
-		FromName   string `json:"fromName"`
+		APIKey         string `json:"apiKey"`
+		SubAccount     string `json:"subAccount"`
+		FromEmail      string `json:"fromEmail"`
+		FromName       string `json:"fromName"`
+		FromEmailReply string `json:"fromEmailReply"`
+		FromNameReply  string `json:"fromNameReply"`
 	} `json:"mandrill"`
 
 	Twitter struct {
@@ -94,16 +91,19 @@ type Config struct {
 	} `json:"facebook"`
 
 	Bucket struct {
-		User  string `json:"user"`
-		Login string `json:"login"`
-		Token string `json:"token"`
-
+		User     string `json:"user"`
+		Login    string `json:"login"`
+		Token    string `json:"token"`
 		Campaign string `json:"campaign"`
+		Scrap    string `json:"scrap"`
 	} `json:"bucket"`
 
-	ec *mandrill.Client
+	ec      *mandrill.Client
+	replyEc *mandrill.Client
 
 	JsonXlsxPath string `json:"jsonXlsxPath"`
+	ImagesDir    string `json:"imagesDir"`
+	ImageUrlPath string `json:"imageUrlPath"`
 }
 
 func (c *Config) AllBuckets() []string {
@@ -119,4 +119,8 @@ func (c *Config) AllBuckets() []string {
 
 func (c *Config) MailClient() *mandrill.Client {
 	return c.ec
+}
+
+func (c *Config) ReplyMailClient() *mandrill.Client {
+	return c.replyEc
 }
