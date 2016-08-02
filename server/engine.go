@@ -57,7 +57,7 @@ func newSwayEngine(srv *Server) error {
 }
 
 func run(srv *Server) error {
-	log.Println("Initiating engine run @", int32(time.Now().Unix()))
+	log.Println("Initiating engine run @", time.Now().String())
 
 	// Update all influencer stats/completed deal stats
 	if err := updateInfluencers(srv); err != nil {
@@ -81,7 +81,7 @@ func run(srv *Server) error {
 		return err
 	}
 
-	log.Println("Completed engine run @", int32(time.Now().Unix()), "\n")
+	log.Println("Completed engine run @", time.Now().String(), "\n")
 	return nil
 }
 
@@ -232,7 +232,7 @@ func auditTaxes(srv *Server) {
 
 func emailDeals(s *Server) error {
 	if !s.Cfg.Sandbox {
-		log.Println("Initiating email run @", int32(time.Now().Unix()))
+		log.Println("Initiating email run @", time.Now().String())
 	}
 
 	// Email Influencers
@@ -330,7 +330,7 @@ func emailDeals(s *Server) error {
 		log.Println(len(emailMap), "influencers signed up over the last 2 days")
 		log.Println(infEmails, "influencers emailed")
 		log.Println(scrapEmails, "scraps emailed, and", deletions, "scraps deleted")
-		log.Println("Finished email run @", int32(time.Now().Unix()), "\n")
+		log.Println("Finished email run @", time.Now().String(), "\n")
 	}
 
 	return nil
