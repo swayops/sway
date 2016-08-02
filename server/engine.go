@@ -302,9 +302,6 @@ func emailDeals(s *Server) error {
 				return nil
 			}
 			signedUp := emailMap[sc.EmailAddress]
-			// AHMED!!!! LEAVING THIS AS A REMINDER FOR WHEN YOU REVIEW
-			// THIS IS OK RIGHT? THE DEL INSIDE A FOREACH
-			// WORKS FINE..WANT TO CONFIRM!
 			if signedUp {
 				deletions += 1
 				return misc.DelBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id)
