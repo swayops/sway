@@ -72,7 +72,7 @@ func (u *User) Trim() *User {
 func (u *User) Update(o *User) *User {
 	u.Name, u.Email, u.Phone, u.Address = o.Name, o.Email, o.Phone, o.Address
 	u.Status = o.Status
-	u.UpdatedAt = time.Now().UnixNano()
+	u.UpdatedAt = time.Now().Unix()
 	return u
 }
 
