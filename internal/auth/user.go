@@ -181,8 +181,7 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 		return
 	}
 
-	// Influencer setToUser func assumes this is always nano!
-	u.CreatedAt = time.Now().UnixNano()
+	u.CreatedAt = time.Now().Unix()
 	u.UpdatedAt = u.CreatedAt
 	u.Salt = hex.EncodeToString(misc.CreateToken(SaltLen))
 	u.Status = true // always active on creation
