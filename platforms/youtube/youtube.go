@@ -42,7 +42,7 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 
 func (yt *YouTube) UpdateData(cfg *config.Config) error {
 	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(yt.LastUpdated, cfg.InfluencerTTL) {
+	if misc.WithinLast(yt.LastUpdated, 12) {
 		return nil
 	}
 

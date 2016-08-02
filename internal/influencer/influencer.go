@@ -1,6 +1,8 @@
 package influencer
 
 import (
+	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -8,6 +10,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
@@ -30,13 +33,17 @@ type InfluencerLoad struct {
 	Categories []string        `json:"categories,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
+
+	DealPing bool `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
 }
 
 type Influencer struct {
 	Id string `json:"id,omitempty"`
 
 	// Full name of the influencer
-	Name string `json:"name,omitempty"`
+	Name         string `json:"name,omitempty"`
+	EmailAddress string `json:"email,omitempty"`
+	CreatedAt    int32  `json:"createdAt,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
@@ -89,15 +96,21 @@ type Influencer struct {
 	SignatureId  string `json:"sigId,omitempty"`
 	HasSigned    bool   `json:"hasSigned,omitempty"`
 	RequestedTax int32  `json:"taxRequest,omitempty"`
+
+	DealPing  bool  `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
+	LastEmail int32 `json:"lastEmail,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID string, cats []string, geo *misc.GeoRecord, address *lob.AddressLoad, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email string, cats []string, geo *misc.GeoRecord, address *lob.AddressLoad, dealPing bool, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
-		Id:         id,
-		Name:       name,
-		Geo:        geo,
-		Gender:     gender,
-		Categories: cats,
+		Id:           id,
+		Name:         name,
+		Geo:          geo,
+		Gender:       gender,
+		Categories:   cats,
+		DealPing:     dealPing,
+		EmailAddress: email,
+		CreatedAt:    created,
 	}
 
 	if address != nil {
@@ -476,7 +489,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				continue
 			}
 
-			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Instagram, inf.Instagram.UserName) {
+			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Twitter, inf.Twitter.Id) {
 				continue
 			}
 
@@ -488,7 +501,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				continue
 			}
 
-			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Instagram, inf.Instagram.UserName) {
+			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Facebook, inf.Facebook.Id) {
 				continue
 			}
 
@@ -533,6 +546,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 					Count:    1}
 			}
 
+			// Add some display attributes
+			targetDeal.CampaignName = cmp.Name
+			targetDeal.CampaignImage = cmp.ImageURL
+			targetDeal.Company = cmp.Company
+
 			infDeals = append(infDeals, targetDeal)
 		}
 	}
@@ -544,10 +562,52 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	for _, deal := range infDeals {
 		store, err := budget.GetBudgetInfo(budgetDb, cfg, deal.CampaignId, "")
 		if err == nil && store != nil && store.Spendable > 0 && store.Spent < store.Budget {
-			deal.Spendable = store.Spendable
+			deal.Spendable = misc.TruncateFloat(store.Spendable, 2)
 			filtered = append(filtered, deal)
 		}
 	}
 
 	return filtered
+}
+
+var ErrEmail = errors.New("Error sending email!")
+
+func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg *config.Config) (bool, error) {
+	// Depending on the emails they've gotten already..
+	// send them a follow up email
+
+	// If we sent this influencer a deal within the last 14 days..
+	// skip!
+	if misc.WithinLast(inf.LastEmail, 24*14) {
+		return false, nil
+	}
+	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", nil, false, cfg)
+	if len(deals) == 0 {
+		return false, nil
+	}
+
+	ordered := OrderedDeals(deals)
+	sort.Sort(ordered)
+	if len(ordered) > 5 {
+		ordered = ordered[0:5]
+	}
+
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return false, ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.InfluencerEmail.Render(map[string]interface{}{"Name": firstName, "deal": OrderedDeals(ordered)})
+		if resp, err := cfg.ReplyMailClient().SendMessage(email, "Sway Brands requesting you!", inf.EmailAddress, inf.Name,
+			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return false, ErrEmail
+		}
+	}
+	return true, nil
 }

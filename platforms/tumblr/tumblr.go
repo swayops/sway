@@ -47,7 +47,7 @@ func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
 
 func (tr *Tumblr) UpdateData(ep string, offset int) error {
 	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(tr.LastUpdated, cfg.InfluencerTTL) {
+	if misc.WithinLast(tr.LastUpdated, 12) {
 		return nil
 	}
 

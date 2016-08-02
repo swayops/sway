@@ -2,10 +2,14 @@ package server
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/swayops/resty"
+	// "github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
@@ -1033,6 +1037,12 @@ func TestPerks(t *testing.T) {
 		t.Error("Unexpected number of deals!")
 	}
 
+	for _, d := range deals {
+		if d.CampaignImage == "" {
+			t.Error("Missing image url!")
+		}
+	}
+
 	tgDeal := deals[0]
 	if tgDeal.CampaignId != "3" {
 		t.Error("Unexpected campaign id!")
@@ -1209,4 +1219,408 @@ func getDeals(cid string, deals []*common.Deal) []*common.Deal {
 		}
 	}
 	return out
+}
+
+func TestScraps(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Create 15 scraps
+	for i := 0; i < 5; i++ {
+		sc := &influencer.Scrap{
+			EmailAddress: strconv.Itoa(i) + "bs@bs.com",
+			TwitterID:    "cnn",
+		}
+
+		r := rst.DoTesting(t, "POST", "/scrap", &sc, nil)
+		if r.Status != 200 {
+			t.Error("Bad status code!")
+		}
+
+	}
+
+	var incomplete []*influencer.Scrap
+	r = rst.DoTesting(t, "GET", "/getIncompleteScraps", nil, &incomplete)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Should have 5 incomplete scraps
+	if len(incomplete) != 5 {
+		t.Error("Unexpected number of incomplete deals!")
+	}
+
+	// Fix one
+	sc := &influencer.Scrap{
+		Categories: []string{"bUsiness"},
+		Gender:     "f",
+	}
+	r = rst.DoTesting(t, "PUT", "/scrap/3", &sc, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	var newSc influencer.Scrap
+	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(newSc.Categories) == 0 || newSc.Gender != "f" {
+		t.Error("Unexpected scrap data!")
+	}
+
+	// Should have 4 scraps now that we've fixed one
+	r = rst.DoTesting(t, "GET", "/getIncompleteScraps", nil, &incomplete)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(incomplete) != 4 {
+		t.Error("Unexpected number of scraps!")
+	}
+
+	// Create a few campaigns
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	for i := 1; i < 8; i++ {
+		cmp := common.Campaign{
+			Status:       true,
+			AdvertiserId: "4",
+			Budget:       float64(i * 10),
+			Name:         "The Day Walker",
+			Twitter:      true,
+			Gender:       "mf",
+			Link:         "blade.org",
+			Tags:         []string{"#mmmm"},
+			Whitelist: &common.TargetList{
+				Twitter: []string{"BreakingNews", "CNN"},
+			},
+		}
+		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+		if r.Status != 200 {
+			t.Error("Bad status code!")
+		}
+	}
+
+	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Check to see if this dude got an email!
+	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(newSc.SentEmails) != 1 {
+		t.Error("Failed to send email!")
+		return
+	}
+
+	if len(newSc.SentEmails[0].Campaigns) != 5 {
+		t.Error("Wrong number of campaigns emailed!")
+	}
+
+	// Try emailing again.. it should skip all influencers
+	// since we just emailed!
+	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(newSc.SentEmails) != 1 {
+		t.Error("Wrongfully sent an email!")
+	}
+
+	// Sign up as an influencer now with the same email
+	// Should delete the old scrap since emails will match!
+
+	// Create an influencer with the same email
+	inf := getSignupUserWithEmail(newSc.EmailAddress)
+	inf.InfluencerLoad = &auth.InfluencerLoad{
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender:    "m",
+			Geo:       &misc.GeoRecord{},
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	// Force emails
+	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// This scrap should no longer be here since we
+	// signed up with it's email
+	// ForceEmail should have deleted it!
+	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
+	if r.Status != 400 {
+		t.Error("WTF Scrap still exists!!")
+	}
+
+	// Make sure other scraps still there!
+	r = rst.DoTesting(t, "GET", "/scrap/4", nil, &newSc)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if newSc.EmailAddress == "" {
+		t.Error("Empty scrap!")
+	}
+
+}
+
+func TestInfluencerEmail(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Create an influencer
+	inf := getSignupUserWithEmail("shahzilabid@gmail.com")
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender:    "m",
+			Geo:       &misc.GeoRecord{},
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Lets try forcing an email run
+	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Influencer's email ping setting is off.. they should have
+	// no email sent!
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if load.DealPing || load.LastEmail != 0 {
+		t.Error("Unexpected email values for influencer")
+	}
+
+	// Lets set this influencer to receive emails now!
+	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/true", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if !load.DealPing {
+		t.Error("Deal ping did not toggle!")
+	}
+
+	// Create some campaigns so the influencer gets an email!
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	for i := 1; i < 8; i++ {
+		cmp := common.Campaign{
+			Status:       true,
+			AdvertiserId: "4",
+			Budget:       float64(i * 10),
+			Name:         "The Day Walker " + strconv.Itoa(i),
+			Twitter:      true,
+			Gender:       "mf",
+			Link:         "blade.org",
+			Task:         "POST THAT DOPE SHIT " + strconv.Itoa(i) + " TIMES!",
+			Tags:         []string{"#mmmm"},
+			Whitelist: &common.TargetList{
+				Twitter: []string{"BreakingNews", "CNN"},
+			},
+		}
+		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+		if r.Status != 200 {
+			t.Error("Bad status code!")
+		}
+	}
+
+	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Should have an email now!
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if load.LastEmail == 0 {
+		t.Error("No email was sent wth!")
+	}
+
+	// Lets force email again and make sure a new email doesnt get sent
+	// since we haven't reached threshold yet
+	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	var newLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &newLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if load.LastEmail != newLoad.LastEmail {
+		t.Error("A new email was sent.. HOW?!")
+	}
+}
+
+func TestImages(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Create the campaign
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	cmp := common.Campaign{
+		AdvertiserId: adv.ExpID,
+		Budget:       10.5,
+		Name:         "The Day Walker",
+		Instagram:    true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Tags:         []string{"#mmmm"},
+		Whitelist: &common.TargetList{
+			Instagram: []string{"someguy"},
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Make sure the default image url was set
+	var load common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/1", nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if !strings.Contains(load.ImageURL, "/images/campaign/default") {
+		t.Error("Incorrect default image set!")
+	}
+
+	// HTTPTest doesn't use the port from sway config.. so lets account for that!
+	parts := strings.Split(load.ImageURL, "8080") // DIRTY HACK
+	if len(parts) != 2 {
+		t.Error("WTF MATE?")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Lets try hitting an image which doesnt exist
+	r = rst.DoTesting(t, "GET", "/images/campaign/default_dne.jpg", nil, nil)
+	if r.Status == 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Try uploading a bad image
+	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", smallImage, nil)
+	if r.Status != 400 {
+		t.Error("Bad status code!")
+	}
+
+	// Upload correct image
+	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", goodImage, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Make sure image url now correct
+	r = rst.DoTesting(t, "GET", "/campaign/1", nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if load.ImageURL == "" || strings.Contains(load.ImageURL, "default") {
+		t.Error("Incorrect image url!")
+	}
+
+	// make sure image url works
+	// HTTPTest doesn't use the port from sway config.. so lets account for that!
+	parts = strings.Split(load.ImageURL, "8080") // DIRTY HACK
+	if len(parts) != 2 {
+		t.Error("WTF MATE?")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Remove saved image (and indirectly check if it exists)!
+	err := os.Remove(".." + parts[1])
+	if err != nil {
+		t.Error("File does not exist!", ".."+parts[1])
+	}
 }
