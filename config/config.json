@@ -20,14 +20,17 @@
 		"user": "user",
 		"login": "login",
 		"token": "token",
-		"campaign": "campaign"
+		"campaign": "campaign",
+		"scrap": "scrap"
 	},
 
 	"mandrill": {
 		"apiKey": "Pc4PtpXLpGQr0iHjzUPCjg",
 		"subAccount":"SwayOps",
 		"fromEmail": "noreply@swayops.com",
-		"fromName": "SwayOps"
+		"fromName": "SwayOps",
+		"fromEmailReply": "nick@swayops.com",
+		"fromNameReply": "Nick Waken"
 	},
 
 	"youtube": {
@@ -61,10 +64,7 @@
 		"accessToken": "bs6HXJRhj4253EJCJNIpz013iA4TxmvIYzeLWszoEYoIZYB8b2",
 		"accessSecret": "wFZkVcPmMrL7yWrguxbkRIBrGkOiGa4nJbYGNbKMmbma0ZVP6A"
 	},
-
-	"dealTimeout": 14,
-	"engineUpdate": 4,
-	"statsInterval": 5,
-	"influencerTtl": 12,
-	"jsonXlsxPath": "./config/json2xlsx.py"
+	"jsonXlsxPath": "./config/json2xlsx.py",
+	"imagesDir": "/Users/shahzilabid/work/go/src/github.com/swayops/sway/images/",
+	"imageUrlPath": "images/"
 }

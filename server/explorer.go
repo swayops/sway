@@ -17,7 +17,11 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-var requiredHash = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement"}
+var (
+	requiredHash = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement"}
+	ONE_DAY      = int32(60 * 60 * 24)
+	DEAL_TIMEOUT = ONE_DAY * 14
+)
 
 func explore(srv *Server) error {
 	// Traverses active deals in our system and checks
@@ -27,9 +31,9 @@ func explore(srv *Server) error {
 		return err
 	}
 
-	// The influencer has X seconds to do the deal before it's put
+	// The influencer has 14 days to do the deal before it's put
 	// back into the pool
-	minTs := int32(time.Now().Unix()) - (60 * 60 * 24 * srv.Cfg.DealTimeout)
+	minTs := int32(time.Now().Unix()) - (DEAL_TIMEOUT)
 
 	for _, deal := range activeDeals {
 		// Go over all assigned deals in the platform

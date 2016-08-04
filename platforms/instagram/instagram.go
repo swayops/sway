@@ -47,7 +47,7 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 	// Used by an eventual ticker to update stats
 
 	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(in.LastUpdated, cfg.InfluencerTTL) {
+	if misc.WithinLast(in.LastUpdated, 12) {
 		return nil
 	}
 
@@ -66,7 +66,9 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 		in.AvgLikes = likes
 		in.AvgComments = cm
 		in.LatestPosts = posts
-		in.LastLocation = geo
+		if geo != nil {
+			in.LastLocation = geo
+		}
 	} else {
 		return err
 	}

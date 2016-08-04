@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -261,6 +263,15 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 }
 
 ///////// Campaigns /////////
+var DEFAULT_IMAGES = []string{
+	"default_1.jpg",
+	"default_2.jpg",
+	"default_3.jpg",
+	"default_4.jpg",
+	"default_5.jpg",
+	"default_6.jpg",
+}
+
 func postCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -299,7 +310,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		// cuser is always an advertiser
-		cmp.AdvertiserId, cmp.AgencyId = cuser.ID, cuser.ParentID
+		cmp.AdvertiserId, cmp.AgencyId, cmp.Company = cuser.ID, cuser.ParentID, cuser.Name
 
 		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
 			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
@@ -334,6 +345,12 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
 				return
+			}
+
+			// Set the default image URL for starters to a random default image
+			// OVERWRITTEN when uploadImage called
+			if cmp.ImageURL == "" {
+				cmp.ImageURL = getImageUrl(s, "campaign", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
 			}
 
 			// Create their budget key
@@ -720,6 +737,46 @@ func setGender(s *Server) gin.HandlerFunc {
 			}
 
 			inf.Gender = gender
+
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func setReminder(s *Server) gin.HandlerFunc {
+	// Sets the gender for the influencer id
+	return func(c *gin.Context) {
+		state := strings.ToLower(c.Params.ByName("state"))
+
+		var reminder bool
+		if state == "t" || state == "true" {
+			reminder = true
+		} else if state == "f" || state == "false" {
+			reminder = false
+		} else {
+			c.JSON(400, misc.StatusErr("Please submit a valid reminder state"))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+			user  = auth.GetCtxUser(c)
+		)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			inf.DealPing = reminder
 
 			return user.StoreWithData(s.auth, tx, inf)
 		}); err != nil {
@@ -1725,5 +1782,252 @@ func userProfile(srv *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, http.StatusNotFound, auth.ErrInvalidUserID)
 		}
 
+	}
+}
+
+// Scraps
+
+func postScrap(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			sc  influencer.Scrap
+			err error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&sc); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if len(sc.TwitterID)+len(sc.FacebookID)+len(sc.InstagramID)+len(sc.YouTubeID) == 0 {
+			c.JSON(400, misc.StatusErr("Scrap must have atleast one social network"))
+			return
+		}
+
+		if len(sc.TwitterID) > 0 {
+			sc.TwitterURL = "https://twitter.com/" + sc.TwitterID
+		}
+
+		if len(sc.FacebookID) > 0 {
+			sc.FacebookURL = "https://www.facebook.com/" + sc.FacebookID
+		}
+
+		if len(sc.InstagramID) > 0 {
+			sc.InstagramURL = "https://www.instagram.com/" + sc.InstagramID
+		}
+
+		if len(sc.YouTubeID) > 0 {
+			sc.YouTubeURL = "https://www.youtube.com/user/" + sc.YouTubeID
+		}
+
+		sc.EmailAddress = misc.TrimEmail(sc.EmailAddress)
+
+		// Save the Scrap
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			if sc.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Scrap); err != nil {
+				return
+			}
+
+			var (
+				b []byte
+			)
+
+			if b, err = json.Marshal(sc); err != nil {
+				return err
+			}
+
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(sc.Id))
+	}
+}
+
+func putScrap(s *Server) gin.HandlerFunc {
+	// Updates info for the scrap (called via admin dash)
+	return func(c *gin.Context) {
+		var (
+			b   []byte
+			upd influencer.Scrap
+			err error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if len(upd.Categories) == 0 {
+			c.JSON(400, misc.StatusErr("Please pass valid categories"))
+			return
+		}
+		upd.Categories = common.LowerSlice(upd.Categories)
+		for _, cat := range upd.Categories {
+			if _, ok := common.CATEGORIES[cat]; !ok {
+				c.JSON(400, "Invalid category!")
+				return
+			}
+		}
+
+		if upd.Gender != "m" && upd.Gender != "f" {
+			c.JSON(400, misc.StatusErr("Please pass a valid gender!"))
+			return
+		}
+
+		// If a geo is passed and it doesnt have city + country..
+		if upd.Geo != nil && upd.Geo.City == "" && upd.Geo.Country == "" {
+			c.JSON(400, misc.StatusErr("Please pass a valid geo!"))
+			return
+		}
+
+		var (
+			scrapId = c.Param("id")
+			scrap   influencer.Scrap
+		)
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).Get([]byte(scrapId))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &scrap); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling scrap"))
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			scrap.Geo = upd.Geo
+			scrap.Gender = upd.Gender
+			scrap.Categories = upd.Categories
+			if b, err = json.Marshal(scrap); err != nil {
+				return err
+			}
+
+			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Scrap, scrap.Id, b)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(scrapId))
+	}
+}
+
+func getScrap(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			scrapId = c.Param("id")
+			scrap   influencer.Scrap
+			b       []byte
+			err     error
+		)
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).Get([]byte(scrapId))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &scrap); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling scrap"))
+			return
+		}
+
+		c.JSON(200, scrap)
+	}
+}
+
+var ErrLimit = errors.New("Reached scrap limit!")
+
+func getIncompleteScraps(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var scraps []*influencer.Scrap
+		s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
+				var sc influencer.Scrap
+				if err := json.Unmarshal(v, &sc); err != nil {
+					log.Println("error when unmarshalling scrap", string(v))
+					return nil
+				}
+				if sc.Geo == nil && sc.Gender == "" && len(sc.Categories) == 0 {
+					scraps = append(scraps, &sc)
+				}
+
+				if len(scraps) >= 10 {
+					return ErrLimit
+				}
+				return
+			})
+			return nil
+		})
+		c.JSON(200, scraps)
+	}
+}
+
+func forceEmail(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := emailDeals(s)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func uploadImage(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var upd UploadImage
+		if err := json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		id := c.Param("id")
+		if id == "" {
+			c.JSON(400, misc.StatusErr("Invalid ID"))
+			return
+		}
+
+		bucket := c.Param("bucket")
+		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, bucket, id)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var imageURL string
+		if bucket == "campaign" {
+			var (
+				cmp common.Campaign
+				b   []byte
+			)
+			// Save image URL in campaign
+			s.db.View(func(tx *bolt.Tx) error {
+				b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id))
+				return nil
+			})
+
+			if err = json.Unmarshal(b, &cmp); err != nil {
+				c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+				return
+			}
+
+			imageURL = getImageUrl(s, "campaign", filename)
+			cmp.ImageURL = imageURL
+
+			// Save the Campaign
+			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				return saveCampaign(tx, &cmp, s)
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+		}
+		c.JSON(200, UploadImage{ImageURL: imageURL})
 	}
 }

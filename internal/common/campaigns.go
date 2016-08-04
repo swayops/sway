@@ -19,6 +19,11 @@ type Campaign struct {
 	AdvertiserId string `json:"advertiserId"`
 	AgencyId     string `json:"agencyId"`
 
+	// Image URL for the campaign
+	ImageURL string `json:"imageUrl"`
+
+	Company string `json:"company,omitempty"`
+
 	Status   bool `json:"status"`
 	Approved bool `json:"approved"` // Set to false when admin receives all perks (or there are no perks)
 

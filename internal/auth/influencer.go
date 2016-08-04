@@ -91,9 +91,12 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		inf.Gender,
 		inf.InviteCode,
 		u.ParentID,
+		u.Email,
 		inf.Categories,
 		inf.Geo,
 		inf.Address,
+		inf.DealPing,
+		int32(u.CreatedAt), // Seconds!
 		a.cfg)
 
 	if err != nil {
