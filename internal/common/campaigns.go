@@ -25,7 +25,7 @@ type Campaign struct {
 	Company string `json:"company,omitempty"`
 
 	Status   bool `json:"status"`
-	Approved bool `json:"approved"` // Set to false when admin receives all perks (or there are no perks)
+	Approved bool `json:"approved"` // Set to true when admin receives all perks (or there are no perks)
 
 	// Social Media Post/User Requirements
 	Tags    []string         `json:"hashtags,omitempty"`
