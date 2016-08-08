@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/misc"
 )
 
@@ -97,10 +98,10 @@ type Caption struct {
 	Msg string `json:"text"`
 }
 
-func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *misc.GeoRecord, error) {
+func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo.GeoRecord, error) {
 	// Info for last 10 posts
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=10
-	var latestGeo *misc.GeoRecord
+	var latestGeo *geo.GeoRecord
 
 	posts := []*Post{}
 	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.AccessToken)
@@ -121,19 +122,21 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *mis
 
 	var (
 		likes, comments float64
-		published       int64
+		published       int32
+		raw             int64
 	)
 
 	// Last 10 posts
 	for _, post := range media.Data {
-		published, err = strconv.ParseInt(post.Published, 10, 64)
+		raw, err = strconv.ParseInt(post.Published, 10, 64)
 		if err != nil {
 			continue
 		}
+		published = int32(raw)
 
 		p := &Post{
 			Id:          post.Id,
-			Published:   int32(published),
+			Published:   published,
 			Hashtags:    post.Tags,
 			PostURL:     post.URL,
 			LastUpdated: int32(time.Now().Unix()),
@@ -152,10 +155,10 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *mis
 		}
 
 		if post.Location != nil && post.Location.Latitude != 0 && post.Location.Longtitude != 0 {
-			geo := misc.GetGeoFromCoords(post.Location.Latitude, post.Location.Longtitude, published)
-			p.Location = geo
+			inGeo := geo.GetGeoFromCoords(post.Location.Latitude, post.Location.Longtitude, published)
+			p.Location = inGeo
 			if latestGeo == nil || published > latestGeo.Timestamp {
-				latestGeo = geo
+				latestGeo = inGeo
 			}
 		}
 

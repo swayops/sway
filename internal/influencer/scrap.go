@@ -9,6 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
@@ -33,9 +34,9 @@ type Scrap struct {
 	YouTubeURL   string `json:"youtubeUrl,omitempty"`
 
 	// Filled by admin
-	Geo        *misc.GeoRecord `json:"geo,omitempty"`
-	Gender     string          `json:"gender,omitempty"`
-	Categories []string        `json:"categories,omitempty"`
+	Geo        *geo.GeoRecord `json:"geo,omitempty"`
+	Gender     string         `json:"gender,omitempty"`
+	Categories []string       `json:"categories,omitempty"`
 
 	// Timestamp for each time we send this person an email
 	SentEmails []*Email `json:"sentEmails,omitempty"`
@@ -118,6 +119,7 @@ func (sc *Scrap) Email(campaigns *common.Campaigns, sDb, budgetDb *bolt.DB, cfg 
 		return nil
 	}
 
+	// Indicates which campaigns we've emailed the scrap
 	var cids []string
 	for _, d := range ordered {
 		cids = append(cids, d.CampaignId)

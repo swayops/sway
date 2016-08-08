@@ -8,6 +8,7 @@ import (
 	"github.com/mrjones/oauth"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/misc"
 )
 
@@ -33,11 +34,11 @@ type Twitter struct {
 	Followers     float64 `json:"followers,omitempty"` // float64 for GetScore equation
 	FollowerDelta float64 `json:"fDelta,omitempty"`    // Follower delta since last UpdateData run
 
-	LastLocation *misc.GeoRecord `json:"geo,omitempty"`
-	LastTweetId  string          `json:"lastTw,omitempty"`      // the id of the last tweet
-	LatestTweets Tweets          `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
-	LastUpdated  int32           `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float64         `json:"score,omitempty"`
+	LastLocation *geo.GeoRecord `json:"geo,omitempty"`
+	LastTweetId  string         `json:"lastTw,omitempty"`      // the id of the last tweet
+	LatestTweets Tweets         `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
+	LastUpdated  int32          `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
+	Score        float64        `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
 }
@@ -51,13 +52,13 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 	if tw.client, err = getClient(cfg); err != nil {
 		return
 	}
-	err = tw.UpdateData(cfg)
+	err = tw.UpdateData(cfg, cfg.Sandbox)
 	return
 }
 
-func (tw *Twitter) UpdateData(cfg *config.Config) error {
-	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(tw.LastUpdated, 12) {
+func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
+	// If we already updated in the last 10-15 hours, skip
+	if misc.WithinLast(tw.LastUpdated, misc.Random(10, 15)) {
 		return nil
 	}
 
@@ -81,7 +82,12 @@ func (tw *Twitter) UpdateData(cfg *config.Config) error {
 	}
 	tw.Followers = nf
 
-	tw.LatestTweets = tws
+	// Latest posts are only used when there is an active deal!
+	if savePosts {
+		tw.LatestTweets = tws
+	} else {
+		tw.LatestTweets = nil
+	}
 	tw.LastTweetId = tws.LastId()
 	tw.Score = tw.GetScore()
 	tw.LastLocation = tws.LatestLocation()

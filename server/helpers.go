@@ -303,18 +303,12 @@ func sanitizeMention(str string) string {
 	return strings.ToLower(raw)
 }
 
-func getAllInfluencers(s *Server, checksOnly bool) []*auth.Influencer {
+func getAllInfluencers(s *Server) []*auth.Influencer {
 	var influencers []*auth.Influencer
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-				if checksOnly {
-					if inf.RequestedCheck {
-						influencers = append(influencers, inf)
-					}
-				} else {
-					influencers = append(influencers, inf)
-				}
+				influencers = append(influencers, inf)
 			}
 			return nil
 		})

@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
-	"github.com/swayops/sway/misc"
 )
 
-var DefaultGeo = &misc.GeoRecord{City: "Toronto", Country: "Canada"}
+var DefaultGeo = &geo.GeoRecord{City: "Toronto", Country: "Canada"}
 
 func TestFacebook(t *testing.T) {
 	// Complete once API has been built out

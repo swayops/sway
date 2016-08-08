@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/misc"
 )
 
@@ -18,7 +19,7 @@ type Instagram struct {
 	Followers     float64 `json:"followers,omitempty"`
 	FollowerDelta float64 `json:"fDelta,omitempty"` // Follower delta since last UpdateData run
 
-	LastLocation *misc.GeoRecord `json:"geo,omitempty"` // All locations since last update
+	LastLocation *geo.GeoRecord `json:"geo,omitempty"` // All locations since last update
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
@@ -39,15 +40,15 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 		UserId:   userId,
 	}
 
-	err = in.UpdateData(cfg)
+	err = in.UpdateData(cfg, cfg.Sandbox)
 	return in, err
 }
 
-func (in *Instagram) UpdateData(cfg *config.Config) error {
+func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// Used by an eventual ticker to update stats
 
-	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(in.LastUpdated, 12) {
+	// If we already updated in the last 21-26 hours, skip
+	if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
 		return nil
 	}
 
@@ -65,7 +66,14 @@ func (in *Instagram) UpdateData(cfg *config.Config) error {
 	if likes, cm, posts, geo, err := getPostInfo(in.UserId, cfg); err == nil {
 		in.AvgLikes = likes
 		in.AvgComments = cm
-		in.LatestPosts = posts
+
+		// Latest posts are only used when there is an active deal!
+		if savePosts {
+			in.LatestPosts = posts
+		} else {
+			in.LatestPosts = nil
+		}
+
 		if geo != nil {
 			in.LastLocation = geo
 		}
