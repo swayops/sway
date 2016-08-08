@@ -11,7 +11,8 @@ import (
 
 const (
 	lobEndpoint = "https://api.lob.com/v1/checks"
-	lobAuth     = "test_08d860361c920163e4fba655f2de5131cfb"
+	lobTestAuth = "test_08d860361c920163e4fba655f2de5131cfb"
+	lobProdAuth = "test_08d860361c920163e4fba655f2de5131cfb"
 	bankAcct    = "bank_15a6b397e90cd9b"
 	fromAddr    = "adr_7261cc34ecda09af"
 
@@ -42,7 +43,7 @@ type Track struct {
 	Id string `json:"id"`
 }
 
-func CreateCheck(name string, addr *AddressLoad, payout float64) (*Check, error) {
+func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (*Check, error) {
 	if addr == nil || addr.AddressOne == "" {
 		return nil, ErrAddr
 	}
@@ -76,7 +77,12 @@ func CreateCheck(name string, addr *AddressLoad, payout float64) (*Check, error)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(lobAuth, "")
+	if sandbox {
+		req.SetBasicAuth(lobTestAuth, "")
+	} else {
+		req.SetBasicAuth(lobProdAuth, "")
+	}
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -119,7 +125,7 @@ func VerifyAddress(addr *AddressLoad) (*AddressLoad, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(lobAuth, "")
+	req.SetBasicAuth(lobProdAuth, "")
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)

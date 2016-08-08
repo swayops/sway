@@ -7,7 +7,10 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/swayops/sway/internal/geo"
+
 	"github.com/missionMeteora/mandrill"
+	"github.com/oschwald/maxminddb-golang"
 )
 
 var (
@@ -27,6 +30,13 @@ func New(loc string) (*Config, error) {
 		log.Println("Config error", err)
 		return nil, err
 	}
+
+	c.GeoDB, err = geo.NewGeoDB(c.GeoLocation)
+	if err != nil {
+		log.Println("Config error", err)
+		return nil, err
+	}
+
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
 	return &c, nil
@@ -43,6 +53,9 @@ type Config struct {
 	ReportingDBName string `json:"reportingDbName"`
 	ReportingBucket string `json:"reportingBucket"`
 	AuthDBName      string `json:"authDbName"`
+
+	GeoLocation string            `json:"geoLoc"`
+	GeoDB       *maxminddb.Reader `json:"geoDb"`
 
 	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
 	APIPath   string `json:"apiPath"`

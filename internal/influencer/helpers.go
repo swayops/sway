@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-const dateFormat = "%d-%02d-%02d"
+const dateFormat = "%d-%02d"
 
 func getDate() string {
 	return getDateFromTime(time.Now().UTC())
@@ -16,7 +16,6 @@ func getDateFromTime(t time.Time) string {
 		dateFormat,
 		t.Year(),
 		t.Month(),
-		t.Day(),
 	)
 }
 

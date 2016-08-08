@@ -10,6 +10,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -27,12 +28,14 @@ type InfluencerLoad struct {
 	TwitterId   string `json:"twitter,omitempty"`
 	YouTubeId   string `json:"youtube,omitempty"`
 
-	InviteCode string          `json:"inviteCode,omitempty"` // Encoded string showing talent agency id
-	Geo        *misc.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
-	Gender     string          `json:"gender,omitempty"`
-	Categories []string        `json:"categories,omitempty"`
+	InviteCode string         `json:"inviteCode,omitempty"` // Encoded string showing talent agency id
+	Geo        *geo.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
+	Gender     string         `json:"gender,omitempty"`
+	Categories []string       `json:"categories,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
+
+	IP string `json:"ip,omitempty"` // Used to generate location
 
 	DealPing bool `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
 }
@@ -57,14 +60,15 @@ type Influencer struct {
 	YouTube          *youtube.YouTube     `json:"youtube,omitempty"`
 	LastSocialUpdate int32                `json:"lastSocialUpdate,omitempty"`
 
-	// Used for the API exclusively (in the influencer's Clean method)
+	// Used for the API exclusively (set in the influencer's Clean method)
+	// Used for the getAllInfluencers* methods to provide concise structs
 	FbUsername      string `json:"fbUsername,omitempty"`
 	InstaUsername   string `json:"instaUsername,omitempty"`
 	TwitterUsername string `json:"twitterUsername,omitempty"`
 	YTUsername      string `json:"youtubeUsername,omitempty"`
 
-	// User inputted geo (should be ingested by the app)
-	Geo *misc.GeoRecord `json:"geo,omitempty"`
+	// Set and created by the IP
+	Geo *geo.GeoRecord `json:"geo,omitempty"`
 
 	// "m" or "f" or "unicorn" lol
 	Gender string `json:"gender,omitempty"`
@@ -86,7 +90,7 @@ type Influencer struct {
 	CurrentRep float64            `json:"rep,omitempty"`
 
 	PendingPayout  float64 `json:"pendingPayout,omitempty"`
-	RequestedCheck bool    `json:"requestedCheck,omitempty"`
+	RequestedCheck int32   `json:"requestedCheck,omitempty"`
 	// Last check that was mailed
 	LastCheck int32 `json:"lastCheck,omitempty"`
 	// Lob check ids mailed out to this influencer
@@ -101,11 +105,10 @@ type Influencer struct {
 	LastEmail int32 `json:"lastEmail,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email string, cats []string, geo *misc.GeoRecord, address *lob.AddressLoad, dealPing bool, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, dealPing bool, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
-		Geo:          geo,
 		Gender:       gender,
 		Categories:   cats,
 		DealPing:     dealPing,
@@ -146,6 +149,10 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 	err = inf.NewYouTube(ytId, cfg)
 	if err != nil {
 		return inf, err
+	}
+
+	if ip != "" {
+		inf.Geo = geo.GetGeoFromIP(cfg.GeoDB, ip)
 	}
 
 	inf.setSwayRep()
@@ -202,44 +209,42 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	// Used by sway engine to periodically update influencer data
 
 	// Always allow updates if they have an active deal
+	// i.e. skip this if statement
 	if len(inf.ActiveDeals) == 0 {
-		// Don't update social media stats for people with no active deals
-		// and that have been updated in the last 14 days
-		if misc.WithinLast(inf.LastSocialUpdate, 24*14) {
+		// If you've been updated in the last 14-22 days and
+		// have no active deals.. screw you!
+		// NO SOUP FOR YOU!
+		// NOTE: The random integer is so that we don't update
+		// a large group of influencers at the same time (they become
+		// in sync due to the same len check).
+		if misc.WithinLast(inf.LastSocialUpdate, 24*misc.Random(14, 21)) {
 			return nil
 		}
-
-		var latest int32
-		for _, d := range inf.CompletedDeals {
-			if d.Completed > latest {
-				latest = d.Completed
-			}
-		}
-		// This person has not done a deal in the last 60
-		// days and is not currently in a deal.. skip!
-		if len(inf.CompletedDeals) > 0 && misc.WithinLast(latest, 24*60) {
-			return nil
-		}
-
 	}
 
+	// We only traverse over latest posts when
+	// looking for a satisfied deal.. so if we're just getting
+	// stats for influencer who have no active deals..
+	// we don't need to save all those massive post lists..
+	// hence why we have the savePosts bool!
+	savePosts := len(inf.ActiveDeals) > 0
 	if inf.Facebook != nil {
-		if err = inf.Facebook.UpdateData(cfg); err != nil {
+		if err = inf.Facebook.UpdateData(cfg, savePosts); err != nil {
 			return err
 		}
 	}
 	if inf.Instagram != nil {
-		if err = inf.Instagram.UpdateData(cfg); err != nil {
+		if err = inf.Instagram.UpdateData(cfg, savePosts); err != nil {
 			return err
 		}
 	}
 	if inf.Twitter != nil {
-		if err = inf.Twitter.UpdateData(cfg); err != nil {
+		if err = inf.Twitter.UpdateData(cfg, savePosts); err != nil {
 			return err
 		}
 	}
 	if inf.YouTube != nil {
-		if err = inf.YouTube.UpdateData(cfg); err != nil {
+		if err = inf.YouTube.UpdateData(cfg, savePosts); err != nil {
 			return err
 		}
 	}
@@ -291,6 +296,44 @@ func (inf *Influencer) GetPlatformId(deal *common.Deal) string {
 		return inf.YouTube.UserName
 	}
 	return ""
+}
+
+func (inf *Influencer) GetFollowers() int64 {
+	var fw int64
+	if inf.Facebook != nil {
+		fw += int64(inf.Facebook.Followers)
+	}
+	if inf.Instagram != nil {
+		fw += int64(inf.Instagram.Followers)
+	}
+	if inf.Twitter != nil {
+		fw += int64(inf.Twitter.Followers)
+	}
+	if inf.YouTube != nil {
+		fw += int64(inf.YouTube.Subscribers)
+	}
+	return fw
+}
+
+func (inf *Influencer) GetPostURLs(ts int32) []string {
+	var urls []string
+
+	for _, deal := range inf.CompletedDeals {
+		if ts != 0 && deal.Completed < ts {
+			continue
+		}
+		if deal.Tweet != nil {
+			urls = append(urls, deal.Tweet.PostURL)
+		} else if deal.Facebook != nil {
+			urls = append(urls, deal.Facebook.PostURL)
+		} else if deal.Instagram != nil {
+			urls = append(urls, deal.Instagram.PostURL)
+		} else if deal.YouTube != nil {
+			urls = append(urls, deal.YouTube.PostURL)
+		}
+	}
+
+	return urls
 }
 
 func (inf *Influencer) setSwayRep() {
@@ -386,6 +429,7 @@ func (inf *Influencer) Clean() *Influencer {
 		inf.YTUsername = inf.YouTube.UserName
 		inf.YouTube = nil
 	}
+	// For this data.. hit getDealsCompleted/Assigned handlers!
 	inf.ActiveDeals = nil
 	inf.CompletedDeals = nil
 	inf.Rep = nil
@@ -393,28 +437,39 @@ func (inf *Influencer) Clean() *Influencer {
 	return inf
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedDeal string, geo *misc.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
+	if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
+		return inf.Instagram.LastLocation
+	} else if inf.Twitter != nil && inf.Twitter.LastLocation != nil {
+		return inf.Twitter.LastLocation
+	}
+
+	if inf.Address != nil {
+		// Validity already been checked for state
+		// and country in the setAddress handler
+		return &geo.GeoRecord{
+			State:   inf.Address.State,
+			Country: inf.Address.Country,
+			Source:  "address",
+		}
+	}
+
+	if inf.Geo != nil {
+		return inf.Geo
+	}
+
+	return nil
+}
+
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	var (
 		infDeals []*common.Deal
 	)
 
-	if geo == nil && !skipGeo {
-		if inf.Geo != nil {
-			geo = inf.Geo
-		} else if inf.Address != nil {
-			geo = &misc.GeoRecord{
-				City:    inf.Address.City,
-				Country: inf.Address.Country,
-			}
-		} else {
-			if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
-				geo = inf.Instagram.LastLocation
-			} else if inf.Twitter != nil && inf.Twitter.LastLocation != nil {
-				geo = inf.Twitter.LastLocation
-			}
-		}
+	if location == nil && !skipGeo {
+		location = inf.GetLatestGeo()
 	}
 
 	for _, cmp := range campaigns.GetStore() {
@@ -474,7 +529,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Match Campaign Geo Targeting with Influencer Geo //
-		if !misc.IsGeoMatch(cmp.Geos, geo) {
+		if !geo.IsGeoMatch(cmp.Geos, location) {
 			continue
 		}
 

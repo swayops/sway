@@ -76,7 +76,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// Is there a newBudget (pending) value (i.e. a lower budget)?
 			if pending > 0 {
 				// The budget was indeed lowered last month!
-				// Use this as the new daily budget
+				// Use this as the new monthly budget
 				monthlyBudget = pending
 			}
 		}

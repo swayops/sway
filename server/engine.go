@@ -87,7 +87,7 @@ func run(srv *Server) error {
 
 func updateInfluencers(s *Server) error {
 	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg, getActiveAdvertisers(s), getActiveAdAgencies(s))
-	influencers := getAllInfluencers(s, false)
+	influencers := getAllInfluencers(s)
 
 	// Traverses all influencers and updates their social media stats
 	for _, inf := range influencers {
@@ -200,7 +200,7 @@ func depleteBudget(s *Server) error {
 
 func auditTaxes(srv *Server) {
 	var sigsFound int32
-	for _, inf := range getAllInfluencers(srv, false) {
+	for _, inf := range getAllInfluencers(srv) {
 		if inf.SignatureId != "" && !inf.HasSigned {
 			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
 			if err != nil {
@@ -302,7 +302,9 @@ func emailDeals(s *Server) error {
 				return nil
 			}
 			signedUp := emailMap[sc.EmailAddress]
-			if signedUp {
+			// Delete the user if they've been sent 3 emails now
+			// OR they've signed up as an influencer
+			if signedUp || len(sc.SentEmails) == 3 {
 				deletions += 1
 				return misc.DelBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id)
 			} else {
