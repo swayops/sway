@@ -749,7 +749,7 @@ func setAddress(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cleanAddr, err := lob.VerifyAddress(&addr)
+		cleanAddr, err := lob.VerifyAddress(&addr, s.Cfg.Sandbox)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return

@@ -117,7 +117,7 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 	}
 
 	if address != nil {
-		addr, err := lob.VerifyAddress(address)
+		addr, err := lob.VerifyAddress(address, cfg.Sandbox)
 		if err != nil {
 			return nil, err
 		}

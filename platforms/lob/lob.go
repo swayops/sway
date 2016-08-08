@@ -108,7 +108,7 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-func VerifyAddress(addr *AddressLoad) (*AddressLoad, error) {
+func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 	if addr == nil || addr.AddressOne == "" {
 		return nil, ErrAddr
 	}
@@ -125,7 +125,13 @@ func VerifyAddress(addr *AddressLoad) (*AddressLoad, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(lobProdAuth, "")
+
+	if sandbox {
+		req.SetBasicAuth(lobTestAuth, "")
+	} else {
+		req.SetBasicAuth(lobProdAuth, "")
+	}
+
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)

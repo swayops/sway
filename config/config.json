@@ -14,7 +14,7 @@
 
 	"authDbName": "auth",
 
-	"geoLoc": "/Users/shahzilabid/work/go/src/github.com/swayops/sway/config/GeoIP2-City.mmdb",
+	"geoLoc": "../config/GeoIP2-City.mmdb",
 
 	"bucket": {
 		"user": "user",
