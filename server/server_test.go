@@ -13,6 +13,7 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
@@ -141,7 +142,7 @@ func TestTalentAgencyChain(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:    "unicorn",
-			Geo:       &misc.GeoRecord{},
+			Geo:       &geo.GeoRecord{},
 			TwitterId: "justinbieber",
 		},
 	}
@@ -169,11 +170,9 @@ func TestTalentAgencyChain(t *testing.T) {
 		// update the influencer and check if the update worked
 		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
 		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
-		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"business"},
-			"geo":        M{"city": "hell"},
 			"twitter":    M{"id": "SwayOps_com"},
 		}},
 
@@ -252,7 +251,7 @@ func TestNewInfluencer(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:      "unicorn",
-			Geo:         &misc.GeoRecord{},
+			Geo:         &geo.GeoRecord{},
 			TwitterId:   "justinbieber",
 			InstagramId: "justinbieber",
 		},
@@ -262,7 +261,7 @@ func TestNewInfluencer(t *testing.T) {
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender: "purple",
-			Geo:    &misc.GeoRecord{},
+			Geo:    &geo.GeoRecord{},
 		},
 	}
 
@@ -273,10 +272,8 @@ func TestNewInfluencer(t *testing.T) {
 		// update
 		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
 		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
-		{"POST", "/setGeo/" + inf.ExpID, misc.GeoRecord{City: "hell"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
-			"geo":        M{"city": "hell"},
 			"categories": []string{"business"},
 			"twitter":    M{"id": "SwayOps_com"},
 		}},
@@ -285,7 +282,6 @@ func TestNewInfluencer(t *testing.T) {
 		{"GET", "/setPlatform/" + inf.ExpID + "/facebook/" + "justinbieber", nil, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
-			"geo":        M{"city": "hell"},
 			"categories": []string{"business"},
 			"twitter":    M{"id": "SwayOps_com"},
 			"facebook":   M{"id": "justinbieber"},
@@ -321,7 +317,7 @@ func TestInviteCode(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:     "unicorn",
-			Geo:        &misc.GeoRecord{},
+			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "justinbieber",
 		},
@@ -427,7 +423,7 @@ func TestDeals(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:     "m",
-			Geo:        &misc.GeoRecord{},
+			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "breakingnews",
 		},
@@ -505,7 +501,7 @@ func TestDeals(t *testing.T) {
 	newInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:     "m",
-			Geo:        &misc.GeoRecord{},
+			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "CNN",
 			Categories: []string{"business"},
@@ -657,6 +653,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	}
 	if len(load.CompletedDeals) != 1 {
 		t.Error("Could not find completed deal!")
+		return
 	}
 
 	doneDeal := load.CompletedDeals[0]
@@ -749,6 +746,7 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		if m.Agency == 0 {
 			t.Error("No agency payout!")
 		}
+
 		// Should be 10% as stated earlier on talent agency initialization
 		if agencyFee := m.Agency / (m.Agency + m.Influencer); agencyFee > 0.11 || agencyFee < 0.09 {
 			t.Error("Unexpected agency fee", agencyFee)
@@ -803,7 +801,7 @@ func TestTaxes(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{             // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:     "m",
-			Geo:        &misc.GeoRecord{},
+			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "breakingnews",
 			Address: &lob.AddressLoad{
@@ -888,7 +886,7 @@ func TestPerks(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:     "m",
-			Geo:        &misc.GeoRecord{},
+			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "breakingnews",
 			Address: &lob.AddressLoad{
@@ -1360,7 +1358,7 @@ func TestScraps(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:    "m",
-			Geo:       &misc.GeoRecord{},
+			Geo:       &geo.GeoRecord{},
 			TwitterId: "cnn",
 		},
 	}
@@ -1409,7 +1407,7 @@ func TestInfluencerEmail(t *testing.T) {
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Gender:    "m",
-			Geo:       &misc.GeoRecord{},
+			Geo:       &geo.GeoRecord{},
 			TwitterId: "cnn",
 		},
 	}
@@ -1622,5 +1620,421 @@ func TestImages(t *testing.T) {
 	err := os.Remove(".." + parts[1])
 	if err != nil {
 		t.Error("File does not exist!", ".."+parts[1])
+	}
+}
+
+func TestInfluencerGeo(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			IP:        "72.229.28.185", // NYC
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Influencer should have a geo set using the IP
+	var load geo.GeoRecord
+	r = rst.DoTesting(t, "GET", "/getLatestGeo/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if load.Source != "ip" {
+		t.Error("Bad source for geo!")
+	}
+
+	if load.State != "NY" || load.Country != "US" {
+		t.Error("Incorrect geo set using IP!")
+	}
+
+	// Lets update the address for the influencer now!
+	addr := &lob.AddressLoad{
+		AddressOne: "8 Saint Elias",
+		City:       "Trabuco Canyon",
+		State:      "CAlifornia",
+		Country:    "US",
+	}
+
+	r = rst.DoTesting(t, "POST", "/setAddress/"+inf.ExpID, addr, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Influencer should have a geo set using the address
+	r = rst.DoTesting(t, "GET", "/getLatestGeo/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if load.Source != "address" {
+		t.Error("Bad source for geo!")
+	}
+
+	if load.State != "CA" || load.Country != "US" {
+		t.Error("Incorrect geo set using IP!")
+	}
+
+	// Create a campaign with bad geo
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Bad geo!
+	fakeGeo := []*geo.GeoRecord{
+		&geo.GeoRecord{State: "ASDFASDF", Country: "US"},
+		&geo.GeoRecord{State: "ON", Country: "CA"},
+		&geo.GeoRecord{Country: "GB"},
+	}
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: "4",
+		Budget:       10,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+		Whitelist: &common.TargetList{
+			Twitter: []string{"BreakingNews", "CNN"},
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status == 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Lets try creating a campaign with a non-US country
+	// trying to do state targeting!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "ON", Country: "GB"},
+	}
+	cmp.Geos = fakeGeo
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status == 200 {
+		t.Error("Bad status code!")
+	}
+
+	// All correct geo.. lets try creating a proper campaign now!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+		&geo.GeoRecord{State: "ON", Country: "CA"},
+		&geo.GeoRecord{Country: "GB"},
+	}
+	cmp.Geos = fakeGeo
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Check to make sure geos in campaign all good!
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/19", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(cmpLoad.Geos) != 3 {
+		t.Error("Unexpected number of geos!")
+	}
+
+	// Update campaign to have bad geo.. Should reject!
+	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
+	r = rst.DoTesting(t, "PUT", "/campaign/19", cmpUpdateBad, nil)
+	if r.Status == 200 {
+		t.Error("Unexpected status code!")
+	}
+
+	// Lets see if our California influencer gets a deal with this campaign!
+	// They should!
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	deals = getDeals("19", deals)
+	if len(deals) == 0 {
+		t.Error("Unexpected number of deals.. should have atleast one!")
+	}
+
+	// Update campaign with geo that doesnt match our California influencer!
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
+	r = rst.DoTesting(t, "PUT", "/campaign/19", cmpUpdateGood, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/19", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(cmpLoad.Geos) != 2 {
+		t.Error("Unexpected number of geos!")
+	}
+
+	// Influencer should no longer get a deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	deals = getDeals("19", deals)
+	if len(deals) != 0 {
+		t.Error("Unexpected number of deals!")
+	}
+
+	// Lets try a UK user who should get a deal!
+	// Create a UK influencer
+	ukInf := getSignupUser()
+	ukInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			IP:        "131.228.17.26", // London
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &ukInf, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Influencer should get a deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+ukInf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	deals = getDeals("19", deals)
+	if len(deals) == 0 {
+		t.Error("Unexpected number of deals!")
+	}
+}
+
+func TestChecks(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender:    "m",
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "justinbieber",
+			Address: &lob.AddressLoad{
+				AddressOne: "8 Saint Elias",
+				City:       "Trabuco Canyon",
+				State:      "CA",
+				Country:    "US",
+			},
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// Do multiple deals
+	for i := 0; i < 8; i++ {
+		doDeal(rst, t, inf.ExpID)
+	}
+
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(load.CompletedDeals) != 8 {
+		t.Error("Unexpected numnber of completed deals!")
+	}
+
+	// Lets do a get for pending checks.. should be none since no infs have
+	// requested yet
+	var checkInfs []*GreedyInfluencer
+	r = rst.DoTesting(t, "GET", "/getPendingChecks", nil, &checkInfs)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(checkInfs) > 0 {
+		t.Error("Unexpected number of check requested influencers!")
+	}
+
+	// request a check!
+	r = rst.DoTesting(t, "GET", "/requestCheck/"+inf.ExpID+"?skipTax=1", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/getPendingChecks", nil, &checkInfs)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(checkInfs) != 1 {
+		t.Error("Unexpected number of check requested influencers!")
+	}
+
+	if checkInfs[0].Id != inf.ExpID {
+		t.Error("Wrong influencer ID!")
+	}
+
+	if len(checkInfs[0].CompletedDeals) != 8 {
+		t.Error("Incorrect number of completed deals!")
+	}
+
+	if checkInfs[0].CompletedDeals[0] == "" {
+		t.Error("Incorrect post URL!")
+	}
+
+	if checkInfs[0].Followers == 0 {
+		t.Error("Wrong influencer ID!")
+	}
+
+	if checkInfs[0].RequestedCheck == 0 {
+		t.Error("Wrong request check timestamp!")
+	}
+
+	if checkInfs[0].PendingPayout < 50 {
+		t.Error("Wrong pending payout!")
+	}
+
+	if checkInfs[0].Address == nil {
+		t.Error("Missing address!")
+	}
+
+	// Approve the check!
+	r = rst.DoTesting(t, "GET", "/approveCheck/"+inf.ExpID, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	var approvedInf auth.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &approvedInf)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if approvedInf.PendingPayout != 0 {
+		t.Error("Unexpected pending payout")
+	}
+
+	if len(approvedInf.Checks) != 1 {
+		t.Error("Unexpected number of checks")
+	}
+
+	if approvedInf.RequestedCheck != 0 {
+		t.Error("Requested check value still exists!")
+	}
+
+	if !misc.WithinLast(approvedInf.LastCheck, 1) {
+		t.Error("Last check value is incorrect!")
+	}
+
+}
+
+type Status struct {
+	ID string `json:"id"`
+}
+
+func doDeal(rst *resty.Client, t *testing.T, infId string) {
+	// Create a campaign
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r := rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       100,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Gender:       "mf",
+		Link:         "blade.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+	var status Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &status)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+	cid := status.ID
+
+	// get deals for influencer
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+infId+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	deals = getDeals(cid, deals)
+	if len(deals) == 0 {
+		t.Error("Unexpected number of deals!")
+	}
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+infId+"/"+cid+"/"+deals[0].Id+"/twitter?dbg=1", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// force approve
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+infId+"/"+cid, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	// check that the deal is approved
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(load.CompletedDeals) == 0 {
+		t.Error("Unexpected numnber of completed deals!")
+	}
+
+	// deplete budget according to the payout
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
 	}
 }

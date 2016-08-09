@@ -8,8 +8,7 @@ import (
 	"strings"
 
 	"github.com/swayops/sway/config"
-
-	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/internal/geo"
 
 	"time"
 )
@@ -53,8 +52,8 @@ func (tws Tweets) LastId() string {
 	return ""
 }
 
-func (tws Tweets) LatestLocation() *misc.GeoRecord {
-	var latest *misc.GeoRecord
+func (tws Tweets) LatestLocation() *geo.GeoRecord {
+	var latest *geo.GeoRecord
 	for _, t := range tws {
 		if l := t.Location(); l != nil {
 			if latest == nil || l.Timestamp > latest.Timestamp {
@@ -101,12 +100,12 @@ type Tweet struct {
 	PostURL     string `json:"postURL,omitempty"`
 }
 
-func (t *Tweet) Location() *misc.GeoRecord {
+func (t *Tweet) Location() *geo.GeoRecord {
 	if t.Coords == nil {
 		return nil
 	}
 	c := t.Coords.Coords
-	return misc.GetGeoFromCoords(c[1], c[0], t.CreatedAt.Unix())
+	return geo.GetGeoFromCoords(c[1], c[0], int32(t.CreatedAt.Unix()))
 }
 
 func (t *Tweet) Hashtags() (out []string) {

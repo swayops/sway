@@ -36,13 +36,13 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 		UserId:   userId,
 	}
 
-	err = yt.UpdateData(cfg)
+	err = yt.UpdateData(cfg, cfg.Sandbox)
 	return yt, err
 }
 
-func (yt *YouTube) UpdateData(cfg *config.Config) error {
-	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(yt.LastUpdated, 12) {
+func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
+	// If we already updated in the last 21-26 hours, skip
+	if misc.WithinLast(yt.LastUpdated, misc.Random(21, 26)) {
 		return nil
 	}
 
@@ -61,7 +61,12 @@ func (yt *YouTube) UpdateData(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	yt.LatestPosts = p
+	// Latest posts are only used when there is an active deal!
+	if savePosts {
+		yt.LatestPosts = p
+	} else {
+		yt.LatestPosts = nil
+	}
 	yt.AvgLikes = lk
 	yt.AvgDislikes = dlk
 

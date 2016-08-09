@@ -158,3 +158,7 @@ func TruncateFloat(num float64, precision int) float64 {
 	output := math.Pow(10, float64(precision))
 	return float64(round(num*output)) / output
 }
+
+func Random(min, max int) int32 {
+	return int32(rand.Intn(max-min) + min)
+}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/misc"
 )
 
@@ -26,7 +27,7 @@ type Post struct {
 
 	Published int32 `json:"published,omitempty"` //epoch ts
 
-	Location *misc.GeoRecord `json:"location,omitempty"`
+	Location *geo.GeoRecord `json:"location,omitempty"`
 
 	// Stats
 	Likes      float64 `json:"likes,omitempty"`

@@ -25,13 +25,13 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 	fb := &Facebook{
 		Id: id,
 	}
-	err := fb.UpdateData(cfg)
+	err := fb.UpdateData(cfg, cfg.Sandbox)
 	return fb, err
 }
 
-func (fb *Facebook) UpdateData(cfg *config.Config) error {
-	// If we already updated in the last 12 hours, skip
-	if misc.WithinLast(fb.LastUpdated, 12) {
+func (fb *Facebook) UpdateData(cfg *config.Config, savePosts bool) error {
+	// If we already updated in the last 10-15 hours, skip
+	if misc.WithinLast(fb.LastUpdated, misc.Random(10, 15)) {
 		return nil
 	}
 
@@ -40,7 +40,12 @@ func (fb *Facebook) UpdateData(cfg *config.Config) error {
 			fb.AvgLikes = likes
 			fb.AvgComments = comments
 			fb.AvgShares = shares
-			fb.LatestPosts = posts
+			// Latest posts are only used when there is an active deal!
+			if savePosts {
+				fb.LatestPosts = posts
+			} else {
+				fb.LatestPosts = nil
+			}
 		} else {
 			return err
 		}

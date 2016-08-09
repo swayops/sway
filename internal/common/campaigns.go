@@ -7,7 +7,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/internal/geo"
 )
 
 type Campaign struct {
@@ -25,15 +25,15 @@ type Campaign struct {
 	Company string `json:"company,omitempty"`
 
 	Status   bool `json:"status"`
-	Approved bool `json:"approved"` // Set to false when admin receives all perks (or there are no perks)
+	Approved bool `json:"approved"` // Set to true when admin receives all perks (or there are no perks)
 
 	// Social Media Post/User Requirements
-	Tags    []string          `json:"hashtags,omitempty"`
-	Mention string            `json:"mention,omitempty"`
-	Link    string            `json:"link,omitempty"`
-	Task    string            `json:"task,omitempty"`
-	Geos    []*misc.GeoRecord `json:"geos,omitempty"`   // Geos the campaign is targeting
-	Gender  string            `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Tags    []string         `json:"hashtags,omitempty"`
+	Mention string           `json:"mention,omitempty"`
+	Link    string           `json:"link,omitempty"`
+	Task    string           `json:"task,omitempty"`
+	Geos    []*geo.GeoRecord `json:"geos,omitempty"`   // Geos the campaign is targeting
+	Gender  string           `json:"gender,omitempty"` // "m" or "f" or "mf"
 
 	// Inventory Types Campaign is Targeting
 	Twitter   bool `json:"twitter,omitempty"`

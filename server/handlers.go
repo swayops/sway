@@ -16,6 +16,7 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
@@ -322,6 +323,13 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		for _, g := range cmp.Geos {
+			if !geo.IsValidGeoTarget(g) {
+				c.JSON(400, misc.StatusErr("Please provide valid geo targets!"))
+				return
+			}
+		}
+
 		for i, ht := range cmp.Tags {
 			cmp.Tags[i] = sanitizeHash(ht)
 		}
@@ -444,7 +452,7 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos       []*misc.GeoRecord  `json:"geos,omitempty"`
+	Geos       []*geo.GeoRecord   `json:"geos,omitempty"`
 	Categories []string           `json:"categories,omitempty"`
 	Status     bool               `json:"status,omitempty"`
 	Budget     float64            `json:"budget,omitempty"`
@@ -483,6 +491,13 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
 			return
+		}
+
+		for _, g := range upd.Geos {
+			if !geo.IsValidGeoTarget(g) {
+				c.JSON(400, misc.StatusErr("Please provide valid geo targets!"))
+				return
+			}
 		}
 
 		if upd.Gender != "m" && upd.Gender != "f" && upd.Gender != "mf" {
@@ -788,46 +803,6 @@ func setReminder(s *Server) gin.HandlerFunc {
 	}
 }
 
-func setGeo(s *Server) gin.HandlerFunc {
-	// Sets the default geo for the influencer
-	return func(c *gin.Context) {
-		var (
-			geo misc.GeoRecord
-			err error
-		)
-
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&geo); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-			user  = auth.GetCtxUser(c)
-		)
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			if infId != user.ID {
-				user = s.auth.GetUserTx(tx, infId)
-			}
-			inf := auth.GetInfluencer(user)
-			if inf == nil {
-				return auth.ErrInvalidID
-			}
-
-			inf.Geo = &geo
-
-			// Save the influencer
-			return user.StoreWithData(s.auth, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
 func setAddress(s *Server) gin.HandlerFunc {
 	// Sets the address for the influencer
 	return func(c *gin.Context) {
@@ -842,9 +817,14 @@ func setAddress(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cleanAddr, err := lob.VerifyAddress(&addr)
+		cleanAddr, err := lob.VerifyAddress(&addr, s.Cfg.Sandbox)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		if !geo.IsValidGeo(&geo.GeoRecord{State: cleanAddr.State, Country: cleanAddr.Country}) {
+			c.JSON(400, misc.StatusErr("Address does not convert to a valid geo!"))
 			return
 		}
 
@@ -880,7 +860,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 		s.db.View(func(tx *bolt.Tx) error {
 			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 				if inf := auth.GetInfluencer(u); inf != nil {
-					if inf.Geo == nil && inf.Gender == "" && len(inf.Categories) == 0 {
+					if inf.Gender == "" && len(inf.Categories) == 0 {
 						influencers = append(influencers, inf)
 					}
 				}
@@ -928,7 +908,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "",
-			misc.GetGeoFromCoords(lat, long, time.Now().Unix()), false, s.Cfg)
+			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
 		c.JSON(200, deals)
 	}
 }
@@ -1249,7 +1229,7 @@ var (
 func runBilling(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		now := time.Now().UTC()
-		if now.Day() != 1 {
+		if now.Day() != 1 && c.Query("force") != "1" {
 			// Can only run billing on the first of the month!
 			c.JSON(500, misc.StatusErr("Cannot run billing today!"))
 			return
@@ -1374,9 +1354,39 @@ func runBilling(s *Server) gin.HandlerFunc {
 	}
 }
 
+type GreedyInfluencer struct {
+	Id string `json:"id,omitempty"`
+
+	Address   *lob.AddressLoad `json:"address,omitempty"`
+	Followers int64            `json:"followers,omitempty"`
+	// Post URLs for the complete deals since last check
+	CompletedDeals []string `json:"completedDeals,omitempty"`
+	PendingPayout  float64  `json:"pendingPayout,omitempty"`
+	RequestedCheck int32    `json:"requestedCheck,omitempty"`
+}
+
 func getPendingChecks(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, getAllInfluencers(s, true))
+		var influencers []*GreedyInfluencer
+		s.db.View(func(tx *bolt.Tx) error {
+			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+				if inf := auth.GetInfluencer(u); inf != nil {
+					if inf.RequestedCheck > 0 {
+						tmpGreedy := &GreedyInfluencer{
+							Id:             inf.Id,
+							Address:        inf.Address,
+							PendingPayout:  inf.PendingPayout,
+							RequestedCheck: inf.RequestedCheck,
+							CompletedDeals: inf.GetPostURLs(inf.LastCheck),
+							Followers:      inf.GetFollowers(),
+						}
+						influencers = append(influencers, tmpGreedy)
+					}
+				}
+				return nil
+			})
+		})
+		c.JSON(200, influencers)
 	}
 }
 
@@ -1449,7 +1459,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			user := s.auth.GetUserTx(tx, infId)
 
 			inf := auth.GetInfluencer(user)
-			if inf == nil || !inf.RequestedCheck {
+			if inf == nil || inf.RequestedCheck == 0 {
 				return auth.ErrInvalidID
 			}
 
@@ -1457,14 +1467,14 @@ func approveCheck(s *Server) gin.HandlerFunc {
 				return ErrPayout
 			}
 
-			check, err := lob.CreateCheck(inf.Name, inf.Address, inf.PendingPayout)
+			check, err := lob.CreateCheck(inf.Name, inf.Address, inf.PendingPayout, s.Cfg.Sandbox)
 			if err != nil {
 				return err
 			}
 
 			inf.Checks = append(inf.Checks, check)
 			inf.PendingPayout = 0
-			inf.RequestedCheck = false
+			inf.RequestedCheck = 0
 			inf.LastCheck = int32(time.Now().Unix())
 
 			// Save the influencer
@@ -1600,11 +1610,11 @@ func requestCheck(s *Server) gin.HandlerFunc {
 				return ErrAddress
 			}
 
-			if !inf.HasSigned {
+			if c.Query("skipTax") != "1" && !inf.HasSigned {
 				return ErrTax
 			}
 
-			inf.RequestedCheck = true
+			inf.RequestedCheck = int32(time.Now().Unix())
 
 			// Save the influencer
 			return user.StoreWithData(s.auth, tx, inf)
@@ -1878,8 +1888,8 @@ func putScrap(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// If a geo is passed and it doesnt have city + country..
-		if upd.Geo != nil && upd.Geo.City == "" && upd.Geo.Country == "" {
+		// If a geo is passed and it doesnt have state + country..
+		if upd.Geo != nil && upd.Geo.State == "" && upd.Geo.Country == "" {
 			c.JSON(400, misc.StatusErr("Please pass a valid geo!"))
 			return
 		}
@@ -2029,5 +2039,32 @@ func uploadImage(s *Server) gin.HandlerFunc {
 			}
 		}
 		c.JSON(200, UploadImage{ImageURL: imageURL})
+	}
+}
+
+func getLatestGeo(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			infId = c.Param("influencerId")
+			user  = auth.GetCtxUser(c)
+			rec   *geo.GeoRecord
+		)
+
+		if err := s.db.View(func(tx *bolt.Tx) (err error) {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+			rec = inf.GetLatestGeo()
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, rec)
 	}
 }

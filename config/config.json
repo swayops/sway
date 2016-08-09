@@ -16,6 +16,8 @@
 
 	"authDbName": "auth",
 
+	"geoLoc": "../config/GeoIP2-City.mmdb",
+
 	"bucket": {
 		"user": "user",
 		"login": "login",

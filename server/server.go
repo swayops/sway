@@ -254,11 +254,11 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/setCategory/:influencerId/:category", infOwnership, setCategory(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
 	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
-	verifyGroup.POST("/setGeo/:influencerId", infOwnership, setGeo(srv))
 	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
 	verifyGroup.POST("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
+	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
