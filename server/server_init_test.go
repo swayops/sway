@@ -44,17 +44,19 @@ var (
 )
 
 func init() {
+	log.SetFlags(log.Lshortfile | log.Ltime)
 	flag.Parse()
+
+	panicIf(os.Chdir("..")) // this is for the relative paths in config, like imageDir and geo.
+
 	resty.LogRequests = *printResp
 }
 
 func TestMain(m *testing.M) {
-	log.SetFlags(log.Lshortfile | log.Ltime)
-
 	var code int = 1
 	defer func() { os.Exit(code) }()
 
-	cfg, err := config.New("../config/config.json")
+	cfg, err := config.New("./config/config.json")
 	panicIf(err)
 
 	cfg.Sandbox = true // always set it to true just in case

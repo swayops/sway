@@ -14,7 +14,7 @@
 
 	"authDbName": "auth",
 
-	"geoLoc": "../config/GeoIP2-City.mmdb",
+	"geoLoc": "./config/GeoIP2-City.mmdb",
 
 	"bucket": {
 		"user": "user",
@@ -65,6 +65,6 @@
 		"accessSecret": "wFZkVcPmMrL7yWrguxbkRIBrGkOiGa4nJbYGNbKMmbma0ZVP6A"
 	},
 	"jsonXlsxPath": "./config/json2xlsx.py",
-	"imagesDir": "/Users/shahzilabid/work/go/src/github.com/swayops/sway/images/",
+	"imagesDir": "./images/",
 	"imageUrlPath": "images/"
 }
