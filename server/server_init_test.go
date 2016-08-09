@@ -27,6 +27,8 @@ var (
 	printResp = flag.Bool("pr", os.Getenv("PR") != "", "print responses")
 	keepTmp   = flag.Bool("k", false, "keep tmp dir")
 
+	cfg *config.Config
+
 	insecureTransport = &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -53,10 +55,13 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	var code int = 1
+	var (
+		code int = 1
+		err  error
+	)
 	defer func() { os.Exit(code) }()
 
-	cfg, err := config.New("./config/config.json")
+	cfg, err = config.New("./config/config.json")
 	panicIf(err)
 
 	cfg.Sandbox = true // always set it to true just in case
