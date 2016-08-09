@@ -1617,7 +1617,7 @@ func TestImages(t *testing.T) {
 	}
 
 	// Remove saved image (and indirectly check if it exists)!
-	err := os.Remove(".." + parts[1])
+	err := os.Remove("./" + parts[1])
 	if err != nil {
 		t.Error("File does not exist!", ".."+parts[1])
 	}
