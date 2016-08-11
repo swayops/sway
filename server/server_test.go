@@ -588,8 +588,79 @@ func TestDeals(t *testing.T) {
 	totalLikes := totalA.Likes + totalB.Likes
 	totalSpend := totalA.Spent + totalB.Spent
 
-	if agencyCut := (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
+	var agencyCut float64
+	if agencyCut = (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
 		t.Error("Combined spend does not match budget db!")
+	}
+
+	var breakdownAgency1 map[string]*reporting.ReportStats
+	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+inf.ExpID+"/10", nil, &breakdownAgency1)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	var breakdownAgency2 map[string]*reporting.ReportStats
+	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+newInf.ExpID+"/-1", nil, &breakdownAgency2)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(breakdownAgency2) > 1 {
+		t.Error("Should only have total key!")
+		return
+	}
+
+	// Combining totals for both influencers
+	totalAgency1 := breakdownAgency1["total"]
+	totalAgency2 := breakdownAgency2["total"]
+	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != newStore.Spent {
+		t.Error("Unexpected spend values!")
+		return
+	}
+
+	if totalAgency1.AgencySpent == totalAgency2.AgencySpent {
+		t.Error("Issue with agency payout")
+		return
+	}
+
+	if totalAgency1.AgencySpent > totalAgency1.Spent {
+		t.Error("Agency spend higher than influencer spend!")
+		return
+	}
+
+	var loads []*influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/getInfluencersByAgency/"+ag.ExpID, nil, &loads)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if len(loads) != 2 {
+		t.Error("Incorrect number of infleuncers in agency!")
+		return
+	}
+	for _, i := range loads {
+		if i.Id == inf.ExpID {
+			if i.AgencySpend != totalAgency1.AgencySpent {
+				t.Error("Incorrect agency spend!")
+				return
+			}
+
+			if i.InfluencerSpend != totalAgency1.Spent {
+				t.Error("Incorrect inf spend!")
+				return
+			}
+		} else if i.Id == newInf.ExpID {
+			if i.AgencySpend != totalAgency2.AgencySpent {
+				t.Error("Incorrect agency spend!")
+				return
+			}
+
+			if i.InfluencerSpend != totalAgency2.Spent {
+				t.Error("Incorrect inf spend!")
+				return
+			}
+		}
 	}
 
 	var cmpBreakdown map[string]*reporting.Totals
@@ -629,6 +700,7 @@ func TestDeals(t *testing.T) {
 	if totalCmpInf.Shares != totalB.Shares {
 		t.Error("Combined shares do not match campaign report!")
 	}
+
 }
 
 func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skipReporting bool) {
