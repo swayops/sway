@@ -1122,7 +1122,7 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
 		}
-		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, ""))
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
 	}
 }
 
@@ -1141,7 +1141,25 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid")))
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
+	}
+}
+
+func getAgencyInfluencerStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		days, err := strconv.Atoi(c.Param("days"))
+		if err != nil || days == 0 {
+			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			return
+		}
+
+		infId := c.Param("infId")
+		inf := s.auth.GetInfluencer(infId)
+		if inf == nil {
+			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
+			return
+		}
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
 	}
 }
 

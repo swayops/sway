@@ -213,6 +213,8 @@ type ReportStats struct {
 	Rep         float64 `json:"rep,omitempty"`
 	Engagements int32   `json:"engagements,omitempty"`
 
+	AgencySpent float64 `json:"agSpent,omitempty"` // Only filled for influencer stats to get agency payment
+
 	PlatformId   string `json:"platformId,omitempty"` // Screen name for the platform used for the deal
 	Published    string `json:"posted,omitempty"`     // Pretty string of date post was made
 	InfluencerId string `json:"infId,omitempty"`
@@ -320,7 +322,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	return data
 }
 
-func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid string) (*ReportStats, error) {
+func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid, agid string) (*ReportStats, error) {
 	stats := &ReportStats{}
 
 	if err := db.View(func(tx *bolt.Tx) error {
@@ -337,6 +339,9 @@ func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to 
 
 			dates := getDateRange(from, to)
 			for k, st := range allStats {
+				if agid != "" && agid != st.TalentAgency {
+					continue
+				}
 				for _, d := range dates {
 					if strings.HasPrefix(k, d+"|||"+infId+"|||") {
 						eng := getEngagements(st)
@@ -347,6 +352,7 @@ func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to 
 						stats.Shares += st.Shares
 						stats.Views += views
 						stats.Spent += st.InfPayout
+						stats.AgencySpent += st.AgencyPayout
 						stats.Engagements += eng
 					}
 				}

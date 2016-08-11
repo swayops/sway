@@ -177,6 +177,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 		nil, putTalentAgency, nil)
 	// NOTE: Check with Ahmed and make this so that talent agencies can view this shit
 	verifyGroup.GET("/getInfluencersByAgency/:id", getInfluencersByAgency(srv))
+	verifyGroup.GET("/getAgencyInfluencerStats/:id/:infId/:days", getAgencyInfluencerStats(srv))
 
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 

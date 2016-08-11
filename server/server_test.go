@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -588,8 +589,44 @@ func TestDeals(t *testing.T) {
 	totalLikes := totalA.Likes + totalB.Likes
 	totalSpend := totalA.Spent + totalB.Spent
 
-	if agencyCut := (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
+	var agencyCut float64
+	if agencyCut = (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
 		t.Error("Combined spend does not match budget db!")
+	}
+
+	var breakdownAgency1 map[string]*reporting.ReportStats
+	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+inf.ExpID+"/10", nil, &breakdownAgency1)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	var breakdownAgency2 map[string]*reporting.ReportStats
+	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+newInf.ExpID+"/-1", nil, &breakdownAgency2)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if len(breakdownAgency2) > 1 {
+		t.Error("Should only have total key!")
+		return
+	}
+
+	// Combining totals for both influencers
+	totalAgency1 := breakdownAgency1["total"]
+	totalAgency2 := breakdownAgency2["total"]
+	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != newStore.Spent {
+		t.Error("Unexpected spend values!")
+		return
+	}
+
+	if totalAgency1.AgencySpent == totalAgency2.AgencySpent {
+		t.Error("Issue with agency payout")
+		return
+	}
+
+	if totalAgency1.AgencySpent > totalAgency1.Spent {
+		t.Error("Agency spend higher than influencer spend!")
+		return
 	}
 
 	var cmpBreakdown map[string]*reporting.Totals
