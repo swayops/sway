@@ -20,6 +20,7 @@ import (
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
+	"github.com/swayops/sway/platforms/google"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/lob"
 )
@@ -270,6 +271,8 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		for i, ht := range cmp.Tags {
 			cmp.Tags[i] = sanitizeHash(ht)
 		}
+
+		cmp.Link = sanitizeURL(cmp.Link)
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = common.LowerSlice(cmp.Categories)
 		if cmp.Whitelist != nil {
@@ -281,9 +284,9 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		// If there are perks.. campaign is in pending until admin approval
 		if cmp.Perks != nil {
-			cmp.Approved = false
+			cmp.Approved = 0
 		} else {
-			cmp.Approved = true
+			cmp.Approved = int32(time.Now().Unix())
 		}
 
 		// Save the Campaign
@@ -459,7 +462,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		cmp.Status = upd.Status
-
 		cmp.Geos = upd.Geos
 		cmp.Gender = upd.Gender
 		cmp.Categories = common.LowerSlice(upd.Categories)
@@ -904,6 +906,14 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Set the shortened URL for the influencer
+		shortened, err := google.ShortenURL(getClickUrl(infId, foundDeal, s.Cfg), s.Cfg)
+		if err != nil {
+			c.JSON(500, misc.StatusErr("Internal error! Please try again in a few minutes"))
+			return
+		}
+		foundDeal.ShortenedLink = shortened
+
 		// Assign the deal & Save the Campaign
 		// DEALS are located in the INFLUENCER struct AND the CAMPAIGN struct
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -1332,7 +1342,7 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if !cmp.Approved {
+				if cmp.Approved == 0 {
 					// Hide deals
 					cmp.Deals = nil
 					campaigns = append(campaigns, &cmp)
@@ -1443,7 +1453,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmp.Approved = true
+		cmp.Approved = int32(time.Now().Unix())
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -1967,5 +1977,79 @@ func getLatestGeo(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, rec)
+	}
+}
+
+func click(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			infId      = c.Param("influencerId")
+			campaignId = c.Param("campaignId")
+			dealId     = c.Param("dealId")
+		)
+
+		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		foundDeal, ok := cmp.Deals[dealId]
+		if !ok || foundDeal == nil || foundDeal.Link == "" {
+			c.JSON(500, ErrDealNotFound)
+			return
+		}
+
+		if foundDeal.Completed == 0 {
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
+		if foundDeal.InfluencerId != infId {
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
+		inf := s.auth.GetInfluencer(infId)
+		if inf == nil {
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
+		// Stored as a comma separated list of dealIDs satisfied
+		prevClicks := misc.GetCookie(c.Request, "click")
+		if strings.Contains(prevClicks, foundDeal.Id) {
+			// This user has already clicked once for this deal!
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
+		// Get stats for this deal for today! We'll need it so that clicks
+		// can be incremented!
+		platformId := inf.GetPlatformId(foundDeal)
+		stats, statsKey, err := reporting.GetStats(foundDeal, s.reportingDb, s.Cfg, platformId)
+		if err != nil {
+			// Insert file informant
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
+		stats.Clicks += 1
+
+		if err := reporting.SaveStats(stats, foundDeal, s.reportingDb, s.Cfg, statsKey, platformId); err != nil {
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
+		if prevClicks != "" {
+			prevClicks += "," + foundDeal.Id
+		} else {
+			prevClicks += foundDeal.Id
+		}
+
+		// One click per 30 days allowed per deal!
+		misc.SetCookie(c.Writer, "click", prevClicks, 24*30*time.Hour)
+
+		c.Redirect(302, foundDeal.Link)
 	}
 }

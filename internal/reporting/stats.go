@@ -50,6 +50,7 @@ type Stats struct {
 	Comments  int32 `json:"comments,omitempty"`
 	Shares    int32 `json:"shares,omitempty"`
 	Views     int32 `json:"views,omitempty"`
+	Clicks    int32 `json:"clicks,omitempty"`
 	Published int32 `json:"posted,omitempty"` // Epoch ts
 }
 
@@ -197,6 +198,7 @@ type Totals struct {
 	Engagements int32 `json:"engagements,omitempty"`
 	Likes       int32 `json:"likes,omitempty"`
 	Views       int32 `json:"views,omitempty"`
+	Clicks      int32 `json:"clicks,omitempty"`
 
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
@@ -205,10 +207,12 @@ type Totals struct {
 }
 
 type ReportStats struct {
-	Likes       int32   `json:"likes,omitempty"`
-	Comments    int32   `json:"comments,omitempty"`
-	Shares      int32   `json:"shares,omitempty"`
-	Views       int32   `json:"views,omitempty"`
+	Likes    int32 `json:"likes,omitempty"`
+	Comments int32 `json:"comments,omitempty"`
+	Shares   int32 `json:"shares,omitempty"`
+	Views    int32 `json:"views,omitempty"`
+	Clicks   int32 `json:"clicks,omitempty"`
+
 	Spent       float64 `json:"spent,omitempty"`
 	Rep         float64 `json:"rep,omitempty"`
 	Engagements int32   `json:"engagements,omitempty"`
@@ -242,6 +246,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 
 				tg.Total.Engagements += eng
 				tg.Total.Likes += st.Likes
+				tg.Total.Clicks += st.Clicks
 				tg.Total.Views += views
 				tg.Total.Spent += st.InfPayout + st.AgencyPayout
 				tg.Total.Shares += st.Shares
@@ -295,6 +300,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *Stats, views 
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += views
+	stats.Clicks += st.Clicks
 	stats.Spent += st.InfPayout + st.AgencyPayout
 	stats.InfluencerId = infId
 	stats.Network = channel
@@ -309,6 +315,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	}
 
 	stats.Likes += st.Likes
+	stats.Clicks += st.Clicks
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += views
@@ -342,6 +349,7 @@ func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to 
 						eng := getEngagements(st)
 						views := getViews(st, eng)
 
+						stats.Clicks += st.Clicks
 						stats.Likes += st.Likes
 						stats.Comments += st.Comments
 						stats.Shares += st.Shares

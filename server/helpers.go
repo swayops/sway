@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"net/url"
 	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
@@ -303,6 +305,33 @@ func sanitizeMention(str string) string {
 	return strings.ToLower(raw)
 }
 
+func sanitizeURL(incoming string) string {
+	if incoming == "" {
+		return ""
+	}
+
+	u, err := url.Parse(incoming)
+	if err != nil {
+		return ""
+	}
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+
+	clean := u.Scheme + "://" + u.Host + u.Path
+	if u.RawQuery != "" {
+		clean = clean + "?" + u.RawQuery
+	}
+	return clean
+}
+
+func trimURLPrefix(raw string) string {
+	raw = strings.TrimPrefix(raw, "https://")
+	raw = strings.TrimPrefix(raw, "http://")
+	raw = strings.TrimPrefix(raw, "www.")
+	return raw
+}
+
 func getAllInfluencers(s *Server) []*auth.Influencer {
 	var influencers []*auth.Influencer
 	s.db.View(func(tx *bolt.Tx) error {
@@ -340,6 +369,10 @@ func getActiveAdAgencies(s *Server) map[string]bool {
 		})
 	})
 	return out
+}
+
+func getClickUrl(infId string, deal *common.Deal, cfg *config.Config) string {
+	return cfg.ClickUrl + infId + "/" + deal.CampaignId + "/" + deal.Id
 }
 
 func Float64Frombytes(bytes []byte) float64 {

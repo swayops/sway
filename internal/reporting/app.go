@@ -20,6 +20,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 		if err == nil && tot != nil && tot.Total != nil {
 			tg[getDateFromTime(d)] = tot.Total
 			val, _ := tg["total"]
+			val.Clicks += tot.Total.Clicks
 			val.Engagements += tot.Total.Engagements
 			val.Likes += tot.Total.Likes
 			val.Views += tot.Total.Views
@@ -66,6 +67,7 @@ func GetInfluencerBreakdown(infId string, db *bolt.DB, cfg *config.Config, offse
 
 			tg[key] = r
 			val, _ := tg["total"]
+			val.Clicks += r.Clicks
 			val.Likes += r.Likes
 			val.Comments += r.Comments
 			val.Shares += r.Shares

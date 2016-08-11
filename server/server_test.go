@@ -963,7 +963,7 @@ func TestPerks(t *testing.T) {
 		t.Error("Campaign should not be valid!")
 	}
 
-	if cmp.Approved {
+	if cmp.Approved > 0 {
 		t.Error("Campaign should not be approved!")
 	}
 
@@ -994,7 +994,7 @@ func TestPerks(t *testing.T) {
 		t.Error("Unexpected campaign id!")
 	}
 
-	if cmps[0].Approved {
+	if cmps[0].Approved > 0 {
 		t.Error("Unexpected approval value!")
 	}
 
@@ -1020,7 +1020,7 @@ func TestPerks(t *testing.T) {
 		t.Error("Bad status code!")
 	}
 
-	if !cmpLoad.Approved {
+	if cmpLoad.Approved == 0 {
 		t.Error("Admin approval didnt work!")
 	}
 
@@ -1865,7 +1865,7 @@ func TestChecks(t *testing.T) {
 
 	// Do multiple deals
 	for i := 0; i < 8; i++ {
-		doDeal(rst, t, inf.ExpID)
+		doDeal(rst, t, inf.ExpID, true)
 	}
 
 	var load influencer.Influencer
@@ -1967,7 +1967,7 @@ type Status struct {
 	ID string `json:"id"`
 }
 
-func doDeal(rst *resty.Client, t *testing.T, infId string) {
+func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 	// Create a campaign
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
@@ -1986,7 +1986,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId string) {
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Gender:       "mf",
-		Link:         "blade.org",
+		Link:         "http://www.blank.org?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 	}
@@ -2015,6 +2015,10 @@ func doDeal(rst *resty.Client, t *testing.T, infId string) {
 		t.Error("Bad status code!")
 	}
 
+	if !approve {
+		return
+	}
+
 	// force approve
 	r = rst.DoTesting(t, "GET", "/forceApprove/"+infId+"/"+cid, nil, nil)
 	if r.Status != 200 {
@@ -2026,15 +2030,197 @@ func doDeal(rst *resty.Client, t *testing.T, infId string) {
 	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if len(load.CompletedDeals) == 0 {
 		t.Error("Unexpected numnber of completed deals!")
+		return
 	}
 
 	// deplete budget according to the payout
 	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
+	}
+}
+
+func TestClicks(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Make sure click endpoint accessible without signing in
+	r := rst.DoTesting(t, "GET", "/click/1/1/1", nil, nil)
+	if r.Status == 401 {
+		t.Error("Unexpected unauthorized error!")
+		return
+	}
+
+	// Sign in as admin
+	r = rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender:    "m",
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "justinbieber",
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	// Do a deal but DON'T approve yet!
+	doDeal(rst, t, inf.ExpID, false)
+
+	// Influencer has assigned deals.. lets try clicking!
+	// It shouldn't allow it!
+	var load auth.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if len(load.ActiveDeals) != 1 && len(load.CompletedDeals) != 0 {
+		t.Error("Unexpected number of deals")
+		return
+	}
+
+	cid := load.ActiveDeals[0].CampaignId
+
+	// Make sure the shortened url is saved correctly
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(cmpLoad.Link, "blank.org") {
+		t.Error("Shortening of the URL did not work!")
+		return
+	}
+
+	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "goo.gl") {
+		t.Error("Unexpected shortened link")
+		return
+	}
+
+	// Try faking a click for an active deal.. shouldn't work but should redirect!
+	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+load.ActiveDeals[0].Id, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Error("Incorrect redirect")
+		return
+	}
+
+	// Make sure there are no clicks
+	var breakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &breakdown)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if breakdown["total"].Clicks > 0 {
+		t.Error("Unexpected number of clicks!")
+		return
+	}
+
+	// Approve the deal
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/"+cid, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	// check that the deal is approved
+	var newLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &newLoad)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if len(newLoad.CompletedDeals) == 0 {
+		t.Error("Unexpected numnber of completed deals!")
+		return
+	}
+
+	// deplete budget according to the payout
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(newLoad.CompletedDeals[0].ShortenedLink, "goo.gl") {
+		t.Error("Bad shortened link")
+		return
+	}
+
+	// Try a real click
+	// Can't hit the shortened link since it will redirect to localhost! NO MAS!
+	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+newLoad.CompletedDeals[0].Id, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Error("Incorrect redirect")
+		return
+	}
+
+	// Make sure everything increments
+	var newBreakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &newBreakdown)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if newBreakdown["total"].Clicks != 1 {
+		t.Error("Unexpected number of clicks!")
+		return
+	}
+
+	// Try clicking again.. should fail because of unique check!
+	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+newLoad.CompletedDeals[0].Id, nil, nil)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Error("Incorrect redirect")
+		return
+	}
+
+	// Make sure nothing increments since this uuid just had a click
+	var lastBreakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if lastBreakdown["total"].Clicks != 1 {
+		t.Error("Unexpected number of clicks!")
+		return
 	}
 }

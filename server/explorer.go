@@ -53,27 +53,29 @@ func explore(srv *Server) error {
 			continue
 		}
 
+		targetLink := trimURLPrefix(deal.ShortenedLink)
+
 		switch deal.AssignedPlatform {
 		case platform.Twitter:
-			if tweet := findTwitterMatch(inf, deal); tweet != nil {
+			if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
 				if err = srv.ApproveTweet(tweet, deal); err != nil {
 					log.Println("Failed to approve tweet", err)
 				}
 			}
 		case platform.Facebook:
-			if post := findFacebookMatch(inf, deal); post != nil {
+			if post := findFacebookMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveFacebook(post, deal); err != nil {
 					log.Println("Failed to approve fb post", err)
 				}
 			}
 		case platform.Instagram:
-			if post := findInstagramMatch(inf, deal); post != nil {
+			if post := findInstagramMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveInstagram(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
 				}
 			}
 		case platform.YouTube:
-			if post := findYouTubeMatch(inf, deal); post != nil {
+			if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveYouTube(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
 				}
@@ -194,7 +196,7 @@ func hasReqHash(text string, hashtags []string) bool {
 	return false
 }
 
-func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
+func findTwitterMatch(inf *auth.Influencer, deal *common.Deal, link string) *twitter.Tweet {
 	if inf.Twitter == nil {
 		return nil
 	}
@@ -243,13 +245,13 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 			foundMention = true
 		}
 
-		if deal.Link != "" {
+		if link != "" {
 			for _, l := range tw.Urls() {
-				if strings.EqualFold(l, deal.Link) {
+				if containsFold(l, link) {
 					foundLink = true
 				}
 			}
-			if containsFold(tw.Text, deal.Link) {
+			if containsFold(tw.Text, link) {
 				foundLink = true
 			}
 
@@ -268,7 +270,7 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal) *twitter.Tweet {
 	return nil
 }
 
-func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
+func findFacebookMatch(inf *auth.Influencer, deal *common.Deal, link string) *facebook.Post {
 	if inf.Facebook == nil {
 		return nil
 	}
@@ -314,8 +316,8 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
 			foundMention = true
 		}
 
-		if deal.Link != "" {
-			if containsFold(post.Caption, deal.Link) {
+		if link != "" {
+			if containsFold(post.Caption, link) {
 				foundLink = true
 			}
 
@@ -334,7 +336,7 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal) *facebook.Post {
 	return nil
 }
 
-func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post {
+func findInstagramMatch(inf *auth.Influencer, deal *common.Deal, link string) *instagram.Post {
 	if inf.Instagram == nil {
 		return nil
 	}
@@ -380,8 +382,8 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post
 			foundMention = true
 		}
 
-		if deal.Link != "" {
-			if containsFold(deal.Link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, deal.Link) {
+		if link != "" {
+			if containsFold(link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, link) {
 				foundLink = true
 			}
 
@@ -400,7 +402,7 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal) *instagram.Post
 	return nil
 }
 
-func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
+func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal, link string) *youtube.Post {
 	if inf.YouTube == nil {
 		return nil
 	}
@@ -447,8 +449,8 @@ func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal) *youtube.Post {
 			foundMention = true
 		}
 
-		if deal.Link != "" {
-			if containsFold(post.Description, deal.Link) {
+		if link != "" {
+			if containsFold(post.Description, link) {
 				foundLink = true
 			}
 

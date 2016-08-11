@@ -22,6 +22,7 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 
 	resp, err := client.Do(r)
 	if err != nil {
+		log.Println(r)
 		log.Println("Error when hitting:", endpoint, err)
 		return err
 	}

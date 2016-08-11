@@ -50,11 +50,13 @@ type Deal struct {
 
 	// Requirements copied from the campaign to the deal
 	// GetAvailableDeals
-	Tags    []string `json:"hashtags,omitempty"`
-	Mention string   `json:"mention,omitempty"`
-	Link    string   `json:"link,omitempty"`
-	Task    string   `json:"task,omitempty"`
-	Perk    *Perk    `json:"perk,omitempty"`
+	Tags          []string `json:"hashtags,omitempty"`
+	Mention       string   `json:"mention,omitempty"`
+	Link          string   `json:"link,omitempty"`
+	ShortenedLink string   `json:"shortenedLink,omitempty"`
+
+	Task string `json:"task,omitempty"`
+	Perk *Perk  `json:"perk,omitempty"`
 
 	// How much this campaign has left to spend for the month
 	// Only filled in GetAvailableDeals for the influencer to see
