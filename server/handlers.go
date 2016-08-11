@@ -539,6 +539,13 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 				}
 				if inf.AgencyId == targetAg {
 					inf.Clean()
+					st := reporting.GetInfluencerBreakdown(inf.Id, s.reportingDb, s.Cfg, -1, inf.Rep, inf.CurrentRep, "", inf.AgencyId)
+					total := st["total"]
+					if total != nil {
+						inf.AgencySpend = total.AgencySpent
+						inf.InfluencerSpend = total.Spent
+					}
+
 					influencers = append(influencers, inf)
 				}
 				return nil

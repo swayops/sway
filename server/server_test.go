@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -629,6 +628,41 @@ func TestDeals(t *testing.T) {
 		return
 	}
 
+	var loads []*influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/getInfluencersByAgency/"+ag.ExpID, nil, &loads)
+	if r.Status != 200 {
+		t.Error("Bad status code!")
+		return
+	}
+
+	if len(loads) != 2 {
+		t.Error("Incorrect number of infleuncers in agency!")
+		return
+	}
+	for _, i := range loads {
+		if i.Id == inf.ExpID {
+			if i.AgencySpend != totalAgency1.AgencySpent {
+				t.Error("Incorrect agency spend!")
+				return
+			}
+
+			if i.InfluencerSpend != totalAgency1.Spent {
+				t.Error("Incorrect inf spend!")
+				return
+			}
+		} else if i.Id == newInf.ExpID {
+			if i.AgencySpend != totalAgency2.AgencySpent {
+				t.Error("Incorrect agency spend!")
+				return
+			}
+
+			if i.InfluencerSpend != totalAgency2.Spent {
+				t.Error("Incorrect inf spend!")
+				return
+			}
+		}
+	}
+
 	var cmpBreakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
 	if r.Status != 200 {
@@ -666,6 +700,7 @@ func TestDeals(t *testing.T) {
 	if totalCmpInf.Shares != totalB.Shares {
 		t.Error("Combined shares do not match campaign report!")
 	}
+
 }
 
 func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skipReporting bool) {

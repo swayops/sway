@@ -103,6 +103,10 @@ type Influencer struct {
 
 	DealPing  bool  `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
 	LastEmail int32 `json:"lastEmail,omitempty"`
+
+	// Set only in getInfluencersByAgency to save us a stats endpoint hit
+	AgencySpend     float64 `json:"agSpend,omitempty"`
+	InfluencerSpend float64 `json:"infSpend,omitempty"`
 }
 
 func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, dealPing bool, created int32, cfg *config.Config) (*Influencer, error) {
