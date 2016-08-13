@@ -1538,6 +1538,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 }
 
 var (
+	ErrSorry        = errors.New("Sorry! You are currently not eligible for a check!")
 	ErrInvalidFunds = errors.New("Must have atleast $50 USD to be paid out!")
 	ErrThirtyDays   = errors.New("Must wait atleast 30 days since last check to receive a payout!")
 	ErrAddress      = errors.New("Please set an address for your profile!")
@@ -1563,6 +1564,10 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			inf := auth.GetInfluencer(user)
 			if inf == nil {
 				return auth.ErrInvalidID
+			}
+
+			if inf.Banned {
+				return ErrSorry
 			}
 
 			if inf.PendingPayout < 50 {
