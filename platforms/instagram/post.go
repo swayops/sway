@@ -3,6 +3,7 @@ package instagram
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -44,6 +45,11 @@ type Post struct {
 
 type DataByPost struct {
 	Data *PostStats `json:"data"`
+	Meta *struct {
+		ErrorType    string `json:"error_type,omitempty"`
+		Code         int    `json:"code,omitempty"`
+		ErrorMessage string `json:"error_message,omitempty"`
+	} `json:"meta"`
 }
 
 type PostStats struct {
@@ -59,7 +65,7 @@ type PostLikes struct {
 	Count float64 `json:"count"`
 }
 
-func (pt *Post) UpdateData(cfg *config.Config) error {
+func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 	// // If the post is more than 4 days old AND
 	// // it has been updated in the last week, SKIP!
 	// // i.e. only update old posts once a week
@@ -77,11 +83,15 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	var post DataByPost
 	err := misc.Request("GET", endpoint, "", &post)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	if post.Meta != nil && strings.ToLower(post.Meta.ErrorMessage) == "invalid media id" {
+		return errors.New(post.Meta.ErrorMessage), nil
 	}
 
 	if post.Data == nil {
-		return ErrBadResponse
+		return nil, ErrBadResponse
 	}
 
 	if post.Data.Comments != nil {
@@ -96,5 +106,5 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 
 	pt.LastUpdated = int32(time.Now().Unix())
 
-	return nil
+	return nil, nil
 }

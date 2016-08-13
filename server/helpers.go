@@ -332,12 +332,12 @@ func trimURLPrefix(raw string) string {
 	return raw
 }
 
-func getAllInfluencers(s *Server) []*auth.Influencer {
-	var influencers []*auth.Influencer
+func getAllInfluencers(s *Server) []string {
+	var influencers []string
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-				influencers = append(influencers, inf)
+				influencers = append(influencers, inf.Id)
 			}
 			return nil
 		})

@@ -331,7 +331,6 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 
 func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to time.Time, cid, agid string) (*ReportStats, error) {
 	stats := &ReportStats{}
-
 	if err := db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(cfg.ReportingBucket)).ForEach(func(k, v []byte) (err error) {
 			if cid != "" && cid != string(k) {
@@ -345,6 +344,7 @@ func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to 
 			}
 
 			dates := getDateRange(from, to)
+
 			for k, st := range allStats {
 				if agid != "" && agid != st.TalentAgency {
 					continue
@@ -353,7 +353,6 @@ func GetInfluencerStats(infId string, db *bolt.DB, cfg *config.Config, from, to 
 					if strings.HasPrefix(k, d+"|||"+infId+"|||") {
 						eng := getEngagements(st)
 						views := getViews(st, eng)
-
 						stats.Clicks += st.Clicks
 						stats.Likes += st.Likes
 						stats.Comments += st.Comments

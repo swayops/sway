@@ -2,6 +2,7 @@ package influencer
 
 import (
 	"errors"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -47,6 +48,10 @@ type Influencer struct {
 	Name         string `json:"name,omitempty"`
 	EmailAddress string `json:"email,omitempty"`
 	CreatedAt    int32  `json:"createdAt,omitempty"`
+
+	// Banned if this person has been seen deleting a completed
+	// deal post
+	Banned bool `json:"banned,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
@@ -210,6 +215,10 @@ func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
 }
 
 func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
+	if inf.Banned {
+		return nil
+	}
+
 	// Used by sway engine to periodically update influencer data
 
 	// Always allow updates if they have an active deal
@@ -261,28 +270,40 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]*common.Campaign) (err error) {
 	// Update data for all completed deal posts
+	var (
+		ok  bool
+		ban error
+	)
+
 	for _, deal := range inf.CompletedDeals {
-		if _, ok := activeCampaigns[deal.CampaignId]; !ok {
-			// Don't udpate deals for campaigns that aren't
+		if _, ok = activeCampaigns[deal.CampaignId]; !ok {
+			// Don't update deals for campaigns that aren't
 			// active anymore! NO POINT!
 			continue
 		}
+
 		if deal.Tweet != nil {
-			if err := deal.Tweet.UpdateData(cfg); err != nil {
+			if ban, err = deal.Tweet.UpdateData(cfg); err != nil {
+				log.Println("Tweet erred out", err)
 				return err
 			}
 		} else if deal.Facebook != nil {
-			if err := deal.Facebook.UpdateData(cfg); err != nil {
+			if err = deal.Facebook.UpdateData(cfg); err != nil {
 				return err
 			}
 		} else if deal.Instagram != nil {
-			if err := deal.Instagram.UpdateData(cfg); err != nil {
+			if ban, err = deal.Instagram.UpdateData(cfg); err != nil {
 				return err
 			}
 		} else if deal.YouTube != nil {
-			if err := deal.YouTube.UpdateData(cfg); err != nil {
+			if err = deal.YouTube.UpdateData(cfg); err != nil {
 				return err
 			}
+		}
+
+		if ban != nil {
+			// Insert into actions.log
+			inf.Banned = true
 		}
 	}
 	return nil
@@ -471,6 +492,10 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	var (
 		infDeals []*common.Deal
 	)
+
+	if inf.Banned {
+		return infDeals
+	}
 
 	if location == nil && !skipGeo {
 		location = inf.GetLatestGeo()

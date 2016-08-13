@@ -1202,7 +1202,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if c.Query("pw") != "muchodinero" {
+		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
 			c.JSON(500, misc.StatusErr("Not allowed to run billing!"))
 			return
 		}
@@ -1598,6 +1598,11 @@ var ErrDealNotFound = errors.New("Deal not found!")
 
 func forceApproveAny(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+			return
+		}
+
 		// Delete the check and entry, send to lob
 		infId := c.Param("influencerId")
 		campaignId := c.Param("campaignId")
@@ -1676,6 +1681,11 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 
 func forceDeplete(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+			return
+		}
+
 		if err := depleteBudget(s); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -1915,6 +1925,11 @@ func getIncompleteScraps(s *Server) gin.HandlerFunc {
 
 func forceEmail(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+			return
+		}
+
 		err := emailDeals(s)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))

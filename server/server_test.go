@@ -543,14 +543,17 @@ func TestDeals(t *testing.T) {
 	r := rst.DoTesting(t, "GET", "/getIncompleteInfluencers", nil, &pendingInf)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	for _, i := range pendingInf {
 		if i.Id == newInf.ExpID {
 			t.Error("Unexpected influencer in incomplete list!")
+			return
 		}
 		if i.Id == inf.ExpID {
 			t.Error("Unexpected influencer in incomplete list!")
+			return
 		}
 	}
 
@@ -559,11 +562,13 @@ func TestDeals(t *testing.T) {
 	r = rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 	var breakdownB map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	checkReporting(t, breakdownB, 0, load.CompletedDeals[0], true)
@@ -573,12 +578,14 @@ func TestDeals(t *testing.T) {
 	r = rst.DoTesting(t, "GET", "/getBudgetInfo/2", nil, &newStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	var breakdownA map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	totalA := breakdownA["total"]
@@ -591,18 +598,21 @@ func TestDeals(t *testing.T) {
 	var agencyCut float64
 	if agencyCut = (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
 		t.Error("Combined spend does not match budget db!")
+		return
 	}
 
 	var breakdownAgency1 map[string]*reporting.ReportStats
 	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+inf.ExpID+"/10", nil, &breakdownAgency1)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	var breakdownAgency2 map[string]*reporting.ReportStats
 	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+newInf.ExpID+"/-1", nil, &breakdownAgency2)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if len(breakdownAgency2) > 1 {
@@ -667,38 +677,46 @@ func TestDeals(t *testing.T) {
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	totalCmp := cmpBreakdown["total"]
 	if delta := totalCmp.Spent - newStore.Spent; delta > 0.25 || delta < -0.25 {
 		t.Error("Combined spend does not match campaign report!")
+		return
 	}
 
 	if totalCmp.Shares != totalShares {
 		t.Error("Combined shares do not match campaign report!")
+		return
 	}
 
 	if totalCmp.Likes != totalLikes {
 		t.Error("Combined likes do not match campaign report!")
+		return
 	}
 
 	if totalCmp.Influencers != 2 {
 		t.Error("Influencer count incorrect!")
+		return
 	}
 
 	var cmpInfBreakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	totalCmpInf := cmpInfBreakdown["total"]
 	if totalCmpInf.Likes != totalB.Likes {
 		t.Error("Combined likes do not match campaign report!")
+		return
 	}
 
 	if totalCmpInf.Shares != totalB.Shares {
 		t.Error("Combined shares do not match campaign report!")
+		return
 	}
 
 }
@@ -708,6 +726,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	r := rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &oldStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 	checkStore(t, &oldStore, nil)
 
@@ -715,6 +734,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	// check for money in completed deals (fees and inf)
@@ -722,6 +742,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 	if len(load.CompletedDeals) != 1 {
 		t.Error("Could not find completed deal!")
@@ -735,10 +756,12 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &newStore)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if newStore.Spent == 0 {
 		t.Error("Spent not incremented correctly in budget")
+		return
 	}
 	checkStore(t, &newStore, &oldStore)
 
@@ -747,11 +770,13 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	r = rst.DoTesting(t, "GET", "/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	doneDeal = cmpLoad.Deals[load.CompletedDeals[0].Id]
 	if doneDeal == nil {
 		t.Error("Cannot find done deal in campaign!")
+		return
 	}
 
 	checkDeal(t, doneDeal, &load, agId, cmpId)
@@ -931,17 +956,20 @@ func TestTaxes(t *testing.T) {
 
 	if uload.RequestedTax == 0 {
 		t.Error("No tax request timestamp!")
+		return
 	}
 
 	val, err := hellosign.HasSigned(inf.ExpID, uload.SignatureId)
 	if val || err != nil {
 		t.Error("Error getting signed value!")
+		return
 	}
 
 	// Cleanup
 	time.Sleep(5 * time.Second)
 	if r, err := hellosign.Cancel(uload.SignatureId); err != nil || r != 200 {
 		t.Error("Hellosign cancel error")
+		return
 	}
 }
 
@@ -1025,18 +1053,22 @@ func TestPerks(t *testing.T) {
 	r := rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if len(cmpLoad.Deals) != cmp.Perks.Count {
 		t.Error("Unexpected number of deals!")
+		return
 	}
 
 	if cmp.IsValid() {
 		t.Error("Campaign should not be valid!")
+		return
 	}
 
 	if cmp.Approved > 0 {
 		t.Error("Campaign should not be approved!")
+		return
 	}
 
 	// make sure influencer getting no deals since the campaign is still pending
@@ -1044,11 +1076,13 @@ func TestPerks(t *testing.T) {
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	deals = getDeals("3", deals)
 	if len(deals) > 0 {
 		t.Error("Unexpected number of deals!")
+		return
 	}
 
 	// check admin endpoints for campaign approval
@@ -1056,60 +1090,72 @@ func TestPerks(t *testing.T) {
 	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &cmps)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if len(cmps) != 1 {
 		t.Error("Unexpected number of pending campaigns")
+		return
 	}
 
 	if cmps[0].Id != "3" {
 		t.Error("Unexpected campaign id!")
+		return
 	}
 
 	if cmps[0].Approved > 0 {
 		t.Error("Unexpected approval value!")
+		return
 	}
 
 	// approve campaign
 	r = rst.DoTesting(t, "GET", "/approveCampaign/3", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	// verify pending campaigns is empty!
 	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &cmps)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if len(cmps) != 0 {
 		t.Error("Pending campaigns shouldnt be here!")
+		return
 	}
 
 	// make sure approved value is correct!
 	r = rst.DoTesting(t, "GET", "/campaign/3", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if cmpLoad.Approved == 0 {
 		t.Error("Admin approval didnt work!")
+		return
 	}
 
 	// get deals for influencer
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	deals = getDeals("3", deals)
 	if len(deals) == 0 {
 		t.Error("Unexpected number of deals!")
+		return
 	}
 
 	for _, d := range deals {
 		if d.CampaignImage == "" {
 			t.Error("Missing image url!")
+			return
 		}
 	}
 
@@ -2049,6 +2095,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 	r := rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	cmp := common.Campaign{
@@ -2062,10 +2109,12 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 	}
+
 	var status Status
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &status)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 	cid := status.ID
 
@@ -2074,17 +2123,20 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 	r = rst.DoTesting(t, "GET", "/getDeals/"+infId+"/0/0", nil, &deals)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	deals = getDeals(cid, deals)
 	if len(deals) == 0 {
 		t.Error("Unexpected number of deals!")
+		return
 	}
 
 	// pick up deal for influencer
 	r = rst.DoTesting(t, "GET", "/assignDeal/"+infId+"/"+cid+"/"+deals[0].Id+"/twitter?dbg=1", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	if !approve {
@@ -2092,9 +2144,10 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 	}
 
 	// force approve
-	r = rst.DoTesting(t, "GET", "/forceApprove/"+infId+"/"+cid, nil, nil)
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+infId+"/"+cid+"", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
 	}
 
 	// check that the deal is approved
@@ -2215,7 +2268,7 @@ func TestClicks(t *testing.T) {
 	}
 
 	// Approve the deal
-	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/"+cid, nil, nil)
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/"+cid+"", nil, nil)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
 		return
