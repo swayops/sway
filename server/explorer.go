@@ -383,7 +383,7 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal, link string) *i
 		}
 
 		if link != "" {
-			if containsFold(link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, link) {
+			if containsFold(inf.Instagram.LinkInBio, link) || strings.Contains(post.Caption, link) {
 				foundLink = true
 			}
 
