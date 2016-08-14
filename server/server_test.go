@@ -2132,10 +2132,16 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 		return
 	}
 
+	var doneDeal common.Deal
 	// pick up deal for influencer
-	r = rst.DoTesting(t, "GET", "/assignDeal/"+infId+"/"+cid+"/"+deals[0].Id+"/twitter?dbg=1", nil, nil)
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+infId+"/"+cid+"/"+deals[0].Id+"/twitter?dbg=1", nil, &doneDeal)
 	if r.Status != 200 {
 		t.Error("Bad status code!")
+		return
+	}
+
+	if doneDeal.ShortenedLink == "" {
+		t.Error("Shortened link not created!")
 		return
 	}
 

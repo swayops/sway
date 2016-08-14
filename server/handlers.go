@@ -1036,7 +1036,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(dealId))
+		c.JSON(200, foundDeal)
 	}
 }
 

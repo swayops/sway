@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
@@ -58,7 +57,6 @@ func (tws Tweets) LatestLocation() *geo.GeoRecord {
 	var latest *geo.GeoRecord
 	for _, t := range tws {
 		if l := t.Location(); l != nil {
-			log.Println("TWITTER", l)
 			if latest == nil || l.Timestamp > latest.Timestamp {
 				latest = l
 			}
