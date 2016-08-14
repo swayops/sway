@@ -705,7 +705,7 @@ func setGender(s *Server) gin.HandlerFunc {
 }
 
 func setReminder(s *Server) gin.HandlerFunc {
-	// Sets the gender for the influencer id
+	// Sets the reminder for the influencer id
 	return func(c *gin.Context) {
 		state := strings.ToLower(c.Params.ByName("state"))
 
@@ -733,6 +733,46 @@ func setReminder(s *Server) gin.HandlerFunc {
 			}
 
 			inf.DealPing = reminder
+
+			return user.StoreWithData(s.auth, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func setBan(s *Server) gin.HandlerFunc {
+	// Sets the banned value for the influencer id
+	return func(c *gin.Context) {
+		state := strings.ToLower(c.Params.ByName("state"))
+
+		var ban bool
+		if state == "t" || state == "true" {
+			ban = true
+		} else if state == "f" || state == "false" {
+			ban = false
+		} else {
+			c.JSON(400, misc.StatusErr("Please submit a valid ban state"))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+			user  = auth.GetCtxUser(c)
+		)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if infId != user.ID {
+				user = s.auth.GetUserTx(tx, infId)
+			}
+			inf := auth.GetInfluencer(user)
+			if inf == nil {
+				return auth.ErrInvalidID
+			}
+
+			inf.Banned = ban
 
 			return user.StoreWithData(s.auth, tx, inf)
 		}); err != nil {
