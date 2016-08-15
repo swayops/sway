@@ -302,8 +302,9 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 		}
 
 		if ban != nil {
-			// Insert into actions.log
-			inf.Banned = true
+			// Insert into BAN.log and let admin
+			// decide!
+			log.Println("Ban this foo!")
 		}
 	}
 	return nil
