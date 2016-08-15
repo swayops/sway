@@ -24,8 +24,8 @@ type Campaign struct {
 
 	Company string `json:"company,omitempty"`
 
-	Status   bool `json:"status"`
-	Approved bool `json:"approved"` // Set to true when admin receives all perks (or there are no perks)
+	Status   bool  `json:"status"`
+	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
 
 	// Social Media Post/User Requirements
 	Tags    []string         `json:"hashtags,omitempty"`
@@ -70,7 +70,7 @@ func (tl *TargetList) Sanitize() *TargetList {
 }
 
 func (cmp *Campaign) IsValid() bool {
-	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved
+	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
 }
 
 type Campaigns struct {

@@ -34,8 +34,8 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 		}
 		c.Set(gin.AuthUserKey, ri.user)
 		if !ri.isApiKey {
-			refreshCookie(w, r, "token", TokenAge)
-			refreshCookie(w, r, "key", TokenAge)
+			misc.RefreshCookie(w, r, "token", TokenAge)
+			misc.RefreshCookie(w, r, "key", TokenAge)
 			a.refreshToken(ri.stoken, TokenAge)
 		}
 	}
@@ -118,7 +118,7 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 }
 
 func (a *Auth) SignOutHandler(c *gin.Context) {
-	tok := getCookie(c.Request, "token")
+	tok := misc.GetCookie(c.Request, "token")
 	if tok == "" {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
@@ -127,8 +127,8 @@ func (a *Auth) SignOutHandler(c *gin.Context) {
 		return a.SignOutTx(tx, tok)
 	})
 	w := c.Writer
-	deleteCookie(w, "token")
-	deleteCookie(w, "key")
+	misc.DeleteCookie(w, "token")
+	misc.DeleteCookie(w, "key")
 	c.JSON(200, misc.StatusOK(""))
 }
 
@@ -160,8 +160,8 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 
 	mac := CreateMAC(login.Password, tok, salt)
 	w := c.Writer
-	setCookie(w, "token", tok, TokenAge)
-	setCookie(w, "key", mac, TokenAge)
+	misc.SetCookie(w, "token", tok, TokenAge)
+	misc.SetCookie(w, "key", mac, TokenAge)
 	c.JSON(200, misc.StatusOK(login.UserID))
 	return true
 }

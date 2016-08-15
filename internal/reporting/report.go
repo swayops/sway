@@ -92,6 +92,7 @@ func setHighLevelSheet(xf Sheeter, cmp *common.Campaign, from, to time.Time, tot
 	sheet.AddRow("Total Influencers", tot.Influencers)
 	sheet.AddRow("Total Engagements Generated", tot.Engagements)
 	sheet.AddRow("Total Est Views", tot.Views)
+	sheet.AddRow("Total Clicks", tot.Clicks)
 
 	sheet.AddRow("")
 
@@ -105,6 +106,7 @@ func setChannelLevelSheet(xf Sheeter, from, to time.Time, channel map[string]*Re
 		"Likes",
 		"Comments",
 		"Shares",
+		"Clicks",
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
@@ -112,16 +114,17 @@ func setChannelLevelSheet(xf Sheeter, from, to time.Time, channel map[string]*Re
 
 	var totalEng float64
 	for _, st := range channel {
-		totalEng += float64(st.Likes + st.Comments + st.Shares)
+		totalEng += float64(st.Likes + st.Comments + st.Shares + st.Clicks)
 	}
 
 	for platform, st := range channel {
-		eng := (float64(st.Likes+st.Comments+st.Shares) / totalEng) * 100
+		eng := (float64(st.Likes+st.Comments+st.Shares+st.Clicks) / totalEng) * 100
 		sheet.AddRow(
 			platform,
 			st.Likes,
 			st.Comments,
 			st.Shares,
+			st.Clicks,
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),
@@ -138,6 +141,7 @@ func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[stri
 		"Likes",
 		"Comments",
 		"Shares",
+		"Clicks",
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
@@ -145,11 +149,11 @@ func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[stri
 
 	var totalEng float64
 	for _, st := range influencer {
-		totalEng += float64(st.Likes + st.Comments + st.Shares)
+		totalEng += float64(st.Likes + st.Comments + st.Shares + st.Clicks)
 	}
 
 	for inf, st := range influencer {
-		eng := (float64(st.Likes+st.Comments+st.Shares) / totalEng) * 100
+		eng := (float64(st.Likes+st.Comments+st.Shares+st.Clicks) / totalEng) * 100
 		sheet.AddRow(
 			inf,
 			st.Network,
@@ -157,6 +161,7 @@ func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[stri
 			st.Likes,
 			st.Comments,
 			st.Shares,
+			st.Clicks,
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),
@@ -174,6 +179,7 @@ func setContentLevelSheet(xf Sheeter, from, to time.Time, content map[string]*Re
 		"Likes",
 		"Comments",
 		"Shares",
+		"Clicks",
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
@@ -181,11 +187,11 @@ func setContentLevelSheet(xf Sheeter, from, to time.Time, content map[string]*Re
 
 	var totalEng float64
 	for _, st := range content {
-		totalEng += float64(st.Likes + st.Comments + st.Shares)
+		totalEng += float64(st.Likes + st.Comments + st.Shares + st.Clicks)
 	}
 
 	for url, st := range content {
-		eng := (float64(st.Likes+st.Comments+st.Shares) / totalEng) * 100
+		eng := (float64(st.Likes+st.Comments+st.Shares+st.Clicks) / totalEng) * 100
 		sheet.AddRow(
 			url,
 			st.Published,
@@ -194,6 +200,7 @@ func setContentLevelSheet(xf Sheeter, from, to time.Time, content map[string]*Re
 			st.Likes,
 			st.Comments,
 			st.Shares,
+			st.Clicks,
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),

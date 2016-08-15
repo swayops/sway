@@ -542,15 +542,18 @@ func TestDeals(t *testing.T) {
 	var pendingInf []influencer.Influencer
 	r := rst.DoTesting(t, "GET", "/getIncompleteInfluencers", nil, &pendingInf)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	for _, i := range pendingInf {
 		if i.Id == newInf.ExpID {
-			t.Error("Unexpected influencer in incomplete list!")
+			t.Fatal("Unexpected influencer in incomplete list!")
+			return
 		}
 		if i.Id == inf.ExpID {
-			t.Error("Unexpected influencer in incomplete list!")
+			t.Fatal("Unexpected influencer in incomplete list!")
+			return
 		}
 	}
 
@@ -558,12 +561,14 @@ func TestDeals(t *testing.T) {
 	var load influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+newInf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 	var breakdownB map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+newInf.ExpID+"/10", nil, &breakdownB)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	checkReporting(t, breakdownB, 0, load.CompletedDeals[0], true)
@@ -572,13 +577,15 @@ func TestDeals(t *testing.T) {
 	var newStore budget.Store
 	r = rst.DoTesting(t, "GET", "/getBudgetInfo/2", nil, &newStore)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	var breakdownA map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+inf.ExpID+"/10", nil, &breakdownA)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	totalA := breakdownA["total"]
@@ -590,23 +597,26 @@ func TestDeals(t *testing.T) {
 
 	var agencyCut float64
 	if agencyCut = (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
-		t.Error("Combined spend does not match budget db!")
+		t.Fatal("Combined spend does not match budget db!")
+		return
 	}
 
 	var breakdownAgency1 map[string]*reporting.ReportStats
 	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+inf.ExpID+"/10", nil, &breakdownAgency1)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	var breakdownAgency2 map[string]*reporting.ReportStats
 	r = rst.DoTesting(t, "GET", "/getAgencyInfluencerStats/"+ag.ExpID+"/"+newInf.ExpID+"/-1", nil, &breakdownAgency2)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(breakdownAgency2) > 1 {
-		t.Error("Should only have total key!")
+		t.Fatal("Should only have total key!")
 		return
 	}
 
@@ -614,50 +624,50 @@ func TestDeals(t *testing.T) {
 	totalAgency1 := breakdownAgency1["total"]
 	totalAgency2 := breakdownAgency2["total"]
 	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != newStore.Spent {
-		t.Error("Unexpected spend values!")
+		t.Fatal("Unexpected spend values!")
 		return
 	}
 
 	if totalAgency1.AgencySpent == totalAgency2.AgencySpent {
-		t.Error("Issue with agency payout")
+		t.Fatal("Issue with agency payout")
 		return
 	}
 
 	if totalAgency1.AgencySpent > totalAgency1.Spent {
-		t.Error("Agency spend higher than influencer spend!")
+		t.Fatal("Agency spend higher than influencer spend!")
 		return
 	}
 
 	var loads []*influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/getInfluencersByAgency/"+ag.ExpID, nil, &loads)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 		return
 	}
 
 	if len(loads) != 2 {
-		t.Error("Incorrect number of infleuncers in agency!")
+		t.Fatal("Incorrect number of infleuncers in agency!")
 		return
 	}
 	for _, i := range loads {
 		if i.Id == inf.ExpID {
 			if i.AgencySpend != totalAgency1.AgencySpent {
-				t.Error("Incorrect agency spend!")
+				t.Fatal("Incorrect agency spend!")
 				return
 			}
 
 			if i.InfluencerSpend != totalAgency1.Spent {
-				t.Error("Incorrect inf spend!")
+				t.Fatal("Incorrect inf spend!")
 				return
 			}
 		} else if i.Id == newInf.ExpID {
 			if i.AgencySpend != totalAgency2.AgencySpent {
-				t.Error("Incorrect agency spend!")
+				t.Fatal("Incorrect agency spend!")
 				return
 			}
 
 			if i.InfluencerSpend != totalAgency2.Spent {
-				t.Error("Incorrect inf spend!")
+				t.Fatal("Incorrect inf spend!")
 				return
 			}
 		}
@@ -666,39 +676,47 @@ func TestDeals(t *testing.T) {
 	var cmpBreakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/2/10", nil, &cmpBreakdown)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	totalCmp := cmpBreakdown["total"]
 	if delta := totalCmp.Spent - newStore.Spent; delta > 0.25 || delta < -0.25 {
-		t.Error("Combined spend does not match campaign report!")
+		t.Fatal("Combined spend does not match campaign report!")
+		return
 	}
 
 	if totalCmp.Shares != totalShares {
-		t.Error("Combined shares do not match campaign report!")
+		t.Fatal("Combined shares do not match campaign report!")
+		return
 	}
 
 	if totalCmp.Likes != totalLikes {
-		t.Error("Combined likes do not match campaign report!")
+		t.Fatal("Combined likes do not match campaign report!")
+		return
 	}
 
 	if totalCmp.Influencers != 2 {
-		t.Error("Influencer count incorrect!")
+		t.Fatal("Influencer count incorrect!")
+		return
 	}
 
 	var cmpInfBreakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignInfluencerStats/2/"+newInf.ExpID+"/10", nil, &cmpInfBreakdown)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	totalCmpInf := cmpInfBreakdown["total"]
 	if totalCmpInf.Likes != totalB.Likes {
-		t.Error("Combined likes do not match campaign report!")
+		t.Fatal("Combined likes do not match campaign report!")
+		return
 	}
 
 	if totalCmpInf.Shares != totalB.Shares {
-		t.Error("Combined shares do not match campaign report!")
+		t.Fatal("Combined shares do not match campaign report!")
+		return
 	}
 
 }
@@ -707,24 +725,27 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	var oldStore budget.Store
 	r := rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &oldStore)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 	checkStore(t, &oldStore, nil)
 
 	// deplete budget according to the payout
 	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	// check for money in completed deals (fees and inf)
 	var load influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 	if len(load.CompletedDeals) != 1 {
-		t.Error("Could not find completed deal!")
+		t.Fatal("Could not find completed deal!")
 		return
 	}
 
@@ -734,11 +755,13 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	var newStore budget.Store
 	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cmpId, nil, &newStore)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if newStore.Spent == 0 {
-		t.Error("Spent not incremented correctly in budget")
+		t.Fatal("Spent not incremented correctly in budget")
+		return
 	}
 	checkStore(t, &newStore, &oldStore)
 
@@ -746,12 +769,14 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	var cmpLoad common.Campaign
 	r = rst.DoTesting(t, "GET", "/campaign/"+cmpId+"?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	doneDeal = cmpLoad.Deals[load.CompletedDeals[0].Id]
 	if doneDeal == nil {
-		t.Error("Cannot find done deal in campaign!")
+		t.Fatal("Cannot find done deal in campaign!")
+		return
 	}
 
 	checkDeal(t, doneDeal, &load, agId, cmpId)
@@ -761,7 +786,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 		var breakdown map[string]*reporting.Totals
 		r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cmpId+"/10", nil, &breakdown)
 		if r.Status != 200 {
-			t.Error("Bad status code!")
+			t.Fatal("Bad status code!")
 		}
 
 		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
@@ -769,7 +794,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 		// check get influencer stats
 		r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+infId+"/10", nil, &breakdown)
 		if r.Status != 200 {
-			t.Error("Bad status code!")
+			t.Fatal("Bad status code!")
 		}
 		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
 	}
@@ -777,62 +802,62 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 
 func checkStore(t *testing.T, store, compareStore *budget.Store) {
 	if dspFee := store.DspFee / (store.Spendable + store.Spent + store.ExchangeFee + store.DspFee); dspFee > 0.21 || dspFee < 0.19 {
-		t.Error("Unexpected DSP fee", dspFee)
+		t.Fatal("Unexpected DSP fee", dspFee)
 	}
 
 	if exchangeFee := store.ExchangeFee / (store.Spendable + store.Spent + store.ExchangeFee + store.DspFee); exchangeFee > 0.11 || exchangeFee < 0.09 {
-		t.Error("Unexpected Exchange fee", exchangeFee)
+		t.Fatal("Unexpected Exchange fee", exchangeFee)
 	}
 
 	if compareStore != nil {
 		oldV := store.Spent + store.Spendable
 		newV := compareStore.Spendable + compareStore.Spent
 		if newV != oldV {
-			t.Error("Spendable and spent not synchronized!")
+			t.Fatal("Spendable and spent not synchronized!")
 		}
 	}
 }
 
 func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer, agId, campaignId string) {
 	if doneDeal.CampaignId != campaignId {
-		t.Error("Campaign ID not assigned!")
+		t.Fatal("Campaign ID not assigned!")
 	}
 
 	if doneDeal.Assigned == 0 || doneDeal.Completed == 0 {
-		t.Error("Deal timestamps missing!")
+		t.Fatal("Deal timestamps missing!")
 	}
 
 	if doneDeal.InfluencerId != load.Id {
-		t.Error("Deal ID missing!")
+		t.Fatal("Deal ID missing!")
 	}
 
 	var m *common.Payout
 	if m = doneDeal.GetPayout(0); m != nil {
 		if m.AgencyId != agId {
-			t.Error("Payout to wrong talent agency!")
+			t.Fatal("Payout to wrong talent agency!")
 		}
 		if m.Influencer == 0 {
-			t.Error("No influencer payout!")
+			t.Fatal("No influencer payout!")
 
 		}
 		if m.Agency == 0 {
-			t.Error("No agency payout!")
+			t.Fatal("No agency payout!")
 		}
 
 		// Should be 10% as stated earlier on talent agency initialization
 		if agencyFee := m.Agency / (m.Agency + m.Influencer); agencyFee > 0.11 || agencyFee < 0.09 {
-			t.Error("Unexpected agency fee", agencyFee)
+			t.Fatal("Unexpected agency fee", agencyFee)
 		}
 	} else {
-		t.Error("Could not find completed deal payout!")
+		t.Fatal("Could not find completed deal payout!")
 	}
 
 	if load.PendingPayout != m.Influencer {
-		t.Error("Unexpected pending payout!")
+		t.Fatal("Unexpected pending payout!")
 	}
 
 	if m = doneDeal.GetPayout(1); m != nil {
-		t.Error("How the hell are you getting payouts from last month?")
+		t.Fatal("How the hell are you getting payouts from last month?")
 	}
 }
 
@@ -842,19 +867,19 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 	rt := int32(doneDeal.Tweet.Retweets)
 
 	if rt != dayTotal.Shares || rt != report.Shares {
-		t.Error("Shares do not match!")
+		t.Fatal("Shares do not match!")
 	}
 
 	likes := int32(doneDeal.Tweet.Favorites)
 	if likes != dayTotal.Likes || likes != report.Likes {
-		t.Error("Likes do not match!")
+		t.Fatal("Likes do not match!")
 	}
 
 	if !skipSpend {
 		if report.Spent != spend {
 			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
 			if talentFee := (spend - report.Spent) / report.Spent; talentFee > 0.12 || talentFee < 0.08 {
-				t.Error("Spend values do not match!")
+				t.Fatal("Spend values do not match!")
 			}
 		}
 	}
@@ -907,41 +932,44 @@ func TestTaxes(t *testing.T) {
 	var load influencer.Influencer
 	r := rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code for initial check!")
+		t.Fatal("Bad status code for initial check!")
 	}
 
 	if load.SignatureId != "" || load.HasSigned {
-		t.Error("Unexpected signing!")
+		t.Fatal("Unexpected signing!")
 	}
 
 	r = rst.DoTesting(t, "GET", "/emailTaxForm/"+inf.ExpID, nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code for email!")
+		t.Fatal("Bad status code for email!")
 	}
 
 	var uload influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &uload)
 	if r.Status != 200 {
-		t.Error("Bad status code second influencer check!")
+		t.Fatal("Bad status code second influencer check!")
 	}
 
 	if uload.SignatureId == "" {
-		t.Error("No signature id assigned!")
+		t.Fatal("No signature id assigned!")
 	}
 
 	if uload.RequestedTax == 0 {
-		t.Error("No tax request timestamp!")
+		t.Fatal("No tax request timestamp!")
+		return
 	}
 
 	val, err := hellosign.HasSigned(inf.ExpID, uload.SignatureId)
 	if val || err != nil {
-		t.Error("Error getting signed value!")
+		t.Fatal("Error getting signed value!")
+		return
 	}
 
 	// Cleanup
 	time.Sleep(5 * time.Second)
 	if r, err := hellosign.Cancel(uload.SignatureId); err != nil || r != 200 {
-		t.Error("Hellosign cancel error")
+		t.Fatal("Hellosign cancel error")
+		return
 	}
 }
 
@@ -1024,258 +1052,276 @@ func TestPerks(t *testing.T) {
 	var cmpLoad common.Campaign
 	r := rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(cmpLoad.Deals) != cmp.Perks.Count {
-		t.Error("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!")
+		return
 	}
 
 	if cmp.IsValid() {
-		t.Error("Campaign should not be valid!")
+		t.Fatal("Campaign should not be valid!")
+		return
 	}
 
-	if cmp.Approved {
-		t.Error("Campaign should not be approved!")
+	if cmp.Approved > 0 {
+		t.Fatal("Campaign should not be approved!")
+		return
 	}
 
 	// make sure influencer getting no deals since the campaign is still pending
 	var deals []*common.Deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	deals = getDeals("3", deals)
 	if len(deals) > 0 {
-		t.Error("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!")
+		return
 	}
 
 	// check admin endpoints for campaign approval
 	var cmps []*common.Campaign
 	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &cmps)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(cmps) != 1 {
-		t.Error("Unexpected number of pending campaigns")
+		t.Fatal("Unexpected number of pending campaigns")
+		return
 	}
 
 	if cmps[0].Id != "3" {
-		t.Error("Unexpected campaign id!")
+		t.Fatal("Unexpected campaign id!")
+		return
 	}
 
-	if cmps[0].Approved {
-		t.Error("Unexpected approval value!")
+	if cmps[0].Approved > 0 {
+		t.Fatal("Unexpected approval value!")
+		return
 	}
 
 	// approve campaign
 	r = rst.DoTesting(t, "GET", "/approveCampaign/3", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	// verify pending campaigns is empty!
 	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &cmps)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(cmps) != 0 {
-		t.Error("Pending campaigns shouldnt be here!")
+		t.Fatal("Pending campaigns shouldnt be here!")
+		return
 	}
 
 	// make sure approved value is correct!
 	r = rst.DoTesting(t, "GET", "/campaign/3", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
-	if !cmpLoad.Approved {
-		t.Error("Admin approval didnt work!")
+	if cmpLoad.Approved == 0 {
+		t.Fatal("Admin approval didnt work!")
+		return
 	}
 
 	// get deals for influencer
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	deals = getDeals("3", deals)
 	if len(deals) == 0 {
-		t.Error("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!")
+		return
 	}
 
 	for _, d := range deals {
 		if d.CampaignImage == "" {
-			t.Error("Missing image url!")
+			t.Fatal("Missing image url!")
+			return
 		}
 	}
 
 	tgDeal := deals[0]
 	if tgDeal.CampaignId != "3" {
-		t.Error("Unexpected campaign id!")
+		t.Fatal("Unexpected campaign id!")
 	}
 
 	if tgDeal.Perk == nil {
-		t.Error("Should have a perk attached!")
+		t.Fatal("Should have a perk attached!")
 	}
 
 	if tgDeal.Perk.Count != 1 {
-		t.Error("Incorrect reporting of perk count")
+		t.Fatal("Incorrect reporting of perk count")
 	}
 
 	if tgDeal.Perk.InfId != "" || tgDeal.Perk.Status {
-		t.Error("Incorrect perk values set!")
+		t.Fatal("Incorrect perk values set!")
 	}
 
 	// pick up deal for influencer
 	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id+"/twitter", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// check campaign perk status and count (make sure both were updated)
 	var load influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(load.ActiveDeals) != 1 {
-		t.Error("Unexpected number of active deals!")
+		t.Fatal("Unexpected number of active deals!")
 	}
 
 	tgDeal = load.ActiveDeals[0]
 	if tgDeal.Perk == nil {
-		t.Error("No perk assigned!")
+		t.Fatal("No perk assigned!")
 	}
 
 	if tgDeal.Perk.Status {
-		t.Error("Unexpected perk status!")
+		t.Fatal("Unexpected perk status!")
 	}
 
 	if tgDeal.Perk.InfId != inf.ExpID {
-		t.Error("Incorrect inf id set for perk!")
+		t.Fatal("Incorrect inf id set for perk!")
 	}
 
 	if tgDeal.Perk.Address == nil {
-		t.Error("No address set for perk!")
+		t.Fatal("No address set for perk!")
 	}
 
 	if tgDeal.CampaignId != "3" {
-		t.Error("Unexpected campaign id for deal!")
+		t.Fatal("Unexpected campaign id for deal!")
 	}
 
 	r = rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if cmpLoad.Perks == nil {
-		t.Error("Campaign has no perks man!")
+		t.Fatal("Campaign has no perks man!")
 	}
 
 	if cmpLoad.Perks.Count != 4 {
-		t.Error("Campaign perk count did not decrement!")
+		t.Fatal("Campaign perk count did not decrement!")
 	}
 
 	cmpDeal, ok := cmpLoad.Deals[tgDeal.Id]
 	if !ok || cmpDeal.Perk == nil {
-		t.Error("Unexpected campaign deal value!")
+		t.Fatal("Unexpected campaign deal value!")
 	}
 
 	if cmpDeal.Perk.InfId != inf.ExpID {
-		t.Error("Influencer ID not assigned to campaign deal")
+		t.Fatal("Influencer ID not assigned to campaign deal")
 	}
 
 	if cmpDeal.Perk.Address == nil {
-		t.Error("Unexpected deal address")
+		t.Fatal("Unexpected deal address")
 	}
 
 	if cmpDeal.Perk.Status {
-		t.Error("Campaign deal should not be approved yet!")
+		t.Fatal("Campaign deal should not be approved yet!")
 	}
 
 	// get pending perk sendouts for admin
 	var pendingPerks map[string][]*common.Perk
 	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &pendingPerks)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(pendingPerks) != 1 {
-		t.Error("Unexpected number of perks.. should have 1!")
+		t.Fatal("Unexpected number of perks.. should have 1!")
 	}
 
 	pk, ok := pendingPerks["3"]
 	if !ok {
-		t.Error("Perk request not found")
+		t.Fatal("Perk request not found")
 	}
 
 	if len(pk) != 1 {
-		t.Error("Unexpected number of perks")
+		t.Fatal("Unexpected number of perks")
 	}
 
 	if pk[0].Status {
-		t.Error("Incorrect perk status value!")
+		t.Fatal("Incorrect perk status value!")
 	}
 
 	if pk[0].Address == nil {
-		t.Error("No address for perk!")
+		t.Fatal("No address for perk!")
 	}
 
 	// approve sendout
 	r = rst.DoTesting(t, "GET", "/approvePerk/"+inf.ExpID+"/3", nil, &pendingPerks)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// make sure get pending perk doesnt have that perk request now
 	var emptyPerks map[string][]*common.Perk
 	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &emptyPerks)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(emptyPerks) != 0 {
-		t.Error("Pending perk still leftover!")
+		t.Fatal("Pending perk still leftover!")
 	}
 
 	// make sure status is now true on campaign and influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	tgDeal = load.ActiveDeals[0]
 	if tgDeal.Perk == nil {
-		t.Error("No perk assigned!")
+		t.Fatal("No perk assigned!")
 	}
 
 	if !tgDeal.Perk.Status {
-		t.Error("Deal perk status should be true!")
+		t.Fatal("Deal perk status should be true!")
 	}
 
 	r = rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	cmpDeal, ok = cmpLoad.Deals[tgDeal.Id]
 	if !ok || cmpDeal.Perk == nil {
-		t.Error("Unexpected campaign deal value!")
+		t.Fatal("Unexpected campaign deal value!")
 	}
 
 	if !cmpDeal.Perk.Status {
-		t.Error("Campaign deal should be approved now!")
+		t.Fatal("Campaign deal should be approved now!")
 	}
 
 	// force approve
 	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/3", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 	// verify deal
 	verifyDeal(t, "3", inf.ExpID, ag.ExpID, rst, false)
@@ -1298,7 +1344,7 @@ func TestScraps(t *testing.T) {
 	// Sign in as admin
 	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Create 15 scraps
@@ -1310,7 +1356,7 @@ func TestScraps(t *testing.T) {
 
 		r := rst.DoTesting(t, "POST", "/scrap", &sc, nil)
 		if r.Status != 200 {
-			t.Error("Bad status code!")
+			t.Fatal("Bad status code!")
 		}
 
 	}
@@ -1318,12 +1364,12 @@ func TestScraps(t *testing.T) {
 	var incomplete []*influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getIncompleteScraps", nil, &incomplete)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Should have 5 incomplete scraps
 	if len(incomplete) != 5 {
-		t.Error("Unexpected number of incomplete deals!")
+		t.Fatal("Unexpected number of incomplete deals!")
 	}
 
 	// Fix one
@@ -1333,27 +1379,27 @@ func TestScraps(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "PUT", "/scrap/3", &sc, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	var newSc influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(newSc.Categories) == 0 || newSc.Gender != "f" {
-		t.Error("Unexpected scrap data!")
+		t.Fatal("Unexpected scrap data!")
 	}
 
 	// Should have 4 scraps now that we've fixed one
 	r = rst.DoTesting(t, "GET", "/getIncompleteScraps", nil, &incomplete)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(incomplete) != 4 {
-		t.Error("Unexpected number of scraps!")
+		t.Fatal("Unexpected number of scraps!")
 	}
 
 	// Create a few campaigns
@@ -1364,7 +1410,7 @@ func TestScraps(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	for i := 1; i < 8; i++ {
@@ -1383,43 +1429,43 @@ func TestScraps(t *testing.T) {
 		}
 		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 		if r.Status != 200 {
-			t.Error("Bad status code!")
+			t.Fatal("Bad status code!")
 		}
 	}
 
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Check to see if this dude got an email!
 	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(newSc.SentEmails) != 1 {
-		t.Error("Failed to send email!")
+		t.Fatal("Failed to send email!")
 		return
 	}
 
 	if len(newSc.SentEmails[0].Campaigns) != 5 {
-		t.Error("Wrong number of campaigns emailed!")
+		t.Fatal("Wrong number of campaigns emailed!")
 	}
 
 	// Try emailing again.. it should skip all influencers
 	// since we just emailed!
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(newSc.SentEmails) != 1 {
-		t.Error("Wrongfully sent an email!")
+		t.Fatal("Wrongfully sent an email!")
 	}
 
 	// Sign up as an influencer now with the same email
@@ -1436,12 +1482,12 @@ func TestScraps(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 	// Force emails
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// This scrap should no longer be here since we
@@ -1449,17 +1495,17 @@ func TestScraps(t *testing.T) {
 	// ForceEmail should have deleted it!
 	r = rst.DoTesting(t, "GET", "/scrap/3", nil, &newSc)
 	if r.Status != 400 {
-		t.Error("WTF Scrap still exists!!")
+		t.Fatal("WTF Scrap still exists!!")
 	}
 
 	// Make sure other scraps still there!
 	r = rst.DoTesting(t, "GET", "/scrap/4", nil, &newSc)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if newSc.EmailAddress == "" {
-		t.Error("Empty scrap!")
+		t.Fatal("Empty scrap!")
 	}
 
 }
@@ -1471,7 +1517,7 @@ func TestInfluencerEmail(t *testing.T) {
 	// Sign in as admin
 	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Create an influencer
@@ -1485,13 +1531,13 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Lets try forcing an email run
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Influencer's email ping setting is off.. they should have
@@ -1499,26 +1545,26 @@ func TestInfluencerEmail(t *testing.T) {
 	var load influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if load.DealPing || load.LastEmail != 0 {
-		t.Error("Unexpected email values for influencer")
+		t.Fatal("Unexpected email values for influencer")
 	}
 
 	// Lets set this influencer to receive emails now!
 	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/true", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if !load.DealPing {
-		t.Error("Deal ping did not toggle!")
+		t.Fatal("Deal ping did not toggle!")
 	}
 
 	// Create some campaigns so the influencer gets an email!
@@ -1529,7 +1575,7 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 	for i := 1; i < 8; i++ {
 		cmp := common.Campaign{
@@ -1548,40 +1594,40 @@ func TestInfluencerEmail(t *testing.T) {
 		}
 		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 		if r.Status != 200 {
-			t.Error("Bad status code!")
+			t.Fatal("Bad status code!")
 		}
 	}
 
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Should have an email now!
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if load.LastEmail == 0 {
-		t.Error("No email was sent wth!")
+		t.Fatal("No email was sent wth!")
 	}
 
 	// Lets force email again and make sure a new email doesnt get sent
 	// since we haven't reached threshold yet
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	var newLoad influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &newLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if load.LastEmail != newLoad.LastEmail {
-		t.Error("A new email was sent.. HOW?!")
+		t.Fatal("A new email was sent.. HOW?!")
 	}
 }
 
@@ -1592,7 +1638,7 @@ func TestImages(t *testing.T) {
 	// Sign in as admin
 	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Create the campaign
@@ -1603,7 +1649,7 @@ func TestImages(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	cmp := common.Campaign{
@@ -1621,77 +1667,77 @@ func TestImages(t *testing.T) {
 
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Make sure the default image url was set
 	var load common.Campaign
 	r = rst.DoTesting(t, "GET", "/campaign/1", nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if !strings.Contains(load.ImageURL, "/images/campaign/default") {
-		t.Error("Incorrect default image set!")
+		t.Fatal("Incorrect default image set!")
 	}
 
 	// HTTPTest doesn't use the port from sway config.. so lets account for that!
 	parts := strings.Split(load.ImageURL, "8080") // DIRTY HACK
 	if len(parts) != 2 {
-		t.Error("WTF MATE?")
+		t.Fatal("WTF MATE?")
 		return
 	}
 
 	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Lets try hitting an image which doesnt exist
 	r = rst.DoTesting(t, "GET", "/images/campaign/default_dne.jpg", nil, nil)
 	if r.Status == 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Try uploading a bad image
 	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", smallImage, nil)
 	if r.Status != 400 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Upload correct image
 	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", goodImage, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Make sure image url now correct
 	r = rst.DoTesting(t, "GET", "/campaign/1", nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if load.ImageURL == "" || strings.Contains(load.ImageURL, "default") {
-		t.Error("Incorrect image url!")
+		t.Fatal("Incorrect image url!")
 	}
 
 	// make sure image url works
 	// HTTPTest doesn't use the port from sway config.. so lets account for that!
 	parts = strings.Split(load.ImageURL, "8080") // DIRTY HACK
 	if len(parts) != 2 {
-		t.Error("WTF MATE?")
+		t.Fatal("WTF MATE?")
 		return
 	}
 
 	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Remove saved image (and indirectly check if it exists)!
 	err := os.Remove("./" + parts[1])
 	if err != nil {
-		t.Error("File does not exist!", ".."+parts[1])
+		t.Fatal("File does not exist!", ".."+parts[1])
 	}
 }
 
@@ -1702,7 +1748,7 @@ func TestInfluencerGeo(t *testing.T) {
 	// Sign in as admin
 	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Create an influencer
@@ -1715,22 +1761,22 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Influencer should have a geo set using the IP
 	var load geo.GeoRecord
 	r = rst.DoTesting(t, "GET", "/getLatestGeo/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if load.Source != "ip" {
-		t.Error("Bad source for geo!")
+		t.Fatal("Bad source for geo!")
 	}
 
 	if load.State != "NY" || load.Country != "US" {
-		t.Error("Incorrect geo set using IP!")
+		t.Fatal("Incorrect geo set using IP!")
 	}
 
 	// Lets update the address for the influencer now!
@@ -1743,21 +1789,21 @@ func TestInfluencerGeo(t *testing.T) {
 
 	r = rst.DoTesting(t, "POST", "/setAddress/"+inf.ExpID, addr, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Influencer should have a geo set using the address
 	r = rst.DoTesting(t, "GET", "/getLatestGeo/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if load.Source != "address" {
-		t.Error("Bad source for geo!")
+		t.Fatal("Bad source for geo!")
 	}
 
 	if load.State != "CA" || load.Country != "US" {
-		t.Error("Incorrect geo set using IP!")
+		t.Fatal("Incorrect geo set using IP!")
 	}
 
 	// Create a campaign with bad geo
@@ -1768,7 +1814,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Bad geo!
@@ -1794,7 +1840,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status == 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Lets try creating a campaign with a non-US country
@@ -1805,7 +1851,7 @@ func TestInfluencerGeo(t *testing.T) {
 	cmp.Geos = fakeGeo
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status == 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// All correct geo.. lets try creating a proper campaign now!
@@ -1817,25 +1863,25 @@ func TestInfluencerGeo(t *testing.T) {
 	cmp.Geos = fakeGeo
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Check to make sure geos in campaign all good!
 	var cmpLoad common.Campaign
 	r = rst.DoTesting(t, "GET", "/campaign/19", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(cmpLoad.Geos) != 3 {
-		t.Error("Unexpected number of geos!")
+		t.Fatal("Unexpected number of geos!")
 	}
 
 	// Update campaign to have bad geo.. Should reject!
 	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
 	r = rst.DoTesting(t, "PUT", "/campaign/19", cmpUpdateBad, nil)
 	if r.Status == 200 {
-		t.Error("Unexpected status code!")
+		t.Fatal("Unexpected status code!")
 	}
 
 	// Lets see if our California influencer gets a deal with this campaign!
@@ -1843,39 +1889,39 @@ func TestInfluencerGeo(t *testing.T) {
 	var deals []*common.Deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	deals = getDeals("19", deals)
 	if len(deals) == 0 {
-		t.Error("Unexpected number of deals.. should have atleast one!")
+		t.Fatal("Unexpected number of deals.. should have atleast one!")
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
 	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
 	r = rst.DoTesting(t, "PUT", "/campaign/19", cmpUpdateGood, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	r = rst.DoTesting(t, "GET", "/campaign/19", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(cmpLoad.Geos) != 2 {
-		t.Error("Unexpected number of geos!")
+		t.Fatal("Unexpected number of geos!")
 	}
 
 	// Influencer should no longer get a deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	deals = getDeals("19", deals)
 	if len(deals) != 0 {
-		t.Error("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!")
 	}
 
 	// Lets try a UK user who should get a deal!
@@ -1889,18 +1935,18 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", &ukInf, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Influencer should get a deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+ukInf.ExpID+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	deals = getDeals("19", deals)
 	if len(deals) == 0 {
-		t.Error("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!")
 	}
 }
 
@@ -1911,7 +1957,7 @@ func TestChecks(t *testing.T) {
 	// Sign in as admin
 	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Create an influencer
@@ -1932,22 +1978,22 @@ func TestChecks(t *testing.T) {
 
 	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	// Do multiple deals
 	for i := 0; i < 8; i++ {
-		doDeal(rst, t, inf.ExpID)
+		doDeal(rst, t, inf.ExpID, true)
 	}
 
 	var load influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(load.CompletedDeals) != 8 {
-		t.Error("Unexpected numnber of completed deals!")
+		t.Fatal("Unexpected numnber of completed deals!")
 	}
 
 	// Lets do a get for pending checks.. should be none since no infs have
@@ -1955,82 +2001,82 @@ func TestChecks(t *testing.T) {
 	var checkInfs []*GreedyInfluencer
 	r = rst.DoTesting(t, "GET", "/getPendingChecks", nil, &checkInfs)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(checkInfs) > 0 {
-		t.Error("Unexpected number of check requested influencers!")
+		t.Fatal("Unexpected number of check requested influencers!")
 	}
 
 	// request a check!
 	r = rst.DoTesting(t, "GET", "/requestCheck/"+inf.ExpID+"?skipTax=1", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	r = rst.DoTesting(t, "GET", "/getPendingChecks", nil, &checkInfs)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if len(checkInfs) != 1 {
-		t.Error("Unexpected number of check requested influencers!")
+		t.Fatal("Unexpected number of check requested influencers!")
 	}
 
 	if checkInfs[0].Id != inf.ExpID {
-		t.Error("Wrong influencer ID!")
+		t.Fatal("Wrong influencer ID!")
 	}
 
 	if len(checkInfs[0].CompletedDeals) != 8 {
-		t.Error("Incorrect number of completed deals!")
+		t.Fatal("Incorrect number of completed deals!")
 	}
 
 	if checkInfs[0].CompletedDeals[0] == "" {
-		t.Error("Incorrect post URL!")
+		t.Fatal("Incorrect post URL!")
 	}
 
 	if checkInfs[0].Followers == 0 {
-		t.Error("Wrong influencer ID!")
+		t.Fatal("Wrong influencer ID!")
 	}
 
 	if checkInfs[0].RequestedCheck == 0 {
-		t.Error("Wrong request check timestamp!")
+		t.Fatal("Wrong request check timestamp!")
 	}
 
 	if checkInfs[0].PendingPayout < 50 {
-		t.Error("Wrong pending payout!")
+		t.Fatal("Wrong pending payout!")
 	}
 
 	if checkInfs[0].Address == nil {
-		t.Error("Missing address!")
+		t.Fatal("Missing address!")
 	}
 
 	// Approve the check!
 	r = rst.DoTesting(t, "GET", "/approveCheck/"+inf.ExpID, nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	var approvedInf auth.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &approvedInf)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
 	}
 
 	if approvedInf.PendingPayout != 0 {
-		t.Error("Unexpected pending payout")
+		t.Fatal("Unexpected pending payout")
 	}
 
 	if len(approvedInf.Checks) != 1 {
-		t.Error("Unexpected number of checks")
+		t.Fatal("Unexpected number of checks")
 	}
 
 	if approvedInf.RequestedCheck != 0 {
-		t.Error("Requested check value still exists!")
+		t.Fatal("Requested check value still exists!")
 	}
 
 	if !misc.WithinLast(approvedInf.LastCheck, 1) {
-		t.Error("Last check value is incorrect!")
+		t.Fatal("Last check value is incorrect!")
 	}
 
 }
@@ -2039,7 +2085,7 @@ type Status struct {
 	ID string `json:"id"`
 }
 
-func doDeal(rst *resty.Client, t *testing.T, infId string) {
+func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 	// Create a campaign
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
@@ -2048,7 +2094,8 @@ func doDeal(rst *resty.Client, t *testing.T, infId string) {
 	}
 	r := rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	cmp := common.Campaign{
@@ -2058,14 +2105,16 @@ func doDeal(rst *resty.Client, t *testing.T, infId string) {
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Gender:       "mf",
-		Link:         "blade.org",
+		Link:         "http://www.blank.org?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 	}
+
 	var status Status
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &status)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 	cid := status.ID
 
@@ -2073,40 +2122,236 @@ func doDeal(rst *resty.Client, t *testing.T, infId string) {
 	var deals []*common.Deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+infId+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	deals = getDeals(cid, deals)
 	if len(deals) == 0 {
-		t.Error("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!")
+		return
 	}
 
+	var doneDeal common.Deal
 	// pick up deal for influencer
-	r = rst.DoTesting(t, "GET", "/assignDeal/"+infId+"/"+cid+"/"+deals[0].Id+"/twitter?dbg=1", nil, nil)
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+infId+"/"+cid+"/"+deals[0].Id+"/twitter?dbg=1", nil, &doneDeal)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if doneDeal.ShortenedLink == "" {
+		t.Fatal("Shortened link not created!")
+		return
+	}
+
+	if !approve {
+		return
 	}
 
 	// force approve
-	r = rst.DoTesting(t, "GET", "/forceApprove/"+infId+"/"+cid, nil, nil)
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+infId+"/"+cid+"", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	// check that the deal is approved
 	var load influencer.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(load.CompletedDeals) == 0 {
-		t.Error("Unexpected numnber of completed deals!")
+		t.Fatal("Unexpected numnber of completed deals!")
+		return
 	}
 
 	// deplete budget according to the payout
 	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
 	if r.Status != 200 {
-		t.Error("Bad status code!")
+		t.Fatal("Bad status code!")
+		return
+	}
+}
+
+func TestClicks(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Make sure click endpoint accessible without signing in
+	r := rst.DoTesting(t, "GET", "/click/1/1/1", nil, nil)
+	if r.Status == 401 {
+		t.Fatal("Unexpected unauthorized error!")
+		return
+	}
+
+	// Sign in as admin
+	r = rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Gender:    "m",
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "justinbieber",
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Do a deal but DON'T approve yet!
+	doDeal(rst, t, inf.ExpID, false)
+
+	// Influencer has assigned deals.. lets try clicking!
+	// It shouldn't allow it!
+	var load auth.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(load.ActiveDeals) != 1 && len(load.CompletedDeals) != 0 {
+		t.Fatal("Unexpected number of deals")
+		return
+	}
+
+	cid := load.ActiveDeals[0].CampaignId
+
+	// Make sure the shortened url is saved correctly
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(cmpLoad.Link, "blank.org") {
+		t.Fatal("Shortening of the URL did not work!")
+		return
+	}
+
+	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "goo.gl") {
+		t.Fatal("Unexpected shortened link")
+		return
+	}
+
+	// Try faking a click for an active deal.. shouldn't work but should redirect!
+	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+load.ActiveDeals[0].Id, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	// Make sure there are no clicks
+	var breakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &breakdown)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if breakdown["total"].Clicks > 0 {
+		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	// Approve the deal
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/"+cid+"", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// check that the deal is approved
+	var newLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &newLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(newLoad.CompletedDeals) == 0 {
+		t.Fatal("Unexpected numnber of completed deals!")
+		return
+	}
+
+	// deplete budget according to the payout
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(newLoad.CompletedDeals[0].ShortenedLink, "goo.gl") {
+		t.Fatal("Bad shortened link")
+		return
+	}
+
+	// Try a real click
+	// Can't hit the shortened link since it will redirect to localhost! NO MAS!
+	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+newLoad.CompletedDeals[0].Id, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	// Make sure everything increments
+	var newBreakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &newBreakdown)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if newBreakdown["total"].Clicks != 1 {
+		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	// Try clicking again.. should fail because of unique check!
+	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+newLoad.CompletedDeals[0].Id, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	// Make sure nothing increments since this uuid just had a click
+	var lastBreakdown map[string]*reporting.Totals
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if lastBreakdown["total"].Clicks != 1 {
+		t.Fatal("Unexpected number of clicks!")
+		return
 	}
 }
