@@ -387,3 +387,7 @@ func Float64ToBytes(float float64) []byte {
 	binary.LittleEndian.PutUint64(bytes, bits)
 	return bytes
 }
+
+func isSecureAdmin(c *gin.Context, s *Server) bool {
+	return c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox
+}

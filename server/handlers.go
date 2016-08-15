@@ -1242,7 +1242,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+		if isSecureAdmin(c, s) {
 			c.JSON(500, misc.StatusErr("Not allowed to run billing!"))
 			return
 		}
@@ -1643,7 +1643,7 @@ var ErrDealNotFound = errors.New("Deal not found!")
 
 func forceApproveAny(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+		if isSecureAdmin(c, s) {
 			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
 			return
 		}
@@ -1726,7 +1726,7 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 
 func forceDeplete(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+		if isSecureAdmin(c, s) {
 			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
 			return
 		}
@@ -1970,7 +1970,7 @@ func getIncompleteScraps(s *Server) gin.HandlerFunc {
 
 func forceEmail(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox {
+		if isSecureAdmin(c, s) {
 			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
 			return
 		}
