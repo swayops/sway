@@ -389,5 +389,10 @@ func Float64ToBytes(float float64) []byte {
 }
 
 func isSecureAdmin(c *gin.Context, s *Server) bool {
-	return c.Query("pw") != "muchodinero" && !s.Cfg.Sandbox
+	if c.Query("pw") == "muchodinero" || s.Cfg.Sandbox {
+		return true
+	} else {
+		c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+		return false
+	}
 }

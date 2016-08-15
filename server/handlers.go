@@ -1242,8 +1242,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if isSecureAdmin(c, s) {
-			c.JSON(500, misc.StatusErr("Not allowed to run billing!"))
+		if !isSecureAdmin(c, s) {
 			return
 		}
 
@@ -1643,8 +1642,7 @@ var ErrDealNotFound = errors.New("Deal not found!")
 
 func forceApproveAny(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if isSecureAdmin(c, s) {
-			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+		if !isSecureAdmin(c, s) {
 			return
 		}
 
@@ -1726,8 +1724,7 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 
 func forceDeplete(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if isSecureAdmin(c, s) {
-			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+		if !isSecureAdmin(c, s) {
 			return
 		}
 
@@ -1970,8 +1967,7 @@ func getIncompleteScraps(s *Server) gin.HandlerFunc {
 
 func forceEmail(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if isSecureAdmin(c, s) {
-			c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+		if !isSecureAdmin(c, s) {
 			return
 		}
 
