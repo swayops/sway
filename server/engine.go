@@ -8,7 +8,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
-	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
@@ -27,8 +26,8 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Update social media profiles every X hours
-	ticker := time.NewTicker(4 * time.Hour)
+	// Run engine every 6 hours
+	ticker := time.NewTicker(6 * time.Hour)
 	go func() {
 		for range ticker.C {
 			if err := run(srv); err != nil {
@@ -36,27 +35,12 @@ func newSwayEngine(srv *Server) error {
 			}
 		}
 	}()
-
-	// Every hour, check to see if the user has completed
-	// the tax form signature request
-	sigTicker := time.NewTicker(1 * time.Hour)
-	go func() {
-		for range sigTicker.C {
-			auditTaxes(srv)
-		}
-	}()
-
-	emailTicker := time.NewTicker(6 * time.Hour)
-	go func() {
-		for range emailTicker.C {
-			emailDeals(srv)
-		}
-	}()
-
 	return nil
 }
 
 func run(srv *Server) error {
+	// NOTE: This is the only function that can and should edit
+	// budget and reporting DBs
 	log.Println("Initiating engine run @", time.Now().String())
 
 	// Update all influencer stats/completed deal stats
@@ -81,34 +65,66 @@ func run(srv *Server) error {
 		return err
 	}
 
+	if err := auditTaxes(srv); err != nil {
+		log.Println("Err with auditing taxes!", err)
+		return err
+	}
+
+	if err := emailDeals(srv); err != nil {
+		log.Println("Err with emailing deals!", err)
+		return err
+	}
+
 	log.Println("Completed engine run @", time.Now().String(), "\n")
 	return nil
 }
 
 func updateInfluencers(s *Server) error {
-	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg, getActiveAdvertisers(s), getActiveAdAgencies(s))
+	activeCampaigns := s.Campaigns.GetStore()
 	influencers := getAllInfluencers(s)
 
-	// Traverses all influencers and updates their social media stats
-	for _, inf := range influencers {
+	var (
+		inf       *auth.Influencer
+		oldUpdate int32
+		err       error
+	)
+	for _, infId := range influencers {
+		// Do another get incase the influencer has been updated
+		// and since this iteration could take a while
+		inf = s.auth.GetInfluencer(infId)
+		if inf == nil {
+			continue
+		}
+
+		oldUpdate = inf.LastSocialUpdate
+
 		// Influencer not updated if they have been updated
 		// within the last 12 hours
-		if err := inf.UpdateAll(s.Cfg); err != nil {
+		if err = inf.UpdateAll(s.Cfg); err != nil {
 			return err
 		}
 
 		// Inserting a request interval so we don't hit our API
 		// limits with platforms!
-		time.Sleep(5 * time.Second)
+		if inf.LastSocialUpdate != oldUpdate {
+			// Only sleep if the influencer was actually updated!
+			time.Sleep(3 * time.Second)
+		}
 
 		// Update data for all completed deal posts
-		if err := inf.UpdateCompletedDeals(s.Cfg, activeCampaigns); err != nil {
+		if err = inf.UpdateCompletedDeals(s.Cfg, activeCampaigns); err != nil {
 			return err
 		}
 
 		// Also saves influencers!
-		if err := saveAllCompletedDeals(s, inf); err != nil {
+		if err = saveAllCompletedDeals(s, inf); err != nil {
 			return err
+		}
+
+		if len(inf.CompletedDeals) > 0 {
+			// If inf had completed deals..they were most likely updated
+			// Lets sleep for a bit just incase!
+			time.Sleep(2 * time.Second)
 		}
 	}
 
@@ -122,9 +138,8 @@ func depleteBudget(s *Server) error {
 
 	var spentDelta float64
 
-	activeCampaigns := common.GetAllActiveCampaigns(s.db, s.Cfg, getActiveAdvertisers(s), getActiveAdAgencies(s))
 	// Iterate over all active campaigns
-	for _, cmp := range activeCampaigns {
+	for _, cmp := range s.Campaigns.GetStore() {
 		// Get this month's store for this campaign
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
 		if err != nil {
@@ -198,9 +213,21 @@ func depleteBudget(s *Server) error {
 	return nil
 }
 
-func auditTaxes(srv *Server) {
-	var sigsFound int32
-	for _, inf := range getAllInfluencers(srv) {
+func auditTaxes(srv *Server) error {
+	var (
+		sigsFound int32
+		inf       *auth.Influencer
+	)
+
+	influencers := getAllInfluencers(srv)
+	for _, infId := range influencers {
+		// Do another get incase the influencer has been updated
+		// and since this iteration could take a while
+		inf = srv.auth.GetInfluencer(infId)
+		if inf == nil {
+			continue
+		}
+
 		if inf.SignatureId != "" && !inf.HasSigned {
 			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
 			if err != nil {
@@ -221,6 +248,7 @@ func auditTaxes(srv *Server) {
 					return nil
 				}); err != nil {
 					log.Println("Error when saving influencer", err)
+					return err
 				}
 			}
 		}
@@ -228,6 +256,7 @@ func auditTaxes(srv *Server) {
 	if sigsFound > 0 {
 		log.Println(sigsFound, "signatures found!\n")
 	}
+	return nil
 }
 
 func emailDeals(s *Server) error {
@@ -245,7 +274,6 @@ func emailDeals(s *Server) error {
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-
 				if misc.WithinLast(inf.CreatedAt, 24) {
 					emailMap[inf.EmailAddress] = true
 				}

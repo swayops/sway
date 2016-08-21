@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"net/url"
 	"strings"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
@@ -303,12 +305,39 @@ func sanitizeMention(str string) string {
 	return strings.ToLower(raw)
 }
 
-func getAllInfluencers(s *Server) []*auth.Influencer {
-	var influencers []*auth.Influencer
+func sanitizeURL(incoming string) string {
+	if incoming == "" {
+		return ""
+	}
+
+	u, err := url.Parse(incoming)
+	if err != nil {
+		return ""
+	}
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+
+	clean := u.Scheme + "://" + u.Host + u.Path
+	if u.RawQuery != "" {
+		clean = clean + "?" + u.RawQuery
+	}
+	return clean
+}
+
+func trimURLPrefix(raw string) string {
+	raw = strings.TrimPrefix(raw, "https://")
+	raw = strings.TrimPrefix(raw, "http://")
+	raw = strings.TrimPrefix(raw, "www.")
+	return raw
+}
+
+func getAllInfluencers(s *Server) []string {
+	var influencers []string
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-				influencers = append(influencers, inf)
+				influencers = append(influencers, inf.Id)
 			}
 			return nil
 		})
@@ -342,6 +371,10 @@ func getActiveAdAgencies(s *Server) map[string]bool {
 	return out
 }
 
+func getClickUrl(infId string, deal *common.Deal, cfg *config.Config) string {
+	return cfg.ClickUrl + infId + "/" + deal.CampaignId + "/" + deal.Id
+}
+
 func Float64Frombytes(bytes []byte) float64 {
 	bits := binary.LittleEndian.Uint64(bytes)
 	float := math.Float64frombits(bits)
@@ -353,4 +386,13 @@ func Float64ToBytes(float float64) []byte {
 	bytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(bytes, bits)
 	return bytes
+}
+
+func isSecureAdmin(c *gin.Context, s *Server) bool {
+	if c.Query("pw") == "muchodinero" || s.Cfg.Sandbox {
+		return true
+	} else {
+		c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+		return false
+	}
 }

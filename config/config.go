@@ -37,6 +37,8 @@ func New(loc string) (*Config, error) {
 		return nil, err
 	}
 
+	c.ClickUrl = c.ServerURL + "/click/"
+
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
 	return &c, nil
@@ -118,6 +120,8 @@ type Config struct {
 	JsonXlsxPath string `json:"jsonXlsxPath"`
 	ImagesDir    string `json:"imagesDir"`
 	ImageUrlPath string `json:"imageUrlPath"`
+
+	ClickUrl string `json:"clickUrl"`
 }
 
 func (c *Config) AllBuckets() []string {

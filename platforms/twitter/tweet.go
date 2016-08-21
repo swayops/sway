@@ -3,6 +3,7 @@ package twitter
 import (
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -98,6 +99,11 @@ type Tweet struct {
 
 	LastUpdated int32  `json:"lastUpdated,omitempty"`
 	PostURL     string `json:"postURL,omitempty"`
+
+	Errors []struct {
+		Code    int    `json:"code,omitempty"`
+		Message string `json:"message,omitempty"`
+	} `json:"errors,omitempty"`
 }
 
 func (t *Tweet) Location() *geo.GeoRecord {
@@ -141,7 +147,7 @@ func (t *Tweet) Urls() (out []string) {
 	return
 }
 
-func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
+func (t *Tweet) UpdateData(cfg *config.Config) (ban, err error) {
 	// // If the post is more than 4 days old AND
 	// // it has been updated in the last week, SKIP!
 	// // i.e. only update old posts once a week
@@ -179,6 +185,14 @@ func (t *Tweet) UpdateData(cfg *config.Config) (err error) {
 	var tmp Tweet
 	if err = json.NewDecoder(r).Decode(&tmp); err != nil {
 		return
+	}
+
+	for _, er := range tmp.Errors {
+		if er.Code == 144 {
+			// Invalid tweet id error code
+			ban = errors.New(er.Message)
+			return
+		}
 	}
 
 	t.FavoritesDelta = tmp.Favorites - t.Favorites

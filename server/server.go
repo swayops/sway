@@ -185,6 +185,10 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.GET("/static/*fp", staticGzer)
 
 	r = r.Group(srv.Cfg.APIPath)
+
+	// Public endpoint
+	r.GET("/click/:influencerId/:campaignId/:dealId", click(srv))
+
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
 
@@ -211,6 +215,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		nil, putTalentAgency, nil)
 	// NOTE: Check with Ahmed and make this so that talent agencies can view this shit
 	verifyGroup.GET("/getInfluencersByAgency/:id", getInfluencersByAgency(srv))
+	verifyGroup.GET("/getAgencyInfluencerStats/:id/:infId/:days", getAgencyInfluencerStats(srv))
 
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 
@@ -257,6 +262,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
 	verifyGroup.POST("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
+	verifyGroup.POST("/setBan/:influencerId/:state", infOwnership, setBan(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
 
