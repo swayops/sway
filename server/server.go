@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -37,6 +38,8 @@ type Server struct {
 // New returns a new Server or an error
 // TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
+	os.MkdirAll(cfg.DBPath, 0755) // always try to create the data dir incase we hard-reset the db
+
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
