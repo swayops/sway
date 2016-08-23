@@ -66,5 +66,6 @@
 	},
 	"jsonXlsxPath": "./config/json2xlsx.py",
 	"imagesDir": "./images/",
-	"imageUrlPath": "images/"
+	"imageUrlPath": "images/",
+	"logsDir": "./logs/"
 }

@@ -120,6 +120,8 @@ type Config struct {
 	ImagesDir    string `json:"imagesDir"`
 	ImageUrlPath string `json:"imageUrlPath"`
 
+	LogsDir string `json:"logsDir"`
+
 	ClickUrl string `json:"clickUrl"`
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -50,6 +51,30 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		reportingDb: reportingDb,
 		auth:        auth.New(db, cfg),
 		Campaigns:   common.NewCampaigns(),
+	}
+
+	if _, err := os.Stat(cfg.LogsDir); os.IsNotExist(err) {
+		err := os.MkdirAll(cfg.LogsDir, 0711)
+		if err != nil {
+			log.Println("Error creating directory")
+			return nil, err
+		}
+	}
+
+	if _, err := os.Stat(cfg.LogsDir + "invoices"); os.IsNotExist(err) {
+		err := os.MkdirAll(cfg.LogsDir+"invoices", 0711)
+		if err != nil {
+			log.Println("Error creating directory")
+			return nil, err
+		}
+	}
+
+	if _, err := os.Stat(cfg.DBPath); os.IsNotExist(err) {
+		err := os.MkdirAll(cfg.DBPath, 0711)
+		if err != nil {
+			log.Println("Error creating directory")
+			return nil, err
+		}
 	}
 
 	err := srv.initializeDBs(cfg)
