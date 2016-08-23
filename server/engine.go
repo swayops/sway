@@ -203,7 +203,7 @@ func depleteBudget(s *Server) error {
 				stats.ExchangeMarkup += exchangeMarkup
 				stats.InfPayout += infPayout
 				stats.AgencyPayout += agencyPayout // Talent Agency
-				log.Println("Talent Agency:", inf.AgencyId, "Inf:", inf.Id, "InfPayout:", stats.InfPayout, "Agency:", stats.AgencyPayout, "DSP:", stats.DspMarkup, "Exchange:", stats.ExchangeMarkup)
+
 				stats.TalentAgency = inf.AgencyId
 
 				// Save the deal in influencers and campaigns
