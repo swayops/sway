@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -19,6 +20,8 @@ const (
 	TalentAdminEmail = "talentAgency@swayops.com"
 	adminPass        = "Rf_j@Z9hM3-"
 )
+
+var ErrUserId = errors.New("Unexpected user id")
 
 // Server is the main server of the sway server
 type Server struct {
@@ -99,6 +102,12 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
 		}
+
+		if u.ID != "2" {
+			// Sway advertiser agency must be 2! (for billing)
+			return ErrUserId
+		}
+
 		log.Println("created advertiser agency, id = ", u.ID)
 
 		u = &auth.User{

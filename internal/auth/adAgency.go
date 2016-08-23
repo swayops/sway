@@ -35,6 +35,7 @@ func (ag *AdAgency) setToUser(_ *Auth, u *User) error {
 	if u.ID == "" {
 		panic("wtfmate?")
 	}
+
 	if ag.ID == "" || ag.Name == "" {
 		// Initial creation:
 		// Copy the newly created user's name and status to

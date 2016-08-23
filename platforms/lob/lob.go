@@ -90,7 +90,6 @@ func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (
 	var check Check
 	err = json.NewDecoder(resp.Body).Decode(&check)
 	resp.Body.Close()
-
 	if check.ErrorData != nil {
 		return nil, errors.New(check.ErrorData.Message)
 	}

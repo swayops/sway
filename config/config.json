@@ -26,7 +26,7 @@
 
 	"mandrill": {
 		"apiKey": "Pc4PtpXLpGQr0iHjzUPCjg",
-		"subAccount":"SwayOps",
+		"subAccount":"Meteora Dashboard",
 		"fromEmail": "noreply@swayops.com",
 		"fromName": "SwayOps",
 		"fromEmailReply": "nick@swayops.com",

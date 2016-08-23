@@ -7,7 +7,8 @@ type Perk struct {
 	Category string `json:"category,omitempty"`
 	Count    int    `json:"count,omitempty"`
 
-	// Set once a user picks up a deal
+	// Set once a user picks up a deal.. only set for the
+	// common.Deal.Perk value! not for the campaign one!
 	InfId   string           `json:"id,omitempty"`
 	InfName string           `json:"infName,omitempty"`
 	Address *lob.AddressLoad `json:"address,omitempty"`

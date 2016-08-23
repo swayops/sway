@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/missionMeteora/mandrill"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
@@ -250,7 +252,6 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		// cuser is always an advertiser
 		cmp.AdvertiserId, cmp.AgencyId, cmp.Company = cuser.ID, cuser.ParentID, cuser.Name
-
 		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
 			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
 			return
@@ -426,7 +427,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var upd CampaignUpdate
+		var (
+			upd   CampaignUpdate
+			added float64
+		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
@@ -449,14 +453,22 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
 			return
 		}
+		if upd.Name == "" {
+			c.JSON(400, misc.StatusErr("Please provide a valid name"))
+			return
+		}
+		cmp.Name = upd.Name
 
 		if cmp.Budget != upd.Budget {
 			// Update their budget!
 			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-			if err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, upd.Budget, dspFee, exchangeFee); err != nil {
+			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, upd.Budget, dspFee, exchangeFee); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
+			}
+			if added > 0 {
+				addDealsToCampaign(&cmp, added)
 			}
 			cmp.Budget = upd.Budget
 		}
@@ -465,7 +477,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Geos = upd.Geos
 		cmp.Gender = upd.Gender
 		cmp.Categories = common.LowerSlice(upd.Categories)
-		cmp.Name = upd.Name
+
 		if upd.Whitelist != nil {
 			cmp.Whitelist = upd.Whitelist.Sanitize()
 		}
@@ -1224,7 +1236,6 @@ func getAgencyInfluencerStats(s *Server) gin.HandlerFunc {
 
 const (
 	cmpInvoiceFormat          = "Campaign ID: %s, Email: test@sway.com, Phone: 123456789, Spent: %f, DSPFee: %f, ExchangeFee: %f, Total: %f"
-	infInvoiceFormat          = "Influencer Name: %s, Influencer ID: %s, Email: test@sway.com, Payout: %f"
 	talentAgencyInvoiceFormat = "Agency ID: %s, Email: test@sway.com, Payout: %f, Influencer ID: %s, Campaign ID: %s, Deal ID: %s"
 )
 
@@ -1246,55 +1257,297 @@ func runBilling(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		key := budget.GetLastMonthBudgetKey()
+		dbg := c.Query("dbg") == "1"
+		if dbg {
+			key = budget.GetCurrentBudgetKey()
+		}
+
 		// Now that it's a new month.. get last month's budget store
-		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
+		store, err := budget.GetStore(s.budgetDb, s.Cfg, key)
 		if err != nil || len(store) == 0 {
 			// Insert file informant check
 			c.JSON(500, misc.StatusErr(ErrEmptyStore))
 			return
 		}
 
-		// Campaign Invoice
-		log.Println("Advertiser Invoice")
+		advertiserXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
+		advertiserSheets := make(map[string]*misc.Sheet)
+
+		agencyXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
+		agencySheets := make(map[string]*misc.Sheet)
+
+		// Agency Invoice
 		for cId, data := range store {
-			formatted := fmt.Sprintf(
-				cmpInvoiceFormat,
-				cId,
-				data.Spent,
-				data.DspFee,
-				data.ExchangeFee,
-				data.Spent+data.DspFee+data.ExchangeFee,
+			var (
+				emails string
+				user   *auth.User
 			)
-			log.Println(formatted)
-		}
 
-		// Talent Agency Invoice
-		log.Println("Talent Agency Invoice")
-		s.db.View(func(tx *bolt.Tx) error {
-			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
-				inf := auth.GetInfluencer(u)
-				if inf == nil {
-					return nil
+			cmp := common.GetCampaign(cId, s.db, s.Cfg)
+			if cmp == nil {
+				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign, %s", cId)))
+				return
+			}
+
+			advertiser := s.auth.GetAdvertiser(cmp.AdvertiserId)
+			if advertiser == nil {
+				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for advertiser, %s", cmp.AdvertiserId)))
+				return
+			}
+
+			user = s.auth.GetUser(cmp.AdvertiserId)
+			if user != nil {
+				emails = user.Email
+			}
+
+			adAgency := s.auth.GetAdAgency(advertiser.AgencyID)
+			if adAgency == nil {
+				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for ad agency, %s", cmp.AgencyId)))
+				return
+			}
+
+			if adAgency.ID == auth.SwayOpsAdAgencyID {
+				// ADVERTISER INVOICE!
+				sheet, ok := advertiserSheets[cmp.AdvertiserId]
+				if !ok {
+					sheet = advertiserXf.AddSheet(fmt.Sprintf("%s (%s)", advertiser.Name, advertiser.ID))
+					sheet.AddHeader(
+						"ID",
+						"Name",
+						"Email",
+						"DSP Fee",
+						"Exchange Fee",
+						"Total Spent ($)",
+					)
+					advertiserSheets[cmp.AdvertiserId] = sheet
 				}
-
-				for _, d := range inf.CompletedDeals {
-					// Get payouts for last month since it's the first
-					if money := d.GetPayout(1); money != nil {
-						formatted := fmt.Sprintf(
-							talentAgencyInvoiceFormat,
-							money.AgencyId,
-							money.Agency,
-							d.InfluencerId,
-							d.CampaignId,
-							d.Id,
-						)
-						log.Println(formatted)
+				sheet.AddRow(
+					cmp.Id,
+					cmp.Name,
+					emails,
+					fmt.Sprintf("%0.2f", data.DspFee*100)+"%",
+					fmt.Sprintf("%0.2f", data.ExchangeFee*100)+"%",
+					misc.TruncateFloat(data.Spent, 2),
+				)
+			} else {
+				// AGENCY INVOICE!
+				// Don't add email for sway ad agency
+				user = s.auth.GetUser(adAgency.ID)
+				if user != nil {
+					if emails == "" {
+						emails = user.Email
+					} else {
+						emails += ", " + user.Email
 					}
 				}
 
-				return nil
-			})
-		})
+				sheet, ok := agencySheets[adAgency.ID]
+				if !ok {
+					sheet = agencyXf.AddSheet(fmt.Sprintf("%s (%s)", adAgency.Name, adAgency.ID))
+					sheet.AddHeader(
+						"Advertiser ID",
+						"Advertiser Name",
+						"Campaign ID",
+						"Campaign Name",
+						"Emails",
+						"DSP Fee",
+						"Exchange Fee",
+						"Total Spent ($)",
+					)
+					agencySheets[adAgency.ID] = sheet
+				}
+				sheet.AddRow(
+					cmp.AdvertiserId,
+					advertiser.Name,
+					cmp.Id,
+					cmp.Name,
+					emails,
+					fmt.Sprintf("%0.2f", data.DspFee*100)+"%",
+					fmt.Sprintf("%0.2f", data.ExchangeFee*100)+"%",
+					misc.TruncateFloat(data.Spent, 2),
+				)
+			}
+
+		}
+
+		files := []string{}
+		if len(agencySheets) > 0 {
+			fName := fmt.Sprintf("%s-agency.xlsx", key)
+			location := fmt.Sprintf("logs/invoices/%s", fName)
+
+			fo, err := os.Create(location)
+			if err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if _, err := agencyXf.WriteTo(fo); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if err := fo.Close(); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			files = append(files, fName)
+		}
+
+		if len(advertiserSheets) > 0 {
+			fName := fmt.Sprintf("%s-advertiser.xlsx", key)
+			location := fmt.Sprintf("logs/invoices/%s", fName)
+
+			advo, err := os.Create(location)
+			if err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if _, err := advertiserXf.WriteTo(advo); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if err := advo.Close(); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			files = append(files, fName)
+		}
+
+		// Talent Agency Invoice
+		talentXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
+		talentSheets := make(map[string]*misc.Sheet)
+
+		influencers := getAllInfluencers(s)
+		for _, infId := range influencers {
+			inf := s.auth.GetInfluencer(infId)
+			if inf == nil {
+				continue
+			}
+
+			for _, d := range inf.CompletedDeals {
+				// Get payouts for last month since it's the first
+				month := 1
+				if dbg {
+					month = 0
+				}
+				if money := d.GetPayout(month); money != nil {
+					talentAgency := s.auth.GetTalentAgency(inf.AgencyId)
+					if talentAgency == nil {
+						c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for talent agency, %s", inf.AgencyId)))
+						return
+					}
+
+					user := s.auth.GetUser(talentAgency.ID)
+					if user == nil {
+						c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for user, %s", talentAgency.ID)))
+						return
+					}
+
+					if money.AgencyId != talentAgency.ID {
+						continue
+					}
+
+					cmp := common.GetCampaign(d.CampaignId, s.db, s.Cfg)
+					if cmp == nil {
+						c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign, %s", d.CampaignId)))
+						return
+					}
+
+					sheet, ok := talentSheets[talentAgency.ID]
+					if !ok {
+						sheet = talentXf.AddSheet(fmt.Sprintf("%s (%s)", talentAgency.Name, talentAgency.ID))
+
+						sheet.AddHeader(
+							"",
+							"Influencer ID",
+							"Influencer Name",
+							"Campaign ID",
+							"Campaign Name",
+							"Agency Payout ($)",
+						)
+						talentSheets[talentAgency.ID] = sheet
+					}
+					if len(sheet.Rows) == 0 {
+						sheet.AddRow(
+							user.Email,
+							inf.Id,
+							inf.Name,
+							cmp.Id,
+							cmp.Name,
+							misc.TruncateFloat(money.Agency, 2),
+						)
+					} else {
+						sheet.AddRow(
+							"",
+							inf.Id,
+							inf.Name,
+							cmp.Id,
+							cmp.Name,
+							misc.TruncateFloat(money.Agency, 2),
+						)
+					}
+
+				}
+			}
+		}
+
+		if len(talentSheets) > 0 {
+			fName := fmt.Sprintf("%s-talent.xlsx", key)
+			location := fmt.Sprintf("logs/invoices/%s", fName)
+			tvo, err := os.Create(location)
+			if err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if _, err := talentXf.WriteTo(tvo); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if err := tvo.Close(); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+
+			files = append(files, fName)
+		}
+
+		// Email!
+		var attachments []*mandrill.MessageAttachment
+		for _, fName := range files {
+			f, err := os.Open("logs/invoices/" + fName)
+			if err != nil {
+				log.Println("Failed to open file!", fName)
+				continue
+			}
+
+			att, err := mandrill.AttachmentFromReader(fName, f)
+			if err != nil {
+				log.Println("Unable to create attachment!", err)
+				f.Close()
+				continue
+			}
+			attachments = append(attachments, att)
+			f.Close()
+		}
+
+		if len(attachments) > 0 && !s.Cfg.Sandbox {
+			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "shahzilabid@gmail.com", "Sway", nil, attachments)
+			if err != nil {
+				log.Println("Failed to email invoice!")
+			}
+
+			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "shahzilabid@gmail.com", "Sway", nil, attachments)
+			if err != nil {
+				log.Println("Failed to email invoice!")
+			}
+		}
 
 		// TRANSFER PROCESS TO NEW MONTH
 		// - We wil now add fresh deals for the new month
@@ -1324,7 +1577,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					var (
 						leftover, pending float64
 					)
-					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, budget.GetLastMonthBudgetKey())
+					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
 					if err == nil && store != nil {
 						leftover = store.Spendable
 						pending = store.Pending
