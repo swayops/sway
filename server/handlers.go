@@ -1297,15 +1297,15 @@ func runBilling(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			advertiser := s.auth.GetAdvertiser(cmp.AdvertiserId)
-			if advertiser == nil {
-				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for advertiser, %s", cmp.AdvertiserId)))
-				return
-			}
-
 			user = s.auth.GetUser(cmp.AdvertiserId)
 			if user != nil {
 				emails = user.Email
+			}
+
+			advertiser := user.Advertiser
+			if advertiser == nil {
+				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for advertiser, %s", cmp.AdvertiserId)))
+				return
 			}
 
 			adAgency := s.auth.GetAdAgency(advertiser.AgencyID)
