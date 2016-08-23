@@ -204,7 +204,11 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 			if sup.ParentID == "" {
 				switch typ {
 				case AdvertiserScope:
-					sup.ParentID = SwayOpsAdAgencyID
+					if sup.Advertiser != nil && sup.Advertiser.AgencyID != "" {
+						sup.ParentID = sup.Advertiser.AgencyID
+					} else {
+						sup.ParentID = SwayOpsAdAgencyID
+					}
 				case InfluencerScope:
 					sup.ParentID = SwayOpsTalentAgencyID
 				default:

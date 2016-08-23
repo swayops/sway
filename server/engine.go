@@ -44,6 +44,9 @@ func run(srv *Server) error {
 	log.Println("Initiating engine run @", time.Now().String())
 
 	// Update all influencer stats/completed deal stats
+	// If anything fails to update.. just stop here
+	// This ensures that Deltas aren't accounted for twice
+	// in the case someting errors out and continues!
 	if err := updateInfluencers(srv); err != nil {
 		// Insert a file informant check
 		log.Println("Err with stats updater", err)
@@ -170,22 +173,37 @@ func depleteBudget(s *Server) error {
 
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
 			store, stats, spentDelta = budget.AdjustStore(store, deal, stats)
-
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
-				infPayout := spentDelta * (1 - agencyFee)
-				agencyPayout := spentDelta - infPayout
+				// DSP and Exchange fee taken away from the prinicpal
+				dspMarkup := spentDelta * store.DspFee
+				exchangeMarkup := spentDelta * store.ExchangeFee
+
+				// Talent agency payout will be taken away from the influencer portion
+				influencerPool := spentDelta - (dspMarkup + exchangeMarkup)
+				agencyPayout := influencerPool * agencyFee
+				infPayout := influencerPool - agencyPayout
+
 				inf.PendingPayout += infPayout
 
 				// Update payment values for this completed deal
+				// THIS IS WHAT WE'LL USE FOR BILLING!
 				for _, cDeal := range inf.CompletedDeals {
 					if cDeal.Id == deal.Id {
 						cDeal.Pay(infPayout, agencyPayout, inf.AgencyId)
 					}
 				}
 
+				// infPayout = what the influencer will be earning (not including agency fee)
+				// agencyPayout = what the talent agency will be earning
+				// dspMarkup = what the DSP fee is for this transaction
+				// exchangeMarkup = what the exchange fee is for this transaction
+
+				stats.DspMarkup += dspMarkup
+				stats.ExchangeMarkup += exchangeMarkup
 				stats.InfPayout += infPayout
-				stats.AgencyPayout += agencyPayout
+				stats.AgencyPayout += agencyPayout // Talent Agency
+
 				stats.TalentAgency = inf.AgencyId
 
 				// Save the deal in influencers and campaigns

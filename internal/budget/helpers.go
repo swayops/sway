@@ -8,6 +8,10 @@ func getBudgetKey() string {
 	return time.Now().UTC().Format(format)
 }
 
+func GetCurrentBudgetKey() string {
+	return getBudgetKey()
+}
+
 func GetLastMonthBudgetKey() string {
 	return getBudgetKeyOffset(1)
 }

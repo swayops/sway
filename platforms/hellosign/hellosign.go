@@ -79,7 +79,6 @@ func SendSignatureRequest(name, email, infId string, us, sandbox bool) (string, 
 	var hsResp Response
 	err = json.NewDecoder(resp.Body).Decode(&hsResp)
 	resp.Body.Close()
-
 	if hsResp.ErrorData != nil {
 		return "", errors.New(hsResp.ErrorData.Msg)
 	}

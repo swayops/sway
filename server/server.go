@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -23,6 +24,8 @@ const (
 	adminPass        = "Rf_j@Z9hM3-"
 )
 
+var ErrUserId = errors.New("Unexpected user id")
+
 // Server is the main server of the sway server
 type Server struct {
 	Cfg         *config.Config
@@ -38,7 +41,7 @@ type Server struct {
 // New returns a new Server or an error
 // TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
-	os.MkdirAll(cfg.DBPath, 0755) // always try to create the data dir incase we hard-reset the db
+	initializeDirs(cfg)
 
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
@@ -68,6 +71,11 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	srv.initializeRoutes(r)
 
 	return srv, nil
+}
+
+func initializeDirs(cfg *config.Config) {
+	os.MkdirAll(cfg.LogsDir+"invoices", 0700)
+	os.MkdirAll(cfg.DBPath, 0700)
 }
 
 func (srv *Server) initializeDBs(cfg *config.Config) error {
@@ -104,6 +112,12 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
 		}
+
+		if u.ID != "2" {
+			// Sway advertiser agency must be 2! (for billing)
+			return ErrUserId
+		}
+
 		log.Println("created advertiser agency, id = ", u.ID)
 
 		u = &auth.User{

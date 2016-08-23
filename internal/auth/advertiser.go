@@ -54,7 +54,9 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 
 	// Make sure IDs are congruent each create/update
 	adv.ID, adv.AgencyID = u.ID, u.ParentID
+	adv.ExchangeFee = 0.2 // Global exchange fee
 	u.Advertiser = adv
+
 	return nil
 }
 
@@ -68,6 +70,10 @@ func (adv *Advertiser) Check() error {
 	}
 
 	if adv.DspFee > 0.99 {
+		return ErrInvalidFee
+	}
+
+	if adv.DspFee == 0 && adv.ExchangeFee == 0 {
 		return ErrInvalidFee
 	}
 

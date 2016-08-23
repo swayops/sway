@@ -141,6 +141,20 @@ func getSignupUser() *signupUser {
 	}
 }
 
+func getSignupUserWithName(name string) *signupUser {
+	counter++
+	id := strconv.Itoa(counter)
+	return &signupUser{
+		&auth.User{
+			Name:  name,
+			Email: name + "@a.b",
+		},
+		defaultPass,
+		defaultPass,
+		id,
+	}
+}
+
 func getSignupUserWithEmail(email string) *signupUser {
 	counter++
 	id := strconv.Itoa(counter)

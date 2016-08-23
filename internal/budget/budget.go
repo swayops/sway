@@ -81,20 +81,14 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			}
 		}
 
-		dspCut := monthlyBudget * dspFee
-		exchangeCut := monthlyBudget * exchangeFee
-		// Take out margins from spendable
 		// NOTE: This will automatically reset Pending too
-		// Also.. no need for an influencers struct because
-		// this is either a brand new campaign or its billing
-		// day
-		spendable = leftover + monthlyBudget - (dspCut + exchangeCut)
+		spendable = leftover + monthlyBudget
 		st[cmp.Id] = &Store{
 			Budget:      monthlyBudget,
 			Leftover:    leftover,
 			Spendable:   spendable,
-			DspFee:      dspCut,
-			ExchangeFee: exchangeCut,
+			DspFee:      dspFee,
+			ExchangeFee: exchangeFee,
 		}
 
 		if b, err = json.Marshal(&st); err != nil {
@@ -113,16 +107,18 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 	return spendable, nil
 }
 
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float64) error {
+func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float64) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	store, ok := st[cid]
 	if !ok {
-		return ErrNotFound
+		return 0, ErrNotFound
 	}
+
+	var tbaBudget float64
 
 	oldBudget := store.Budget
 	if newBudget > oldBudget {
@@ -136,10 +132,11 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		days := daysInMonth(now.Year(), now.Month())
 		daysUntilEnd := days - now.Day() + 1
 
-		tbaBudget := (diffBudget / float64(days)) * float64(daysUntilEnd)
-
-		tbaDspFee := tbaBudget * dspFee
-		tbaExchangeFee := tbaBudget * exchangeFee
+		// The "to be added" value is based on the delta
+		// between old and new budget and how many days are left
+		// So if increase is $30 and the month has 10 days left..
+		// $10 will be added to the budget
+		tbaBudget = (diffBudget / float64(days)) * float64(daysUntilEnd)
 
 		// Take out margins from spendable
 		// NOTE: Leftover is not added to spendable because it already
@@ -147,10 +144,10 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		st[cid] = &Store{
 			Budget:      oldBudget + tbaBudget,
 			Leftover:    store.Leftover,
-			Spendable:   store.Spendable + tbaBudget - (tbaDspFee + tbaExchangeFee),
+			Spendable:   store.Spendable + tbaBudget,
 			Spent:       store.Spent,
-			DspFee:      store.DspFee + tbaDspFee,
-			ExchangeFee: store.ExchangeFee + tbaExchangeFee,
+			DspFee:      dspFee,
+			ExchangeFee: exchangeFee,
 		}
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
@@ -178,10 +175,10 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		return
 	}); err != nil {
 		log.Println("Error when creating budget key", err)
-		return err
+		return 0, err
 	}
 
-	return nil
+	return tbaBudget, nil
 }
 
 func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid string, forceDate string) (*Store, error) {
@@ -258,7 +255,6 @@ func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Stor
 
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
-
 	return store, stats, spentDelta
 }
 
