@@ -1423,7 +1423,7 @@ func TestScraps(t *testing.T) {
 	for i := 1; i < 8; i++ {
 		cmp := common.Campaign{
 			Status:       true,
-			AdvertiserId: "4",
+			AdvertiserId: adv.ExpID,
 			Budget:       float64(i * 10),
 			Name:         "The Day Walker",
 			Twitter:      true,
@@ -1587,7 +1587,7 @@ func TestInfluencerEmail(t *testing.T) {
 	for i := 1; i < 8; i++ {
 		cmp := common.Campaign{
 			Status:       true,
-			AdvertiserId: "4",
+			AdvertiserId: adv.ExpID,
 			Budget:       float64(i * 10),
 			Name:         "The Day Walker " + strconv.Itoa(i),
 			Twitter:      true,
@@ -1832,7 +1832,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	cmp := common.Campaign{
 		Status:       true,
-		AdvertiserId: "4",
+		AdvertiserId: adv.ExpID,
 		Budget:       10,
 		Name:         "The Day Walker",
 		Twitter:      true,
@@ -2098,7 +2098,9 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 		DspFee:   0.2,
 		AgencyID: agId,
 	}
-	r := rst.DoTesting(t, "POST", "/signUp", adv, nil)
+
+	var st Status
+	r := rst.DoTesting(t, "POST", "/signUp", adv, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -2106,7 +2108,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 
 	cmp := common.Campaign{
 		Status:       true,
-		AdvertiserId: adv.ExpID,
+		AdvertiserId: st.ID,
 		Budget:       1000,
 		Name:         "The Day Walker",
 		Twitter:      true,

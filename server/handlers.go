@@ -237,14 +237,20 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Lets make sure this is a valid advertiser
+		if adv := s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
 		if cuser.Admin { // if user is admin, they have to pass us an advID
-			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil {
+			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil || cuser.Advertiser == nil {
 				c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 				return
 			}
 		} else if cuser.AdAgency != nil { // if user is an ad agency, they have to pass an advID that *they* own.
 			agID := cuser.ID
-			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil || cuser.ParentID != agID {
+			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil || cuser.ParentID != agID || cuser.Advertiser == nil {
 				c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 				return
 			}
