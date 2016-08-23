@@ -110,8 +110,8 @@ func TestAdAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
 
 		// update the advertiser and check if the update worked
-		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
-		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.2, ExchangeFee: 0.3}},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.2}, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.2, ExchangeFee: 0.2}},
 
 		// sign in as admin and see if they can access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -198,8 +198,7 @@ func TestNewAdvertiser(t *testing.T) {
 
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
-		DspFee:      0.5,
-		ExchangeFee: 0.2,
+		DspFee: 0.5,
 	}
 
 	ag := getSignupUser()
@@ -214,7 +213,7 @@ func TestNewAdvertiser(t *testing.T) {
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
-		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.3}, 200, nil},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2}, 200, nil},
 
 		// sign in as admin and access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -237,7 +236,7 @@ func TestNewAdvertiser(t *testing.T) {
 
 	counter--
 
-	if df, ef := getAdvertiserFees(srv.auth, adv.ExpID); df != 0.2 || ef != 0.3 {
+	if df, ef := getAdvertiserFees(srv.auth, adv.ExpID); df != 0.2 || ef != 0.2 {
 		t.Fatal("getAdvertiserFees failed", df, ef)
 	}
 
@@ -253,7 +252,7 @@ func TestNewInfluencer(t *testing.T) {
 			Gender:      "unicorn",
 			Geo:         &geo.GeoRecord{},
 			TwitterId:   "justinbieber",
-			InstagramId: "justinbieber",
+			InstagramId: "kimkardashian",
 		},
 	}
 
@@ -352,8 +351,7 @@ func TestCampaigns(t *testing.T) {
 
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
-		DspFee:      0.5,
-		ExchangeFee: 0.2,
+		DspFee: 0.5,
 	}
 	cmp := common.Campaign{
 		AdvertiserId: adv.ExpID,
@@ -431,8 +429,7 @@ func TestDeals(t *testing.T) {
 
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
-		DspFee:      0.2,
-		ExchangeFee: 0.1,
+		DspFee: 0.2,
 	}
 
 	cmp := common.Campaign{
@@ -595,8 +592,13 @@ func TestDeals(t *testing.T) {
 	totalLikes := totalA.Likes + totalB.Likes
 	totalSpend := totalA.Spent + totalB.Spent
 
+	// Difference between influencer stats and budget store is
+	// talent agency + dsp + exchange
+
+	// Lets remove the dsp and exchange fee and compare
+	rawSpend := newStore.Spent - (2 * (0.2 * newStore.Spent))
 	var agencyCut float64
-	if agencyCut = (newStore.Spent - totalSpend) / newStore.Spent; agencyCut > 0.12 || agencyCut < 0.08 {
+	if agencyCut = (rawSpend - totalSpend) / rawSpend; agencyCut > 0.12 || agencyCut < 0.08 {
 		t.Fatal("Combined spend does not match budget db!")
 		return
 	}
@@ -623,7 +625,7 @@ func TestDeals(t *testing.T) {
 	// Combining totals for both influencers
 	totalAgency1 := breakdownAgency1["total"]
 	totalAgency2 := breakdownAgency2["total"]
-	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != newStore.Spent {
+	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != rawSpend {
 		t.Fatal("Unexpected spend values!")
 		return
 	}
@@ -801,12 +803,10 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 }
 
 func checkStore(t *testing.T, store, compareStore *budget.Store) {
-	if dspFee := store.DspFee / (store.Spendable + store.Spent + store.ExchangeFee + store.DspFee); dspFee > 0.21 || dspFee < 0.19 {
-		t.Fatal("Unexpected DSP fee", dspFee)
-	}
-
-	if exchangeFee := store.ExchangeFee / (store.Spendable + store.Spent + store.ExchangeFee + store.DspFee); exchangeFee > 0.11 || exchangeFee < 0.09 {
-		t.Fatal("Unexpected Exchange fee", exchangeFee)
+	if store != nil && compareStore != nil {
+		if store.DspFee != compareStore.DspFee && store.ExchangeFee != compareStore.ExchangeFee {
+			t.Fatal("Fees changed!")
+		}
 	}
 
 	if compareStore != nil {
@@ -814,6 +814,10 @@ func checkStore(t *testing.T, store, compareStore *budget.Store) {
 		newV := compareStore.Spendable + compareStore.Spent
 		if newV != oldV {
 			t.Fatal("Spendable and spent not synchronized!")
+		}
+
+		if store.Spent == compareStore.Spent {
+			t.Fatal("Spent did not change!")
 		}
 	}
 }
@@ -877,8 +881,9 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 
 	if !skipSpend {
 		if report.Spent != spend {
+			m := doneDeal.GetPayout(0)
 			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
-			if talentFee := (spend - report.Spent) / report.Spent; talentFee > 0.12 || talentFee < 0.08 {
+			if report.Spent != m.Influencer {
 				t.Fatal("Spend values do not match!")
 			}
 		}
@@ -1416,7 +1421,7 @@ func TestScraps(t *testing.T) {
 	for i := 1; i < 8; i++ {
 		cmp := common.Campaign{
 			Status:       true,
-			AdvertiserId: "4",
+			AdvertiserId: adv.ExpID,
 			Budget:       float64(i * 10),
 			Name:         "The Day Walker",
 			Twitter:      true,
@@ -1580,7 +1585,7 @@ func TestInfluencerEmail(t *testing.T) {
 	for i := 1; i < 8; i++ {
 		cmp := common.Campaign{
 			Status:       true,
-			AdvertiserId: "4",
+			AdvertiserId: adv.ExpID,
 			Budget:       float64(i * 10),
 			Name:         "The Day Walker " + strconv.Itoa(i),
 			Twitter:      true,
@@ -1825,7 +1830,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	cmp := common.Campaign{
 		Status:       true,
-		AdvertiserId: "4",
+		AdvertiserId: adv.ExpID,
 		Budget:       10,
 		Name:         "The Day Walker",
 		Twitter:      true,
@@ -1983,7 +1988,7 @@ func TestChecks(t *testing.T) {
 
 	// Do multiple deals
 	for i := 0; i < 8; i++ {
-		doDeal(rst, t, inf.ExpID, true)
+		doDeal(rst, t, inf.ExpID, "2", true)
 	}
 
 	var load influencer.Influencer
@@ -2078,21 +2083,22 @@ func TestChecks(t *testing.T) {
 	if !misc.WithinLast(approvedInf.LastCheck, 1) {
 		t.Fatal("Last check value is incorrect!")
 	}
-
 }
 
 type Status struct {
 	ID string `json:"id"`
 }
 
-func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
+func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (cid string) {
 	// Create a campaign
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
-		DspFee:      0.2,
-		ExchangeFee: 0.1,
+		DspFee:   0.2,
+		AgencyID: agId,
 	}
-	r := rst.DoTesting(t, "POST", "/signUp", adv, nil)
+
+	var st Status
+	r := rst.DoTesting(t, "POST", "/signUp", adv, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -2100,8 +2106,8 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 
 	cmp := common.Campaign{
 		Status:       true,
-		AdvertiserId: adv.ExpID,
-		Budget:       100,
+		AdvertiserId: st.ID,
+		Budget:       1000,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Gender:       "mf",
@@ -2116,7 +2122,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 		t.Fatal("Bad status code!")
 		return
 	}
-	cid := status.ID
+	cid = status.ID
 
 	// get deals for influencer
 	var deals []*common.Deal
@@ -2175,6 +2181,8 @@ func doDeal(rst *resty.Client, t *testing.T, infId string, approve bool) {
 		t.Fatal("Bad status code!")
 		return
 	}
+
+	return
 }
 
 func TestClicks(t *testing.T) {
@@ -2212,7 +2220,7 @@ func TestClicks(t *testing.T) {
 	}
 
 	// Do a deal but DON'T approve yet!
-	doDeal(rst, t, inf.ExpID, false)
+	doDeal(rst, t, inf.ExpID, "2", false)
 
 	// Influencer has assigned deals.. lets try clicking!
 	// It shouldn't allow it!
@@ -2353,5 +2361,216 @@ func TestClicks(t *testing.T) {
 	if lastBreakdown["total"].Clicks != 1 {
 		t.Fatal("Unexpected number of clicks!")
 		return
+	}
+}
+
+func TestBilling(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cids := make(map[string]budget.Store)
+	addedCids := []string{}
+
+	decreaseCid := ""
+
+	// Do multiple deals for multiple talent agencies, influencers,
+	// and advertisers
+	for i := 0; i < 8; i++ {
+		ag := getSignupUser()
+		ag.TalentAgency = &auth.TalentAgency{
+			Fee: 0.1,
+		}
+
+		r = rst.DoTesting(t, "POST", "/signUp", &ag, nil)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+		}
+
+		inf := getSignupUser()
+		inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+			InfluencerLoad: influencer.InfluencerLoad{
+				Gender:     "m",
+				Geo:        &geo.GeoRecord{},
+				InviteCode: common.GetCodeFromID(ag.ExpID),
+				TwitterId:  "breakingnews",
+				Address: &lob.AddressLoad{
+					AddressOne: "8 Saint Elias",
+					City:       "Trabuco Canyon",
+					State:      "CA",
+					Country:    "US",
+				},
+			},
+		}
+
+		r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+		}
+
+		adAg := getSignupUserWithName("Some Ad Agency Name" + strconv.Itoa(i))
+		adAg.AdAgency = &auth.AdAgency{Status: true}
+		r = rst.DoTesting(t, "POST", "/signUp", adAg, nil)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+		}
+
+		cid := doDeal(rst, t, inf.ExpID, adAg.ExpID, false)
+
+		// Approve the deal
+		r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/"+cid+"", nil, nil)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+			return
+		}
+
+		if i == 6 {
+			oldStore := budget.Store{}
+			r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &oldStore)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+			}
+
+			var oldLoad common.Campaign
+			r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &oldLoad)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+			}
+
+			// For the second last campaign lets increase the budget!
+			upd := &CampaignUpdate{Status: true, Gender: "mf", Budget: 5000, Name: "The day wlker"}
+			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+				return
+			}
+
+			var load common.Campaign
+			r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &load)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+			}
+
+			if load.Budget != 5000 {
+				t.Fatal("Campaign budget did not increment!")
+			}
+
+			if len(load.Deals) <= len(oldLoad.Deals) {
+				t.Fatal("Deals did not increase!")
+			}
+
+			// Lets see if it's new store was affected!
+			store := budget.Store{}
+			r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &store)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+			}
+
+			if store.Budget <= oldStore.Budget {
+				t.Fatal("New store budget did not increase!")
+			}
+
+			if store.Spendable <= oldStore.Spendable {
+				t.Fatal("Spendable did not increase!")
+			}
+		}
+
+		if i == 7 {
+			decreaseCid = cid
+			// For the last campaign lets decrease the budget!
+			upd := &CampaignUpdate{Status: true, Gender: "mf", Budget: 10, Name: "The day wlker"}
+			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+				return
+			}
+
+			var load common.Campaign
+			r = rst.DoTesting(t, "GET", "/campaign/"+cid, nil, &load)
+			if r.Status != 200 {
+				t.Fatal("Bad status code!")
+			}
+
+			if load.Budget != 10 {
+				t.Fatal("Campaign budget did not decrease!")
+			}
+		}
+		addedCids = append(addedCids, cid)
+	}
+
+	// Deplete budgets
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	for _, cid := range addedCids {
+		store := budget.Store{}
+		r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &store)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+		}
+
+		if store.Spent == 0 {
+			t.Fatal("Spent not incremented correctly in budget")
+		}
+
+		var breakdown map[string]*reporting.Totals
+		r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &breakdown)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+			return
+		}
+		// Campaign stats and budget should have EVERYTHING (markups + spend)
+		total := breakdown["total"]
+		if store.Spent != total.Spent {
+			t.Fatal("Budget and reports do not match!")
+		}
+		cids[cid] = store
+	}
+
+	// LETS RUN BILLING!
+	r = rst.DoTesting(t, "GET", "/billing?force=1&dbg=1", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets see what happened to stores!
+	for cid, store := range cids {
+		var newStore budget.Store
+		r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &newStore)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!")
+		}
+
+		if newStore.Spent > 0 {
+			t.Fatal("Bad new store values!")
+		}
+
+		if newStore.ExchangeFee != 0.2 {
+			t.Fatal("Bad exchange fee!")
+		}
+
+		if store.Spendable != newStore.Leftover {
+			t.Fatal("Didn't carry over leftover from last month!")
+		}
+
+		if newStore.Spendable != (newStore.Leftover + newStore.Budget) {
+			t.Fatal("Incorrect spendable calculation!")
+		}
+
+		if cid == decreaseCid {
+			// This is the campaign that was decreased!
+			if newStore.Budget != 10 {
+				t.Fatal("Store does not have updated budget!")
+			}
+		}
 	}
 }

@@ -1,15 +1,12 @@
-package reporting
+package misc
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os/exec"
-	"strconv"
-	"time"
-
 	"io"
+	"os/exec"
 )
 
 const (
@@ -82,18 +79,4 @@ func (x *XLSXFile) AddSheet(name string) (s *Sheet) {
 type Sheeter interface {
 	io.WriterTo
 	AddSheet(name string) (s *Sheet)
-}
-
-func GetReportDate(date string) time.Time {
-	// YYYY-MM-DD
-	if t, err := time.Parse(`2006-01-02`, date); err == nil {
-		return t
-	}
-	if t, err := time.Parse(`02 Jan 06`, date); err == nil {
-		return t
-	}
-	if u, err := strconv.ParseInt(date, 10, 64); err == nil {
-		return time.Unix(u, 0)
-	}
-	return time.Time{}
 }

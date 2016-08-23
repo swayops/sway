@@ -455,9 +455,6 @@ func (inf *Influencer) Clean() *Influencer {
 		inf.YTUsername = inf.YouTube.UserName
 		inf.YouTube = nil
 	}
-	// For this data.. hit getDealsCompleted/Assigned handlers!
-	inf.ActiveDeals = nil
-	inf.CompletedDeals = nil
 	inf.Rep = nil
 
 	return inf
@@ -505,7 +502,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	for _, cmp := range campaigns.GetStore() {
 		targetDeal := &common.Deal{}
 		dealFound := false
-
 		if !cmp.IsValid() {
 			continue
 		}
@@ -661,9 +657,9 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 	// Depending on the emails they've gotten already..
 	// send them a follow up email
 
-	// If we sent this influencer a deal within the last 14 days..
+	// If we sent this influencer a deal within the last 7 days..
 	// skip!
-	if misc.WithinLast(inf.LastEmail, 24*14) {
+	if misc.WithinLast(inf.LastEmail, 24*7) {
 		return false, nil
 	}
 	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", nil, false, cfg)

@@ -41,9 +41,11 @@ var (
 )
 
 type Stats struct {
-	InfPayout    float64 `json:"infPayout,omitempty"`
-	AgencyPayout float64 `json:"agPayout,omitempty"`
-	TalentAgency string  `json:"talent,omitempty"`
+	InfPayout      float64 `json:"infPayout,omitempty"`
+	AgencyPayout   float64 `json:"agPayout,omitempty"`
+	TalentAgency   string  `json:"talent,omitempty"`
+	DspMarkup      float64 `json:"dspMarkup,omitempty"`
+	ExchangeMarkup float64 `json:"exchangeMarkup,omitempty"`
 
 	Likes     int32 `json:"likes,omitempty"`
 	Dislikes  int32 `json:"dislikes,omitempty"`
@@ -52,6 +54,10 @@ type Stats struct {
 	Views     int32 `json:"views,omitempty"`
 	Clicks    int32 `json:"clicks,omitempty"`
 	Published int32 `json:"posted,omitempty"` // Epoch ts
+}
+
+func (st *Stats) TotalMarkup() float64 {
+	return st.DspMarkup + st.ExchangeMarkup + st.AgencyPayout
 }
 
 func GetStats(deal *common.Deal, db *bolt.DB, cfg *config.Config, platformId string) (*Stats, string, error) {
@@ -250,7 +256,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 				tg.Total.Likes += st.Likes
 				tg.Total.Clicks += st.Clicks
 				tg.Total.Views += views
-				tg.Total.Spent += st.InfPayout + st.AgencyPayout
+				tg.Total.Spent += st.InfPayout + st.TotalMarkup()
 				tg.Total.Shares += st.Shares
 				tg.Total.Comments += st.Comments
 
@@ -303,7 +309,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *Stats, views 
 	stats.Shares += st.Shares
 	stats.Views += views
 	stats.Clicks += st.Clicks
-	stats.Spent += st.InfPayout + st.AgencyPayout
+	stats.Spent += st.InfPayout + st.TotalMarkup()
 	stats.InfluencerId = infId
 	stats.Network = channel
 	return data
@@ -321,7 +327,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += views
-	stats.Spent += st.InfPayout + st.AgencyPayout
+	stats.Spent += st.InfPayout + st.TotalMarkup()
 	stats.PlatformId = platformId
 	stats.Published = getPostDate(st.Published)
 	stats.InfluencerId = infId

@@ -2,6 +2,7 @@ package reporting
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -95,4 +96,18 @@ func getViews(st *Stats, eng int32) int32 {
 		views += st.Views
 	}
 	return views
+}
+
+func GetReportDate(date string) time.Time {
+	// YYYY-MM-DD
+	if t, err := time.Parse(`2006-01-02`, date); err == nil {
+		return t
+	}
+	if t, err := time.Parse(`02 Jan 06`, date); err == nil {
+		return t
+	}
+	if u, err := strconv.ParseInt(date, 10, 64); err == nil {
+		return time.Unix(u, 0)
+	}
+	return time.Time{}
 }

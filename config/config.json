@@ -26,7 +26,7 @@
 
 	"mandrill": {
 		"apiKey": "Pc4PtpXLpGQr0iHjzUPCjg",
-		"subAccount":"SwayOps",
+		"subAccount":"Meteora Dashboard",
 		"fromEmail": "noreply@swayops.com",
 		"fromName": "SwayOps",
 		"fromEmailReply": "nick@swayops.com",
@@ -66,5 +66,6 @@
 	},
 	"jsonXlsxPath": "./config/json2xlsx.py",
 	"imagesDir": "./images/",
-	"imageUrlPath": "images/"
+	"imageUrlPath": "images/",
+	"logsDir": "./logs/"
 }

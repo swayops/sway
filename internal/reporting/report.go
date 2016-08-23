@@ -10,6 +10,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/misc"
 )
 
 var (
@@ -28,13 +29,13 @@ func GenerateCampaignReport(res http.ResponseWriter, db, statsDb *bolt.DB, cid s
 		return err
 	}
 
-	xf := NewXLSXFile(cfg.JsonXlsxPath)
+	xf := misc.NewXLSXFile(cfg.JsonXlsxPath)
 	setHighLevelSheet(xf, cmp, from, to, st.Total)
 	setChannelLevelSheet(xf, from, to, st.Channel)
 	setInfluencerLevelSheet(xf, from, to, st.Influencer)
 	setContentLevelSheet(xf, from, to, st.Post)
 
-	res.Header().Set("Content-Type", XLSTContentType)
+	res.Header().Set("Content-Type", misc.XLSTContentType)
 	if _, err := xf.WriteTo(res); err != nil {
 		log.Println(err)
 		return err
@@ -43,7 +44,7 @@ func GenerateCampaignReport(res http.ResponseWriter, db, statsDb *bolt.DB, cid s
 	return nil
 }
 
-func setHighLevelSheet(xf Sheeter, cmp *common.Campaign, from, to time.Time, tot *Totals) {
+func setHighLevelSheet(xf misc.Sheeter, cmp *common.Campaign, from, to time.Time, tot *Totals) {
 	sheet := xf.AddSheet("High Level Stats")
 	sheet.AddHeader("Sway Stats")
 
@@ -99,7 +100,7 @@ func setHighLevelSheet(xf Sheeter, cmp *common.Campaign, from, to time.Time, tot
 	sheet.AddRow("Total spent", fmt.Sprintf("$%0.2f", tot.Spent))
 }
 
-func setChannelLevelSheet(xf Sheeter, from, to time.Time, channel map[string]*ReportStats) {
+func setChannelLevelSheet(xf misc.Sheeter, from, to time.Time, channel map[string]*ReportStats) {
 	sheet := xf.AddSheet("Channel Level")
 	sheet.AddHeader(
 		"Channel Name",
@@ -132,7 +133,7 @@ func setChannelLevelSheet(xf Sheeter, from, to time.Time, channel map[string]*Re
 	}
 }
 
-func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[string]*ReportStats) {
+func setInfluencerLevelSheet(xf misc.Sheeter, from, to time.Time, influencer map[string]*ReportStats) {
 	sheet := xf.AddSheet("Influencer Level")
 	sheet.AddHeader(
 		"Social Network ID",
@@ -169,7 +170,7 @@ func setInfluencerLevelSheet(xf Sheeter, from, to time.Time, influencer map[stri
 	}
 }
 
-func setContentLevelSheet(xf Sheeter, from, to time.Time, content map[string]*ReportStats) {
+func setContentLevelSheet(xf misc.Sheeter, from, to time.Time, content map[string]*ReportStats) {
 	sheet := xf.AddSheet("Content Level")
 	sheet.AddHeader(
 		"Content",
