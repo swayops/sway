@@ -39,6 +39,8 @@ type Server struct {
 // New returns a new Server or an error
 // TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
+	initializeDirs(cfg)
+
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
@@ -51,30 +53,6 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		reportingDb: reportingDb,
 		auth:        auth.New(db, cfg),
 		Campaigns:   common.NewCampaigns(),
-	}
-
-	if _, err := os.Stat(cfg.LogsDir); os.IsNotExist(err) {
-		err := os.MkdirAll(cfg.LogsDir, 0711)
-		if err != nil {
-			log.Println("Error creating directory")
-			return nil, err
-		}
-	}
-
-	if _, err := os.Stat(cfg.LogsDir + "invoices"); os.IsNotExist(err) {
-		err := os.MkdirAll(cfg.LogsDir+"invoices", 0711)
-		if err != nil {
-			log.Println("Error creating directory")
-			return nil, err
-		}
-	}
-
-	if _, err := os.Stat(cfg.DBPath); os.IsNotExist(err) {
-		err := os.MkdirAll(cfg.DBPath, 0711)
-		if err != nil {
-			log.Println("Error creating directory")
-			return nil, err
-		}
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -91,6 +69,11 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	srv.initializeRoutes(r)
 
 	return srv, nil
+}
+
+func initializeDirs(cfg *config.Config) {
+	os.MkdirAll(cfg.LogsDir+"invoices", 0711)
+	os.MkdirAll(cfg.DBPath, 0711)
 }
 
 func (srv *Server) initializeDBs(cfg *config.Config) error {

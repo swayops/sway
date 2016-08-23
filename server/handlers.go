@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -1380,7 +1381,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		files := []string{}
 		if len(agencySheets) > 0 {
 			fName := fmt.Sprintf("%s-agency.xlsx", key)
-			location := fmt.Sprintf(s.Cfg.LogsDir+"invoices/%s", fName)
+			location := filepath.Join(s.Cfg.LogsDir, "invoices", fName)
 
 			fo, err := os.Create(location)
 			if err != nil {
@@ -1403,7 +1404,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 		if len(advertiserSheets) > 0 {
 			fName := fmt.Sprintf("%s-advertiser.xlsx", key)
-			location := fmt.Sprintf(s.Cfg.LogsDir+"invoices/%s", fName)
+			location := filepath.Join(s.Cfg.LogsDir, "invoices", fName)
 
 			advo, err := os.Create(location)
 			if err != nil {
@@ -1504,7 +1505,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 		if len(talentSheets) > 0 {
 			fName := fmt.Sprintf("%s-talent.xlsx", key)
-			location := fmt.Sprintf(s.Cfg.LogsDir+"invoices/%s", fName)
+			location := filepath.Join(s.Cfg.LogsDir, "invoices", fName)
 			tvo, err := os.Create(location)
 			if err != nil {
 				c.JSON(500, misc.StatusErr(err.Error()))
@@ -1527,23 +1528,23 @@ func runBilling(s *Server) gin.HandlerFunc {
 		// Email!
 		var attachments []*mandrill.MessageAttachment
 		for _, fName := range files {
-			f, err := os.Open(s.Cfg.LogsDir + "invoices/" + fName)
+			f, err := os.Open(filepath.Join(s.Cfg.LogsDir, "invoices", fName))
 			if err != nil {
 				log.Println("Failed to open file!", fName)
 				continue
 			}
 
 			att, err := mandrill.AttachmentFromReader(fName, f)
+			f.Close()
 			if err != nil {
 				log.Println("Unable to create attachment!", err)
 				f.Close()
 				continue
 			}
 			attachments = append(attachments, att)
-			f.Close()
 		}
 
-		if len(attachments) > 0 && !s.Cfg.Sandbox {
+		if len(attachments) > 0 && s.Cfg.Sandbox {
 			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "shahzilabid@gmail.com", "Sway", nil, attachments)
 			if err != nil {
 				log.Println("Failed to email invoice!")

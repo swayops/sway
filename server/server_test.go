@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -627,7 +626,6 @@ func TestDeals(t *testing.T) {
 	totalAgency1 := breakdownAgency1["total"]
 	totalAgency2 := breakdownAgency2["total"]
 	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != rawSpend {
-		log.Println("HERE", statsSpend, rawSpend)
 		t.Fatal("Unexpected spend values!")
 		return
 	}
