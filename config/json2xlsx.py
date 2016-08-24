@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+import warnings
+warnings.simplefilter("ignore")
+
 from openpyxl.workbook import Workbook
 from openpyxl.writer.excel import ExcelWriter
 from openpyxl.styles import *
