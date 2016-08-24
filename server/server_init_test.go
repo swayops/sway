@@ -25,7 +25,7 @@ type M map[string]interface{}
 
 var (
 	printResp = flag.Bool("pr", os.Getenv("PR") != "", "print responses")
-	keepTmp   = flag.Bool("k", false, "keep tmp dir")
+	genData   = flag.Bool("gen", os.Getenv("gen") != "", "leave the test data")
 
 	cfg *config.Config
 
@@ -66,13 +66,10 @@ func TestMain(m *testing.M) {
 
 	cfg.Sandbox = true // always set it to true just in case
 
-	cfg.DBPath, err = ioutil.TempDir("", "sway-srv")
-	//cfg.APIPath = "/"
-	panicIf(err)
+	if !*genData {
+		cfg.DBPath, err = ioutil.TempDir("", "sway-srv")
+		panicIf(err)
 
-	if *keepTmp {
-		log.Println("tmp dir:", cfg.DBPath)
-	} else {
 		defer os.RemoveAll(cfg.DBPath) // clean up
 	}
 

@@ -1113,6 +1113,10 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
+	if *genData {
+		goto SKIP_APPROVE_1
+	}
+
 	// approve campaign
 	r = rst.DoTesting(t, "GET", "/approveCampaign/3", nil, nil)
 	if r.Status != 200 {
@@ -1143,6 +1147,8 @@ func TestPerks(t *testing.T) {
 		t.Fatal("Admin approval didnt work!")
 		return
 	}
+
+SKIP_APPROVE_1:
 
 	// get deals for influencer
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
@@ -1277,6 +1283,12 @@ func TestPerks(t *testing.T) {
 		t.Fatal("No address for perk!")
 	}
 
+	var emptyPerks map[string][]*common.Perk
+
+	if *genData {
+		goto SKIP_APPROVE_2
+	}
+
 	// approve sendout
 	r = rst.DoTesting(t, "GET", "/approvePerk/"+inf.ExpID+"/3", nil, &pendingPerks)
 	if r.Status != 200 {
@@ -1284,7 +1296,6 @@ func TestPerks(t *testing.T) {
 	}
 
 	// make sure get pending perk doesnt have that perk request now
-	var emptyPerks map[string][]*common.Perk
 	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &emptyPerks)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -1293,6 +1304,8 @@ func TestPerks(t *testing.T) {
 	if len(emptyPerks) != 0 {
 		t.Fatal("Pending perk still leftover!")
 	}
+
+SKIP_APPROVE_2:
 
 	// make sure status is now true on campaign and influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
@@ -1321,6 +1334,10 @@ func TestPerks(t *testing.T) {
 
 	if !cmpDeal.Perk.Status {
 		t.Fatal("Campaign deal should be approved now!")
+	}
+
+	if *genData {
+		return
 	}
 
 	// force approve
@@ -2056,6 +2073,10 @@ func TestChecks(t *testing.T) {
 		t.Fatal("Missing address!")
 	}
 
+	if *genData {
+		return
+	}
+
 	// Approve the check!
 	r = rst.DoTesting(t, "GET", "/approveCheck/"+inf.ExpID, nil, nil)
 	if r.Status != 200 {
@@ -2538,8 +2559,7 @@ func TestBilling(t *testing.T) {
 	// LETS RUN BILLING!
 	r = rst.DoTesting(t, "GET", "/billing?force=1&dbg=1", nil, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-		return
+		t.Fatal("Bad status code!", string(r.Value))
 	}
 
 	// Lets see what happened to stores!
