@@ -418,16 +418,12 @@ func (inf *Influencer) CleanCompletedDeals() []*common.Deal {
 
 	for _, deal := range inf.CompletedDeals {
 		if deal.Tweet != nil {
-			deal.PostUrl = deal.Tweet.PostURL
 			deal.Tweet = nil
 		} else if deal.Facebook != nil {
-			deal.PostUrl = deal.Facebook.PostURL
 			deal.Facebook = nil
 		} else if deal.Instagram != nil {
-			deal.PostUrl = deal.Instagram.PostURL
 			deal.Instagram = nil
 		} else if deal.YouTube != nil {
-			deal.PostUrl = deal.YouTube.PostURL
 			deal.YouTube = nil
 		}
 		deal.Platforms = []string{}
@@ -564,13 +560,17 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			continue
 		}
 
+		// Whitelisting is done at the campaign level.. but
+		// lets check the advertiser blacklist!
+		_, ok := cmp.Blacklist[inf.Id]
+		if ok {
+			// We found this influencer in the blacklist!
+			continue
+		}
+
 		// Social Media Checks
 		if cmp.Twitter && inf.Twitter != nil {
 			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Twitter, inf.Twitter.Id) {
-				continue
-			}
-
-			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Twitter, inf.Twitter.Id) {
 				continue
 			}
 
@@ -582,10 +582,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				continue
 			}
 
-			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Facebook, inf.Facebook.Id) {
-				continue
-			}
-
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 		}
 
@@ -594,19 +590,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				continue
 			}
 
-			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.Instagram, inf.Instagram.UserName) {
-				continue
-			}
-
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
 		}
 
 		if cmp.YouTube && inf.YouTube != nil {
 			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.YouTube, inf.YouTube.UserName) {
-				continue
-			}
-
-			if cmp.Blacklist != nil && common.IsInList(cmp.Blacklist.YouTube, inf.YouTube.UserName) {
 				continue
 			}
 

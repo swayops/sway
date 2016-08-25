@@ -37,6 +37,7 @@ type Deal struct {
 	// All of the following are when a deal is assigned/unassigned
 	// or times out
 	InfluencerId     string `json:"influencerId,omitempty"`
+	InfluencerName   string `json:"influencerName,omitempty"`
 	AssignedPlatform string `json:"assignedPlatform,omitempty"`
 
 	// Only set once deal is completed. Contain
