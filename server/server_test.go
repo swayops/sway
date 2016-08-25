@@ -625,7 +625,7 @@ func TestDeals(t *testing.T) {
 	// Combining totals for both influencers
 	totalAgency1 := breakdownAgency1["total"]
 	totalAgency2 := breakdownAgency2["total"]
-	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; statsSpend != rawSpend {
+	if statsSpend := totalAgency1.AgencySpent + totalAgency1.Spent + totalAgency2.AgencySpent + totalAgency2.Spent; int32(statsSpend) != int32(rawSpend) {
 		t.Fatal("Unexpected spend values!")
 		return
 	}
@@ -721,6 +721,94 @@ func TestDeals(t *testing.T) {
 		return
 	}
 
+	var advDeals []*FeedCell
+	r = rst.DoTesting(t, "GET", "/getAdvertiserContentFeed/"+adv.ExpID, nil, &advDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(advDeals) != 2 {
+		t.Fatal("Expected 2 deals!")
+		return
+	}
+
+	for _, advDeal := range advDeals {
+		if advDeal.Views == 0 || advDeal.URL == "" || advDeal.Caption == "" {
+			t.Fatal("Messed up deal!")
+			return
+		}
+	}
+
+	// Lets ban this influencer and create a campaign and see if they get any deals!
+	r = rst.DoTesting(t, "GET", "/advertiserBan/"+adv.ExpID+"/"+inf.ExpID, nil, &advDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets make sure that the blacklist is there!
+	var advertiser auth.Advertiser
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(advertiser.Blacklist) != 1 {
+		t.Fatal("Did not append to blacklist!")
+		return
+	}
+
+	if _, ok := advertiser.Blacklist[inf.ExpID]; !ok {
+		t.Fatal("Did not append to blacklist!")
+		return
+	}
+
+	// Lets make sure that the blacklist is applied in all campaigns!
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/2", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if _, ok := cmpLoad.Blacklist[inf.ExpID]; !ok {
+		t.Fatal("Did not append to blacklist!")
+		return
+	}
+
+	// Lets create a campaign and make sure adv blacklist is applied on that
+	cmpBlacklist := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       1000,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Gender:       "mf",
+		Link:         "http://www.blank.org?s=t",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var status Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmpBlacklist, &status)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	var nextCmp common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+status.ID, nil, &nextCmp)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if _, ok := nextCmp.Blacklist[inf.ExpID]; !ok {
+		t.Fatal("Did not append to blacklist!")
+		return
+	}
 }
 
 func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skipReporting bool) {
@@ -812,7 +900,7 @@ func checkStore(t *testing.T, store, compareStore *budget.Store) {
 	if compareStore != nil {
 		oldV := store.Spent + store.Spendable
 		newV := compareStore.Spendable + compareStore.Spent
-		if newV != oldV {
+		if int32(newV) != int32(oldV) {
 			t.Fatal("Spendable and spent not synchronized!")
 		}
 
@@ -1055,7 +1143,7 @@ func TestPerks(t *testing.T) {
 
 	// make sure number of deals allowed = number of perks
 	var cmpLoad common.Campaign
-	r := rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
+	r := rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -1084,7 +1172,7 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	deals = getDeals("3", deals)
+	deals = getDeals("4", deals)
 	if len(deals) > 0 {
 		t.Fatal("Unexpected number of deals!")
 		return
@@ -1103,7 +1191,7 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	if cmps[0].Id != "3" {
+	if cmps[0].Id != "4" {
 		t.Fatal("Unexpected campaign id!")
 		return
 	}
@@ -1114,7 +1202,7 @@ func TestPerks(t *testing.T) {
 	}
 
 	// approve campaign
-	r = rst.DoTesting(t, "GET", "/approveCampaign/3", nil, nil)
+	r = rst.DoTesting(t, "GET", "/approveCampaign/4", nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -1133,7 +1221,7 @@ func TestPerks(t *testing.T) {
 	}
 
 	// make sure approved value is correct!
-	r = rst.DoTesting(t, "GET", "/campaign/3", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/4", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -1151,7 +1239,7 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	deals = getDeals("3", deals)
+	deals = getDeals("4", deals)
 	if len(deals) == 0 {
 		t.Fatal("Unexpected number of deals!")
 		return
@@ -1165,7 +1253,7 @@ func TestPerks(t *testing.T) {
 	}
 
 	tgDeal := deals[0]
-	if tgDeal.CampaignId != "3" {
+	if tgDeal.CampaignId != "4" {
 		t.Fatal("Unexpected campaign id!")
 	}
 
@@ -1215,11 +1303,11 @@ func TestPerks(t *testing.T) {
 		t.Fatal("No address set for perk!")
 	}
 
-	if tgDeal.CampaignId != "3" {
+	if tgDeal.CampaignId != "4" {
 		t.Fatal("Unexpected campaign id for deal!")
 	}
 
-	r = rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1260,7 +1348,7 @@ func TestPerks(t *testing.T) {
 		t.Fatal("Unexpected number of perks.. should have 1!")
 	}
 
-	pk, ok := pendingPerks["3"]
+	pk, ok := pendingPerks["4"]
 	if !ok {
 		t.Fatal("Perk request not found")
 	}
@@ -1278,7 +1366,7 @@ func TestPerks(t *testing.T) {
 	}
 
 	// approve sendout
-	r = rst.DoTesting(t, "GET", "/approvePerk/"+inf.ExpID+"/3", nil, &pendingPerks)
+	r = rst.DoTesting(t, "GET", "/approvePerk/"+inf.ExpID+"/4", nil, &pendingPerks)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1309,7 +1397,7 @@ func TestPerks(t *testing.T) {
 		t.Fatal("Deal perk status should be true!")
 	}
 
-	r = rst.DoTesting(t, "GET", "/campaign/3?deals=true", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1324,12 +1412,12 @@ func TestPerks(t *testing.T) {
 	}
 
 	// force approve
-	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/3", nil, nil)
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/4", nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 	// verify deal
-	verifyDeal(t, "3", inf.ExpID, ag.ExpID, rst, false)
+	verifyDeal(t, "4", inf.ExpID, ag.ExpID, rst, false)
 }
 
 func getDeals(cid string, deals []*common.Deal) []*common.Deal {
@@ -1843,6 +1931,7 @@ func TestInfluencerGeo(t *testing.T) {
 			Twitter: []string{"BreakingNews", "CNN"},
 		},
 	}
+
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status == 200 {
 		t.Fatal("Bad status code!")
@@ -1866,14 +1955,15 @@ func TestInfluencerGeo(t *testing.T) {
 		&geo.GeoRecord{Country: "GB"},
 	}
 	cmp.Geos = fakeGeo
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
 	// Check to make sure geos in campaign all good!
 	var cmpLoad common.Campaign
-	r = rst.DoTesting(t, "GET", "/campaign/19", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1884,7 +1974,7 @@ func TestInfluencerGeo(t *testing.T) {
 
 	// Update campaign to have bad geo.. Should reject!
 	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
-	r = rst.DoTesting(t, "PUT", "/campaign/19", cmpUpdateBad, nil)
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateBad, nil)
 	if r.Status == 200 {
 		t.Fatal("Unexpected status code!")
 	}
@@ -1897,19 +1987,19 @@ func TestInfluencerGeo(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	deals = getDeals("19", deals)
+	deals = getDeals(st.ID, deals)
 	if len(deals) == 0 {
 		t.Fatal("Unexpected number of deals.. should have atleast one!")
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
 	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
-	r = rst.DoTesting(t, "PUT", "/campaign/19", cmpUpdateGood, nil)
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateGood, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-	r = rst.DoTesting(t, "GET", "/campaign/19", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1924,7 +2014,7 @@ func TestInfluencerGeo(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	deals = getDeals("19", deals)
+	deals = getDeals(st.ID, deals)
 	if len(deals) != 0 {
 		t.Fatal("Unexpected number of deals!")
 	}
@@ -1949,7 +2039,7 @@ func TestInfluencerGeo(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	deals = getDeals("19", deals)
+	deals = getDeals(st.ID, deals)
 	if len(deals) == 0 {
 		t.Fatal("Unexpected number of deals!")
 	}
@@ -2529,7 +2619,7 @@ func TestBilling(t *testing.T) {
 		}
 		// Campaign stats and budget should have EVERYTHING (markups + spend)
 		total := breakdown["total"]
-		if store.Spent != total.Spent {
+		if int32(store.Spent) != int32(total.Spent) {
 			t.Fatal("Budget and reports do not match!")
 		}
 		cids[cid] = store
@@ -2558,11 +2648,11 @@ func TestBilling(t *testing.T) {
 			t.Fatal("Bad exchange fee!")
 		}
 
-		if store.Spendable != newStore.Leftover {
+		if int32(store.Spendable) != int32(newStore.Leftover) {
 			t.Fatal("Didn't carry over leftover from last month!")
 		}
 
-		if newStore.Spendable != (newStore.Leftover + newStore.Budget) {
+		if int32(newStore.Spendable) != int32(newStore.Leftover+newStore.Budget) {
 			t.Fatal("Incorrect spendable calculation!")
 		}
 

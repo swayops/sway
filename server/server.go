@@ -210,6 +210,8 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Advertiser
 	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, nil,
 		putAdvertiser, nil)
+	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
+	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)

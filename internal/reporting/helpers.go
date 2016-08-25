@@ -9,7 +9,10 @@ import (
 	"github.com/swayops/sway/internal/common"
 )
 
-const dateFormat = "%d-%02d-%02d"
+const (
+	dateFormat          = "%d-%02d-%02d"
+	engagementViewRatio = 0.04
+)
 
 func GetDate() string {
 	return getDateFromTime(time.Now().UTC())
@@ -25,19 +28,16 @@ func getDateFromTime(t time.Time) string {
 }
 
 func getStatsKey(deal *common.Deal, platformId string) string {
-	var platform, url string
+	var platform string
+	url := deal.PostUrl
 	if deal.Tweet != nil {
 		platform = "Twitter"
-		url = deal.Tweet.PostURL
 	} else if deal.Facebook != nil {
 		platform = "Facebook"
-		url = deal.Facebook.PostURL
 	} else if deal.Instagram != nil {
 		platform = "Instagram"
-		url = deal.Instagram.PostURL
 	} else if deal.YouTube != nil {
 		platform = "YouTube"
-		url = deal.YouTube.PostURL
 	} else {
 		return ""
 	}
@@ -91,11 +91,15 @@ func getViews(st *Stats, eng int32) int32 {
 	if st.Views == 0 {
 		// There are no concrete views so lets gueestimate!
 		// Assume engagement rate is 4% of views!
-		views = int32(float64(eng) / 0.04)
+		views = int32(float64(eng) / engagementViewRatio)
 	} else {
 		views += st.Views
 	}
 	return views
+}
+
+func GetViews(likes, comments, shares int32) int32 {
+	return int32(float64(likes+comments+shares) / engagementViewRatio)
 }
 
 func GetReportDate(date string) time.Time {

@@ -86,7 +86,7 @@ func explore(srv *Server) error {
 
 		// If the deal has not been approved and it has gone past the
 		// dealTimeout.. put it back in the pool!
-		if minTs > deal.Assigned {
+		if minTs > deal.Assigned && deal.Completed == 0 {
 			if err := clearDeal(srv, nil, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 				return err
 			}
@@ -95,7 +95,13 @@ func explore(srv *Server) error {
 	return nil
 }
 
+var urlErr = errors.New("Failed to retrieve post URL")
+
 func (srv *Server) CompleteDeal(d *common.Deal) error {
+	if d.PostUrl == "" {
+		return urlErr
+	}
+
 	// Marks the deal as completed, and updates the campaign and influencer buckets
 	if err := srv.db.Update(func(tx *bolt.Tx) (err error) {
 		var (
@@ -158,21 +164,25 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 
 func (srv *Server) ApproveTweet(tweet *twitter.Tweet, d *common.Deal) error {
 	d.Tweet = tweet
+	d.PostUrl = tweet.PostURL
 	return srv.CompleteDeal(d)
 }
 
 func (srv *Server) ApproveFacebook(post *facebook.Post, d *common.Deal) error {
 	d.Facebook = post
+	d.PostUrl = post.PostURL
 	return srv.CompleteDeal(d)
 }
 
 func (srv *Server) ApproveInstagram(post *instagram.Post, d *common.Deal) error {
 	d.Instagram = post
+	d.PostUrl = post.PostURL
 	return srv.CompleteDeal(d)
 }
 
 func (srv *Server) ApproveYouTube(post *youtube.Post, d *common.Deal) error {
 	d.YouTube = post
+	d.PostUrl = post.PostURL
 	return srv.CompleteDeal(d)
 }
 
