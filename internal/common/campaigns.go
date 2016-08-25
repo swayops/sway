@@ -47,7 +47,8 @@ type Campaign struct {
 	Perks *Perk `json:"perks,omitempty"`
 
 	Whitelist *TargetList `json:"whitelist,omitempty"`
-	Blacklist *TargetList `json:"blacklist,omitempty"`
+	// Copied from advertiser
+	Blacklist map[string]bool `json:"blacklist,omitempty"`
 
 	// Internal attribute set by putCampaign and un/assignDeal
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID
@@ -85,7 +86,7 @@ func NewCampaigns() *Campaigns {
 }
 
 func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) {
-	cmps := GetAllActiveCampaigns(db, cfg, adv, ag)
+	cmps := getAllActiveCampaigns(db, cfg, adv, ag)
 	p.mux.Lock()
 	p.store = cmps
 	p.mux.Unlock()
@@ -114,7 +115,7 @@ func (p *Campaigns) Get(id string) (*Campaign, bool) {
 	return val, ok
 }
 
-func GetAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) map[string]*Campaign {
+func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) map[string]*Campaign {
 	// Returns a list of active campaign IDs in the system
 	campaignList := make(map[string]*Campaign)
 

@@ -239,7 +239,8 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		// Lets make sure this is a valid advertiser
-		if adv := s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+		adv := s.auth.GetAdvertiser(cmp.AdvertiserId)
+		if adv == nil {
 			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
@@ -286,8 +287,10 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		if cmp.Whitelist != nil {
 			cmp.Whitelist = cmp.Whitelist.Sanitize()
 		}
-		if cmp.Blacklist != nil {
-			cmp.Blacklist = cmp.Blacklist.Sanitize()
+
+		if len(adv.Blacklist) > 0 {
+			// Blacklist is always set at the advertiser level using content feed bad!
+			cmp.Blacklist = adv.Blacklist
 		}
 
 		// If there are perks.. campaign is in pending until admin approval
@@ -407,7 +410,6 @@ type CampaignUpdate struct {
 	Gender     string             `json:"gender,omitempty"` // "m" or "f" or "mf"
 	Name       string             `json:"name,omitempty"`
 	Whitelist  *common.TargetList `json:"whitelist,omitempty"`
-	Blacklist  *common.TargetList `json:"blacklist,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -487,10 +489,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Whitelist != nil {
 			cmp.Whitelist = upd.Whitelist.Sanitize()
-		}
-
-		if upd.Blacklist != nil {
-			cmp.Blacklist = upd.Blacklist.Sanitize()
 		}
 
 		// Save the Campaign
@@ -1020,6 +1018,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 
 			foundDeal.InfluencerId = infId
+			foundDeal.InfluencerName = inf.Name
 			foundDeal.Assigned = int32(time.Now().Unix())
 
 			foundPlatform := false
@@ -1544,13 +1543,13 @@ func runBilling(s *Server) gin.HandlerFunc {
 			attachments = append(attachments, att)
 		}
 
-		if len(attachments) > 0 && s.Cfg.Sandbox {
-			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "shahzilabid@gmail.com", "Sway", nil, attachments)
+		if len(attachments) > 0 && !s.Cfg.Sandbox {
+			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "shahzil@swayops.com", "Sway", nil, attachments)
 			if err != nil {
 				log.Println("Failed to email invoice!")
 			}
 
-			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "shahzilabid@gmail.com", "Sway", nil, attachments)
+			_, err = s.Cfg.MailClient().SendMessageWithAttachments(fmt.Sprintf("Invoices for %s are attached!", key), fmt.Sprintf("%s Invoices", key), "nick@swayops.com", "Sway", nil, attachments)
 			if err != nil {
 				log.Println("Failed to email invoice!")
 			}
@@ -2392,5 +2391,149 @@ func click(s *Server) gin.HandlerFunc {
 		misc.SetCookie(c.Writer, "click", prevClicks, 24*30*time.Hour)
 
 		c.Redirect(302, foundDeal.Link)
+	}
+}
+
+type FeedCell struct {
+	Username string `json:"username,omitempty"`
+	URL      string `json:"url,omitempty"`
+	Caption  string `json:"caption,omitempty"`
+
+	Published int32 `json:"published,omitempty"`
+
+	Views    int32 `json:"views,omitempty"`
+	Likes    int32 `json:"likes,omitempty"`
+	Comments int32 `json:"comments,omitempty"`
+	Shares   int32 `json:"shares,omitempty"`
+}
+
+func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
+	// Retrieves all completed deals by advertiser
+	return func(c *gin.Context) {
+		adv := s.auth.GetAdvertiser(c.Param("id"))
+		if adv == nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		var feed []*FeedCell
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if cmp.AdvertiserId == adv.ID {
+					for _, deal := range cmp.Deals {
+						if deal.Completed > 0 {
+							d := &FeedCell{
+								Username: deal.InfluencerName,
+								URL:      deal.PostUrl,
+							}
+
+							if deal.Tweet != nil {
+								d.Caption = deal.Tweet.Text
+								d.Published = int32(deal.Tweet.CreatedAt.Unix())
+								d.Likes = int32(deal.Tweet.Favorites)
+								d.Shares = int32(deal.Tweet.Retweets)
+								d.Views = reporting.GetViews(d.Likes, 0, d.Shares)
+							} else if deal.Facebook != nil {
+								d.Caption = deal.Facebook.Caption
+								d.Published = int32(deal.Facebook.Published.Unix())
+								d.Likes = int32(deal.Facebook.Likes)
+								d.Comments = int32(deal.Facebook.Comments)
+								d.Shares = int32(deal.Facebook.Shares)
+								d.Views = reporting.GetViews(d.Likes, d.Comments, d.Shares)
+							} else if deal.Instagram != nil {
+								d.Caption = deal.Instagram.Caption
+								d.Published = deal.Instagram.Published
+								d.Likes = int32(deal.Instagram.Likes)
+								d.Comments = int32(deal.Instagram.Comments)
+								d.Views = reporting.GetViews(d.Likes, d.Comments, 0)
+							} else if deal.YouTube != nil {
+								d.Caption = deal.YouTube.Description
+								d.Published = deal.YouTube.Published
+								d.Views = int32(deal.YouTube.Views)
+							}
+							feed = append(feed, d)
+						}
+					}
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, feed)
+	}
+}
+
+func advertiserBan(s *Server) gin.HandlerFunc {
+	// Retrieves all completed deals by advertiser
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		adv := s.auth.GetAdvertiser(id)
+		if adv == nil {
+			c.JSON(500, misc.StatusErr("Please provide a valid advertiser"))
+			return
+		}
+
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("Please provide a valid influencer"))
+			return
+		}
+
+		user := auth.GetCtxUser(c)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if id != user.ID {
+				user = s.auth.GetUserTx(tx, id)
+			}
+			if user == nil {
+				return auth.ErrInvalidID
+			}
+
+			if len(adv.Blacklist) == 0 {
+				adv.Blacklist = make(map[string]bool)
+			}
+
+			adv.Blacklist[infId] = true
+			return user.StoreWithData(s.auth, tx, adv)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		// Copy the new blacklist to all campaigns under the advertiser!
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				cmp := &common.Campaign{}
+				if err := json.Unmarshal(v, cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return err
+				}
+
+				if cmp.AdvertiserId == adv.ID {
+					cmp.Blacklist = adv.Blacklist
+				}
+
+				if err = saveCampaign(tx, cmp, s); err != nil {
+					log.Println("Error saving campaign for adv blacklist", err)
+					return err
+				}
+
+				return nil
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(id))
 	}
 }

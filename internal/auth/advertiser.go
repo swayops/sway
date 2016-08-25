@@ -10,6 +10,9 @@ type Advertiser struct {
 
 	ExchangeFee float64 `json:"exchangeFee,omitempty"` // Percentage (decimal)
 	DspFee      float64 `json:"dspFee,omitempty"`      // Percentage (decimal)
+
+	// Advertiser level influencer blacklist keyed on InfluencerID
+	Blacklist map[string]bool `json:"blacklist,omitempty"`
 }
 
 func GetAdvertiser(u *User) *Advertiser {
