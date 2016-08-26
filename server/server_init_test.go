@@ -68,6 +68,7 @@ func TestMain(m *testing.M) {
 
 	cfg.DBPath, err = ioutil.TempDir("", "sway-srv")
 	panicIf(err)
+	log.Println("DB PATH!", cfg.DBPath)
 
 	if *keepTmp {
 		log.Println("tmp dir:", cfg.DBPath)

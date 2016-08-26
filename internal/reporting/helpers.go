@@ -3,7 +3,6 @@ package reporting
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/swayops/sway/internal/common"
@@ -25,33 +24,6 @@ func getDateFromTime(t time.Time) string {
 		t.Month(),
 		t.Day(),
 	)
-}
-
-func getStatsKey(deal *common.Deal, platformId string) string {
-	var platform string
-	url := deal.PostUrl
-	if deal.Tweet != nil {
-		platform = "Twitter"
-	} else if deal.Facebook != nil {
-		platform = "Facebook"
-	} else if deal.Instagram != nil {
-		platform = "Instagram"
-	} else if deal.YouTube != nil {
-		platform = "YouTube"
-	} else {
-		return ""
-	}
-
-	return fmt.Sprintf("%s|||%s|||%s|||%s|||%s", GetDate(), deal.InfluencerId, platformId, platform, url)
-}
-
-func getElementsFromKey(s string) (string, string, string, string) {
-	raw := strings.Split(s, "|||")
-	if len(raw) != 5 {
-		return "", "", "", ""
-	}
-
-	return raw[1], raw[2], raw[3], raw[4]
 }
 
 func getDateRange(from, to time.Time) []string {
@@ -82,11 +54,11 @@ func getDateRangeFromOffset(off int) []time.Time {
 	return out
 }
 
-func getEngagements(st *Stats) int32 {
+func getEngagements(st *common.Payout) int32 {
 	return st.Likes + st.Dislikes + st.Comments + st.Shares
 }
 
-func getViews(st *Stats, eng int32) int32 {
+func getViews(st *common.Payout, eng int32) int32 {
 	var views int32
 	if st.Views == 0 {
 		// There are no concrete views so lets gueestimate!

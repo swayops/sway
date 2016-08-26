@@ -9,7 +9,6 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/influencer"
-	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/hellosign"
 )
@@ -139,7 +138,10 @@ func depleteBudget(s *Server) error {
 	// go over completed deals..
 	// Iterate over all
 
-	var spentDelta float64
+	var (
+		spentDelta                               float64
+		likes, dislikes, comments, shares, views int32
+	)
 
 	// Iterate over all active campaigns
 	for _, cmp := range s.Campaigns.GetStore() {
@@ -162,17 +164,8 @@ func depleteBudget(s *Server) error {
 				continue
 			}
 
-			// Get stats for this deal for today! We'll need it so that stats
-			// can be incremented in AdjustStore!
-			stats, statsKey, err := reporting.GetStats(deal, s.reportingDb, s.Cfg, inf.GetPlatformId(deal))
-			if err != nil {
-				// Insert file informant notification
-				log.Println("Unable to retrieve stats!")
-				continue
-			}
-
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
-			store, stats, spentDelta = budget.AdjustStore(store, deal, stats)
+			store, spentDelta, likes, dislikes, comments, shares, views = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				// DSP and Exchange fee taken away from the prinicpal
@@ -190,7 +183,8 @@ func depleteBudget(s *Server) error {
 				// THIS IS WHAT WE'LL USE FOR BILLING!
 				for _, cDeal := range inf.CompletedDeals {
 					if cDeal.Id == deal.Id {
-						cDeal.Pay(infPayout, agencyPayout, inf.AgencyId)
+						cDeal.Incr(likes, dislikes, comments, shares, views)
+						cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
 					}
 				}
 
@@ -199,21 +193,11 @@ func depleteBudget(s *Server) error {
 				// dspMarkup = what the DSP fee is for this transaction
 				// exchangeMarkup = what the exchange fee is for this transaction
 
-				stats.DspMarkup += dspMarkup
-				stats.ExchangeMarkup += exchangeMarkup
-				stats.InfPayout += infPayout
-				stats.AgencyPayout += agencyPayout // Talent Agency
-
-				stats.TalentAgency = inf.AgencyId
-
 				// Save the deal in influencers and campaigns
 				if err := saveAllCompletedDeals(s, inf); err != nil {
 					// Insert file informant notification
 					log.Println("Error saving deals!", err)
 				}
-			}
-			if err := reporting.SaveStats(stats, deal, s.reportingDb, s.Cfg, statsKey, inf.GetPlatformId(deal)); err != nil {
-				log.Println("Err saving stats!", err)
 			}
 
 			updatedStore = true

@@ -2,7 +2,9 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -65,7 +67,7 @@ type Deal struct {
 	// when the deal was assigned
 	Spendable float64 `json:"spendable,omitempty"`
 
-	// Keyed on month.. showing payouts calculated by month
+	// Keyed on DAY.. showing payouts calculated by DAY
 	Payment map[string]*Payout `json:"infPayout,omitempty"`
 }
 
@@ -75,39 +77,191 @@ type Payout struct {
 	// How much has been paid out to the agency for this deal?
 	Agency   float64 `json:"agencyPayout,omitempty"`
 	AgencyId string  `json:"agencyId,omitempty"`
+
+	DSP      float64 `json:"dsp,omitempty"`
+	Exchange float64 `json:"exchange,omitempty"`
+
+	Likes    int32 `json:"likes,omitempty"`
+	Dislikes int32 `json:"dislikes,omitempty"`
+	Comments int32 `json:"comments,omitempty"`
+	Shares   int32 `json:"shares,omitempty"`
+	Views    int32 `json:"views,omitempty"`
+	Clicks   int32 `json:"clicks,omitempty"`
 }
 
-func (d *Deal) Pay(inf, agency float64, agId string) {
+func (p *Payout) TotalMarkup() float64 {
+	return p.DSP + p.Exchange + p.Agency
+}
+
+func (d *Deal) Pay(inf, agency, dsp, exchange float64, agId string) {
 	if d.Payment == nil {
 		d.Payment = make(map[string]*Payout)
 	}
-	key := getMonthKey(0)
+	key := getDate()
 	data, ok := d.Payment[key]
 	if !ok {
 		data = &Payout{}
 		d.Payment[key] = data
 	}
 
+	data.DSP += dsp
+	data.Exchange += exchange
 	data.Influencer += inf
 	data.Agency += agency
 	data.AgencyId = agId
+	log.Println("AGENCY!", agency, data.Agency, agId)
+}
+
+func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
+	if d.Payment == nil {
+		d.Payment = make(map[string]*Payout)
+	}
+	key := getDate()
+	data, ok := d.Payment[key]
+	if !ok {
+		data = &Payout{}
+		d.Payment[key] = data
+	}
+
+	data.Likes += likes
+	data.Dislikes += dislikes
+	data.Comments += comments
+	data.Shares += shares
+	data.Views += views
+}
+
+func (d *Deal) Click() {
+	if d.Payment == nil {
+		d.Payment = make(map[string]*Payout)
+	}
+	key := getDate()
+	data, ok := d.Payment[key]
+	if !ok {
+		data = &Payout{}
+		d.Payment[key] = data
+	}
+
+	data.Clicks += 1
 }
 
 func (d *Deal) GetPayout(offset int) (m *Payout) {
-	key := getMonthKey(offset)
+	key := getMonthOffset(offset)
 	if d.Payment == nil {
 		return
 	}
-	m, _ = d.Payment[key]
-	return
+
+	data := &Payout{}
+
+	for d, payout := range d.Payment {
+		if strings.Index(d, key) == 0 {
+			data.DSP += payout.DSP
+			data.Exchange += payout.Exchange
+			data.Influencer += payout.Influencer
+			data.Agency += payout.Agency
+			data.AgencyId = payout.AgencyId
+		}
+	}
+	return data
 }
 
-func getMonthKey(offset int) string {
-	now := time.Now().UTC()
-	if offset > 0 {
-		offset = -offset
+func (d *Deal) Get(dates []string) (m *Payout) {
+	data := &Payout{}
+	for _, date := range dates {
+		payout, ok := d.Payment[date]
+		if !ok {
+			continue
+		}
+
+		data.DSP += payout.DSP
+		data.Exchange += payout.Exchange
+		data.Influencer += payout.Influencer
+		data.Agency += payout.Agency
+		data.AgencyId = payout.AgencyId
+
+		data.Likes += payout.Likes
+		data.Dislikes += payout.Dislikes
+		data.Comments += payout.Comments
+		data.Shares += payout.Shares
+		data.Views += payout.Views
+		data.Clicks += payout.Clicks
 	}
-	return now.AddDate(0, offset, 0).Format("01-2006")
+	return data
+}
+
+func (d *Deal) GetByAgency(dates []string, agid string) (m *Payout) {
+	data := &Payout{}
+	for _, date := range dates {
+		payout, ok := d.Payment[date]
+		if !ok {
+			continue
+		}
+
+		if agid != "" && payout.AgencyId != agid {
+			continue
+		}
+
+		data.DSP += payout.DSP
+		data.Exchange += payout.Exchange
+		data.Influencer += payout.Influencer
+		data.Agency += payout.Agency
+		data.AgencyId = payout.AgencyId
+
+		data.Likes += payout.Likes
+		data.Dislikes += payout.Dislikes
+		data.Comments += payout.Comments
+		data.Shares += payout.Shares
+		data.Views += payout.Views
+		data.Clicks += payout.Clicks
+	}
+	return data
+}
+
+func (d *Deal) Published() int32 {
+	if d.Tweet != nil {
+		return int32(d.Tweet.CreatedAt.Unix())
+	}
+
+	if d.Facebook != nil {
+		return int32(d.Facebook.Published.Unix())
+	}
+
+	if d.Instagram != nil {
+		return d.Instagram.Published
+	}
+
+	if d.YouTube != nil {
+		return d.YouTube.Published
+	}
+
+	return 0
+}
+
+const (
+	dateFormat  = "%d-%02d-%02d"
+	monthFormat = "%d-%02d"
+)
+
+func getMonthOffset(offset int) string {
+	t := time.Now().UTC()
+	t = t.AddDate(0, -offset, 0)
+	return fmt.Sprintf(
+		monthFormat,
+		t.Year(),
+		t.Month(),
+	)
+}
+
+func getDate() string {
+	return getDateFromTime(time.Now().UTC())
+}
+
+func getDateFromTime(t time.Time) string {
+	return fmt.Sprintf(
+		dateFormat,
+		t.Year(),
+		t.Month(),
+		t.Day(),
+	)
 }
 
 func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {

@@ -26,12 +26,11 @@ var ErrUserId = errors.New("Unexpected user id")
 
 // Server is the main server of the sway server
 type Server struct {
-	Cfg         *config.Config
-	r           *gin.Engine
-	db          *bolt.DB
-	budgetDb    *bolt.DB
-	reportingDb *bolt.DB
-	auth        *auth.Auth
+	Cfg      *config.Config
+	r        *gin.Engine
+	db       *bolt.DB
+	budgetDb *bolt.DB
+	auth     *auth.Auth
 
 	Campaigns *common.Campaigns
 }
@@ -43,16 +42,14 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
-	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
 
 	srv := &Server{
-		Cfg:         cfg,
-		r:           r,
-		db:          db,
-		budgetDb:    budgetDb,
-		reportingDb: reportingDb,
-		auth:        auth.New(db, cfg),
-		Campaigns:   common.NewCampaigns(),
+		Cfg:       cfg,
+		r:         r,
+		db:        db,
+		budgetDb:  budgetDb,
+		auth:      auth.New(db, cfg),
+		Campaigns: common.NewCampaigns(),
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -141,18 +138,6 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := srv.reportingDb.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.ReportingBucket)); err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		if err := misc.InitIndex(tx, cfg.ReportingBucket, 1); err != nil {
 			return err
 		}
 		return nil
@@ -261,7 +246,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
 	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
 	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
-	verifyGroup.GET("/getRawStats/:cid", advScope, campOwnership, getRawStats(srv))
 	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
 

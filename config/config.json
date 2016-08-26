@@ -9,9 +9,6 @@
 	"budgetDbName": "budget",
 	"budgetBucket": "budget",
 
-	"reportingDbName": "reporting",
-	"reportingBucket": "campaign",
-
 	"authDbName": "auth",
 
 	"geoLoc": "./config/GeoIP2-City.mmdb",

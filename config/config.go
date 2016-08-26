@@ -48,13 +48,11 @@ type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
 
-	DBPath          string `json:"dbPath"`
-	DBName          string `json:"dbName"`
-	BudgetDBName    string `json:"budgetDbName"`
-	BudgetBucket    string `json:"budgetBucket"`
-	ReportingDBName string `json:"reportingDbName"`
-	ReportingBucket string `json:"reportingBucket"`
-	AuthDBName      string `json:"authDbName"`
+	DBPath       string `json:"dbPath"`
+	DBName       string `json:"dbName"`
+	BudgetDBName string `json:"budgetDbName"`
+	BudgetBucket string `json:"budgetBucket"`
+	AuthDBName   string `json:"authDbName"`
 
 	GeoLocation string            `json:"geoLoc"`
 	GeoDB       *maxminddb.Reader `json:"geoDb"`

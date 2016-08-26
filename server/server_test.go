@@ -948,7 +948,7 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		t.Fatal("Unexpected pending payout!")
 	}
 
-	if m = doneDeal.GetPayout(1); m != nil {
+	if m = doneDeal.GetPayout(1); m.Influencer != 0 {
 		t.Fatal("How the hell are you getting payouts from last month?")
 	}
 }
@@ -971,7 +971,7 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 		if report.Spent != spend {
 			m := doneDeal.GetPayout(0)
 			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
-			if report.Spent != m.Influencer {
+			if int32(report.Spent) != int32(m.Influencer) {
 				t.Fatal("Spend values do not match!")
 			}
 		}
