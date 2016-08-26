@@ -33,10 +33,11 @@ type AddressLoad struct {
 }
 
 type Check struct {
-	Id               string `json:"id"`
-	Tracking         *Track `json:"tracking"`
-	ExpectedDelivery string `json:"expected_delivery_date"`
-	ErrorData        *Error `json:"error"`
+	Id               string  `json:"id"`
+	Tracking         *Track  `json:"tracking"`
+	ExpectedDelivery string  `json:"expected_delivery_date"`
+	ErrorData        *Error  `json:"error"`
+	Payout           float64 `json:"payout"`
 }
 
 type Track struct {
@@ -93,6 +94,8 @@ func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (
 	if check.ErrorData != nil {
 		return nil, errors.New(check.ErrorData.Message)
 	}
+
+	check.Payout = payout
 
 	return &check, err
 }

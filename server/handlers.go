@@ -329,6 +329,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Email eligible influencers!
+		if cmp.Perks == nil {
+			go emailDeal(s, &cmp)
+		}
+
 		c.JSON(200, misc.StatusOK(cmp.Id))
 	}
 }
@@ -1737,7 +1742,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 				return err
 			}
 
-			inf.Checks = append(inf.Checks, check)
+			inf.Payouts = append(inf.Payouts, check)
 			inf.PendingPayout = 0
 			inf.RequestedCheck = 0
 			inf.LastCheck = int32(time.Now().Unix())
@@ -2535,5 +2540,33 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(id))
+	}
+}
+
+func getAllActiveDeals(s *Server) gin.HandlerFunc {
+	// Retrieves all active deals in the system
+	return func(c *gin.Context) {
+		var deals []*common.Deal
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				for _, deal := range cmp.Deals {
+					if deal.Assigned > 0 && deal.Completed == 0 {
+						deals = append(deals, deal)
+					}
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, deals)
 	}
 }

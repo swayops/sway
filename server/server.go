@@ -200,6 +200,8 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.GET("/getAgencyInfluencerStats/:id/:infId/:days", getAgencyInfluencerStats(srv))
 
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+	adminGroup.POST("/setBan/:influencerId/:state", setBan(srv))
+	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
 
 	// AdAgency
 	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
@@ -246,7 +248,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
 	verifyGroup.POST("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
-	verifyGroup.POST("/setBan/:influencerId/:state", infOwnership, setBan(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
 

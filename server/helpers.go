@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"math/rand"
 	"net/url"
 	"strings"
 
@@ -210,6 +211,7 @@ func (s *Server) getTalentAgencyFeeTx(tx *bolt.Tx, id string) float64 {
 }
 
 func saveAllCompletedDeals(s *Server, inf *auth.Influencer) error {
+	// Saves the deals FROM the influencer TO the campaign!
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
 		if err := saveInfluencer(s, tx, inf); err != nil {
@@ -395,4 +397,61 @@ func isSecureAdmin(c *gin.Context, s *Server) bool {
 		c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
 		return false
 	}
+}
+
+type dealOffer struct {
+	Influencer *auth.Influencer
+	Deal       *common.Deal
+}
+
+func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
+	campaigns := common.NewCampaigns()
+	campaigns.SetCampaign(cmp.Id, cmp)
+
+	influencerPool := []*dealOffer{}
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+			// Only email deals to people who have opted in to email deals
+			if inf := auth.GetInfluencer(u); inf != nil && inf.DealPing {
+				deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", nil, false, s.Cfg)
+				if len(deals) == 0 {
+					return nil
+				}
+
+				// NOTE: Add this check once we have a good pool of influencers!
+				// You have a 25% chance of getting an email.. and your odds
+				// are higher if you have done or are doing a deal!
+				// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
+				// 	return nil
+				// }
+				influencerPool = append(influencerPool, &dealOffer{inf, deals[0]})
+			}
+			return nil
+		})
+	})
+
+	// Shuffle the pool!
+	for i := range influencerPool {
+		j := rand.Intn(i + 1)
+		influencerPool[i], influencerPool[j] = influencerPool[j], influencerPool[i]
+	}
+
+	emailed := 0
+	for _, offer := range influencerPool {
+		if emailed >= 50 {
+			// Email no more than 50
+			break
+		}
+
+		err := offer.Influencer.EmailDeal(offer.Deal, s.Cfg)
+		if err != nil {
+			log.Println("Error emailing for new campaign!")
+			continue
+		}
+
+		emailed += 1
+
+	}
+
+	return true, nil
 }

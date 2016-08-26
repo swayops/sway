@@ -2,6 +2,7 @@ package influencer
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -38,7 +39,7 @@ type InfluencerLoad struct {
 
 	IP string `json:"ip,omitempty"` // Used to generate location
 
-	DealPing bool `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
+	// DealPing bool `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
 }
 
 type Influencer struct {
@@ -99,14 +100,15 @@ type Influencer struct {
 	// Last check that was mailed
 	LastCheck int32 `json:"lastCheck,omitempty"`
 	// Lob check ids mailed out to this influencer
-	Checks []*lob.Check `json:"checks,omitempty"`
+	Payouts []*lob.Check `json:"payouts,omitempty"`
 
 	// Tax Information
 	SignatureId  string `json:"sigId,omitempty"`
 	HasSigned    bool   `json:"hasSigned,omitempty"`
 	RequestedTax int32  `json:"taxRequest,omitempty"`
 
-	DealPing  bool  `json:"dealPing,omitempty"` // If true.. send influencer deals every 24 hours
+	// If true.. send influencer deals every 24 hours + campaign emails
+	DealPing  bool  `json:"dealPing,omitempty"`
 	LastEmail int32 `json:"lastEmail,omitempty"`
 
 	// Set only in getInfluencersByAgency to save us a stats endpoint hit
@@ -114,13 +116,13 @@ type Influencer struct {
 	InfluencerSpend float64 `json:"infSpend,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, dealPing bool, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
 		Gender:       gender,
 		Categories:   cats,
-		DealPing:     dealPing,
+		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: email,
 		CreatedAt:    created,
 	}
@@ -679,4 +681,26 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 		}
 	}
 	return true, nil
+}
+
+func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
+	if !cfg.Sandbox { // should be !
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.InfluencerCmpEmail.Render(map[string]interface{}{"Name": firstName, "deal": []*common.Deal{deal}})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("%s is requesting you!", deal.Company), "shahzilabid@gmail.com", inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
 }

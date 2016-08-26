@@ -75,7 +75,7 @@ const scrapDealTwo = `
 		Hey again,
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hope your doing well. Just wanted to reach out as we are excited to announce there are new Sways that requested your participation and I wanted to get your interest level:
+		Hope you're doing well. Just wanted to reach out as we are excited to announce there are new Sways that requested your participation and I wanted to get your interest level:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">

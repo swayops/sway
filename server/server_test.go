@@ -1627,6 +1627,23 @@ func TestInfluencerEmail(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
+	// Lets check default email value
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if !load.DealPing {
+		t.Fatal("Incorrect deal ping value!")
+	}
+
+	// Lets set this influencer to NOT receive emails now!
+	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/false", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
 	// Lets try forcing an email run
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
@@ -1635,13 +1652,13 @@ func TestInfluencerEmail(t *testing.T) {
 
 	// Influencer's email ping setting is off.. they should have
 	// no email sent!
-	var load influencer.Influencer
-	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	var latestLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &latestLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-	if load.DealPing || load.LastEmail != 0 {
+	if latestLoad.DealPing || latestLoad.LastEmail != 0 {
 		t.Fatal("Unexpected email values for influencer")
 	}
 
@@ -1651,12 +1668,13 @@ func TestInfluencerEmail(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	var lastLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &lastLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-	if !load.DealPing {
+	if !lastLoad.DealPing {
 		t.Fatal("Deal ping did not toggle!")
 	}
 
@@ -2162,8 +2180,12 @@ func TestChecks(t *testing.T) {
 		t.Fatal("Unexpected pending payout")
 	}
 
-	if len(approvedInf.Checks) != 1 {
+	if len(approvedInf.Payouts) != 1 {
 		t.Fatal("Unexpected number of checks")
+	}
+
+	if int32(approvedInf.Payouts[0].Payout) != int32(checkInfs[0].PendingPayout) {
+		t.Fatal("Unexpected payout history!")
 	}
 
 	if approvedInf.RequestedCheck != 0 {

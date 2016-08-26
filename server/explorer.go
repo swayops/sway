@@ -53,6 +53,11 @@ func explore(srv *Server) error {
 			continue
 		}
 
+		if inf.Banned {
+			// This foo got banned!
+			continue
+		}
+
 		targetLink := trimURLPrefix(deal.ShortenedLink)
 
 		switch deal.AssignedPlatform {
