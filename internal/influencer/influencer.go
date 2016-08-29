@@ -684,7 +684,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 }
 
 func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
-	if !cfg.Sandbox { // should be !
+	if !cfg.Sandbox {
 		if cfg.ReplyMailClient() == nil {
 			return ErrEmail
 		}
@@ -696,7 +696,7 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 		}
 
 		email := templates.InfluencerCmpEmail.Render(map[string]interface{}{"Name": firstName, "deal": []*common.Deal{deal}})
-		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("%s is requesting you!", deal.Company), "shahzilabid@gmail.com", inf.Name,
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("%s is requesting you!", deal.Company), inf.EmailAddress, inf.Name,
 			[]string{""})
 		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			return ErrEmail

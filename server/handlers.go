@@ -1306,6 +1306,10 @@ func runBilling(s *Server) gin.HandlerFunc {
 				return
 			}
 
+			if data.Spent == 0 {
+				continue
+			}
+
 			if adAgency.ID == auth.SwayOpsAdAgencyID {
 				// ADVERTISER INVOICE!
 				sheet, ok := advertiserSheets[cmp.AdvertiserId]
@@ -1434,7 +1438,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				if dbg {
 					month = 0
 				}
-				if money := d.GetPayout(month); money != nil {
+				if money := d.GetMonthStats(month); money != nil {
 					talentAgency := s.auth.GetTalentAgency(inf.AgencyId)
 					if talentAgency == nil {
 						c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for talent agency, %s", inf.AgencyId)))

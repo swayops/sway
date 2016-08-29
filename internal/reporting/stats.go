@@ -10,29 +10,6 @@ import (
 	"github.com/swayops/sway/internal/common"
 )
 
-// Structure of Reporting DB:
-// Stores all transactions by day at the post level
-// {
-//     "1": { // Campaign ID
-//         "2016-10-30||1||JennaMarbles||Instagram||http://www.instagram.com/post": { // Date::Name::Platform::postUrl
-//             "payout": 3.4, // Includes agency fee
-//             "likes": 0,
-//             "comments": 0,
-//             "shares": 0,
-//             "views": 30,
-//             "dislikes": 45,
-//         },
-//         "2016-10-30||2||NigaHiga||Facebook||facebook.com/post": { // Date::InfId::Platform::postUrl
-//             "payout": 3.4,
-//             "likes": 0,
-//             "comments": 0,
-//             "shares": 0,
-//             "views": 30,
-//             "dislikes": 45,
-//         }
-//     }
-// }
-
 var (
 	ErrUnmarshal = errors.New("Failed to unmarshal data!")
 )
@@ -80,7 +57,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 	tg := &TargetStats{}
 
 	// Retrieve the dates that this request requires
-	dates := getDateRange(from, to)
+	dates := common.GetDateRange(from, to)
 	cmp := common.GetCampaign(cid, db, cfg)
 	if cmp == nil {
 		return tg, errors.New("Missing campaign!")
@@ -107,7 +84,9 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Comments += st.Comments
 
 			// This assumes each influencer can do the deal once
-			tg.Total.Influencers++
+			if eng > 0 {
+				tg.Total.Influencers++
+			}
 
 			if onlyTotals {
 				continue
@@ -141,7 +120,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 	return tg, nil
 }
 
-func fillReportStats(key string, data map[string]*ReportStats, st *common.Payout, views int32, infId, channel string) map[string]*ReportStats {
+func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats, views int32, infId, channel string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
 		stats = &ReportStats{}
@@ -159,7 +138,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Payout
 	return data
 }
 
-func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *common.Payout, views int32, infId string) map[string]*ReportStats {
+func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *common.Stats, views int32, infId string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
 		stats = &ReportStats{}
@@ -185,7 +164,7 @@ func GetInfluencerStats(infId string, au *auth.Auth, cfg *config.Config, from, t
 	if inf == nil {
 		return stats, errors.New("Bad influencer!")
 	}
-	dates := getDateRange(from, to)
+	dates := common.GetDateRange(from, to)
 
 	for _, deal := range inf.CompletedDeals {
 		if cid != "" && deal.CampaignId != cid {
@@ -205,4 +184,83 @@ func GetInfluencerStats(infId string, au *auth.Auth, cfg *config.Config, from, t
 		stats.Engagements += eng
 	}
 	return stats, nil
+}
+
+func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset int) map[string]*Totals {
+	// Retrieves totals for the range and campaign stats by day
+	tg := make(map[string]*Totals)
+
+	dateRange := common.GetDateRangeFromOffset(offset)
+
+	// Insert totals for the range in the key "total"
+	tg["total"] = &Totals{}
+
+	// Insert day stats for the range
+	for _, d := range dateRange {
+		tot, err := GetCampaignStats(cid, db, cfg, d, d, true)
+		if err == nil && tot != nil && tot.Total != nil {
+			tg[common.GetDateFromTime(d)] = tot.Total
+			val, _ := tg["total"]
+			val.Clicks += tot.Total.Clicks
+			val.Engagements += tot.Total.Engagements
+			val.Likes += tot.Total.Likes
+			val.Views += tot.Total.Views
+			val.Comments += tot.Total.Comments
+			val.Shares += tot.Total.Shares
+			val.Spent += tot.Total.Spent
+			val.Influencers = tot.Total.Influencers
+		}
+	}
+
+	return tg
+}
+
+func GetInfluencerBreakdown(infId string, au *auth.Auth, cfg *config.Config, offset int, rep map[string]float64, currentRep float64, cid, agid string) map[string]*ReportStats {
+	// Retrieves influencer totals for the range and influencer stats by day
+	tg := make(map[string]*ReportStats)
+
+	dateRange := common.GetDateRangeFromOffset(offset)
+
+	// Insert totals for the range in the key "totals"
+	st := &ReportStats{}
+	if cid == "" {
+		// Do not add the rep values if we are doing
+		// Campaign Influencer stats (i.e. when cid override
+		// is not passed in)
+		st.Rep = currentRep
+	}
+	tg["total"] = st
+
+	// Insert day stats for the range
+	for _, d := range dateRange {
+		r, err := GetInfluencerStats(infId, au, cfg, d, d, cid, agid)
+		if err == nil && r != nil && r.Spent != 0 {
+			key := common.GetDateFromTime(d)
+
+			if cid == "" {
+				// Do not add the rep values if we are doing
+				// Campaign Influencer stats
+				dayRep, ok := rep[key]
+				if ok {
+					r.Rep = dayRep
+				}
+			}
+
+			if offset != -1 {
+				// Do not give day breakdown if it's all time!
+				tg[key] = r
+			}
+			val, _ := tg["total"]
+			val.Clicks += r.Clicks
+			val.Likes += r.Likes
+			val.Comments += r.Comments
+			val.Shares += r.Shares
+			val.Views += r.Views
+			val.Spent += r.Spent
+			val.AgencySpent += r.AgencySpent
+			val.Engagements += r.Engagements
+		}
+	}
+
+	return tg
 }

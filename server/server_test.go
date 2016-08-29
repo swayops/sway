@@ -923,8 +923,8 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		t.Fatal("Deal ID missing!")
 	}
 
-	var m *common.Payout
-	if m = doneDeal.GetPayout(0); m != nil {
+	var m *common.Stats
+	if m = doneDeal.GetMonthStats(0); m != nil {
 		if m.AgencyId != agId {
 			t.Fatal("Payout to wrong talent agency!")
 		}
@@ -948,14 +948,14 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		t.Fatal("Unexpected pending payout!")
 	}
 
-	if m = doneDeal.GetPayout(1); m.Influencer != 0 {
+	if m = doneDeal.GetMonthStats(1); m.Influencer != 0 {
 		t.Fatal("How the hell are you getting payouts from last month?")
 	}
 }
 
 func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend float64, doneDeal *common.Deal, skipSpend bool) {
 	report := breakdown["total"]
-	dayTotal := breakdown[reporting.GetDate()]
+	dayTotal := breakdown[common.GetDate()]
 	rt := int32(doneDeal.Tweet.Retweets)
 
 	if rt != dayTotal.Shares || rt != report.Shares {
@@ -969,7 +969,7 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 
 	if !skipSpend {
 		if report.Spent != spend {
-			m := doneDeal.GetPayout(0)
+			m := doneDeal.GetMonthStats(0)
 			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
 			if int32(report.Spent) != int32(m.Influencer) {
 				t.Fatal("Spend values do not match!")

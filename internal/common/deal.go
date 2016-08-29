@@ -2,10 +2,8 @@ package common
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -67,17 +65,18 @@ type Deal struct {
 	// when the deal was assigned
 	Spendable float64 `json:"spendable,omitempty"`
 
-	// Keyed on DAY.. showing payouts calculated by DAY
-	Payment map[string]*Payout `json:"infPayout,omitempty"`
+	// Keyed on DAY.. showing stats calculated by DAY
+	Reporting map[string]*Stats `json:"stats,omitempty"`
 }
 
-type Payout struct {
+type Stats struct {
 	// How much has been paid out to the influencer for this deal?
-	Influencer float64 `json:"infPayout,omitempty"`
+	Influencer float64 `json:"infStats,omitempty"`
 	// How much has been paid out to the agency for this deal?
-	Agency   float64 `json:"agencyPayout,omitempty"`
+	Agency   float64 `json:"agencyStats,omitempty"`
 	AgencyId string  `json:"agencyId,omitempty"`
 
+	// DSP and Exchange Fees respectively
 	DSP      float64 `json:"dsp,omitempty"`
 	Exchange float64 `json:"exchange,omitempty"`
 
@@ -89,19 +88,19 @@ type Payout struct {
 	Clicks   int32 `json:"clicks,omitempty"`
 }
 
-func (p *Payout) TotalMarkup() float64 {
-	return p.DSP + p.Exchange + p.Agency
+func (st *Stats) TotalMarkup() float64 {
+	return st.DSP + st.Exchange + st.Agency
 }
 
 func (d *Deal) Pay(inf, agency, dsp, exchange float64, agId string) {
-	if d.Payment == nil {
-		d.Payment = make(map[string]*Payout)
+	if d.Reporting == nil {
+		d.Reporting = make(map[string]*Stats)
 	}
-	key := getDate()
-	data, ok := d.Payment[key]
+	key := GetDate()
+	data, ok := d.Reporting[key]
 	if !ok {
-		data = &Payout{}
-		d.Payment[key] = data
+		data = &Stats{}
+		d.Reporting[key] = data
 	}
 
 	data.DSP += dsp
@@ -109,18 +108,17 @@ func (d *Deal) Pay(inf, agency, dsp, exchange float64, agId string) {
 	data.Influencer += inf
 	data.Agency += agency
 	data.AgencyId = agId
-	log.Println("AGENCY!", agency, data.Agency, agId)
 }
 
 func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
-	if d.Payment == nil {
-		d.Payment = make(map[string]*Payout)
+	if d.Reporting == nil {
+		d.Reporting = make(map[string]*Stats)
 	}
-	key := getDate()
-	data, ok := d.Payment[key]
+	key := GetDate()
+	data, ok := d.Reporting[key]
 	if !ok {
-		data = &Payout{}
-		d.Payment[key] = data
+		data = &Stats{}
+		d.Reporting[key] = data
 	}
 
 	data.Likes += likes
@@ -131,87 +129,87 @@ func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
 }
 
 func (d *Deal) Click() {
-	if d.Payment == nil {
-		d.Payment = make(map[string]*Payout)
+	if d.Reporting == nil {
+		d.Reporting = make(map[string]*Stats)
 	}
-	key := getDate()
-	data, ok := d.Payment[key]
+	key := GetDate()
+	data, ok := d.Reporting[key]
 	if !ok {
-		data = &Payout{}
-		d.Payment[key] = data
+		data = &Stats{}
+		d.Reporting[key] = data
 	}
 
 	data.Clicks += 1
 }
 
-func (d *Deal) GetPayout(offset int) (m *Payout) {
-	key := getMonthOffset(offset)
-	if d.Payment == nil {
+func (d *Deal) GetMonthStats(offset int) (m *Stats) {
+	key := GetMonthOffset(offset)
+	if d.Reporting == nil {
 		return
 	}
 
-	data := &Payout{}
+	data := &Stats{}
 
-	for d, payout := range d.Payment {
+	for d, stats := range d.Reporting {
 		if strings.Index(d, key) == 0 {
-			data.DSP += payout.DSP
-			data.Exchange += payout.Exchange
-			data.Influencer += payout.Influencer
-			data.Agency += payout.Agency
-			data.AgencyId = payout.AgencyId
+			data.DSP += stats.DSP
+			data.Exchange += stats.Exchange
+			data.Influencer += stats.Influencer
+			data.Agency += stats.Agency
+			data.AgencyId = stats.AgencyId
 		}
 	}
 	return data
 }
 
-func (d *Deal) Get(dates []string) (m *Payout) {
-	data := &Payout{}
+func (d *Deal) Get(dates []string) (m *Stats) {
+	data := &Stats{}
 	for _, date := range dates {
-		payout, ok := d.Payment[date]
+		stats, ok := d.Reporting[date]
 		if !ok {
 			continue
 		}
 
-		data.DSP += payout.DSP
-		data.Exchange += payout.Exchange
-		data.Influencer += payout.Influencer
-		data.Agency += payout.Agency
-		data.AgencyId = payout.AgencyId
+		data.DSP += stats.DSP
+		data.Exchange += stats.Exchange
+		data.Influencer += stats.Influencer
+		data.Agency += stats.Agency
+		data.AgencyId = stats.AgencyId
 
-		data.Likes += payout.Likes
-		data.Dislikes += payout.Dislikes
-		data.Comments += payout.Comments
-		data.Shares += payout.Shares
-		data.Views += payout.Views
-		data.Clicks += payout.Clicks
+		data.Likes += stats.Likes
+		data.Dislikes += stats.Dislikes
+		data.Comments += stats.Comments
+		data.Shares += stats.Shares
+		data.Views += stats.Views
+		data.Clicks += stats.Clicks
 	}
 	return data
 }
 
-func (d *Deal) GetByAgency(dates []string, agid string) (m *Payout) {
-	data := &Payout{}
+func (d *Deal) GetByAgency(dates []string, agid string) (m *Stats) {
+	data := &Stats{}
 	for _, date := range dates {
-		payout, ok := d.Payment[date]
+		stats, ok := d.Reporting[date]
 		if !ok {
 			continue
 		}
 
-		if agid != "" && payout.AgencyId != agid {
+		if agid != "" && stats.AgencyId != agid {
 			continue
 		}
 
-		data.DSP += payout.DSP
-		data.Exchange += payout.Exchange
-		data.Influencer += payout.Influencer
-		data.Agency += payout.Agency
-		data.AgencyId = payout.AgencyId
+		data.DSP += stats.DSP
+		data.Exchange += stats.Exchange
+		data.Influencer += stats.Influencer
+		data.Agency += stats.Agency
+		data.AgencyId = stats.AgencyId
 
-		data.Likes += payout.Likes
-		data.Dislikes += payout.Dislikes
-		data.Comments += payout.Comments
-		data.Shares += payout.Shares
-		data.Views += payout.Views
-		data.Clicks += payout.Clicks
+		data.Likes += stats.Likes
+		data.Dislikes += stats.Dislikes
+		data.Comments += stats.Comments
+		data.Shares += stats.Shares
+		data.Views += stats.Views
+		data.Clicks += stats.Clicks
 	}
 	return data
 }
@@ -234,34 +232,6 @@ func (d *Deal) Published() int32 {
 	}
 
 	return 0
-}
-
-const (
-	dateFormat  = "%d-%02d-%02d"
-	monthFormat = "%d-%02d"
-)
-
-func getMonthOffset(offset int) string {
-	t := time.Now().UTC()
-	t = t.AddDate(0, -offset, 0)
-	return fmt.Sprintf(
-		monthFormat,
-		t.Year(),
-		t.Month(),
-	)
-}
-
-func getDate() string {
-	return getDateFromTime(time.Now().UTC())
-}
-
-func getDateFromTime(t time.Time) string {
-	return fmt.Sprintf(
-		dateFormat,
-		t.Year(),
-		t.Month(),
-		t.Day(),
-	)
 }
 
 func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
