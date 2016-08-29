@@ -1937,7 +1937,7 @@ func TestInfluencerGeo(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       10,
+		Budget:       100,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Gender:       "mf",

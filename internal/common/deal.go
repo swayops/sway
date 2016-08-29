@@ -162,31 +162,7 @@ func (d *Deal) GetMonthStats(offset int) (m *Stats) {
 	return data
 }
 
-func (d *Deal) Get(dates []string) (m *Stats) {
-	data := &Stats{}
-	for _, date := range dates {
-		stats, ok := d.Reporting[date]
-		if !ok {
-			continue
-		}
-
-		data.DSP += stats.DSP
-		data.Exchange += stats.Exchange
-		data.Influencer += stats.Influencer
-		data.Agency += stats.Agency
-		data.AgencyId = stats.AgencyId
-
-		data.Likes += stats.Likes
-		data.Dislikes += stats.Dislikes
-		data.Comments += stats.Comments
-		data.Shares += stats.Shares
-		data.Views += stats.Views
-		data.Clicks += stats.Clicks
-	}
-	return data
-}
-
-func (d *Deal) GetByAgency(dates []string, agid string) (m *Stats) {
+func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 	data := &Stats{}
 	for _, date := range dates {
 		stats, ok := d.Reporting[date]

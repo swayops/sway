@@ -65,7 +65,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 
 	for _, deal := range cmp.Deals {
 		if deal.Completed > 0 {
-			st := deal.Get(dates)
+			st := deal.Get(dates, "")
 
 			// This value falls in our target range!
 			eng := getEngagements(st)
@@ -171,7 +171,7 @@ func GetInfluencerStats(infId string, au *auth.Auth, cfg *config.Config, from, t
 			continue
 		}
 
-		st := deal.GetByAgency(dates, agid)
+		st := deal.Get(dates, agid)
 		eng := getEngagements(st)
 		views := getViews(st, eng)
 		stats.Clicks += st.Clicks
