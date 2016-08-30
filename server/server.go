@@ -28,12 +28,11 @@ var ErrUserId = errors.New("Unexpected user id")
 
 // Server is the main server of the sway server
 type Server struct {
-	Cfg         *config.Config
-	r           *gin.Engine
-	db          *bolt.DB
-	budgetDb    *bolt.DB
-	reportingDb *bolt.DB
-	auth        *auth.Auth
+	Cfg      *config.Config
+	r        *gin.Engine
+	db       *bolt.DB
+	budgetDb *bolt.DB
+	auth     *auth.Auth
 
 	Campaigns *common.Campaigns
 }
@@ -45,16 +44,14 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
 	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
-	reportingDb := misc.OpenDB(cfg.DBPath, cfg.ReportingDBName)
 
 	srv := &Server{
-		Cfg:         cfg,
-		r:           r,
-		db:          db,
-		budgetDb:    budgetDb,
-		reportingDb: reportingDb,
-		auth:        auth.New(db, cfg),
-		Campaigns:   common.NewCampaigns(),
+		Cfg:       cfg,
+		r:         r,
+		db:        db,
+		budgetDb:  budgetDb,
+		auth:      auth.New(db, cfg),
+		Campaigns: common.NewCampaigns(),
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -149,18 +146,6 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 	}); err != nil {
 		return err
 	}
-
-	if err := srv.reportingDb.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.ReportingBucket)); err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		if err := misc.InitIndex(tx, cfg.ReportingBucket, 1); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -235,6 +220,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getAgencyInfluencerStats/:id/:infId/:days", getAgencyInfluencerStats(srv))
 
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
+	adminGroup.POST("/setBan/:influencerId/:state", setBan(srv))
+	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
 
 	// AdAgency
 	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
@@ -281,7 +268,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
 	verifyGroup.POST("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
-	verifyGroup.POST("/setBan/:influencerId/:state", infOwnership, setBan(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
 
@@ -295,7 +281,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
 	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
 	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
-	verifyGroup.GET("/getRawStats/:cid", advScope, campOwnership, getRawStats(srv))
 	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
 

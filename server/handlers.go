@@ -392,6 +392,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Email eligible influencers!
+		if cmp.Perks == nil {
+			go emailDeal(s, &cmp)
+		}
+
 		c.JSON(200, misc.StatusOK(cmp.Id))
 	}
 }
@@ -624,7 +629,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 				}
 				if inf.AgencyId == targetAg {
 					inf.Clean()
-					st := reporting.GetInfluencerBreakdown(inf.Id, s.reportingDb, s.Cfg, -1, inf.Rep, inf.CurrentRep, "", inf.AgencyId)
+					st := reporting.GetInfluencerBreakdown(inf.Id, s.auth, s.Cfg, -1, inf.Rep, inf.CurrentRep, "", inf.AgencyId)
 					total := st["total"]
 					if total != nil {
 						inf.AgencySpend = total.AgencySpent
@@ -1205,18 +1210,6 @@ func getLastMonthsStore(s *Server) gin.HandlerFunc {
 	}
 }
 
-// Reporting
-func getRawStats(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		stats, err := reporting.GetStatsByCampaign(c.Param("cid"), s.reportingDb, s.Cfg)
-		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-		c.JSON(200, stats)
-	}
-}
-
 func getCampaignReport(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cid := c.Param("cid")
@@ -1232,7 +1225,7 @@ func getCampaignReport(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if err := reporting.GenerateCampaignReport(c.Writer, s.db, s.reportingDb, cid, from, to, s.Cfg); err != nil {
+		if err := reporting.GenerateCampaignReport(c.Writer, s.db, cid, from, to, s.Cfg); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 		}
 	}
@@ -1246,7 +1239,7 @@ func getCampaignStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.reportingDb, s.Cfg, days))
+		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days))
 	}
 }
 
@@ -1265,7 +1258,7 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
 		}
-		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.auth, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
 	}
 }
 
@@ -1284,7 +1277,7 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.auth, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
 	}
 }
 
@@ -1302,7 +1295,7 @@ func getAgencyInfluencerStats(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
 			return
 		}
-		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.reportingDb, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
+		c.JSON(200, reporting.GetInfluencerBreakdown(infId, s.auth, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
 	}
 }
 
@@ -1379,6 +1372,10 @@ func runBilling(s *Server) gin.HandlerFunc {
 			if adAgency == nil {
 				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for ad agency, %s", cmp.AgencyId)))
 				return
+			}
+
+			if data.Spent == 0 {
+				continue
 			}
 
 			if adAgency.ID == auth.SwayOpsAdAgencyID {
@@ -1509,7 +1506,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				if dbg {
 					month = 0
 				}
-				if money := d.GetPayout(month); money != nil {
+				if money := d.GetMonthStats(month); money != nil {
 					talentAgency := s.auth.GetTalentAgency(inf.AgencyId)
 					if talentAgency == nil {
 						c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for talent agency, %s", inf.AgencyId)))
@@ -1805,7 +1802,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 				return err
 			}
 
-			inf.Checks = append(inf.Checks, check)
+			inf.Payouts = append(inf.Payouts, check)
 			inf.PendingPayout = 0
 			inf.RequestedCheck = 0
 			inf.LastCheck = int32(time.Now().Unix())
@@ -2449,12 +2446,6 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		inf := s.auth.GetInfluencer(infId)
-		if inf == nil {
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
-
 		// Stored as a comma separated list of dealIDs satisfied
 		prevClicks := misc.GetCookie(c.Request, "click")
 		if strings.Contains(prevClicks, foundDeal.Id) {
@@ -2463,19 +2454,23 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// Get stats for this deal for today! We'll need it so that clicks
-		// can be incremented!
-		platformId := inf.GetPlatformId(foundDeal)
-		stats, statsKey, err := reporting.GetStats(foundDeal, s.reportingDb, s.Cfg, platformId)
-		if err != nil {
-			// Insert file informant
+		inf := s.auth.GetInfluencer(infId)
+		if inf == nil {
 			c.Redirect(302, foundDeal.Link)
 			return
 		}
 
-		stats.Clicks += 1
+		for _, infDeal := range inf.CompletedDeals {
+			if foundDeal.Id == infDeal.Id && infDeal.Completed > 0 {
+				infDeal.Click()
+				break
+			}
+		}
 
-		if err := reporting.SaveStats(stats, foundDeal, s.reportingDb, s.Cfg, statsKey, platformId); err != nil {
+		// SAVE!
+		// Also saves influencers!
+		if err := saveAllCompletedDeals(s, inf); err != nil {
+			log.Println("ERROR SAVING CLICK!", err)
 			c.Redirect(302, foundDeal.Link)
 			return
 		}
@@ -2634,5 +2629,33 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(id))
+	}
+}
+
+func getAllActiveDeals(s *Server) gin.HandlerFunc {
+	// Retrieves all active deals in the system
+	return func(c *gin.Context) {
+		var deals []*common.Deal
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				for _, deal := range cmp.Deals {
+					if deal.Assigned > 0 && deal.Completed == 0 {
+						deals = append(deals, deal)
+					}
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, deals)
 	}
 }

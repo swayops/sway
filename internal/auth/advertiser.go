@@ -76,7 +76,7 @@ func (adv *Advertiser) Check() error {
 		return ErrInvalidFee
 	}
 
-	if adv.DspFee == 0 && adv.ExchangeFee == 0 {
+	if adv.DspFee == 0 || adv.ExchangeFee == 0 {
 		return ErrInvalidFee
 	}
 

@@ -923,8 +923,8 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		t.Fatal("Deal ID missing!")
 	}
 
-	var m *common.Payout
-	if m = doneDeal.GetPayout(0); m != nil {
+	var m *common.Stats
+	if m = doneDeal.GetMonthStats(0); m != nil {
 		if m.AgencyId != agId {
 			t.Fatal("Payout to wrong talent agency!")
 		}
@@ -948,14 +948,14 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 		t.Fatal("Unexpected pending payout!")
 	}
 
-	if m = doneDeal.GetPayout(1); m != nil {
+	if m = doneDeal.GetMonthStats(1); m.Influencer != 0 {
 		t.Fatal("How the hell are you getting payouts from last month?")
 	}
 }
 
 func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend float64, doneDeal *common.Deal, skipSpend bool) {
 	report := breakdown["total"]
-	dayTotal := breakdown[reporting.GetDate()]
+	dayTotal := breakdown[common.GetDate()]
 	rt := int32(doneDeal.Tweet.Retweets)
 
 	if rt != dayTotal.Shares || rt != report.Shares {
@@ -969,9 +969,9 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 
 	if !skipSpend {
 		if report.Spent != spend {
-			m := doneDeal.GetPayout(0)
+			m := doneDeal.GetMonthStats(0)
 			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
-			if report.Spent != m.Influencer {
+			if int32(report.Spent) != int32(m.Influencer) {
 				t.Fatal("Spend values do not match!")
 			}
 		}
@@ -1644,6 +1644,23 @@ func TestInfluencerEmail(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
+	// Lets check default email value
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if !load.DealPing {
+		t.Fatal("Incorrect deal ping value!")
+	}
+
+	// Lets set this influencer to NOT receive emails now!
+	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/false", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
 	// Lets try forcing an email run
 	r = rst.DoTesting(t, "GET", "/forceEmail", nil, nil)
 	if r.Status != 200 {
@@ -1652,13 +1669,13 @@ func TestInfluencerEmail(t *testing.T) {
 
 	// Influencer's email ping setting is off.. they should have
 	// no email sent!
-	var load influencer.Influencer
-	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	var latestLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &latestLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-	if load.DealPing || load.LastEmail != 0 {
+	if latestLoad.DealPing || latestLoad.LastEmail != 0 {
 		t.Fatal("Unexpected email values for influencer")
 	}
 
@@ -1668,12 +1685,13 @@ func TestInfluencerEmail(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	var lastLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &lastLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-	if !load.DealPing {
+	if !lastLoad.DealPing {
 		t.Fatal("Deal ping did not toggle!")
 	}
 
@@ -1936,7 +1954,7 @@ func TestInfluencerGeo(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       10,
+		Budget:       100,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Gender:       "mf",
@@ -2183,8 +2201,12 @@ func TestChecks(t *testing.T) {
 		t.Fatal("Unexpected pending payout")
 	}
 
-	if len(approvedInf.Checks) != 1 {
+	if len(approvedInf.Payouts) != 1 {
 		t.Fatal("Unexpected number of checks")
+	}
+
+	if int32(approvedInf.Payouts[0].Payout) != int32(checkInfs[0].PendingPayout) {
+		t.Fatal("Unexpected payout history!")
 	}
 
 	if approvedInf.RequestedCheck != 0 {

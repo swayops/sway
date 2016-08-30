@@ -11,9 +11,6 @@
 	"budgetDbName": "budget",
 	"budgetBucket": "budget",
 
-	"reportingDbName": "reporting",
-	"reportingBucket": "campaign",
-
 	"authDbName": "auth",
 
 	"geoLoc": "./config/GeoIP2-City.mmdb",
@@ -31,8 +28,8 @@
 		"subAccount":"Meteora Dashboard",
 		"fromEmail": "noreply@swayops.com",
 		"fromName": "SwayOps",
-		"fromEmailReply": "nick@swayops.com",
-		"fromNameReply": "Nick Waken"
+		"fromEmailReply": "karlie@swayops.com",
+		"fromNameReply": "Karlie M"
 	},
 
 	"youtube": {

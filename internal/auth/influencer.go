@@ -95,7 +95,6 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		inf.IP,
 		inf.Categories,
 		inf.Address,
-		inf.DealPing,
 		int32(u.CreatedAt), // Seconds!
 		a.cfg)
 

@@ -17,12 +17,12 @@ const scrapFirstEmail = `
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		If this sounds like something that would interest you, be sure to check out "INSERT SIGN UP URL!!"
 		Hope to work together soon,<br/>
-		~ Nicholas Waken<br/>
+		~ Karlie M<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Nick@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 
 </div>
@@ -58,12 +58,12 @@ const scrapDealOne = `
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Very excited to work with you,<br/>
-		~ Nicholas Waken<br/>
+		~ Karlie M<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Nick@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 
 </div>
@@ -75,7 +75,7 @@ const scrapDealTwo = `
 		Hey again,
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hope your doing well. Just wanted to reach out as we are excited to announce there are new Sways that requested your participation and I wanted to get your interest level:
+		Hope you're doing well. Just wanted to reach out as we are excited to announce there are new Sways that requested your participation and I wanted to get your interest level:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">
@@ -98,12 +98,12 @@ const scrapDealTwo = `
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
-		~ Nicholas Waken<br/>
+		~ Karlie M<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Nick@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
