@@ -17,14 +17,14 @@ var (
 	ErrCampaignNotFound = errors.New("Campaign not found!")
 )
 
-func GenerateCampaignReport(res http.ResponseWriter, db, statsDb *bolt.DB, cid string, from, to time.Time, cfg *config.Config) error {
+func GenerateCampaignReport(res http.ResponseWriter, db *bolt.DB, cid string, from, to time.Time, cfg *config.Config) error {
 	cmp := common.GetCampaign(cid, db, cfg)
 	if cmp == nil {
 		return ErrCampaignNotFound
 	}
 
 	// NOTE: report is inclusive of "from" and "to"
-	st, err := GetCampaignStats(cid, statsDb, cfg, from, to, false)
+	st, err := GetCampaignStats(cid, db, cfg, from, to, false)
 	if err != nil {
 		return err
 	}

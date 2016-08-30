@@ -9,7 +9,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 )
 
@@ -214,39 +213,41 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 	return st, nil
 }
 
-func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Store, *reporting.Stats, float64) {
+type Metrics struct {
+	Spent, Likes, Dislikes, Comments, Shares, Views int32
+}
+
+func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
+
+	m := &Metrics{}
 
 	oldSpendable := store.Spendable
 	if deal.Tweet != nil {
 		// Considering retweets as shares and favorites as likes!
-		stats.Shares += int32(deal.Tweet.RetweetsDelta)
-		stats.Likes += int32(deal.Tweet.FavoritesDelta)
-		stats.Published = int32(deal.Tweet.CreatedAt.Unix())
+		m.Shares += int32(deal.Tweet.RetweetsDelta)
+		m.Likes += int32(deal.Tweet.FavoritesDelta)
 
 		store.deductSpendable(float64(deal.Tweet.RetweetsDelta) * TW_RETWEET)
 		store.deductSpendable(float64(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		stats.Likes += int32(deal.Facebook.LikesDelta)
-		stats.Shares += int32(deal.Facebook.SharesDelta)
-		stats.Comments += int32(deal.Facebook.CommentsDelta)
-		stats.Published = int32(deal.Facebook.Published.Unix())
+		m.Likes += int32(deal.Facebook.LikesDelta)
+		m.Shares += int32(deal.Facebook.SharesDelta)
+		m.Comments += int32(deal.Facebook.CommentsDelta)
 
 		store.deductSpendable(float64(deal.Facebook.LikesDelta) * FB_LIKE)
 		store.deductSpendable(float64(deal.Facebook.SharesDelta) * FB_SHARE)
 		store.deductSpendable(float64(deal.Facebook.CommentsDelta) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		stats.Likes += int32(deal.Instagram.LikesDelta)
-		stats.Comments += int32(deal.Instagram.CommentsDelta)
-		stats.Published = deal.Instagram.Published
+		m.Likes += int32(deal.Instagram.LikesDelta)
+		m.Comments += int32(deal.Instagram.CommentsDelta)
 
 		store.deductSpendable(float64(deal.Instagram.LikesDelta) * INSTA_LIKE)
 		store.deductSpendable(float64(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		stats.Views += int32(deal.YouTube.ViewsDelta)
-		stats.Likes += int32(deal.YouTube.LikesDelta)
-		stats.Comments += int32(deal.YouTube.CommentsDelta)
-		stats.Published = deal.YouTube.Published
+		m.Views += int32(deal.YouTube.ViewsDelta)
+		m.Likes += int32(deal.YouTube.LikesDelta)
+		m.Comments += int32(deal.YouTube.CommentsDelta)
 
 		store.deductSpendable(float64(deal.YouTube.ViewsDelta) * YT_VIEW)
 		store.deductSpendable(float64(deal.YouTube.LikesDelta) * YT_LIKE)
@@ -255,7 +256,8 @@ func AdjustStore(store *Store, deal *common.Deal, stats *reporting.Stats) (*Stor
 
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
-	return store, stats, spentDelta
+
+	return store, spentDelta, m
 }
 
 func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {
