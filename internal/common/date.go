@@ -1,23 +1,11 @@
 package common
 
-import (
-	"fmt"
-	"time"
-)
-
-const (
-	dateFormat  = "%d-%02d-%02d"
-	monthFormat = "%d-%02d"
-)
+import "time"
 
 func GetMonthOffset(offset int) string {
 	t := time.Now().UTC()
 	t = t.AddDate(0, -offset, 0)
-	return fmt.Sprintf(
-		monthFormat,
-		t.Year(),
-		t.Month(),
-	)
+	return t.Format("2006-01")
 }
 
 func GetDate() string {
@@ -25,12 +13,7 @@ func GetDate() string {
 }
 
 func GetDateFromTime(t time.Time) string {
-	return fmt.Sprintf(
-		dateFormat,
-		t.Year(),
-		t.Month(),
-		t.Day(),
-	)
+	return t.Format("2006-01-02")
 }
 
 func GetDateRange(from, to time.Time) []string {

@@ -139,8 +139,8 @@ func depleteBudget(s *Server) error {
 	// Iterate over all
 
 	var (
-		spentDelta                               float64
-		likes, dislikes, comments, shares, views int32
+		spentDelta float64
+		m          *budget.Metrics
 	)
 
 	// Iterate over all active campaigns
@@ -165,7 +165,7 @@ func depleteBudget(s *Server) error {
 			}
 
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
-			store, spentDelta, likes, dislikes, comments, shares, views = budget.AdjustStore(store, deal)
+			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				// DSP and Exchange fee taken away from the prinicpal
@@ -183,7 +183,7 @@ func depleteBudget(s *Server) error {
 				// THIS IS WHAT WE'LL USE FOR BILLING!
 				for _, cDeal := range inf.CompletedDeals {
 					if cDeal.Id == deal.Id {
-						cDeal.Incr(likes, dislikes, comments, shares, views)
+						cDeal.Incr(m.Likes, m.Dislikes, m.Comments, m.Shares, m.Views)
 						cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
 					}
 				}

@@ -213,38 +213,41 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 	return st, nil
 }
 
-func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, int32, int32, int32, int32, int32) {
+type Metrics struct {
+	Spent, Likes, Dislikes, Comments, Shares, Views int32
+}
+
+func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
-	var (
-		likes, dislikes, comments, shares, views int32
-	)
+
+	m := &Metrics{}
 
 	oldSpendable := store.Spendable
 	if deal.Tweet != nil {
 		// Considering retweets as shares and favorites as likes!
-		shares += int32(deal.Tweet.RetweetsDelta)
-		likes += int32(deal.Tweet.FavoritesDelta)
+		m.Shares += int32(deal.Tweet.RetweetsDelta)
+		m.Likes += int32(deal.Tweet.FavoritesDelta)
 
 		store.deductSpendable(float64(deal.Tweet.RetweetsDelta) * TW_RETWEET)
 		store.deductSpendable(float64(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		likes += int32(deal.Facebook.LikesDelta)
-		shares += int32(deal.Facebook.SharesDelta)
-		comments += int32(deal.Facebook.CommentsDelta)
+		m.Likes += int32(deal.Facebook.LikesDelta)
+		m.Shares += int32(deal.Facebook.SharesDelta)
+		m.Comments += int32(deal.Facebook.CommentsDelta)
 
 		store.deductSpendable(float64(deal.Facebook.LikesDelta) * FB_LIKE)
 		store.deductSpendable(float64(deal.Facebook.SharesDelta) * FB_SHARE)
 		store.deductSpendable(float64(deal.Facebook.CommentsDelta) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		likes += int32(deal.Instagram.LikesDelta)
-		comments += int32(deal.Instagram.CommentsDelta)
+		m.Likes += int32(deal.Instagram.LikesDelta)
+		m.Comments += int32(deal.Instagram.CommentsDelta)
 
 		store.deductSpendable(float64(deal.Instagram.LikesDelta) * INSTA_LIKE)
 		store.deductSpendable(float64(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		views += int32(deal.YouTube.ViewsDelta)
-		likes += int32(deal.YouTube.LikesDelta)
-		comments += int32(deal.YouTube.CommentsDelta)
+		m.Views += int32(deal.YouTube.ViewsDelta)
+		m.Likes += int32(deal.YouTube.LikesDelta)
+		m.Comments += int32(deal.YouTube.CommentsDelta)
 
 		store.deductSpendable(float64(deal.YouTube.ViewsDelta) * YT_VIEW)
 		store.deductSpendable(float64(deal.YouTube.LikesDelta) * YT_LIKE)
@@ -253,7 +256,8 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, int32, int32
 
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
-	return store, spentDelta, likes, dislikes, comments, shares, views
+
+	return store, spentDelta, m
 }
 
 func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {
