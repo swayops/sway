@@ -1685,7 +1685,8 @@ func runBilling(s *Server) gin.HandlerFunc {
 }
 
 type GreedyInfluencer struct {
-	Id string `json:"id,omitempty"`
+	Id   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 
 	Address   *lob.AddressLoad `json:"address,omitempty"`
 	Followers int64            `json:"followers,omitempty"`
@@ -1704,6 +1705,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 					if inf.RequestedCheck > 0 {
 						tmpGreedy := &GreedyInfluencer{
 							Id:             inf.Id,
+							Name:           inf.Name,
 							Address:        inf.Address,
 							PendingPayout:  inf.PendingPayout,
 							RequestedCheck: inf.RequestedCheck,
