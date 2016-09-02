@@ -363,6 +363,8 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Approved = int32(time.Now().Unix())
 		}
 
+		cmp.CreatedAt = time.Now().Unix()
+
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
