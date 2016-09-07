@@ -2390,9 +2390,10 @@ func click(s *Server) gin.HandlerFunc {
 }
 
 type FeedCell struct {
-	Username string `json:"username,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Caption  string `json:"caption,omitempty"`
+	Username     string `json:"username,omitempty"`
+	InfluencerID string `json:"infID,omitempty"`
+	URL          string `json:"url,omitempty"`
+	Caption      string `json:"caption,omitempty"`
 
 	Published int32 `json:"published,omitempty"`
 
@@ -2423,8 +2424,9 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 					for _, deal := range cmp.Deals {
 						if deal.Completed > 0 {
 							d := &FeedCell{
-								Username: deal.InfluencerName,
-								URL:      deal.PostUrl,
+								Username:     deal.InfluencerName,
+								URL:          deal.PostUrl,
+								InfluencerID: deal.InfluencerId,
 							}
 
 							if deal.Tweet != nil {
