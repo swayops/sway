@@ -92,6 +92,19 @@ func (st *Stats) TotalMarkup() float64 {
 	return st.DSP + st.Exchange + st.Agency
 }
 
+func (d *Deal) TotalStats() *Stats {
+	total := &Stats{}
+	for _, data := range d.Reporting {
+		total.Likes += data.Likes
+		total.Dislikes += data.Dislikes
+		total.Comments += data.Comments
+		total.Shares += data.Shares
+		total.Views += data.Views
+		total.Clicks += data.Clicks
+	}
+	return total
+}
+
 func (d *Deal) Pay(inf, agency, dsp, exchange float64, agId string) {
 	if d.Reporting == nil {
 		d.Reporting = make(map[string]*Stats)

@@ -2399,6 +2399,7 @@ type FeedCell struct {
 
 	Views    int32 `json:"views,omitempty"`
 	Likes    int32 `json:"likes,omitempty"`
+	Clicks   int32 `json:"clicks,omitempty"`
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 }
@@ -2429,24 +2430,24 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 								InfluencerID: deal.InfluencerId,
 							}
 
+							total := deal.TotalStats()
+							d.Likes = total.Likes
+							d.Comments = total.Comments
+							d.Shares = total.Shares
+							d.Views = total.Views
+							d.Clicks = total.Clicks
+
 							if deal.Tweet != nil {
 								d.Caption = deal.Tweet.Text
 								d.Published = int32(deal.Tweet.CreatedAt.Unix())
-								d.Likes = int32(deal.Tweet.Favorites)
-								d.Shares = int32(deal.Tweet.Retweets)
 								d.Views = reporting.GetViews(d.Likes, 0, d.Shares)
 							} else if deal.Facebook != nil {
 								d.Caption = deal.Facebook.Caption
 								d.Published = int32(deal.Facebook.Published.Unix())
-								d.Likes = int32(deal.Facebook.Likes)
-								d.Comments = int32(deal.Facebook.Comments)
-								d.Shares = int32(deal.Facebook.Shares)
 								d.Views = reporting.GetViews(d.Likes, d.Comments, d.Shares)
 							} else if deal.Instagram != nil {
 								d.Caption = deal.Instagram.Caption
 								d.Published = deal.Instagram.Published
-								d.Likes = int32(deal.Instagram.Likes)
-								d.Comments = int32(deal.Instagram.Comments)
 								d.Views = reporting.GetViews(d.Likes, d.Comments, 0)
 							} else if deal.YouTube != nil {
 								d.Caption = deal.YouTube.Description
