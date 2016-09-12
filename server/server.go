@@ -69,7 +69,8 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 }
 
 func initializeDirs(cfg *config.Config) {
-	os.MkdirAll(cfg.LogsDir+"invoices", 0700)
+	os.MkdirAll(cfg.LogsPath, 0700)
+	os.MkdirAll(cfg.LogsPath+"invoices", 0700)
 	os.MkdirAll(cfg.DBPath, 0700)
 }
 

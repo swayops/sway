@@ -304,9 +304,16 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 		}
 
 		if ban != nil {
+			// This person deleted a deal!
 			// Insert into BAN.log and let admin
 			// decide!
-			log.Println("Ban this foo!")
+			if err := cfg.Loggers.Log("ban", map[string]string{
+				"infId":      inf.Id,
+				"dealId":     deal.Id,
+				"campaignId": deal.CampaignId,
+			}); err != nil {
+				log.Println("Failed to log banned user!", inf.Id, deal.CampaignId)
+			}
 		}
 	}
 	return nil

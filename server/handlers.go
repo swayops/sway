@@ -1377,7 +1377,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		files := []string{}
 		if len(agencySheets) > 0 {
 			fName := fmt.Sprintf("%s-agency.xlsx", key)
-			location := filepath.Join(s.Cfg.LogsDir, "invoices", fName)
+			location := filepath.Join(s.Cfg.LogsPath, "invoices", fName)
 
 			fo, err := os.Create(location)
 			if err != nil {
@@ -1400,7 +1400,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 		if len(advertiserSheets) > 0 {
 			fName := fmt.Sprintf("%s-advertiser.xlsx", key)
-			location := filepath.Join(s.Cfg.LogsDir, "invoices", fName)
+			location := filepath.Join(s.Cfg.LogsPath, "invoices", fName)
 
 			advo, err := os.Create(location)
 			if err != nil {
@@ -1501,7 +1501,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 		if len(talentSheets) > 0 {
 			fName := fmt.Sprintf("%s-talent.xlsx", key)
-			location := filepath.Join(s.Cfg.LogsDir, "invoices", fName)
+			location := filepath.Join(s.Cfg.LogsPath, "invoices", fName)
 			tvo, err := os.Create(location)
 			if err != nil {
 				c.JSON(500, misc.StatusErr(err.Error()))
@@ -1524,7 +1524,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		// Email!
 		var attachments []*mandrill.MessageAttachment
 		for _, fName := range files {
-			f, err := os.Open(filepath.Join(s.Cfg.LogsDir, "invoices", fName))
+			f, err := os.Open(filepath.Join(s.Cfg.LogsPath, "invoices", fName))
 			if err != nil {
 				log.Println("Failed to open file!", fName)
 				continue
