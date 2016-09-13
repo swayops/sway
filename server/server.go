@@ -13,6 +13,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
 
@@ -295,4 +296,12 @@ func (srv *Server) Run() (err error) {
 
 	wg.Wait()
 	return
+}
+
+func (srv *Server) Alert(msg string, err error) {
+	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
+	if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", "shahzil@swayops.com", "Shahzil Abid",
+		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		log.Println("Error sending alert email!")
+	}
 }

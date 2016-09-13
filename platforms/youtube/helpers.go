@@ -28,6 +28,9 @@ const (
 
 var (
 	ErrUnknown = errors.New(`Data not found!`)
+	ErrEmpty   = errors.New("Empty post items!")
+	ErrStats   = errors.New("Unable to retrieve video stats")
+	ErrContent = errors.New("Empty content items")
 )
 
 type Data struct {
@@ -163,32 +166,42 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 
 	var list Data
 	err = misc.Request("GET", endpoint, "", &list)
-	if err != nil || list.Error != nil {
+	if err != nil {
 		log.Println("Unable to hit", endpoint)
 		return
 	}
 
+	if list.Error != nil {
+		err = errors.New(list.Error.Code)
+		return
+	}
+
 	if len(list.Items) == 0 {
-		log.Println("Empty post items")
+		err = ErrEmpty
 		return
 	}
 
 	val := list.Items[0].Content
 	if val == nil || val.Playlists == nil {
-		log.Println("Empty content items")
+		err = ErrContent
 		return
 	}
 
 	endpoint = fmt.Sprintf(videosUrl, cfg.YouTube.Endpoint, val.Playlists.UploadKey, cfg.YouTube.ClientId, strconv.Itoa(count))
 	var vid Data
 	err = misc.Request("GET", endpoint, "", &vid)
-	if err != nil || vid.Error != nil {
+	if err != nil {
 		log.Println("Unable to hit", endpoint)
 		return
 	}
 
+	if vid.Error != nil {
+		err = errors.New(vid.Error.Code)
+		return
+	}
+
 	if len(vid.Items) == 0 {
-		log.Println("Empty video items")
+		err = ErrEmpty
 		return
 	}
 
@@ -228,8 +241,6 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 
 	return
 }
-
-var ErrStats = errors.New("Unable to retrieve video stats")
 
 func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float64, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
