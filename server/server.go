@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -70,7 +71,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 
 func initializeDirs(cfg *config.Config) {
 	os.MkdirAll(cfg.LogsPath, 0700)
-	os.MkdirAll(cfg.LogsPath+"invoices", 0700)
+	os.MkdirAll(filepath.Join(cfg.LogsPath, "invoices"), 0700)
 	os.MkdirAll(cfg.DBPath, 0700)
 }
 

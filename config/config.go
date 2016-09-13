@@ -47,7 +47,7 @@ func New(loc string) (*Config, error) {
 		Path:    c.LogsPath,
 		Loggers: []string{"ban", "deals", "stats"},
 	})
-	if err != nil || jl == nil {
+	if err != nil {
 		log.Println("Config err!", err)
 		return nil, err
 	}
