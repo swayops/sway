@@ -3,4 +3,4 @@ sway
 data/*
 .vscode/
 debug
-logs/invoices/*
+logs/*

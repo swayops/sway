@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/swayops/jlog"
 	"github.com/swayops/sway/internal/geo"
 
 	"github.com/missionMeteora/mandrill"
@@ -41,6 +42,17 @@ func New(loc string) (*Config, error) {
 
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
+
+	jl, err := jlog.NewFromCfg(&jlog.Config{
+		Path:    c.LogsPath,
+		Loggers: []string{"ban", "deals", "stats"},
+	})
+	if err != nil {
+		log.Println("Config err!", err)
+		return nil, err
+	}
+	c.Loggers = jl
+
 	return &c, nil
 }
 
@@ -114,11 +126,13 @@ type Config struct {
 	ec      *mandrill.Client
 	replyEc *mandrill.Client
 
+	Loggers *jlog.JLog
+
 	JsonXlsxPath string `json:"jsonXlsxPath"`
 	ImagesDir    string `json:"imagesDir"`
 	ImageUrlPath string `json:"imageUrlPath"`
 
-	LogsDir string `json:"logsDir"`
+	LogsPath string `json:"logsPath"`
 
 	ClickUrl string `json:"clickUrl"`
 }
