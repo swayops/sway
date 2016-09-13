@@ -184,13 +184,18 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			adv  auth.Advertiser
+			adv  auth.User
 			user = auth.GetCtxUser(c)
 			id   = c.Param("id")
 		)
 
 		if err := c.BindJSON(&adv); err != nil {
 			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+		if adv.Advertiser == nil {
+			misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
 			return
 		}
 
@@ -201,7 +206,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 			if user == nil {
 				return auth.ErrInvalidID
 			}
-			return user.StoreWithData(s.auth, tx, &adv)
+			return user.Update(&adv).StoreWithData(s.auth, tx, adv.Advertiser)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 		}
