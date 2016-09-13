@@ -185,6 +185,25 @@ func depleteBudget(s *Server) error {
 					if cDeal.Id == deal.Id {
 						cDeal.Incr(m.Likes, m.Dislikes, m.Comments, m.Shares, m.Views)
 						cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
+
+						// Log the incrs!
+						if err := s.Cfg.Loggers.Log("stats", map[string]interface{}{
+							"action":     "deplete",
+							"infId":      cDeal.InfluencerId,
+							"dealId":     cDeal.Id,
+							"campaignId": cDeal.CampaignId,
+							"agencyId":   inf.AgencyId,
+							"stats":      m,
+							"payouts": map[string]float64{
+								"inf":      infPayout,
+								"agency":   agencyPayout,
+								"dsp":      dspMarkup,
+								"exchange": exchangeMarkup,
+							},
+							"store": store,
+						}); err != nil {
+							log.Println("Failed to log appproved deal!", cDeal.InfluencerId, cDeal.CampaignId)
+						}
 					}
 				}
 

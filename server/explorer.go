@@ -95,6 +95,12 @@ func explore(srv *Server) error {
 			if err := clearDeal(srv, nil, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 				return err
 			}
+			if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
+				"action": "timeout",
+				"deal":   deal,
+			}); err != nil {
+				log.Println("Failed to log cleared deal!", inf.Id, deal.CampaignId)
+			}
 		}
 	}
 	return nil
@@ -162,6 +168,13 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		return nil
 	}); err != nil {
 		return err
+	}
+
+	if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
+		"action": "approved",
+		"deal":   d,
+	}); err != nil {
+		log.Println("Failed to log appproved deal!", d.InfluencerId, d.CampaignId)
 	}
 
 	return nil

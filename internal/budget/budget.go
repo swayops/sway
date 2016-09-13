@@ -82,12 +82,22 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 
 		// NOTE: This will automatically reset Pending too
 		spendable = leftover + monthlyBudget
-		st[cmp.Id] = &Store{
+		store := &Store{
 			Budget:      monthlyBudget,
 			Leftover:    leftover,
 			Spendable:   spendable,
 			DspFee:      dspFee,
 			ExchangeFee: exchangeFee,
+		}
+		st[cmp.Id] = store
+
+		// Log the budget!
+		if err := cfg.Loggers.Log("stats", map[string]interface{}{
+			"action":     "insertion",
+			"campaignId": cmp.Id,
+			"store":      store,
+		}); err != nil {
+			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee)
 		}
 
 		if b, err = json.Marshal(&st); err != nil {
@@ -140,7 +150,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		// Take out margins from spendable
 		// NOTE: Leftover is not added to spendable because it already
 		// should have been added last time billing ran!
-		st[cid] = &Store{
+		newStore := &Store{
 			Budget:      oldBudget + tbaBudget,
 			Leftover:    store.Leftover,
 			Spendable:   store.Spendable + tbaBudget,
@@ -148,10 +158,23 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			DspFee:      dspFee,
 			ExchangeFee: exchangeFee,
 		}
+
+		st[cid] = newStore
+
+		// Log the budget increase!
+		if err := cfg.Loggers.Log("stats", map[string]interface{}{
+			"action":      "increase",
+			"campaignId":  cid,
+			"store":       newStore,
+			"addedBudget": tbaBudget,
+		}); err != nil {
+			log.Println("Failed to log budget decrease!", cid, tbaBudget, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee, err)
+		}
+
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
 		// Save the budget in pending for when a transfer is made on the 1st
-		st[cid] = &Store{
+		newStore := &Store{
 			Budget:      store.Budget,
 			Leftover:    store.Leftover,
 			Spendable:   store.Spendable,
@@ -159,6 +182,17 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			DspFee:      store.DspFee,
 			ExchangeFee: store.ExchangeFee,
 			Pending:     newBudget,
+		}
+
+		st[cid] = newStore
+
+		// Log the budget decrease!
+		if err := cfg.Loggers.Log("stats", map[string]interface{}{
+			"action":     "decrease",
+			"campaignId": cid,
+			"store":      newStore,
+		}); err != nil {
+			log.Println("Failed to log budget decrease!", cid, store.Pending, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee, err)
 		}
 	}
 
@@ -214,7 +248,11 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 }
 
 type Metrics struct {
-	Spent, Likes, Dislikes, Comments, Shares, Views int32
+	Likes    int32 `json:"likes,omitempty"`
+	Dislikes int32 `json:"dislikes,omitempty"`
+	Comments int32 `json:"comments,omitempty"`
+	Shares   int32 `json:"shares,omitempty"`
+	Views    int32 `json:"views,omitempty"`
 }
 
 func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
