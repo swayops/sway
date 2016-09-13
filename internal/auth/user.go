@@ -72,7 +72,18 @@ func (u *User) Trim() *User {
 
 // Update fills the updatable fields in the struct, fields like Created and ID should never be blindly set.
 func (u *User) Update(o *User) *User {
-	u.Name, u.Email, u.Phone, u.Address = o.Name, o.Email, o.Phone, o.Address
+	if o.Name != "" {
+		u.Name = o.Name
+	}
+	// if o.Email = misc.TrimEmail(o.Email); o.Email != "" {
+	// 	u.Email = o.Email
+	// }
+	if o.Phone != "" {
+		u.Phone = o.Phone
+	}
+	if o.Address != "" {
+		u.Address = o.Address
+	}
 	u.Status = o.Status
 	u.UpdatedAt = time.Now().Unix()
 	return u
