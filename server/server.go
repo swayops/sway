@@ -267,6 +267,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
+	adminGroup.GET("/forceEngine", forceEngine(srv))
 
 	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
 

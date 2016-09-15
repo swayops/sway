@@ -1992,6 +1992,20 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 	}
 }
 
+func forceEngine(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		if err := run(s); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
 func emailTaxForm(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Delete the check and entry, send to lob

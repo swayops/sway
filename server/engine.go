@@ -150,7 +150,7 @@ func updateInfluencers(s *Server) error {
 		// limits with platforms!
 		if inf.LastSocialUpdate != oldUpdate {
 			// Only sleep if the influencer was actually updated!
-			time.Sleep(3 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 
 		// Update data for all completed deal posts
@@ -166,7 +166,7 @@ func updateInfluencers(s *Server) error {
 		if len(inf.CompletedDeals) > 0 {
 			// If inf had completed deals..they were most likely updated
 			// Lets sleep for a bit just incase!
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}
 
