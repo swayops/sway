@@ -4,7 +4,7 @@
 	"dbName": "sway",
 	"serverURL": "http://localhost:8080",
 	"apiPath": "/api/v1/",
-	"dashboardPath": "../angular-tests/",
+	"dashboardPath": "../dashboard/",
 
 	"sandbox": true,
 
