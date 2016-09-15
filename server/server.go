@@ -300,6 +300,12 @@ func (srv *Server) Run() (err error) {
 }
 
 func (srv *Server) Alert(msg string, err error) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	log.Println(msg, err)
+
 	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
 	if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", "shahzil@swayops.com", "Shahzil Abid",
 		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {

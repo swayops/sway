@@ -42,7 +42,7 @@ func newSwayEngine(srv *Server) error {
 
 	// Check social media keys every hour!
 	addr := &lob.AddressLoad{"4 Pennsylvania Plaza", "", "New York", "NY", "USA", "10001"}
-	ticker = time.NewTicker(10 * time.Second)
+	ticker = time.NewTicker(10 * time.Minute)
 	go func() {
 		for range ticker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
@@ -72,7 +72,9 @@ func newSwayEngine(srv *Server) error {
 func run(srv *Server) error {
 	// NOTE: This is the only function that can and should edit
 	// budget and reporting DBs
-	log.Println("Initiating engine run @", time.Now().String())
+	if !srv.Cfg.Sandbox {
+		log.Println("Initiating engine run @", time.Now().String())
+	}
 
 	// Update all influencer stats/completed deal stats
 	// If anything fails to update.. just stop here
@@ -80,7 +82,6 @@ func run(srv *Server) error {
 	// in the case someting errors out and continues!
 	if err := updateInfluencers(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Err with stats updater", err)
 		srv.Alert("Stats update failed!", err)
 		return err
 	}
@@ -88,7 +89,6 @@ func run(srv *Server) error {
 	// Explore the influencer posts to look for completed deals!
 	if err := explore(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Error exploring!", err)
 		srv.Alert("Exploring influencer posts failed!", err)
 		return err
 	}
@@ -97,24 +97,24 @@ func run(srv *Server) error {
 	// and deplete budgets
 	if err := depleteBudget(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Err with depleting budgets!", err)
 		srv.Alert("Error depleting budget!", err)
 		return err
 	}
 
 	if err := auditTaxes(srv); err != nil {
-		log.Println("Err with auditing taxes!", err)
 		srv.Alert("Error auditing taxes!", err)
 		return err
 	}
 
 	if err := emailDeals(srv); err != nil {
-		log.Println("Err with emailing deals!", err)
 		srv.Alert("Error emailing deals!", err)
 		return err
 	}
 
-	log.Println("Completed engine run @", time.Now().String(), "\n")
+	if !srv.Cfg.Sandbox {
+		log.Println("Completed engine run @", time.Now().String(), "\n")
+	}
+
 	return nil
 }
 
