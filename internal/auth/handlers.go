@@ -293,6 +293,8 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		URL     string
 	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, stok)}
 
+	log.Println("resetPassword request:", tmplData.URL)
+
 	email := templates.ResetPassword.Render(tmplData)
 	if resp, err := a.ec.SendMessage(email, "Password Reset Request", req.Email, u.Name,
 		[]string{"reset password"}); err != nil {
