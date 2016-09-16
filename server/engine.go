@@ -10,7 +10,12 @@ import (
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
+	"github.com/swayops/sway/platforms/instagram"
+	"github.com/swayops/sway/platforms/lob"
+	"github.com/swayops/sway/platforms/twitter"
+	"github.com/swayops/sway/platforms/youtube"
 )
 
 func newSwayEngine(srv *Server) error {
@@ -34,13 +39,42 @@ func newSwayEngine(srv *Server) error {
 			}
 		}
 	}()
+
+	// Check social media keys every hour!
+	addr := &lob.AddressLoad{"4 Pennsylvania Plaza", "", "New York", "NY", "USA", "10001"}
+	ticker = time.NewTicker(10 * time.Minute)
+	go func() {
+		for range ticker.C {
+			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
+				srv.Alert("Error running Facebook init!", err)
+			}
+
+			if _, err := instagram.New("instagram", srv.Cfg); err != nil {
+				srv.Alert("Error running Instagram init!", err)
+			}
+
+			if _, err := twitter.New("twitter", srv.Cfg); err != nil {
+				srv.Alert("Error running Twitter init!", err)
+			}
+
+			if _, err := youtube.New("google", srv.Cfg); err != nil {
+				srv.Alert("Error running YouTube init!", err)
+			}
+
+			if _, err := lob.VerifyAddress(addr, false); err != nil {
+				srv.Alert("Error hitting LOB!", err)
+			}
+		}
+	}()
 	return nil
 }
 
 func run(srv *Server) error {
 	// NOTE: This is the only function that can and should edit
 	// budget and reporting DBs
-	log.Println("Initiating engine run @", time.Now().String())
+	if !srv.Cfg.Sandbox {
+		log.Println("Initiating engine run @", time.Now().String())
+	}
 
 	// Update all influencer stats/completed deal stats
 	// If anything fails to update.. just stop here
@@ -48,14 +82,14 @@ func run(srv *Server) error {
 	// in the case someting errors out and continues!
 	if err := updateInfluencers(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Err with stats updater", err)
+		srv.Alert("Stats update failed!", err)
 		return err
 	}
 
 	// Explore the influencer posts to look for completed deals!
 	if err := explore(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Error exploring!", err)
+		srv.Alert("Exploring influencer posts failed!", err)
 		return err
 	}
 
@@ -63,21 +97,24 @@ func run(srv *Server) error {
 	// and deplete budgets
 	if err := depleteBudget(srv); err != nil {
 		// Insert a file informant check
-		log.Println("Err with depleting budgets!", err)
+		srv.Alert("Error depleting budget!", err)
 		return err
 	}
 
 	if err := auditTaxes(srv); err != nil {
-		log.Println("Err with auditing taxes!", err)
+		srv.Alert("Error auditing taxes!", err)
 		return err
 	}
 
 	if err := emailDeals(srv); err != nil {
-		log.Println("Err with emailing deals!", err)
+		srv.Alert("Error emailing deals!", err)
 		return err
 	}
 
-	log.Println("Completed engine run @", time.Now().String(), "\n")
+	if !srv.Cfg.Sandbox {
+		log.Println("Completed engine run @", time.Now().String(), "\n")
+	}
+
 	return nil
 }
 
@@ -103,6 +140,9 @@ func updateInfluencers(s *Server) error {
 		// Influencer not updated if they have been updated
 		// within the last 12 hours
 		if err = inf.UpdateAll(s.Cfg); err != nil {
+			// If the update errors.. we bail out of the
+			// whole engine so we dont accidentally deduct
+			// the likes/comments/etc deltas from the budget again!
 			return err
 		}
 
@@ -110,7 +150,7 @@ func updateInfluencers(s *Server) error {
 		// limits with platforms!
 		if inf.LastSocialUpdate != oldUpdate {
 			// Only sleep if the influencer was actually updated!
-			time.Sleep(3 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 
 		// Update data for all completed deal posts
@@ -126,7 +166,7 @@ func updateInfluencers(s *Server) error {
 		if len(inf.CompletedDeals) > 0 {
 			// If inf had completed deals..they were most likely updated
 			// Lets sleep for a bit just incase!
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}
 
@@ -160,7 +200,7 @@ func depleteBudget(s *Server) error {
 			}
 			inf := s.auth.GetInfluencer(deal.InfluencerId)
 			if inf == nil {
-				log.Println("Missing influencer!")
+				log.Println("Missing influencer!", deal.InfluencerId)
 				continue
 			}
 
@@ -215,7 +255,7 @@ func depleteBudget(s *Server) error {
 				// Save the deal in influencers and campaigns
 				if err := saveAllCompletedDeals(s, inf); err != nil {
 					// Insert file informant notification
-					log.Println("Error saving deals!", err)
+					log.Println("Error saving deals!", err, inf.Id)
 				}
 			}
 
@@ -225,7 +265,7 @@ func depleteBudget(s *Server) error {
 		if updatedStore {
 			// Save the store since it's been updated
 			if err := budget.SaveStore(s.budgetDb, s.Cfg, store, cmp.Id); err != nil {
-				log.Println("Err saving store!", err)
+				log.Println("Err saving store!", err, cmp.Id)
 			}
 		}
 
@@ -252,7 +292,7 @@ func auditTaxes(srv *Server) error {
 		if inf.SignatureId != "" && !inf.HasSigned {
 			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
 			if err != nil {
-				log.Println("Error from HelloSign", err)
+				srv.Alert("Error from HelloSign for "+inf.SignatureId, err)
 				continue
 			}
 			if inf.HasSigned != val {
@@ -334,7 +374,7 @@ func emailDeals(s *Server) error {
 			}
 			return nil
 		}); err != nil {
-			log.Println("Error when saving influencer", err)
+			log.Println("Error when saving influencer", err, inf.Id)
 		}
 	}
 
@@ -368,7 +408,7 @@ func emailDeals(s *Server) error {
 
 	for _, sc := range scraps {
 		if err := sc.Email(s.Campaigns, s.db, s.budgetDb, s.Cfg); err != nil {
-			log.Println("Error emailing scrap!", err)
+			log.Println("Error emailing scrap!", err, sc.EmailAddress)
 			continue
 		}
 		scrapEmails += 1

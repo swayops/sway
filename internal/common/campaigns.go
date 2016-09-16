@@ -117,6 +117,13 @@ func (p *Campaigns) Get(id string) (*Campaign, bool) {
 	return val, ok
 }
 
+func (p *Campaigns) Len() int {
+	p.mux.RLock()
+	l := len(p.store)
+	p.mux.RUnlock()
+	return l
+}
+
 func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) map[string]*Campaign {
 	// Returns a list of active campaign IDs in the system
 	campaignList := make(map[string]*Campaign)
