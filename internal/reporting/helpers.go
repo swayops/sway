@@ -57,8 +57,8 @@ func Merge(totals []map[string]*Totals) map[string]*Totals {
 			val, ok := tot[date]
 			if !ok {
 				val = &Totals{}
+				tot[date] = val
 			}
-
 			val.Clicks += stats.Clicks
 			val.Engagements += stats.Engagements
 			val.Likes += stats.Likes
@@ -67,8 +67,6 @@ func Merge(totals []map[string]*Totals) map[string]*Totals {
 			val.Shares += stats.Shares
 			val.Spent += stats.Spent
 			val.Influencers += stats.Influencers
-
-			tot[date] = val
 		}
 	}
 	return tot

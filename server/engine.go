@@ -293,7 +293,6 @@ func auditTaxes(srv *Server) error {
 			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
 			if err != nil {
 				srv.Alert("Error from HelloSign for "+inf.SignatureId, err)
-				log.Println("Error from HelloSign", err, inf.Id, inf.SignatureId)
 				continue
 			}
 			if inf.HasSigned != val {

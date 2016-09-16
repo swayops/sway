@@ -75,7 +75,12 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 
 func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, getTalentAgencies(s))
+		var ag []*auth.TalentAgency
+		s.db.View(func(tx *bolt.Tx) error {
+			ag = getTalentAgencies(s, tx)
+			return nil
+		})
+		c.JSON(200, ag)
 	}
 }
 
@@ -125,7 +130,12 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 
 func getAllAdAgencies(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, getAdAgencies(s))
+		var ag []*auth.AdAgency
+		s.db.View(func(tx *bolt.Tx) error {
+			ag = getAdAgencies(s, tx)
+			return nil
+		})
+		c.JSON(200, ag)
 	}
 }
 
@@ -1222,7 +1232,7 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 				return
 			})
 
-			talentAgencyCount := len(getTalentAgencies(s))
+			talentAgencyCount := len(getTalentAgencies(s, tx))
 			var (
 				infCount                               int
 				reach                                  int64
@@ -1230,30 +1240,28 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 				totalInfluencer, totalAgency           float64
 			)
 
-			s.db.View(func(tx *bolt.Tx) error {
-				return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
-					if inf := auth.GetInfluencer(u); inf != nil {
-						reach += inf.GetFollowers()
-						infCount += 1
-						for _, d := range inf.CompletedDeals {
-							stats := d.TotalStats()
-							totalInfluencer += stats.Influencer
-							totalAgency += stats.Agency
-							likes += stats.Likes
-							comments += stats.Comments
-							shares += stats.Shares
-							views += stats.Views
-							clicks += stats.Clicks
-						}
+			s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+				if inf := auth.GetInfluencer(u); inf != nil {
+					reach += inf.GetFollowers()
+					infCount += 1
+					for _, d := range inf.CompletedDeals {
+						stats := d.TotalStats()
+						totalInfluencer += stats.Influencer
+						totalAgency += stats.Agency
+						likes += stats.Likes
+						comments += stats.Comments
+						shares += stats.Shares
+						views += stats.Views
+						clicks += stats.Clicks
 					}
-					return nil
-				})
+				}
+				return nil
 			})
 
 			completionRate := 100 * (float64(dealsComplete-dealsAccept) / float64(dealsComplete))
 			a = &AdminStats{
-				AdAgencies:            len(getAdAgencies(s)),
-				Advertisers:           len(getAdvertisers(s)),
+				AdAgencies:            len(getAdAgencies(s, tx)),
+				Advertisers:           len(getAdvertisers(s, tx)),
 				Campaigns:             s.Campaigns.Len(),
 				PerksInbound:          perksInbound,
 				PerksStored:           perksStored,

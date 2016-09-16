@@ -172,7 +172,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	}
 
 	if list.Error != nil {
-		err = errors.New(list.Error.Code)
+		err = fmt.Errorf("%s: error code: %v", endpoint, list.Error.Code)
 		return
 	}
 
@@ -196,7 +196,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	}
 
 	if vid.Error != nil {
-		err = errors.New(vid.Error.Code)
+		err = fmt.Errorf("%s: error code: %v", endpoint, vid.Error.Code)
 		return
 	}
 
