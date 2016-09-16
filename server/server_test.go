@@ -110,7 +110,7 @@ func TestAdAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
 
 		// update the advertiser and check if the update worked
-		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2, ExchangeFee: 0.2}, 200, nil},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.2}}, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.2, ExchangeFee: 0.2}},
 
 		// sign in as admin and see if they can access the advertiser
@@ -213,7 +213,7 @@ func TestNewAdvertiser(t *testing.T) {
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
-		{"PUT", "/advertiser/" + adv.ExpID, &auth.Advertiser{DspFee: 0.2}, 200, nil},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.2}}, 200, nil},
 
 		// sign in as admin and access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -1149,7 +1149,7 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	if len(cmpLoad.Deals) != cmp.Perks.Count {
+	if len(cmpLoad.Deals) != cmp.Perks.Count && !*genData {
 		t.Fatal("Unexpected number of deals!")
 		return
 	}
@@ -2498,6 +2498,9 @@ func TestClicks(t *testing.T) {
 }
 
 func TestBilling(t *testing.T) {
+	if *genData {
+		t.Skip("not needed for generating data")
+	}
 	rst := getClient()
 	defer putClient(rst)
 
