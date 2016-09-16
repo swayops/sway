@@ -334,6 +334,43 @@ func trimURLPrefix(raw string) string {
 	return raw
 }
 
+func getAdAgencies(s *Server, tx *bolt.Tx) []*auth.AdAgency {
+	var all []*auth.AdAgency
+	s.auth.GetUsersByTypeTx(tx, auth.AdAgencyScope, func(u *auth.User) error {
+		if ag := auth.GetAdAgency(u); ag != nil {
+			all = append(all, ag)
+		}
+		return nil
+	})
+	return all
+}
+
+func getTalentAgencies(s *Server, tx *bolt.Tx) []*auth.TalentAgency {
+	var all []*auth.TalentAgency
+
+	s.auth.GetUsersByTypeTx(tx, auth.TalentAgencyScope, func(u *auth.User) error {
+		if ag := auth.GetTalentAgency(u); ag != nil {
+			all = append(all, ag)
+		}
+		return nil
+	})
+
+	return all
+}
+
+func getAdvertisers(s *Server, tx *bolt.Tx) []*auth.Advertiser {
+	var advertisers []*auth.Advertiser
+
+	s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
+		if adv := auth.GetAdvertiser(u); adv != nil {
+			advertisers = append(advertisers, adv)
+		}
+		return nil
+	})
+
+	return advertisers
+}
+
 func getAllInfluencers(s *Server) []string {
 	var influencers []string
 	s.db.View(func(tx *bolt.Tx) error {

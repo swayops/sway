@@ -56,7 +56,7 @@ func GetGeoFromCoords(lat, long float64, ts int32) *GeoRecord {
 						// } else if cat == "locality" {
 						// 	geo.City = val.LongName
 					} else if cat == "country" {
-						geo.Country = val.LongName // i.e. United States, United Kingdom
+						geo.Country = val.ShortName
 					}
 				}
 			}

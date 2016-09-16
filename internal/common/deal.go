@@ -101,6 +101,8 @@ func (d *Deal) TotalStats() *Stats {
 		total.Shares += data.Shares
 		total.Views += data.Views
 		total.Clicks += data.Clicks
+		total.Influencer += data.Influencer
+		total.Agency += data.Agency
 	}
 	return total
 }

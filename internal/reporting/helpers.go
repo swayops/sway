@@ -48,3 +48,26 @@ func GetReportDate(date string) time.Time {
 func getPostDate(ts int32) string {
 	return time.Unix(int64(ts), 0).String()
 }
+
+func Merge(totals []map[string]*Totals) map[string]*Totals {
+	// Used for merging stats from multiple campaigns/influencers
+	tot := make(map[string]*Totals)
+	for _, val := range totals {
+		for date, stats := range val {
+			val, ok := tot[date]
+			if !ok {
+				val = &Totals{}
+				tot[date] = val
+			}
+			val.Clicks += stats.Clicks
+			val.Engagements += stats.Engagements
+			val.Likes += stats.Likes
+			val.Views += stats.Views
+			val.Comments += stats.Comments
+			val.Shares += stats.Shares
+			val.Spent += stats.Spent
+			val.Influencers += stats.Influencers
+		}
+	}
+	return tot
+}

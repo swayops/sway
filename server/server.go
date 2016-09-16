@@ -13,6 +13,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
 
@@ -246,10 +247,12 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Reporting
 	advScope := srv.auth.CheckScopes(scopes["adv"])
 	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
+	verifyGroup.GET("/getAdvertiserStats/:id/:days", getAdvertiserStats(srv))
 	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
 	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
 	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
+	verifyGroup.GET("/getAdminStats", getAdminStats(srv))
 
 	adminGroup.GET("/billing", runBilling(srv))
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
@@ -266,6 +269,7 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
+	adminGroup.GET("/forceEngine", forceEngine(srv))
 
 	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
 
@@ -295,4 +299,18 @@ func (srv *Server) Run() (err error) {
 
 	wg.Wait()
 	return
+}
+
+func (srv *Server) Alert(msg string, err error) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	log.Println(msg, err)
+
+	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
+	if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", "shahzil@swayops.com", "Shahzil Abid",
+		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		log.Println("Error sending alert email!")
+	}
 }
