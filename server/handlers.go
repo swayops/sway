@@ -1378,14 +1378,19 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 
 func getAdvertiserStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		days, err := strconv.Atoi(c.Param("days"))
-		if err != nil || days == 0 {
+		var (
+			start, _  = strconv.Atoi(c.Param("start"))
+			end, _    = strconv.Atoi(c.Param("end"))
+			targetAdv = c.Param("id")
+			campaigns []*common.Campaign
+			cmpStats  []map[string]*reporting.Totals
+		)
+
+		if start == 0 {
 			c.JSON(500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
-		targetAdv := c.Param("id")
-		var campaigns []*common.Campaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -1404,9 +1409,8 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmpStats := []map[string]*reporting.Totals{}
 		for _, cmp := range campaigns {
-			stats := reporting.GetCampaignBreakdown(cmp.Id, s.db, s.Cfg, days)
+			stats := reporting.GetCampaignBreakdown(cmp.Id, s.db, s.Cfg, start, end)
 			cmpStats = append(cmpStats, stats)
 		}
 
@@ -1422,7 +1426,7 @@ func getCampaignStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days))
+		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days, 0))
 	}
 }
 

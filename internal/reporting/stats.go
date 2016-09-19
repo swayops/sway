@@ -186,11 +186,11 @@ func GetInfluencerStats(infId string, au *auth.Auth, cfg *config.Config, from, t
 	return stats, nil
 }
 
-func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset int) map[string]*Totals {
+func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffset, endOffset int) map[string]*Totals {
 	// Retrieves totals for the range and campaign stats by day
 	tg := make(map[string]*Totals)
 
-	dateRange := common.GetDateRangeFromOffset(offset)
+	dateRange := common.GetDateRangeFromOffsetRange(startOffset, endOffset)
 
 	// Insert totals for the range in the key "total"
 	tg["total"] = &Totals{}

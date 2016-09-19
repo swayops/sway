@@ -281,12 +281,12 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Reporting
 	advScope := srv.auth.CheckScopes(scopes["adv"])
 	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
-	verifyGroup.GET("/getAdvertiserStats/:id/:days", getAdvertiserStats(srv))
+	verifyGroup.GET("/getAdvertiserStats/:id/:start/:end", getAdvertiserStats(srv))
 	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
 	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
 	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
-	verifyGroup.GET("/getAdminStats", getAdminStats(srv))
+	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
 	adminGroup.GET("/billing", runBilling(srv))
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
