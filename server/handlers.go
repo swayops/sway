@@ -2077,6 +2077,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 		for _, d := range inf.ActiveDeals {
 			if d.CampaignId == cid && d.Perk != nil {
 				d.Perk.Status = true
+				d.PerkIncr()
 			}
 		}
 
