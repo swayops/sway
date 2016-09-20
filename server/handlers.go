@@ -276,9 +276,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Link = sanitizeURL(cmp.Link)
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = common.LowerSlice(cmp.Categories)
-		if cmp.Whitelist != nil {
-			cmp.Whitelist = cmp.Whitelist.Sanitize()
-		}
+		cmp.Whitelist = common.TrimEmails(cmp.Whitelist)
 
 		if len(adv.Blacklist) > 0 {
 			// Blacklist is always set at the advertiser level using content feed bad!
@@ -323,7 +321,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		// Email eligible influencers!
 		if cmp.Perks == nil {
-			go emailDeal(s, &cmp)
+			if len(cmp.Whitelist) > 0 {
+				go emailList(s, &cmp, common.Slice(cmp.Whitelist))
+			} else {
+				go emailDeal(s, &cmp)
+			}
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
@@ -400,13 +402,13 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos       []*geo.GeoRecord   `json:"geos,omitempty"`
-	Categories []string           `json:"categories,omitempty"`
-	Status     bool               `json:"status,omitempty"`
-	Budget     float64            `json:"budget,omitempty"`
-	Gender     string             `json:"gender,omitempty"` // "m" or "f" or "mf"
-	Name       string             `json:"name,omitempty"`
-	Whitelist  *common.TargetList `json:"whitelist,omitempty"`
+	Geos       []*geo.GeoRecord `json:"geos,omitempty"`
+	Categories []string         `json:"categories,omitempty"`
+	Status     bool             `json:"status,omitempty"`
+	Budget     float64          `json:"budget,omitempty"`
+	Gender     string           `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Name       string           `json:"name,omitempty"`
+	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -484,8 +486,19 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Gender = upd.Gender
 		cmp.Categories = common.LowerSlice(upd.Categories)
 
-		if upd.Whitelist != nil {
-			cmp.Whitelist = upd.Whitelist.Sanitize()
+		updatedWl := common.TrimEmails(upd.Whitelist)
+		additions := []string{}
+		for email, _ := range updatedWl {
+			// If the email isn't on the old whitelist
+			// lets email them since they're an addition!
+			if _, ok := cmp.Whitelist[email]; !ok {
+				additions = append(additions, email)
+			}
+		}
+
+		cmp.Whitelist = updatedWl
+		if len(additions) > 0 {
+			go emailList(s, &cmp, additions)
 		}
 
 		// Save the Campaign
@@ -849,14 +862,38 @@ func setAddress(s *Server) gin.HandlerFunc {
 	}
 }
 
+type IncompleteInfluencer struct {
+	*auth.Influencer
+	FacebookURL  string `json:"facebookUrl,omitempty"`
+	InstagramURL string `json:"instagramUrl,omitempty"`
+	TwitterURL   string `json:"twitterUrl,omitempty"`
+	YouTubeURL   string `json:"youtubeUrl,omitempty"`
+}
+
 func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var influencers []*auth.Influencer
+		var influencers []*IncompleteInfluencer
 		s.db.View(func(tx *bolt.Tx) error {
 			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 				if inf := auth.GetInfluencer(u); inf != nil {
-					if inf.Gender == "" && len(inf.Categories) == 0 {
-						influencers = append(influencers, inf)
+					if inf.Gender == "" || len(inf.Categories) == 0 {
+						incInf := &IncompleteInfluencer{inf, "", "", "", ""}
+						if inf.Twitter != nil {
+							incInf.TwitterURL = "https://twitter.com/" + inf.Twitter.Id
+						}
+
+						if inf.Facebook != nil {
+							incInf.FacebookURL = "https://www.facebook.com/" + inf.Facebook.Id
+						}
+
+						if inf.Instagram != nil {
+							incInf.InstagramURL = "https://www.instagram.com/" + inf.Instagram.UserName
+						}
+
+						if inf.YouTube != nil {
+							incInf.YouTubeURL = "https://www.youtube.com/user/" + inf.YouTube.UserName
+						}
+						influencers = append(influencers, incInf)
 					}
 				}
 				return nil
@@ -1950,6 +1987,13 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
+		}
+
+		// Email eligible influencers now that perks are approved!
+		if len(cmp.Whitelist) > 0 {
+			go emailList(s, &cmp, common.Slice(cmp.Whitelist))
+		} else {
+			go emailDeal(s, &cmp)
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))

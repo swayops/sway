@@ -14,6 +14,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 )
 
@@ -450,6 +451,7 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			// Only email deals to people who have opted in to email deals
 			if inf := auth.GetInfluencer(u); inf != nil && inf.DealPing {
+				// GetAvailableDeals takes into account the email whitelist!
 				deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", nil, false, s.Cfg)
 				if len(deals) == 0 {
 					return nil
@@ -467,16 +469,18 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 		})
 	})
 
-	// Shuffle the pool!
+	// Shuffle the pool if it's a normal campaign!
 	for i := range influencerPool {
+		// Lets see which of these dudes is on the whitelist and we'll make sure
+		// to email those first!
 		j := rand.Intn(i + 1)
 		influencerPool[i], influencerPool[j] = influencerPool[j], influencerPool[i]
 	}
 
 	emailed := 0
 	for _, offer := range influencerPool {
-		if emailed >= 50 {
-			// Email no more than 50
+		if emailed >= 50 && len(cmp.Whitelist) == 0 {
+			// Email no more than 50 UNLESS there's a whitelist!
 			break
 		}
 
@@ -487,8 +491,31 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 		}
 
 		emailed += 1
-
 	}
 
 	return true, nil
+}
+
+func emailList(s *Server, cmp *common.Campaign, emails []string) {
+	if len(emails) > 0 {
+		// NOTE: Emailing generic emails means that there's
+		// a chance people get emails for deals they aren't
+		// eligible for due to cmp filters!
+
+		// All the required attributes for the email!
+		genericDeal := &common.Deal{
+			CampaignName:  cmp.Name,
+			CampaignImage: cmp.ImageURL,
+			Company:       cmp.Company,
+		}
+
+		for _, email := range emails {
+			// Email everyone in whitelist!
+			inf := &influencer.Influencer{
+				EmailAddress: email,
+			}
+			inf.EmailDeal(genericDeal, s.Cfg)
+		}
+	}
+
 }

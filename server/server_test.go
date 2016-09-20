@@ -361,11 +361,8 @@ func TestCampaigns(t *testing.T) {
 		Gender:       "mf",
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
-		Whitelist: &common.TargetList{
-			Instagram: []string{"someguy"},
-		},
 	}
-	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true, "whitelist":{"instagram": ["justinbieber"]}}`
+	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
 	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
 	badAdvId := cmp
 	badAdvId.AdvertiserId = "1"
@@ -389,7 +386,6 @@ func TestCampaigns(t *testing.T) {
 			"name":         "Blade V",
 			"agencyId":     ag.ExpID,
 			"advertiserId": adv.ExpID,
-			"whitelist":    M{"instagram": []string{"justinbieber"}},
 		}},
 
 		// access the campaign with the agency
@@ -441,9 +437,6 @@ func TestDeals(t *testing.T) {
 		Gender:       "mf",
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
-		Whitelist: &common.TargetList{
-			Twitter: []string{"BreakingNews", "CNN"},
-		},
 	}
 
 	for _, tr := range [...]*resty.TestRequest{
@@ -536,19 +529,25 @@ func TestDeals(t *testing.T) {
 
 	// The first user was incomplete ("no categories")
 	// They should be returned in get incomplete influencers
-	var pendingInf []influencer.Influencer
+	var pendingInf []IncompleteInfluencer
 	r := rst.DoTesting(t, "GET", "/getIncompleteInfluencers", nil, &pendingInf)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
+	if len(pendingInf) == 0 {
+		t.Fatal("Bad pending influencer length!")
+		return
+	}
+
 	for _, i := range pendingInf {
-		if i.Id == newInf.ExpID {
-			t.Fatal("Unexpected influencer in incomplete list!")
+		if i.TwitterURL == "" {
+			t.Fatal("Unexpected twitter URL")
 			return
 		}
-		if i.Id == inf.ExpID {
+
+		if i.Id == newInf.ExpID {
 			t.Fatal("Unexpected influencer in incomplete list!")
 			return
 		}
@@ -1106,10 +1105,7 @@ func TestPerks(t *testing.T) {
 		Gender:       "mf",
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
-		Whitelist: &common.TargetList{
-			Twitter: []string{"BreakingNews", "CNN"},
-		},
-		Perks: &common.Perk{Name: "Nike Air Shoes", Category: "product", Count: 5},
+		Perks:        &common.Perk{Name: "Nike Air Shoes", Category: "product", Count: 5},
 	}
 
 	for _, tr := range [...]*resty.TestRequest{
@@ -1516,9 +1512,6 @@ func TestScraps(t *testing.T) {
 			Gender:       "mf",
 			Link:         "blade.org",
 			Tags:         []string{"#mmmm"},
-			Whitelist: &common.TargetList{
-				Twitter: []string{"BreakingNews", "CNN"},
-			},
 		}
 		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 		if r.Status != 200 {
@@ -1699,9 +1692,6 @@ func TestInfluencerEmail(t *testing.T) {
 			Link:         "blade.org",
 			Task:         "POST THAT DOPE SHIT " + strconv.Itoa(i) + " TIMES!",
 			Tags:         []string{"#mmmm"},
-			Whitelist: &common.TargetList{
-				Twitter: []string{"BreakingNews", "CNN"},
-			},
 		}
 		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 		if r.Status != 200 {
@@ -1771,9 +1761,6 @@ func TestImages(t *testing.T) {
 		Gender:       "mf",
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
-		Whitelist: &common.TargetList{
-			Instagram: []string{"someguy"},
-		},
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
@@ -1945,9 +1932,6 @@ func TestInfluencerGeo(t *testing.T) {
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 		Geos:         fakeGeo,
-		Whitelist: &common.TargetList{
-			Twitter: []string{"BreakingNews", "CNN"},
-		},
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
@@ -1991,7 +1975,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign to have bad geo.. Should reject!
-	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
+	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateBad, nil)
 	if r.Status == 200 {
 		t.Fatal("Unexpected status code!")
@@ -2011,7 +1995,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
-	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true, "whitelist":{"twitter": ["cnn"]}}`
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateGood, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
