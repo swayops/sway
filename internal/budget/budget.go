@@ -89,6 +89,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			DspFee:      dspFee,
 			ExchangeFee: exchangeFee,
 		}
+
 		st[cmp.Id] = store
 
 		// Log the budget!

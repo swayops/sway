@@ -123,7 +123,7 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 		Gender:       gender,
 		Categories:   cats,
 		DealPing:     true, // Deal ping is true by default!
-		EmailAddress: email,
+		EmailAddress: misc.TrimEmail(email),
 		CreatedAt:    created,
 	}
 
@@ -577,36 +577,29 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			continue
 		}
 
-		// Social Media Checks
-		if cmp.Twitter && inf.Twitter != nil {
-			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Twitter, inf.Twitter.Id) {
+		// Whitelist check!
+		if len(cmp.Whitelist) > 0 {
+			_, ok = cmp.Whitelist[inf.EmailAddress]
+			if !ok {
+				// There was a whitelist and they're not in it!
 				continue
 			}
+		}
 
+		// Social Media Checks
+		if cmp.Twitter && inf.Twitter != nil {
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
-			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Facebook, inf.Facebook.Id) {
-				continue
-			}
-
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
-			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.Instagram, inf.Instagram.UserName) {
-				continue
-			}
-
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
 		}
 
 		if cmp.YouTube && inf.YouTube != nil {
-			if cmp.Whitelist != nil && !common.IsInList(cmp.Whitelist.YouTube, inf.YouTube.UserName) {
-				continue
-			}
-
 			targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 
 		}
