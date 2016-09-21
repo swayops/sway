@@ -273,11 +273,6 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 
 	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
 
-	// Scraps
-	adminGroup.GET("/scrap/:id", getScrap(srv))
-	adminGroup.POST("/scrap", postScrap(srv))
-	adminGroup.PUT("/scrap/:id", putScrap(srv))
-	adminGroup.GET("/getIncompleteScraps", getIncompleteScraps(srv))
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
 }
