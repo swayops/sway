@@ -123,7 +123,7 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 		Gender:       gender,
 		Categories:   cats,
 		DealPing:     true, // Deal ping is true by default!
-		EmailAddress: strings.ToLower(email),
+		EmailAddress: misc.TrimEmail(email),
 		CreatedAt:    created,
 	}
 
@@ -579,7 +579,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// Whitelist check!
 		if len(cmp.Whitelist) > 0 {
-			_, ok = cmp.Whitelist[strings.ToLower(inf.EmailAddress)]
+			_, ok = cmp.Whitelist[inf.EmailAddress]
 			if !ok {
 				// There was a whitelist and they're not in it!
 				continue

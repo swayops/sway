@@ -512,7 +512,7 @@ func emailList(s *Server, cmp *common.Campaign, emails []string) {
 		for _, email := range emails {
 			// Email everyone in whitelist!
 			inf := &influencer.Influencer{
-				EmailAddress: email,
+				EmailAddress: misc.TrimEmail(email),
 			}
 			inf.EmailDeal(genericDeal, s.Cfg)
 		}

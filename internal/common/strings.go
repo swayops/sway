@@ -41,15 +41,15 @@ func LowerSlice(s []string) []string {
 }
 
 func TrimEmails(s map[string]bool) map[string]bool {
-	out := make(map[string]bool)
+	out := make(map[string]bool, len(s))
 	for i, v := range s {
 		out[misc.TrimEmail(i)] = v
 	}
 	return out
 }
 
-func Slice(s map[string]bool) []string {
-	out := []string{}
+func SliceMap(s map[string]bool) []string {
+	out := make([]string, 0, len(s))
 	for k, _ := range s {
 		out = append(out, k)
 	}

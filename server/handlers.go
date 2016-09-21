@@ -321,7 +321,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// Email eligible influencers!
 		if cmp.Perks == nil {
 			if len(cmp.Whitelist) > 0 {
-				go emailList(s, &cmp, common.Slice(cmp.Whitelist))
+				go emailList(s, &cmp, common.SliceMap(cmp.Whitelist))
 			} else {
 				go emailDeal(s, &cmp)
 			}
@@ -1990,7 +1990,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 
 		// Email eligible influencers now that perks are approved!
 		if len(cmp.Whitelist) > 0 {
-			go emailList(s, &cmp, common.Slice(cmp.Whitelist))
+			go emailList(s, &cmp, common.SliceMap(cmp.Whitelist))
 		} else {
 			go emailDeal(s, &cmp)
 		}
