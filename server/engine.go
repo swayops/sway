@@ -1,14 +1,12 @@
 package server
 
 import (
-	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
-	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
@@ -378,46 +376,9 @@ func emailDeals(s *Server) error {
 		}
 	}
 
-	// Email Scraps
-	var (
-		scraps                 []*influencer.Scrap
-		scrapEmails, deletions int32
-	)
-	if err := s.db.Update(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
-			var sc influencer.Scrap
-			if err := json.Unmarshal(v, &sc); err != nil {
-				log.Println("error when unmarshalling scrap", string(v))
-				return nil
-			}
-			signedUp := emailMap[sc.EmailAddress]
-			// Delete the user if they've been sent 3 emails now
-			// OR they've signed up as an influencer
-			if signedUp || len(sc.SentEmails) == 3 {
-				deletions += 1
-				return misc.DelBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id)
-			} else {
-				scraps = append(scraps, &sc)
-			}
-			return
-		})
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	for _, sc := range scraps {
-		if err := sc.Email(s.Campaigns, s.db, s.budgetDb, s.Cfg); err != nil {
-			log.Println("Error emailing scrap!", err, sc.EmailAddress)
-			continue
-		}
-		scrapEmails += 1
-	}
-
 	if !s.Cfg.Sandbox {
 		log.Println(len(emailMap), "influencers signed up over the last 2 days")
 		log.Println(infEmails, "influencers emailed")
-		log.Println(scrapEmails, "scraps emailed, and", deletions, "scraps deleted")
 		log.Println("Finished email run @", time.Now().String(), "\n")
 	}
 
