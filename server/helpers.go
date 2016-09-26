@@ -18,20 +18,18 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
-func clearDeal(s *Server, user *auth.User, dealId, influencerId, campaignId string, timeout bool) error {
+func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
 	// Unssign the deal & update the campaign and influencer buckets
+	inf, ok := s.auth.Influencers.Get(influencerId)
+	if inf == nil || !ok {
+		return auth.ErrInvalidUserID
+	}
+
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-		if user == nil || influencerId != user.ID {
-			user = s.auth.GetUserTx(tx, influencerId)
-		}
 
 		var (
-			inf = auth.GetInfluencer(user)
 			cmp common.Campaign
 		)
-		if inf == nil {
-			return auth.ErrInvalidUserID
-		}
 		err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 		if err != nil {
 			return err
@@ -64,7 +62,7 @@ func clearDeal(s *Server, user *auth.User, dealId, influencerId, campaignId stri
 		}
 
 		// Save the Influencer
-		if err = user.StoreWithData(s.auth, tx, inf); err != nil {
+		if err = saveInfluencer(s, tx, inf); err != nil {
 			return
 		}
 
@@ -131,7 +129,7 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 	return 0, 0
 }
 
-func saveInfluencer(s *Server, tx *bolt.Tx, inf *auth.Influencer) error {
+func saveInfluencer(s *Server, tx *bolt.Tx, inf *influencer.Influencer) error {
 	if inf == nil || inf.Id == "" {
 		return auth.ErrInvalidID
 	}
@@ -139,7 +137,9 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf *auth.Influencer) error {
 	if u == nil {
 		return auth.ErrInvalidID
 	}
-	return u.StoreWithData(s.auth, tx, inf)
+
+	s.auth.Influencers.SetInfluencer(inf.Id, inf)
+	return u.StoreWithData(s.auth, tx, &auth.Influencer{inf})
 }
 
 //TODO discuss with Shahzil and handle scopes
@@ -211,7 +211,7 @@ func (s *Server) getTalentAgencyFeeTx(tx *bolt.Tx, id string) float64 {
 	return 0
 }
 
-func saveAllCompletedDeals(s *Server, inf *auth.Influencer) error {
+func saveAllCompletedDeals(s *Server, inf *influencer.Influencer) error {
 	// Saves the deals FROM the influencer TO the campaign!
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
@@ -248,7 +248,7 @@ func saveAllCompletedDeals(s *Server, inf *auth.Influencer) error {
 	return nil
 }
 
-func saveAllActiveDeals(s *Server, inf *auth.Influencer) error {
+func saveAllActiveDeals(s *Server, inf *influencer.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
 		if err := saveInfluencer(s, tx, inf); err != nil {
@@ -372,12 +372,12 @@ func getAdvertisers(s *Server, tx *bolt.Tx) []*auth.Advertiser {
 	return advertisers
 }
 
-func getAllInfluencers(s *Server) []string {
-	var influencers []string
+func getAllInfluencers(s *Server) []*influencer.Influencer {
+	var influencers []*influencer.Influencer
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-				influencers = append(influencers, inf.Id)
+				influencers = append(influencers, inf.Influencer)
 			}
 			return nil
 		})
@@ -438,7 +438,7 @@ func isSecureAdmin(c *gin.Context, s *Server) bool {
 }
 
 type dealOffer struct {
-	Influencer *auth.Influencer
+	Influencer *influencer.Influencer
 	Deal       *common.Deal
 }
 
@@ -447,27 +447,26 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 	campaigns.SetCampaign(cmp.Id, cmp)
 
 	influencerPool := []*dealOffer{}
-	s.db.View(func(tx *bolt.Tx) error {
-		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
-			// Only email deals to people who have opted in to email deals
-			if inf := auth.GetInfluencer(u); inf != nil && inf.DealPing {
-				// GetAvailableDeals takes into account the email whitelist!
-				deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", nil, false, s.Cfg)
-				if len(deals) == 0 {
-					return nil
-				}
+	for _, inf := range s.auth.Influencers.GetAll() {
+		// Only email deals to people who have opted in to email deals
+		if !inf.DealPing {
+			continue
+		}
 
-				// NOTE: Add this check once we have a good pool of influencers!
-				// You have a 25% chance of getting an email.. and your odds
-				// are higher if you have done or are doing a deal!
-				// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
-				// 	return nil
-				// }
-				influencerPool = append(influencerPool, &dealOffer{inf, deals[0]})
-			}
-			return nil
-		})
-	})
+		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", nil, false, s.Cfg)
+		if len(deals) == 0 {
+			continue
+		}
+
+		// NOTE: Add this check once we have a good pool of influencers!
+		// You have a 25% chance of getting an email.. and your odds
+		// are higher if you have done or are doing a deal!
+		// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
+		// 	return nil
+		// }
+		influencerPool = append(influencerPool, &dealOffer{inf, deals[0]})
+
+	}
 
 	// Shuffle the pool if it's a normal campaign!
 	for i := range influencerPool {
