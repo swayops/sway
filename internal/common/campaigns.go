@@ -117,7 +117,7 @@ func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]b
 		tx.Bucket([]byte(cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 			cmp := &Campaign{}
 			if err := json.Unmarshal(v, cmp); err != nil {
-				log.Println("error when unmarshalling campaign", string(v))
+				log.Printf("error when unmarshalling campaign %s: %v", v, err)
 				return nil
 			}
 
