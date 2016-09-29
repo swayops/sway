@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
@@ -37,13 +37,8 @@ func explore(srv *Server) error {
 
 	for _, deal := range activeDeals {
 		// Go over all assigned deals in the platform
-		var inf *auth.Influencer
-		srv.db.View(func(tx *bolt.Tx) error {
-			inf = srv.auth.GetInfluencerTx(tx, deal.InfluencerId)
-			return nil
-		})
-
-		if inf == nil {
+		inf, ok := srv.auth.Influencers.Get(deal.InfluencerId)
+		if inf == nil || !ok {
 			log.Println("Failed to unmarshal influencer!")
 			continue
 		}
@@ -92,7 +87,7 @@ func explore(srv *Server) error {
 		// If the deal has not been approved and it has gone past the
 		// dealTimeout.. put it back in the pool!
 		if minTs > deal.Assigned && deal.Completed == 0 {
-			if err := clearDeal(srv, nil, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
+			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 				return err
 			}
 			if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
@@ -132,8 +127,8 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		d.Completed = int32(time.Now().Unix())
 		cmp.Deals[d.Id] = d
 
-		inf := srv.auth.GetInfluencerTx(tx, d.InfluencerId)
-		if inf == nil {
+		inf, ok := srv.auth.Influencers.Get(d.InfluencerId)
+		if inf == nil || !ok {
 			log.Println("Error unmarshalling influencer")
 			return ErrUnmarshal
 		}
@@ -224,7 +219,7 @@ func hasReqHash(text string, hashtags []string) bool {
 	return false
 }
 
-func findTwitterMatch(inf *auth.Influencer, deal *common.Deal, link string) *twitter.Tweet {
+func findTwitterMatch(inf *influencer.Influencer, deal *common.Deal, link string) *twitter.Tweet {
 	if inf.Twitter == nil {
 		return nil
 	}
@@ -298,7 +293,7 @@ func findTwitterMatch(inf *auth.Influencer, deal *common.Deal, link string) *twi
 	return nil
 }
 
-func findFacebookMatch(inf *auth.Influencer, deal *common.Deal, link string) *facebook.Post {
+func findFacebookMatch(inf *influencer.Influencer, deal *common.Deal, link string) *facebook.Post {
 	if inf.Facebook == nil {
 		return nil
 	}
@@ -364,7 +359,7 @@ func findFacebookMatch(inf *auth.Influencer, deal *common.Deal, link string) *fa
 	return nil
 }
 
-func findInstagramMatch(inf *auth.Influencer, deal *common.Deal, link string) *instagram.Post {
+func findInstagramMatch(inf *influencer.Influencer, deal *common.Deal, link string) *instagram.Post {
 	if inf.Instagram == nil {
 		return nil
 	}
@@ -430,7 +425,7 @@ func findInstagramMatch(inf *auth.Influencer, deal *common.Deal, link string) *i
 	return nil
 }
 
-func findYouTubeMatch(inf *auth.Influencer, deal *common.Deal, link string) *youtube.Post {
+func findYouTubeMatch(inf *influencer.Influencer, deal *common.Deal, link string) *youtube.Post {
 	if inf.YouTube == nil {
 		return nil
 	}

@@ -299,18 +299,23 @@ func TestNewInfluencer(t *testing.T) {
 		tr.Run(t, rst)
 	}
 
-	var cats map[string]int64
+	var cats []*InfCategory
 	r := rst.DoTesting(t, "GET", "/getCategories", nil, &cats)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	// We set category to business for 2 influencers above!
-	count, _ := cats["business"]
-	if count != 2 {
-		t.Fatal("Unexpected category count!")
+	if len(cats) == 0 {
+		t.Fatal("No categories!")
 		return
+	}
+
+	for _, i := range cats {
+		if i.Category == "business" && i.Influencers != 2 && i.Reach == 0 {
+			t.Fatal("Unexpected category count!")
+			return
+		}
 	}
 
 	// this decreases the user id counter since the user id didn't increase in the
@@ -585,7 +590,7 @@ func TestDeals(t *testing.T) {
 		return
 	}
 
-	checkReporting(t, breakdownB, 0, load.CompletedDeals[0], true)
+	checkReporting(t, breakdownB, 0, load.CompletedDeals[0], true, false)
 
 	// Verify combined reporting because campaign reports will include both
 	var newStore budget.Store
@@ -897,14 +902,14 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 			t.Fatal("Bad status code!")
 		}
 
-		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
+		checkReporting(t, breakdown, newStore.Spent, doneDeal, false, true)
 
 		// check get influencer stats
 		r = rst.DoTesting(t, "GET", "/getInfluencerStats/"+infId+"/10", nil, &breakdown)
 		if r.Status != 200 {
 			t.Fatal("Bad status code!")
 		}
-		checkReporting(t, breakdown, newStore.Spent, doneDeal, false)
+		checkReporting(t, breakdown, newStore.Spent, doneDeal, false, false)
 	}
 }
 
@@ -971,7 +976,7 @@ func checkDeal(t *testing.T, doneDeal *common.Deal, load *influencer.Influencer,
 	}
 }
 
-func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend float64, doneDeal *common.Deal, skipSpend bool) {
+func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend float64, doneDeal *common.Deal, skipSpend, cmp bool) {
 	report := breakdown["total"]
 	dayTotal := breakdown[common.GetDate()]
 	rt := int32(doneDeal.Tweet.Retweets)
@@ -988,9 +993,16 @@ func checkReporting(t *testing.T, breakdown map[string]*reporting.Totals, spend 
 	if !skipSpend {
 		if report.Spent != spend {
 			m := doneDeal.GetMonthStats(0)
-			// If spend does not match (i.e. we just pulled influencer stats which doesnt include agency spend)
-			if int32(report.Spent) != int32(m.Influencer) {
-				t.Fatal("Spend values do not match!")
+			if cmp {
+				// If we're comparing campaign stats.. it's spend includes markup!
+				if int32(report.Spent) != int32(m.Influencer+m.Agency+m.DSP+m.Exchange) {
+					t.Fatal("Campaign spend values do not match!")
+				}
+			} else {
+				// Influencer stats should only have the influencer payout!
+				if int32(report.Spent) != int32(m.Influencer) {
+					t.Fatal("Influencer spend values do not match!")
+				}
 			}
 		}
 	}
@@ -1005,7 +1017,7 @@ func TestTaxes(t *testing.T) {
 		Fee: 0.1,
 	}
 
-	inf := getSignupUserWithEmail("shahzilsway@gmail.com") //throw away email
+	inf := getSignupUserWithEmail("shahzilsway@gmail.com") // throw away email
 	inf.InfluencerLoad = &auth.InfluencerLoad{             // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Male:       true,

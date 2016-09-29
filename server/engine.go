@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
-	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/instagram"
@@ -25,6 +23,14 @@ func newSwayEngine(srv *Server) error {
 	go func() {
 		for range cTicker.C {
 			srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
+		}
+	}()
+
+	srv.auth.Influencers.Set(getAllInfluencers(srv))
+	infTicker := time.NewTicker(5 * time.Minute)
+	go func() {
+		for range infTicker.C {
+			srv.auth.Influencers.Set(getAllInfluencers(srv))
 		}
 	}()
 
@@ -118,18 +124,16 @@ func run(srv *Server) error {
 
 func updateInfluencers(s *Server) error {
 	activeCampaigns := s.Campaigns.GetStore()
-	influencers := getAllInfluencers(s)
 
 	var (
-		inf       *auth.Influencer
 		oldUpdate int32
 		err       error
 	)
-	for _, infId := range influencers {
+	for _, infId := range s.auth.Influencers.GetAllIDs() {
 		// Do another get incase the influencer has been updated
 		// and since this iteration could take a while
-		inf = s.auth.GetInfluencer(infId)
-		if inf == nil {
+		inf, ok := s.auth.Influencers.Get(infId)
+		if inf == nil || !ok {
 			continue
 		}
 
@@ -196,8 +200,9 @@ func depleteBudget(s *Server) error {
 			if deal.Completed == 0 {
 				continue
 			}
-			inf := s.auth.GetInfluencer(deal.InfluencerId)
-			if inf == nil {
+
+			inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+			if inf == nil || !ok {
 				log.Println("Missing influencer!", deal.InfluencerId)
 				continue
 			}
@@ -275,15 +280,13 @@ func depleteBudget(s *Server) error {
 func auditTaxes(srv *Server) error {
 	var (
 		sigsFound int32
-		inf       *auth.Influencer
 	)
 
-	influencers := getAllInfluencers(srv)
-	for _, infId := range influencers {
+	for _, infId := range srv.auth.Influencers.GetAllIDs() {
 		// Do another get incase the influencer has been updated
 		// and since this iteration could take a while
-		inf = srv.auth.GetInfluencer(infId)
-		if inf == nil {
+		inf, ok := srv.auth.Influencers.Get(infId)
+		if inf == nil || !ok {
 			continue
 		}
 
@@ -324,29 +327,12 @@ func emailDeals(s *Server) error {
 	}
 
 	// Email Influencers
-	var influencers []*auth.Influencer
-	// If an influencer was made in the last day
-	// this map will be added to.. and will be used
-	// to delete that scrap later in this func
-	emailMap := make(map[string]bool)
-
-	s.db.View(func(tx *bolt.Tx) error {
-		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
-			if inf := auth.GetInfluencer(u); inf != nil {
-				if misc.WithinLast(inf.CreatedAt, 24) {
-					emailMap[inf.EmailAddress] = true
-				}
-
-				if inf.DealPing {
-					influencers = append(influencers, inf)
-				}
-			}
-			return nil
-		})
-	})
-
 	var infEmails int32
-	for _, inf := range influencers {
+	for _, inf := range s.auth.Influencers.GetAll() {
+		if !inf.DealPing {
+			continue
+		}
+
 		var (
 			emailed bool
 			err     error
@@ -377,7 +363,6 @@ func emailDeals(s *Server) error {
 	}
 
 	if !s.Cfg.Sandbox {
-		log.Println(len(emailMap), "influencers signed up over the last 2 days")
 		log.Println(infEmails, "influencers emailed")
 		log.Println("Finished email run @", time.Now().String(), "\n")
 	}
