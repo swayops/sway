@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -164,7 +165,31 @@ var scopes = map[string]auth.ScopeMap{
 	},
 }
 
-func (srv *Server) initializeRoutes(r *gin.Engine) {
+func (srv *Server) initializeRoutes(r gin.IRouter) {
+	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
+	favIcoFile := filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
+	r.Use(func(c *gin.Context) {
+		p := c.Request.URL.Path[1:]
+		if idx := strings.Index(p, "/"); idx > -1 {
+			p = p[:idx]
+		}
+		serve := idxFile
+		switch p {
+		case "favicon.ico":
+			serve = favIcoFile
+		case "static", "api":
+			return
+		}
+		c.File(serve)
+		c.Abort()
+	})
+
+	staticGzer := staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+	r.HEAD("/static/*fp", staticGzer)
+	r.GET("/static/*fp", staticGzer)
+
+	r = r.Group(srv.Cfg.APIPath)
+
 	// Public endpoint
 	r.GET("/click/:influencerId/:campaignId/:dealId", click(srv))
 
@@ -179,6 +204,15 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	verifyGroup.GET("/signOut", srv.auth.SignOutHandler)
 	r.POST("/signIn", srv.auth.SignInHandler)
 	r.POST("/signUp", srv.auth.VerifyUser(true), srv.auth.SignUpHandler)
+
+	r.POST("/forgotPassword", srv.auth.ReqResetHandler)
+	r.POST("/resetPassword", srv.auth.ResetHandler)
+
+	verifyGroup.GET("/user", func(c *gin.Context) {
+		c.JSON(200, auth.GetCtxUser(c).Trim())
+	})
+
+	verifyGroup.GET("/user/:id", userProfile(srv))
 
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
@@ -247,12 +281,12 @@ func (srv *Server) initializeRoutes(r *gin.Engine) {
 	// Reporting
 	advScope := srv.auth.CheckScopes(scopes["adv"])
 	campOwnership := srv.auth.CheckOwnership(auth.CampaignItem, "cid")
-	verifyGroup.GET("/getAdvertiserStats/:id/:days", getAdvertiserStats(srv))
+	verifyGroup.GET("/getAdvertiserStats/:id/:start/:end", getAdvertiserStats(srv))
 	verifyGroup.GET("/getCampaignReport/:cid/:from/:to/:filename", advScope, campOwnership, getCampaignReport(srv))
 	verifyGroup.GET("/getCampaignStats/:cid/:days", advScope, campOwnership, getCampaignStats(srv))
 	verifyGroup.GET("/getCampaignInfluencerStats/:cid/:infId/:days", advScope, campOwnership, getCampaignInfluencerStats(srv))
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
-	verifyGroup.GET("/getAdminStats", getAdminStats(srv))
+	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
 	adminGroup.GET("/billing", runBilling(srv))
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))

@@ -51,7 +51,7 @@ type Deal struct {
 
 	// Requirements copied from the campaign to the deal
 	// GetAvailableDeals
-	Tags          []string `json:"hashtags,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
 	Mention       string   `json:"mention,omitempty"`
 	Link          string   `json:"link,omitempty"`
 	ShortenedLink string   `json:"shortenedLink,omitempty"`
@@ -86,6 +86,7 @@ type Stats struct {
 	Shares   int32 `json:"shares,omitempty"`
 	Views    int32 `json:"views,omitempty"`
 	Clicks   int32 `json:"clicks,omitempty"`
+	Perks    int32 `json:"perks,omitempty"`
 }
 
 func (st *Stats) TotalMarkup() float64 {
@@ -141,6 +142,20 @@ func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
 	data.Comments += comments
 	data.Shares += shares
 	data.Views += views
+}
+
+func (d *Deal) PerkIncr() {
+	if d.Reporting == nil {
+		d.Reporting = make(map[string]*Stats)
+	}
+	key := GetDate()
+	data, ok := d.Reporting[key]
+	if !ok {
+		data = &Stats{}
+		d.Reporting[key] = data
+	}
+
+	data.Perks += 1
 }
 
 func (d *Deal) Click() {

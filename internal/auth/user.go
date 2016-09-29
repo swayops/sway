@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -64,13 +65,25 @@ type signupUser struct {
 
 // Trim returns a browser-safe version of the User, mainly hiding salt, and maybe possibly apiKeys
 func (u *User) Trim() *User {
-	u.Salt = ""
-	return u
+	ou := *u
+	ou.Salt = ""
+	return &ou
 }
 
 // Update fills the updatable fields in the struct, fields like Created and ID should never be blindly set.
 func (u *User) Update(o *User) *User {
-	u.Name, u.Email, u.Phone, u.Address = o.Name, o.Email, o.Phone, o.Address
+	if o.Name != "" {
+		u.Name = o.Name
+	}
+	// if o.Email = misc.TrimEmail(o.Email); o.Email != "" {
+	// 	u.Email = o.Email
+	// }
+	if o.Phone != "" {
+		u.Phone = o.Phone
+	}
+	if o.Address != "" {
+		u.Address = o.Address
+	}
 	u.Status = o.Status
 	u.UpdatedAt = time.Now().Unix()
 	return u
@@ -115,15 +128,20 @@ func (u *User) Check(newUser bool) error {
 	if u.Name == "" {
 		return ErrInvalidName
 	}
-	if len(strings.Split(u.Name, " ")) < 2 {
-		return ErrInvalidName
-	}
+
 	if len(u.Email) < 6 /* a@a.ab */ || strings.Index(u.Email, "@") == -1 {
 		return ErrInvalidEmail
 	}
-	if u.Type() == InvalidScope {
+
+	switch u.Type() {
+	case InvalidScope:
 		return ErrInvalidUserType
+	case InfluencerScope:
+		if len(strings.Split(u.Name, " ")) < 2 {
+			return ErrInvalidName
+		}
 	}
+
 	// other checks?
 	return nil
 }
@@ -277,6 +295,35 @@ func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {
 func (a *Auth) GetUser(userID string) (u *User) {
 	a.db.View(func(tx *bolt.Tx) error {
 		u = a.GetUserTx(tx, userID)
+		return nil
+	})
+	return
+}
+
+func (a *Auth) GetChildCountsTx(tx *bolt.Tx, uids ...string) map[string]int {
+	counts := make(map[string]int, len(uids))
+	for _, uid := range uids {
+		counts[uid] = 0
+	}
+
+	misc.GetBucket(tx, a.cfg.Bucket.User).ForEach(func(_, v []byte) error {
+		var u struct {
+			ParentID string `json:"parentID"`
+		}
+		json.Unmarshal(v, &u)
+		if _, ok := counts[u.ParentID]; ok {
+			counts[u.ParentID]++
+		}
+		return nil
+	})
+
+	return counts
+}
+
+func (a *Auth) GetChildCounts(uids ...string) (out map[string]int) {
+
+	a.db.View(func(tx *bolt.Tx) error {
+		out = a.GetChildCountsTx(tx, uids...)
 		return nil
 	})
 	return

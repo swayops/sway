@@ -165,6 +165,7 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	c.JSON(200, misc.StatusOK(login.UserID))
 	return true
 }
+
 func (a *Auth) SignInHandler(c *gin.Context) {
 	var li struct {
 		Email    string `json:"email" form:"email"`
@@ -292,9 +293,12 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		URL     string
 	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, stok)}
 
+	log.Println("resetPassword request:", tmplData.URL)
+
 	email := templates.ResetPassword.Render(tmplData)
 	if resp, err := a.ec.SendMessage(email, "Password Reset Request", req.Email, u.Name,
-		[]string{"reset password"}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		[]string{"reset password"}); err != nil {
+		log.Printf("error sending reset email to %s: %+v: %v", email, resp, err)
 		misc.AbortWithErr(c, 500, ErrUnexpected)
 		return
 	}

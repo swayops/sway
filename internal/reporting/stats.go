@@ -31,6 +31,8 @@ type Totals struct {
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 
+	Perks int32 `json:"perks,omitempty"`
+
 	Spent float64 `json:"spent,omitempty"`
 }
 
@@ -82,6 +84,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Spent += st.Influencer + st.TotalMarkup()
 			tg.Total.Shares += st.Shares
 			tg.Total.Comments += st.Comments
+			tg.Total.Perks += st.Perks
 
 			// This assumes each influencer can do the deal once
 			if eng > 0 {
@@ -182,11 +185,11 @@ func GetInfluencerStats(inf *influencer.Influencer, cfg *config.Config, from, to
 	return stats, nil
 }
 
-func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset int) map[string]*Totals {
+func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffset, endOffset int) map[string]*Totals {
 	// Retrieves totals for the range and campaign stats by day
 	tg := make(map[string]*Totals)
 
-	dateRange := common.GetDateRangeFromOffset(offset)
+	dateRange := common.GetDateRangeFromOffsetRange(startOffset, endOffset)
 
 	// Insert totals for the range in the key "total"
 	tg["total"] = &Totals{}
@@ -205,6 +208,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 			val.Shares += tot.Total.Shares
 			val.Spent += tot.Total.Spent
 			val.Influencers = tot.Total.Influencers
+			val.Perks += tot.Total.Perks
 		}
 	}
 

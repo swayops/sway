@@ -10,7 +10,7 @@ import (
 
 var (
 	ErrInvalidRequest   = errors.New("invalid request")
-	ErrInvalidUserID    = errors.New("invalid user id, hax0r")
+	ErrInvalidUserID    = errors.New("invalid user id")
 	ErrInvalidParentID  = errors.New("invalid parent id")
 	ErrInvalidAgencyID  = errors.New("invalid agency id")
 	ErrInvalidID        = errors.New("invalid item id")

@@ -39,3 +39,25 @@ func GetDateRangeFromOffset(off int) []time.Time {
 	}
 	return out
 }
+
+func GetDateRangeFromOffsetRange(start, end int) []time.Time {
+	if start == -1 {
+		start = -365
+	} else if start > 0 {
+		start = -start
+	}
+	if end == -1 {
+		end = -365
+	} else if end > 0 {
+		end = -end
+	}
+	if end < start {
+		start, end = end, start
+	}
+	out := make([]time.Time, (end-start)+1)
+	to := time.Now().UTC().AddDate(0, 0, start)
+	for i := range out {
+		out[i] = to.AddDate(0, 0, end+i)
+	}
+	return out
+}

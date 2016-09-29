@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -74,13 +75,33 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 }
 
 func getAllTalentAgencies(s *Server) gin.HandlerFunc {
+	type userWithCounts struct {
+		*auth.User
+		SubCount int `json:"subCount"`
+	}
 	return func(c *gin.Context) {
-		var ag []*auth.TalentAgency
+		var (
+			all    []*userWithCounts
+			counts map[string]int
+			uids   []string
+		)
+
 		s.db.View(func(tx *bolt.Tx) error {
-			ag = getTalentAgencies(s, tx)
+			s.auth.GetUsersByTypeTx(tx, auth.TalentAgencyScope, func(u *auth.User) error {
+				if u.TalentAgency != nil {
+					all = append(all, &userWithCounts{u.Trim(), 0})
+					uids = append(uids, u.ID)
+				}
+				return nil
+			})
+			counts = s.auth.GetChildCountsTx(tx, uids...)
 			return nil
 		})
-		c.JSON(200, ag)
+
+		for _, u := range all {
+			u.SubCount = counts[u.ID]
+		}
+		c.JSON(200, all)
 	}
 }
 
@@ -129,13 +150,33 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 }
 
 func getAllAdAgencies(s *Server) gin.HandlerFunc {
+	type userWithCounts struct {
+		*auth.User
+		SubCount int `json:"subCount"`
+	}
 	return func(c *gin.Context) {
-		var ag []*auth.AdAgency
+		var (
+			all    []*userWithCounts
+			counts map[string]int
+			uids   []string
+		)
+
 		s.db.View(func(tx *bolt.Tx) error {
-			ag = getAdAgencies(s, tx)
+			s.auth.GetUsersByTypeTx(tx, auth.AdAgencyScope, func(u *auth.User) error {
+				if u.AdAgency != nil { // should always be true, but just in case
+					all = append(all, &userWithCounts{u.Trim(), 0})
+					uids = append(uids, u.ID)
+				}
+				return nil
+			})
+			counts = s.auth.GetChildCountsTx(tx, uids...)
 			return nil
 		})
-		c.JSON(200, ag)
+
+		for _, u := range all {
+			u.SubCount = counts[u.ID]
+		}
+		c.JSON(200, all)
 	}
 }
 
@@ -143,13 +184,18 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			adv  auth.Advertiser
+			adv  auth.User
 			user = auth.GetCtxUser(c)
 			id   = c.Param("id")
 		)
 
 		if err := c.BindJSON(&adv); err != nil {
 			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+		if adv.Advertiser == nil {
+			misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
 			return
 		}
 
@@ -160,7 +206,7 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 			if user == nil {
 				return auth.ErrInvalidID
 			}
-			return user.StoreWithData(s.auth, tx, &adv)
+			return user.Update(&adv).StoreWithData(s.auth, tx, adv.Advertiser)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 		}
@@ -181,17 +227,47 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 }
 
 func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
+	type advWithCounts struct {
+		*auth.User
+		NumCampaigns int `json:"numCmps"`
+	}
 	return func(c *gin.Context) {
-		targetAgency := c.Param("id")
-		var advertisers []*auth.Advertiser
-		s.db.View(func(tx *bolt.Tx) error {
-			return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
-				if adv := auth.GetAdvertiser(u); adv != nil && adv.AgencyID == targetAgency {
-					advertisers = append(advertisers, adv)
+		var (
+			targetAgency = c.Param("id")
+			advertisers  []*advWithCounts
+			counts       = map[string]int{}
+		)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			if u := s.auth.GetUserTx(tx, targetAgency); u == nil || u.Type() != auth.AdAgencyScope {
+				return auth.ErrInvalidUserID
+			}
+			s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
+				if u.Advertiser != nil && u.ParentID == targetAgency {
+					advertisers = append(advertisers, &advWithCounts{u.Trim(), 0})
+					counts[u.ID] = 0
 				}
 				return nil
 			})
-		})
+			return tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp struct {
+					AdvertiserId string `json:"advertiserId"`
+				}
+				if json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if _, ok := counts[cmp.AdvertiserId]; ok {
+					counts[cmp.AdvertiserId]++
+				}
+				return
+			})
+		}); err != nil {
+			misc.AbortWithErr(c, 404, err)
+			return
+		}
+		for _, adv := range advertisers {
+			adv.NumCampaigns = counts[adv.ID]
+		}
 		c.JSON(200, advertisers)
 	}
 }
@@ -220,7 +296,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if cmp.Gender != "m" && cmp.Gender != "f" && cmp.Gender != "mf" {
+		if !cmp.Male && !cmp.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
@@ -289,6 +365,8 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		} else {
 			cmp.Approved = int32(time.Now().Unix())
 		}
+
+		cmp.CreatedAt = time.Now().Unix()
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -406,7 +484,8 @@ type CampaignUpdate struct {
 	Categories []string         `json:"categories,omitempty"`
 	Status     bool             `json:"status,omitempty"`
 	Budget     float64          `json:"budget,omitempty"`
-	Gender     string           `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Male       bool             `json:"male,omitempty"`
+	Female     bool             `json:"female,omitempty"`
 	Name       string           `json:"name,omitempty"`
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
 }
@@ -452,7 +531,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		if upd.Gender != "m" && upd.Gender != "f" && upd.Gender != "mf" {
+		if !upd.Male && !upd.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
@@ -483,7 +562,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.Status = upd.Status
 		cmp.Geos = upd.Geos
-		cmp.Gender = upd.Gender
+		cmp.Male, cmp.Female = upd.Male, upd.Female
 		cmp.Categories = common.LowerSlice(upd.Categories)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)
@@ -554,7 +633,6 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []*influencer.Influencer
 		targetAg := c.Param("id")
-
 		for _, inf := range s.auth.Influencers.GetAll() {
 			if inf.AgencyId == targetAg {
 				inf.Clean()
@@ -564,7 +642,6 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 					inf.AgencySpend = total.AgencySpent
 					inf.InfluencerSpend = total.Spent
 				}
-
 				influencers = append(influencers, inf)
 			}
 		}
@@ -687,7 +764,9 @@ func setGender(s *Server) gin.HandlerFunc {
 	// Sets the gender for the influencer id
 	return func(c *gin.Context) {
 		gender := strings.ToLower(c.Params.ByName("gender"))
-		if gender != "m" && gender != "f" && gender != "unicorn" {
+		switch gender {
+		case "m", "f", "mf", "fm", "unicorn":
+		default:
 			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
 			return
 		}
@@ -701,8 +780,14 @@ func setGender(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
-
-		inf.Gender = gender
+		switch gender {
+		case "mf", "fm", "unicorn":
+			inf.Male, inf.Female = true, true
+		case "m":
+			inf.Male, inf.Female = true, false
+		case "f":
+			inf.Male, inf.Female = false, true
+		}
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
@@ -851,12 +936,11 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []*IncompleteInfluencer
 		for _, inf := range s.auth.Influencers.GetAll() {
-			if inf.Gender == "" || len(inf.Categories) == 0 {
+			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
 				incInf := &IncompleteInfluencer{inf, "", "", "", ""}
 				if inf.Twitter != nil {
 					incInf.TwitterURL = "https://twitter.com/" + inf.Twitter.Id
 				}
-
 				if inf.Facebook != nil {
 					incInf.FacebookURL = "https://www.facebook.com/" + inf.Facebook.Id
 				}
@@ -1306,14 +1390,19 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 
 func getAdvertiserStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		days, err := strconv.Atoi(c.Param("days"))
-		if err != nil || days == 0 {
+		var (
+			start, _  = strconv.Atoi(c.Param("start"))
+			end, _    = strconv.Atoi(c.Param("end"))
+			targetAdv = c.Param("id")
+			campaigns []*common.Campaign
+			cmpStats  []map[string]*reporting.Totals
+		)
+
+		if start == 0 || end == 0 {
 			c.JSON(500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
-		targetAdv := c.Param("id")
-		var campaigns []*common.Campaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -1332,9 +1421,8 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmpStats := []map[string]*reporting.Totals{}
 		for _, cmp := range campaigns {
-			stats := reporting.GetCampaignBreakdown(cmp.Id, s.db, s.Cfg, days)
+			stats := reporting.GetCampaignBreakdown(cmp.Id, s.db, s.Cfg, start, end)
 			cmpStats = append(cmpStats, stats)
 		}
 
@@ -1350,7 +1438,7 @@ func getCampaignStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days))
+		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days, 0))
 	}
 }
 
@@ -1602,7 +1690,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		talentXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
 		talentSheets := make(map[string]*misc.Sheet)
 
-		for _, infId := range srv.auth.Influencers.GetAllIDs() {
+		for _, infId := range s.auth.Influencers.GetAllIDs() {
 			inf, ok := s.auth.Influencers.Get(infId)
 			if inf == nil || !ok {
 				continue
@@ -1793,7 +1881,8 @@ func runBilling(s *Server) gin.HandlerFunc {
 }
 
 type GreedyInfluencer struct {
-	Id string `json:"id,omitempty"`
+	Id   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 
 	Address   *lob.AddressLoad `json:"address,omitempty"`
 	Followers int64            `json:"followers,omitempty"`
@@ -1810,6 +1899,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 			if inf.RequestedCheck > 0 {
 				tmpGreedy := &GreedyInfluencer{
 					Id:             inf.Id,
+					Name:           inf.Name,
 					Address:        inf.Address,
 					PendingPayout:  inf.PendingPayout,
 					RequestedCheck: inf.RequestedCheck,
@@ -1990,6 +2080,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 		for _, d := range inf.ActiveDeals {
 			if d.CampaignId == cid && d.Perk != nil {
 				d.Perk.Status = true
+				d.PerkIncr()
 			}
 		}
 
@@ -2211,6 +2302,37 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 		}
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func userProfile(srv *Server) gin.HandlerFunc {
+	checkAdAgency := srv.auth.CheckOwnership(auth.AdAgencyItem, "id")
+	checkTalentAgency := srv.auth.CheckOwnership(auth.TalentAgencyItem, "id")
+
+	return func(c *gin.Context) {
+		cu := auth.GetCtxUser(c)
+		id := c.Param("id")
+		switch {
+		case cu.Admin:
+		case cu.AdAgency != nil:
+			checkAdAgency(c)
+		case cu.TalentAgency != nil:
+			checkTalentAgency(c)
+		case cu.ID == id:
+			c.JSON(200, cu.Trim())
+			return
+		default:
+			misc.AbortWithErr(c, http.StatusUnauthorized, auth.ErrUnauthorized)
+		}
+		if c.IsAborted() {
+			return
+		}
+		if cu = srv.auth.GetUser(id); cu != nil {
+			c.JSON(200, cu.Trim())
+		} else {
+			misc.AbortWithErr(c, http.StatusNotFound, auth.ErrInvalidUserID)
+		}
+
 	}
 }
 

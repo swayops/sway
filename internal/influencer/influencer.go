@@ -32,8 +32,11 @@ type InfluencerLoad struct {
 
 	InviteCode string         `json:"inviteCode,omitempty"` // Encoded string showing talent agency id
 	Geo        *geo.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
-	Gender     string         `json:"gender,omitempty"`
-	Categories []string       `json:"categories,omitempty"`
+
+	Male   bool `json:"male,omitempty"`
+	Female bool `json:"female,omitempty"`
+
+	Categories []string `json:"categories,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
@@ -76,8 +79,9 @@ type Influencer struct {
 	// Set and created by the IP
 	Geo *geo.GeoRecord `json:"geo,omitempty"`
 
-	// "m" or "f" or "unicorn" lol
-	Gender string `json:"gender,omitempty"`
+	Male   bool `json:"male,omitempty"`
+	Female bool `json:"female,omitempty"`
+
 	// Influencer inputted category they belong to
 	Categories []string `json:"categories,omitempty"`
 
@@ -116,11 +120,12 @@ type Influencer struct {
 	InfluencerSpend float64 `json:"infSpend,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
-		Gender:       gender,
+		Male:         m,
+		Female:       f,
 		Categories:   cats,
 		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: misc.TrimEmail(email),
@@ -565,7 +570,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Gender check
-		if !strings.Contains(cmp.Gender, inf.Gender) {
+		if (inf.Male && !cmp.Male) || (inf.Female && !cmp.Female) {
 			continue
 		}
 

@@ -14,6 +14,8 @@ type Campaign struct {
 	Id   string `json:"id"` // Should not passed for putCampaign
 	Name string `json:"name"`
 
+	CreatedAt int64 `json:"createdAt"`
+
 	Budget float64 `json:"budget"` // Always monthly
 
 	AdvertiserId string `json:"advertiserId"`
@@ -28,12 +30,13 @@ type Campaign struct {
 	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
 
 	// Social Media Post/User Requirements
-	Tags    []string         `json:"hashtags,omitempty"`
+	Tags    []string         `json:"tags,omitempty"`
 	Mention string           `json:"mention,omitempty"`
 	Link    string           `json:"link,omitempty"`
 	Task    string           `json:"task,omitempty"`
-	Geos    []*geo.GeoRecord `json:"geos,omitempty"`   // Geos the campaign is targeting
-	Gender  string           `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Geos    []*geo.GeoRecord `json:"geos,omitempty"` // Geos the campaign is targeting
+	Male    bool             `json:"male,omitempty"`
+	Female  bool             `json:"female,omitempty"`
 
 	// Inventory Types Campaign is Targeting
 	Twitter   bool `json:"twitter,omitempty"`
@@ -115,7 +118,7 @@ func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]b
 		tx.Bucket([]byte(cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 			cmp := &Campaign{}
 			if err := json.Unmarshal(v, cmp); err != nil {
-				log.Println("error when unmarshalling campaign", string(v))
+				log.Printf("error when unmarshalling campaign %s: %v", v, err)
 				return nil
 			}
 

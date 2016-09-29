@@ -66,11 +66,12 @@ type Config struct {
 	BudgetBucket string `json:"budgetBucket"`
 	AuthDBName   string `json:"authDbName"`
 
+	ServerURL     string `json:"serverURL"` // this is mainly used for internal directs
+	APIPath       string `json:"apiPath"`
+	DashboardPath string `json:"dashboardPath"`
+
 	GeoLocation string            `json:"geoLoc"`
 	GeoDB       *maxminddb.Reader `json:"geoDb"`
-
-	ServerURL string `json:"serverURL"` // this is mainly used for internal directs
-	APIPath   string `json:"apiPath"`
 
 	Sandbox bool `json:"sandbox"`
 
