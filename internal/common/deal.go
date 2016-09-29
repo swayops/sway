@@ -51,7 +51,7 @@ type Deal struct {
 
 	// Requirements copied from the campaign to the deal
 	// GetAvailableDeals
-	Tags          []string `json:"hashtags,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
 	Mention       string   `json:"mention,omitempty"`
 	Link          string   `json:"link,omitempty"`
 	ShortenedLink string   `json:"shortenedLink,omitempty"`

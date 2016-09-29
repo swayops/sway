@@ -30,7 +30,7 @@ type Campaign struct {
 	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
 
 	// Social Media Post/User Requirements
-	Tags    []string         `json:"hashtags,omitempty"`
+	Tags    []string         `json:"tags,omitempty"`
 	Mention string           `json:"mention,omitempty"`
 	Link    string           `json:"link,omitempty"`
 	Task    string           `json:"task,omitempty"`

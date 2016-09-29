@@ -384,8 +384,8 @@ func TestCampaigns(t *testing.T) {
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 	}
-	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
-	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
 	badAdvId := cmp
 	badAdvId.AdvertiserId = "1"
 
@@ -1857,7 +1857,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign to have bad geo.. Should reject!
-	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"male":true,"female":true,"twitter":true}`
+	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateBad, nil)
 	if r.Status == 200 {
 		t.Fatal("Unexpected status code!")
@@ -1877,7 +1877,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
-	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"male":true,"female":true,"twitter":true}`
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateGood, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
