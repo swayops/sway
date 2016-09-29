@@ -642,6 +642,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 					inf.AgencySpend = total.AgencySpent
 					inf.InfluencerSpend = total.Spent
 				}
+				influencers = append(influencers, inf)
 			}
 		}
 		c.JSON(200, influencers)
