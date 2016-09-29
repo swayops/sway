@@ -138,7 +138,10 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf *influencer.Influencer) error {
 		return auth.ErrInvalidID
 	}
 
+	// Save in the cache
 	s.auth.Influencers.SetInfluencer(inf.Id, inf)
+
+	// Save in the DB
 	return u.StoreWithData(s.auth, tx, &auth.Influencer{inf})
 }
 
@@ -185,7 +188,6 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 		return err
 	}
 
-	// Insert Log //
 	// Update the campaign store as well so things don't mess up
 	// until the next cache update!
 	s.Campaigns.SetCampaign(cmp.Id, cmp)
