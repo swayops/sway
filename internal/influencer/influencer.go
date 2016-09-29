@@ -32,8 +32,12 @@ type InfluencerLoad struct {
 
 	InviteCode string         `json:"inviteCode,omitempty"` // Encoded string showing talent agency id
 	Geo        *geo.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
-	Gender     string         `json:"gender,omitempty"`
-	Categories []string       `json:"categories,omitempty"`
+
+	Male    bool `json:"male,omitempty"`
+	Female  bool `json:"female,omitempty"`
+	Unicorn bool `json:"Unicorn,omitempty"`
+
+	Categories []string `json:"categories,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
@@ -118,12 +122,13 @@ type Influencer struct {
 	InfluencerSpend float64 `json:"infSpend,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId string, m, f, u bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
-		Male:         strings.Contains(gender, "m"),
-		Female:       strings.Contains(gender, "f"),
+		Male:         m,
+		Female:       f,
+		Unicorn:      u,
 		Categories:   cats,
 		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: misc.TrimEmail(email),
