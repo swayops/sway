@@ -76,8 +76,10 @@ type Influencer struct {
 	// Set and created by the IP
 	Geo *geo.GeoRecord `json:"geo,omitempty"`
 
-	// "m" or "f" or "unicorn" lol
-	Gender string `json:"gender,omitempty"`
+	Male    bool `json:"male,omitempty"`
+	Female  bool `json:"female,omitempty"`
+	Unicorn bool `json:"Unicorn,omitempty"`
+
 	// Influencer inputted category they belong to
 	Categories []string `json:"categories,omitempty"`
 
@@ -120,7 +122,8 @@ func New(id, name, twitterId, instaId, fbId, ytId, gender, inviteCode, defAgency
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
-		Gender:       gender,
+		Male:         strings.Contains(gender, "m"),
+		Female:       strings.Contains(gender, "f"),
 		Categories:   cats,
 		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: misc.TrimEmail(email),
@@ -565,7 +568,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Gender check
-		if !strings.Contains(cmp.Gender, inf.Gender) {
+		if (inf.Male && !cmp.Male) || (inf.Female && !cmp.Female) {
 			continue
 		}
 

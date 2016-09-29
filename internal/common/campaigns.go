@@ -34,8 +34,9 @@ type Campaign struct {
 	Mention string           `json:"mention,omitempty"`
 	Link    string           `json:"link,omitempty"`
 	Task    string           `json:"task,omitempty"`
-	Geos    []*geo.GeoRecord `json:"geos,omitempty"`   // Geos the campaign is targeting
-	Gender  string           `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Geos    []*geo.GeoRecord `json:"geos,omitempty"` // Geos the campaign is targeting
+	Male    bool             `json:"male,omitempty"`
+	Female  bool             `json:"female,omitempty"`
 
 	// Inventory Types Campaign is Targeting
 	Twitter   bool `json:"twitter,omitempty"`

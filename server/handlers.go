@@ -295,7 +295,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if cmp.Gender != "m" && cmp.Gender != "f" && cmp.Gender != "mf" {
+		if !cmp.Male && !cmp.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
@@ -483,7 +483,8 @@ type CampaignUpdate struct {
 	Categories []string         `json:"categories,omitempty"`
 	Status     bool             `json:"status,omitempty"`
 	Budget     float64          `json:"budget,omitempty"`
-	Gender     string           `json:"gender,omitempty"` // "m" or "f" or "mf"
+	Male       bool             `json:"male,omitempty"`
+	Female     bool             `json:"female,omitempty"`
 	Name       string           `json:"name,omitempty"`
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
 }
@@ -529,7 +530,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		if upd.Gender != "m" && upd.Gender != "f" && upd.Gender != "mf" {
+		if !upd.Male && !upd.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
@@ -560,7 +561,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.Status = upd.Status
 		cmp.Geos = upd.Geos
-		cmp.Gender = upd.Gender
+		cmp.Male, cmp.Female = upd.Male, upd.Female
 		cmp.Categories = common.LowerSlice(upd.Categories)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)
@@ -801,7 +802,14 @@ func setGender(s *Server) gin.HandlerFunc {
 				return auth.ErrInvalidID
 			}
 
-			inf.Gender = gender
+			switch gender {
+			case "mf":
+				inf.Male, inf.Female = true, true
+			case "m":
+				inf.Male, inf.Female = true, false
+			case "f":
+				inf.Male, inf.Female = false, true
+			}
 
 			return user.StoreWithData(s.auth, tx, inf)
 		}); err != nil {
@@ -958,7 +966,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 		s.db.View(func(tx *bolt.Tx) error {
 			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 				if inf := auth.GetInfluencer(u); inf != nil {
-					if inf.Gender == "" || len(inf.Categories) == 0 {
+					if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
 						incInf := &IncompleteInfluencer{inf, "", "", "", ""}
 						if inf.Twitter != nil {
 							incInf.TwitterURL = "https://twitter.com/" + inf.Twitter.Id
