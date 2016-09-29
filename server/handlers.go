@@ -877,7 +877,25 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 
 func getCategories(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, common.GetCategories())
+		// Returns a map with key as the category
+		// and value as reach
+		out := make(map[string]int64)
+		for k, _ := range common.CATEGORIES {
+			out[k] = 0
+		}
+
+		s.db.View(func(tx *bolt.Tx) error {
+			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
+				if inf := auth.GetInfluencer(u); inf != nil {
+					for _, cat := range inf.Categories {
+						out[cat] += 1
+					}
+				}
+				return nil
+			})
+		})
+
+		c.JSON(200, out)
 	}
 }
 
