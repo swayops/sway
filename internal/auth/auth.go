@@ -9,6 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/missionMeteora/mandrill"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 )
 
@@ -28,13 +29,17 @@ type Auth struct {
 
 	purgeTicker *time.Ticker
 	ec          *mandrill.Client
+
+	// In memory cache of influencers
+	Influencers *influencer.Influencers
 }
 
 func New(db *bolt.DB, cfg *config.Config) *Auth {
 	a := &Auth{
-		db:  db,
-		cfg: cfg,
-		ec:  cfg.MailClient(),
+		db:          db,
+		cfg:         cfg,
+		ec:          cfg.MailClient(),
+		Influencers: influencer.NewInfluencers(),
 	}
 	return a
 }

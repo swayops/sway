@@ -6,8 +6,8 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 )
 
 var (
@@ -158,12 +158,8 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	return data
 }
 
-func GetInfluencerStats(infId string, au *auth.Auth, cfg *config.Config, from, to time.Time, cid, agid string) (*ReportStats, error) {
+func GetInfluencerStats(inf *influencer.Influencer, cfg *config.Config, from, to time.Time, cid, agid string) (*ReportStats, error) {
 	stats := &ReportStats{}
-	inf := au.GetInfluencer(infId)
-	if inf == nil {
-		return stats, errors.New("Bad influencer!")
-	}
 	dates := common.GetDateRange(from, to)
 
 	for _, deal := range inf.CompletedDeals {
@@ -215,7 +211,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, offset in
 	return tg
 }
 
-func GetInfluencerBreakdown(infId string, au *auth.Auth, cfg *config.Config, offset int, rep map[string]float64, currentRep float64, cid, agid string) map[string]*ReportStats {
+func GetInfluencerBreakdown(inf *influencer.Influencer, cfg *config.Config, offset int, rep map[string]float64, currentRep float64, cid, agid string) map[string]*ReportStats {
 	// Retrieves influencer totals for the range and influencer stats by day
 	tg := make(map[string]*ReportStats)
 
@@ -233,7 +229,7 @@ func GetInfluencerBreakdown(infId string, au *auth.Auth, cfg *config.Config, off
 
 	// Insert day stats for the range
 	for _, d := range dateRange {
-		r, err := GetInfluencerStats(infId, au, cfg, d, d, cid, agid)
+		r, err := GetInfluencerStats(inf, cfg, d, d, cid, agid)
 		if err == nil && r != nil && r.Spent != 0 {
 			key := common.GetDateFromTime(d)
 
