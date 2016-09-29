@@ -1398,7 +1398,7 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 			cmpStats  []map[string]*reporting.Totals
 		)
 
-		if start == 0 {
+		if start == 0 || end == 0 {
 			c.JSON(500, misc.StatusErr("Invalid date range!"))
 			return
 		}
