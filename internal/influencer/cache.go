@@ -40,8 +40,8 @@ func (p *Influencers) GetAll() map[string]*Influencer {
 }
 
 func (p *Influencers) GetAllIDs() []string {
-	store := make([]string, 0, len(p.store))
 	p.mux.RLock()
+	store := make([]string, 0, len(p.store))
 	for infId, _ := range p.store {
 		store = append(store, infId)
 	}
