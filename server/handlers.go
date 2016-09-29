@@ -784,7 +784,9 @@ func setGender(s *Server) gin.HandlerFunc {
 	// Sets the gender for the influencer id
 	return func(c *gin.Context) {
 		gender := strings.ToLower(c.Params.ByName("gender"))
-		if gender != "m" && gender != "f" && gender != "unicorn" {
+		switch gender {
+		case "m", "f", "mf", "unicorn":
+		default:
 			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
 			return
 		}
@@ -803,7 +805,7 @@ func setGender(s *Server) gin.HandlerFunc {
 			}
 
 			switch gender {
-			case "mf":
+			case "mf", "unicorn":
 				inf.Male, inf.Female = true, true
 			case "m":
 				inf.Male, inf.Female = true, false

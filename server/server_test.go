@@ -141,7 +141,8 @@ func TestTalentAgencyChain(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:    "unicorn",
+			Male:      true,
+			Female:    true,
 			Geo:       &geo.GeoRecord{},
 			TwitterId: "justinbieber",
 		},
@@ -249,7 +250,8 @@ func TestNewInfluencer(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:      "unicorn",
+			Male:        true,
+			Female:      true,
 			Geo:         &geo.GeoRecord{},
 			TwitterId:   "justinbieber",
 			InstagramId: "kimkardashian",
@@ -259,8 +261,7 @@ func TestNewInfluencer(t *testing.T) {
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender: "purple",
-			Geo:    &geo.GeoRecord{},
+			Geo: &geo.GeoRecord{},
 		},
 	}
 
@@ -329,7 +330,8 @@ func TestInviteCode(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:     "unicorn",
+			Male:       true,
+			Female:     true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "justinbieber",
@@ -372,12 +374,13 @@ func TestCampaigns(t *testing.T) {
 		Budget:       10.5,
 		Name:         "The Day Walker",
 		Instagram:    true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 	}
-	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
-	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","gender":"f","instagram":true}`
+	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"hashtags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
 	badAdvId := cmp
 	badAdvId.AdvertiserId = "1"
 
@@ -430,7 +433,7 @@ func TestDeals(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:     "m",
+			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "breakingnews",
@@ -448,7 +451,8 @@ func TestDeals(t *testing.T) {
 		Budget:       5000.5,
 		Name:         "The Day Walker",
 		Twitter:      true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 	}
@@ -504,7 +508,7 @@ func TestDeals(t *testing.T) {
 	newInf := getSignupUser()
 	newInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:     "m",
+			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "CNN",
@@ -798,7 +802,8 @@ func TestDeals(t *testing.T) {
 		Budget:       1000,
 		Name:         "The Day Walker",
 		Twitter:      true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "http://www.blank.org?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
@@ -1003,7 +1008,7 @@ func TestTaxes(t *testing.T) {
 	inf := getSignupUserWithEmail("shahzilsway@gmail.com") //throw away email
 	inf.InfluencerLoad = &auth.InfluencerLoad{             // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:     "m",
+			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "breakingnews",
@@ -1091,7 +1096,7 @@ func TestPerks(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:     "m",
+			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "breakingnews",
@@ -1116,7 +1121,8 @@ func TestPerks(t *testing.T) {
 		Budget:       100.5,
 		Name:         "The Day Walker",
 		Twitter:      true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 		Perks:        &common.Perk{Name: "Nike Air Shoes", Category: "product", Count: 5},
@@ -1471,7 +1477,7 @@ func TestInfluencerEmail(t *testing.T) {
 	inf := getSignupUserWithEmail("shahzilabid@gmail.com")
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:    "m",
+			Male:      true,
 			Geo:       &geo.GeoRecord{},
 			TwitterId: "cnn",
 		},
@@ -1549,7 +1555,8 @@ func TestInfluencerEmail(t *testing.T) {
 			Budget:       float64(i * 10),
 			Name:         "The Day Walker " + strconv.Itoa(i),
 			Twitter:      true,
-			Gender:       "mf",
+			Male:         true,
+			Female:       true,
 			Link:         "blade.org",
 			Task:         "POST THAT DOPE SHIT " + strconv.Itoa(i) + " TIMES!",
 			Tags:         []string{"#mmmm"},
@@ -1619,7 +1626,8 @@ func TestImages(t *testing.T) {
 		Budget:       10.5,
 		Name:         "The Day Walker",
 		Instagram:    true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 	}
@@ -1788,7 +1796,8 @@ func TestInfluencerGeo(t *testing.T) {
 		Budget:       100,
 		Name:         "The Day Walker",
 		Twitter:      true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "blade.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
@@ -1836,7 +1845,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign to have bad geo.. Should reject!
-	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true}`
+	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"male":true,"female":true,"twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateBad, nil)
 	if r.Status == 200 {
 		t.Fatal("Unexpected status code!")
@@ -1856,7 +1865,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
-	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"gender":"mf","twitter":true}`
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"hashtags":["mmmm"],"male":true,"female":true,"twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateGood, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -1922,7 +1931,7 @@ func TestChecks(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:    "m",
+			Male:      true,
 			Geo:       &geo.GeoRecord{},
 			TwitterId: "justinbieber",
 			Address: &lob.AddressLoad{
@@ -2071,7 +2080,8 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 		Budget:       1000,
 		Name:         "The Day Walker",
 		Twitter:      true,
-		Gender:       "mf",
+		Male:         true,
+		Female:       true,
 		Link:         "http://www.blank.org?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
@@ -2168,7 +2178,7 @@ func TestClicks(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Gender:    "m",
+			Male:      true,
 			Geo:       &geo.GeoRecord{},
 			TwitterId: "justinbieber",
 		},
@@ -2359,7 +2369,7 @@ func TestBilling(t *testing.T) {
 		inf := getSignupUser()
 		inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 			InfluencerLoad: influencer.InfluencerLoad{
-				Gender:     "m",
+				Male:       true,
 				Geo:        &geo.GeoRecord{},
 				InviteCode: common.GetCodeFromID(ag.ExpID),
 				TwitterId:  "breakingnews",
@@ -2407,7 +2417,7 @@ func TestBilling(t *testing.T) {
 			}
 
 			// For the second last campaign lets increase the budget!
-			upd := &CampaignUpdate{Status: true, Gender: "mf", Budget: 5000, Name: "The day wlker"}
+			upd := &CampaignUpdate{Status: true, Male: true, Female: true, Budget: 5000, Name: "The day wlker"}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {
 				t.Fatal("Bad status code!")
@@ -2447,7 +2457,7 @@ func TestBilling(t *testing.T) {
 		if i == 7 {
 			decreaseCid = cid
 			// For the last campaign lets decrease the budget!
-			upd := &CampaignUpdate{Status: true, Gender: "mf", Budget: 10, Name: "The day wlker"}
+			upd := &CampaignUpdate{Status: true, Male: true, Female: true, Budget: 10, Name: "The day wlker"}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {
 				t.Fatal("Bad status code!")

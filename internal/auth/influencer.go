@@ -90,7 +90,6 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		inf.YouTubeId,
 		inf.Male,
 		inf.Female,
-		inf.Unicorn,
 		inf.InviteCode,
 		u.ParentID,
 		u.Email,

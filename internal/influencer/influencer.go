@@ -33,9 +33,8 @@ type InfluencerLoad struct {
 	InviteCode string         `json:"inviteCode,omitempty"` // Encoded string showing talent agency id
 	Geo        *geo.GeoRecord `json:"geo,omitempty"`        // User inputted geo via app
 
-	Male    bool `json:"male,omitempty"`
-	Female  bool `json:"female,omitempty"`
-	Unicorn bool `json:"Unicorn,omitempty"`
+	Male   bool `json:"male,omitempty"`
+	Female bool `json:"female,omitempty"`
 
 	Categories []string `json:"categories,omitempty"`
 
@@ -80,9 +79,8 @@ type Influencer struct {
 	// Set and created by the IP
 	Geo *geo.GeoRecord `json:"geo,omitempty"`
 
-	Male    bool `json:"male,omitempty"`
-	Female  bool `json:"female,omitempty"`
-	Unicorn bool `json:"Unicorn,omitempty"`
+	Male   bool `json:"male,omitempty"`
+	Female bool `json:"female,omitempty"`
 
 	// Influencer inputted category they belong to
 	Categories []string `json:"categories,omitempty"`
@@ -122,13 +120,12 @@ type Influencer struct {
 	InfluencerSpend float64 `json:"infSpend,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId string, m, f, u bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
 		Male:         m,
 		Female:       f,
-		Unicorn:      u,
 		Categories:   cats,
 		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: misc.TrimEmail(email),
