@@ -875,25 +875,38 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 	}
 }
 
+type InfCategory struct {
+	Category    string `json:"cat,omitempty"`
+	Influencers int64  `json:"infs,omitempty"`
+	Reach       int64  `json:"reach,omitempty"`
+}
+
+func findCat(haystack []*InfCategory, cat string) *InfCategory {
+	for _, i := range haystack {
+		if i.Category == cat {
+			return i
+		}
+	}
+	return nil
+}
+
 func getCategories(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Returns a map with key as the category
 		// and value as reach
-		out := make(map[string]int64)
+		var out []*InfCategory
 		for k, _ := range common.CATEGORIES {
-			out[k] = 0
+			out = append(out, &InfCategory{Category: k})
 		}
 
-		s.db.View(func(tx *bolt.Tx) error {
-			return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
-				if inf := auth.GetInfluencer(u); inf != nil {
-					for _, cat := range inf.Categories {
-						out[cat] += 1
-					}
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, cat := range inf.Categories {
+				if val := findCat(out, cat); val != nil {
+					val.Influencers += 1
+					val.Reach += inf.GetFollowers()
 				}
-				return nil
-			})
-		})
+			}
+		}
 
 		c.JSON(200, out)
 	}

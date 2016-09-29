@@ -298,18 +298,23 @@ func TestNewInfluencer(t *testing.T) {
 		tr.Run(t, rst)
 	}
 
-	var cats map[string]int64
+	var cats []*InfCategory
 	r := rst.DoTesting(t, "GET", "/getCategories", nil, &cats)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	// We set category to business for 2 influencers above!
-	count, _ := cats["business"]
-	if count != 2 {
-		t.Fatal("Unexpected category count!")
+	if len(cats) == 0 {
+		t.Fatal("No categories!")
 		return
+	}
+
+	for _, i := range cats {
+		if i.Category == "business" && i.Influencers != 2 && i.Reach == 0 {
+			t.Fatal("Unexpected category count!")
+			return
+		}
 	}
 
 	// this decreases the user id counter since the user id didn't increase in the
