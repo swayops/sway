@@ -1898,6 +1898,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 			if inf.RequestedCheck > 0 {
 				tmpGreedy := &GreedyInfluencer{
 					Id:             inf.Id,
+					Name:           inf.Name,
 					Address:        inf.Address,
 					PendingPayout:  inf.PendingPayout,
 					RequestedCheck: inf.RequestedCheck,
