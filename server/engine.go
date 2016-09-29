@@ -124,13 +124,12 @@ func run(srv *Server) error {
 
 func updateInfluencers(s *Server) error {
 	activeCampaigns := s.Campaigns.GetStore()
-	influencers := s.auth.Influencers.GetAll()
 
 	var (
 		oldUpdate int32
 		err       error
 	)
-	for infId, _ := range influencers {
+	for _, infId := range s.auth.Influencers.GetAllIDs() {
 		// Do another get incase the influencer has been updated
 		// and since this iteration could take a while
 		inf, ok := s.auth.Influencers.Get(infId)
@@ -283,8 +282,7 @@ func auditTaxes(srv *Server) error {
 		sigsFound int32
 	)
 
-	influencers := srv.auth.Influencers.GetAll()
-	for infId, _ := range influencers {
+	for _, infId := range srv.auth.Influencers.GetAllIDs() {
 		// Do another get incase the influencer has been updated
 		// and since this iteration could take a while
 		inf, ok := srv.auth.Influencers.Get(infId)

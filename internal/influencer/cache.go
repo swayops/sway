@@ -32,8 +32,18 @@ func (p *Influencers) SetInfluencer(id string, inf *Influencer) {
 func (p *Influencers) GetAll() map[string]*Influencer {
 	store := make(map[string]*Influencer)
 	p.mux.RLock()
-	for cId, cmp := range p.store {
-		store[cId] = cmp
+	for infId, inf := range p.store {
+		store[infId] = inf
+	}
+	p.mux.RUnlock()
+	return store
+}
+
+func (p *Influencers) GetAllIDs() []string {
+	store := make([]string, 0, len(p.store))
+	p.mux.RLock()
+	for infId, _ := range p.store {
+		store = append(store, infId)
 	}
 	p.mux.RUnlock()
 	return store

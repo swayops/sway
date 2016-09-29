@@ -894,7 +894,7 @@ func getCategories(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Returns a map with key as the category
 		// and value as reach
-		var out []*InfCategory
+		out := make([]*InfCategory, 0, len(common.CATEGORIES))
 		for k, _ := range common.CATEGORIES {
 			out = append(out, &InfCategory{Category: k})
 		}
@@ -1602,8 +1602,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		talentXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
 		talentSheets := make(map[string]*misc.Sheet)
 
-		influencers := s.auth.Influencers.GetAll()
-		for infId, _ := range influencers {
+		for _, infId := range srv.auth.Influencers.GetAllIDs() {
 			inf, ok := s.auth.Influencers.Get(infId)
 			if inf == nil || !ok {
 				continue
