@@ -642,6 +642,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 					inf.AgencySpend = total.AgencySpent
 					inf.InfluencerSpend = total.Spent
 				}
+				influencers = append(influencers, inf)
 			}
 		}
 		c.JSON(200, influencers)
@@ -764,7 +765,7 @@ func setGender(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		gender := strings.ToLower(c.Params.ByName("gender"))
 		switch gender {
-		case "m", "f", "mf", "unicorn":
+		case "m", "f", "mf", "fm", "unicorn":
 		default:
 			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
 			return
@@ -780,7 +781,7 @@ func setGender(s *Server) gin.HandlerFunc {
 			return
 		}
 		switch gender {
-		case "mf", "unicorn":
+		case "mf", "fm", "unicorn":
 			inf.Male, inf.Female = true, true
 		case "m":
 			inf.Male, inf.Female = true, false
