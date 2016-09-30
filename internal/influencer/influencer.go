@@ -173,7 +173,6 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 
 	inf.setSwayRep()
 	inf.LastSocialUpdate = int32(time.Now().Unix())
-
 	return inf, nil
 }
 
@@ -275,7 +274,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	return nil
 }
 
-func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]*common.Campaign) (err error) {
+func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]common.Campaign) (err error) {
 	// Update data for all completed deal posts
 	var (
 		ok  bool
