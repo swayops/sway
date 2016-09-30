@@ -64,12 +64,12 @@ func (cmp *Campaign) IsValid() bool {
 
 type Campaigns struct {
 	mux   sync.RWMutex
-	store map[string]*Campaign
+	store map[string]Campaign
 }
 
 func NewCampaigns() *Campaigns {
 	return &Campaigns{
-		store: make(map[string]*Campaign),
+		store: make(map[string]Campaign),
 	}
 }
 
@@ -80,14 +80,14 @@ func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool
 	p.mux.Unlock()
 }
 
-func (p *Campaigns) SetCampaign(id string, cmp *Campaign) {
+func (p *Campaigns) SetCampaign(id string, cmp Campaign) {
 	p.mux.Lock()
 	p.store[id] = cmp
 	p.mux.Unlock()
 }
 
-func (p *Campaigns) GetStore() map[string]*Campaign {
-	store := make(map[string]*Campaign)
+func (p *Campaigns) GetStore() map[string]Campaign {
+	store := make(map[string]Campaign)
 	p.mux.RLock()
 	for cId, cmp := range p.store {
 		store[cId] = cmp
@@ -96,7 +96,7 @@ func (p *Campaigns) GetStore() map[string]*Campaign {
 	return store
 }
 
-func (p *Campaigns) Get(id string) (*Campaign, bool) {
+func (p *Campaigns) Get(id string) (Campaign, bool) {
 	p.mux.RLock()
 	val, ok := p.store[id]
 	p.mux.RUnlock()
@@ -110,9 +110,9 @@ func (p *Campaigns) Len() int {
 	return l
 }
 
-func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) map[string]*Campaign {
+func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) map[string]Campaign {
 	// Returns a list of active campaign IDs in the system
-	campaignList := make(map[string]*Campaign)
+	campaignList := make(map[string]Campaign)
 
 	if err := db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
@@ -125,7 +125,7 @@ func getAllActiveCampaigns(db *bolt.DB, cfg *config.Config, adv, ag map[string]b
 			activeAdv := adv[cmp.AdvertiserId]
 			activeAg := ag[cmp.AgencyId]
 			if cmp.IsValid() && activeAdv && activeAg {
-				campaignList[cmp.Id] = cmp
+				campaignList[cmp.Id] = *cmp
 			}
 
 			return

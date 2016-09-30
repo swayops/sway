@@ -38,7 +38,7 @@ func explore(srv *Server) error {
 	for _, deal := range activeDeals {
 		// Go over all assigned deals in the platform
 		inf, ok := srv.auth.Influencers.Get(deal.InfluencerId)
-		if inf == nil || !ok {
+		if !ok {
 			log.Println("Failed to unmarshal influencer!")
 			continue
 		}
@@ -57,25 +57,25 @@ func explore(srv *Server) error {
 
 		switch deal.AssignedPlatform {
 		case platform.Twitter:
-			if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
+			if tweet := findTwitterMatch(&inf, deal, targetLink); tweet != nil {
 				if err = srv.ApproveTweet(tweet, deal); err != nil {
 					log.Println("Failed to approve tweet", err)
 				}
 			}
 		case platform.Facebook:
-			if post := findFacebookMatch(inf, deal, targetLink); post != nil {
+			if post := findFacebookMatch(&inf, deal, targetLink); post != nil {
 				if err = srv.ApproveFacebook(post, deal); err != nil {
 					log.Println("Failed to approve fb post", err)
 				}
 			}
 		case platform.Instagram:
-			if post := findInstagramMatch(inf, deal, targetLink); post != nil {
+			if post := findInstagramMatch(&inf, deal, targetLink); post != nil {
 				if err = srv.ApproveInstagram(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
 				}
 			}
 		case platform.YouTube:
-			if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
+			if post := findYouTubeMatch(&inf, deal, targetLink); post != nil {
 				if err = srv.ApproveYouTube(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
 				}
@@ -128,7 +128,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		cmp.Deals[d.Id] = d
 
 		inf, ok := srv.auth.Influencers.Get(d.InfluencerId)
-		if inf == nil || !ok {
+		if !ok {
 			log.Println("Error unmarshalling influencer")
 			return ErrUnmarshal
 		}
@@ -149,7 +149,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		inf.ActiveDeals = activeDeals
 
 		// Save the Influencer
-		if err := saveInfluencer(srv, tx, inf); err != nil {
+		if err := saveInfluencer(srv, tx, &inf); err != nil {
 			log.Println("Error saving influencer!", err)
 			return err
 		}

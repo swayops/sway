@@ -21,7 +21,7 @@ import (
 func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
 	// Unssign the deal & update the campaign and influencer buckets
 	inf, ok := s.auth.Influencers.Get(influencerId)
-	if inf == nil || !ok {
+	if !ok {
 		return auth.ErrInvalidUserID
 	}
 
@@ -62,7 +62,7 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Save the Influencer
-		if err = saveInfluencer(s, tx, inf); err != nil {
+		if err = saveInfluencer(s, tx, &inf); err != nil {
 			return
 		}
 
@@ -130,7 +130,7 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 }
 
 func saveInfluencer(s *Server, tx *bolt.Tx, inf *influencer.Influencer) error {
-	if inf == nil || inf.Id == "" {
+	if inf.Id == "" {
 		return auth.ErrInvalidID
 	}
 	u := s.auth.GetUserTx(tx, inf.Id)
@@ -139,7 +139,7 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf *influencer.Influencer) error {
 	}
 
 	// Save in the cache
-	s.auth.Influencers.SetInfluencer(inf.Id, inf)
+	s.auth.Influencers.SetInfluencer(inf.Id, *inf)
 
 	// Save in the DB
 	return u.StoreWithData(s.auth, tx, &auth.Influencer{inf})
@@ -190,7 +190,7 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 
 	// Update the campaign store as well so things don't mess up
 	// until the next cache update!
-	s.Campaigns.SetCampaign(cmp.Id, cmp)
+	s.Campaigns.SetCampaign(cmp.Id, *cmp)
 
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
@@ -374,12 +374,12 @@ func getAdvertisers(s *Server, tx *bolt.Tx) []*auth.Advertiser {
 	return advertisers
 }
 
-func getAllInfluencers(s *Server) []*influencer.Influencer {
-	var influencers []*influencer.Influencer
+func getAllInfluencers(s *Server) []influencer.Influencer {
+	var influencers []influencer.Influencer
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.InfluencerScope, func(u *auth.User) error {
 			if inf := auth.GetInfluencer(u); inf != nil {
-				influencers = append(influencers, inf.Influencer)
+				influencers = append(influencers, *inf.Influencer)
 			}
 			return nil
 		})
@@ -446,7 +446,7 @@ type dealOffer struct {
 
 func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 	campaigns := common.NewCampaigns()
-	campaigns.SetCampaign(cmp.Id, cmp)
+	campaigns.SetCampaign(cmp.Id, *cmp)
 
 	influencerPool := []*dealOffer{}
 	for _, inf := range s.auth.Influencers.GetAll() {
@@ -466,7 +466,7 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 		// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
 		// 	return nil
 		// }
-		influencerPool = append(influencerPool, &dealOffer{inf, deals[0]})
+		influencerPool = append(influencerPool, &dealOffer{&inf, deals[0]})
 
 	}
 

@@ -107,7 +107,7 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 	u.Influencer = &Influencer{rinf}
 
 	// Set value to influencer cache
-	a.Influencers.SetInfluencer(u.ID, rinf)
+	a.Influencers.SetInfluencer(u.ID, *rinf)
 
 	return err
 }
