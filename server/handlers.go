@@ -545,7 +545,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 		cmp.Name = upd.Name
-		log.Println("BUDGETS", cmp.Budget, upd.Budget)
+
 		if cmp.Budget != upd.Budget {
 			// Update their budget!
 			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
