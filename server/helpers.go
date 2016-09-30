@@ -439,19 +439,22 @@ func isSecureAdmin(c *gin.Context, s *Server) bool {
 	}
 }
 
-type dealOffer struct {
-	Influencer *influencer.Influencer
-	Deal       *common.Deal
+type DealOffer struct {
+	Influencer *influencer.Influencer `json:"infs,omitempty"`
+	Deal       *common.Deal           `json:"deals,omitempty"`
 }
 
-func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
+func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer {
 	campaigns := common.NewCampaigns()
 	campaigns.SetCampaign(cmp.Id, *cmp)
-
-	influencerPool := []*dealOffer{}
+	if cmp.Id == "4" {
+		log.Println("ENTERING!")
+	}
+	influencerPool := []*DealOffer{}
 	for _, inf := range s.auth.Influencers.GetAll() {
 		// Only email deals to people who have opted in to email deals
-		if !inf.DealPing {
+		// if pingOnly is true
+		if pingOnly && !inf.DealPing {
 			continue
 		}
 
@@ -466,9 +469,16 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 		// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
 		// 	return nil
 		// }
-		influencerPool = append(influencerPool, &dealOffer{&inf, deals[0]})
-
+		if cmp.Id == "4" {
+			log.Println("INSERTING", cmp.Id, inf.Id)
+		}
+		influencerPool = append(influencerPool, &DealOffer{&inf, deals[0]})
 	}
+	return influencerPool
+}
+
+func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
+	influencerPool := getDealsForCmp(s, cmp, true)
 
 	// Shuffle the pool if it's a normal campaign!
 	for i := range influencerPool {

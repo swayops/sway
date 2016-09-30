@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -484,9 +485,9 @@ func TestDeals(t *testing.T) {
 		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
 		// create a new campaign
 		{"POST", "/campaign", &cmp, 200, nil},
-
 		// sign in as influencer and get deals for the influencer
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
+
 		{"GET", "/getDeals/" + inf.ExpID + "/0/0", nil, 200, `{"campaignId": "2"}`},
 
 		// assign yourself a deal
@@ -1229,8 +1230,24 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
+	var cmpDeals []*DealOffer
+
 	if *genData {
 		goto SKIP_APPROVE_1
+	}
+
+	// lets see if this campaign has any influencers that
+	// could do a deal for them.. should be zero since it's not
+	// approved!
+	r = rst.DoTesting(t, "GET", "/getDealsForCampaign/4", nil, &cmpDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmpDeals) > 0 {
+		t.Fatal("Should be zero eligible deals!")
+		return
 	}
 
 	// approve campaign
@@ -1265,6 +1282,33 @@ func TestPerks(t *testing.T) {
 	}
 
 SKIP_APPROVE_1:
+
+	// Lets make sure there are deals for
+	// this campaign now!
+	var campDeals []*DealOffer
+	r = rst.DoTesting(t, "GET", "/getDealsForCampaign/4", nil, &campDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(campDeals) == 0 {
+		t.Fatal("Expected campaign deals!")
+		return
+	}
+
+	found := false
+	log.Println("EXP", inf.ExpID)
+	for _, offer := range campDeals {
+		log.Println("CONSIDERED", offer.Influencer.Id)
+		if offer.Influencer.Id == inf.ExpID {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("No campaign deal with expected influencer!")
+		return
+	}
 
 	// get deals for influencer
 	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)

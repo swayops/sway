@@ -998,6 +998,18 @@ func getCategories(s *Server) gin.HandlerFunc {
 }
 
 ///////// Deals /////////
+func getDealsForCampaign(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
+			return
+		}
+
+		c.JSON(200, getDealsForCmp(s, cmp, false))
+	}
+}
+
 func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
