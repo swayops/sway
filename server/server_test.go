@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -1298,9 +1297,7 @@ SKIP_APPROVE_1:
 	}
 
 	found := false
-	log.Println("EXP", inf.ExpID)
 	for _, offer := range campDeals {
-		log.Println("CONSIDERED", offer.Influencer.Id)
 		if offer.Influencer.Id == inf.ExpID {
 			found = true
 		}

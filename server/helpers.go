@@ -447,9 +447,7 @@ type DealOffer struct {
 func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer {
 	campaigns := common.NewCampaigns()
 	campaigns.SetCampaign(cmp.Id, *cmp)
-	if cmp.Id == "4" {
-		log.Println("ENTERING!")
-	}
+
 	influencerPool := []*DealOffer{}
 	for _, inf := range s.auth.Influencers.GetAll() {
 		// Only email deals to people who have opted in to email deals
@@ -469,16 +467,9 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 		// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
 		// 	return nil
 		// }
-		if cmp.Id == "4" {
-			log.Println("INSERTING", inf.Id)
-		}
 		influencerPool = append(influencerPool, &DealOffer{inf, deals[0]})
 	}
-	if cmp.Id == "4" {
-		for _, i := range influencerPool {
-			log.Println("IN POOL", i.Influencer.Id)
-		}
-	}
+
 	return influencerPool
 }
 
