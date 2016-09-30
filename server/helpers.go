@@ -62,7 +62,7 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 		}
 
 		// Save the Influencer
-		if err = saveInfluencer(s, tx, &inf); err != nil {
+		if err = saveInfluencer(s, tx, inf); err != nil {
 			return
 		}
 
@@ -129,7 +129,7 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 	return 0, 0
 }
 
-func saveInfluencer(s *Server, tx *bolt.Tx, inf *influencer.Influencer) error {
+func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	if inf.Id == "" {
 		return auth.ErrInvalidID
 	}
@@ -139,10 +139,10 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf *influencer.Influencer) error {
 	}
 
 	// Save in the cache
-	s.auth.Influencers.SetInfluencer(inf.Id, *inf)
+	s.auth.Influencers.SetInfluencer(inf.Id, inf)
 
 	// Save in the DB
-	return u.StoreWithData(s.auth, tx, &auth.Influencer{inf})
+	return u.StoreWithData(s.auth, tx, &auth.Influencer{&inf})
 }
 
 //TODO discuss with Shahzil and handle scopes
@@ -213,7 +213,7 @@ func (s *Server) getTalentAgencyFeeTx(tx *bolt.Tx, id string) float64 {
 	return 0
 }
 
-func saveAllCompletedDeals(s *Server, inf *influencer.Influencer) error {
+func saveAllCompletedDeals(s *Server, inf influencer.Influencer) error {
 	// Saves the deals FROM the influencer TO the campaign!
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
@@ -250,7 +250,7 @@ func saveAllCompletedDeals(s *Server, inf *influencer.Influencer) error {
 	return nil
 }
 
-func saveAllActiveDeals(s *Server, inf *influencer.Influencer) error {
+func saveAllActiveDeals(s *Server, inf influencer.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data
 		if err := saveInfluencer(s, tx, inf); err != nil {
@@ -439,19 +439,20 @@ func isSecureAdmin(c *gin.Context, s *Server) bool {
 	}
 }
 
-type dealOffer struct {
-	Influencer *influencer.Influencer
-	Deal       *common.Deal
+type DealOffer struct {
+	Influencer influencer.Influencer `json:"infs,omitempty"`
+	Deal       *common.Deal          `json:"deals,omitempty"`
 }
 
-func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
+func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer {
 	campaigns := common.NewCampaigns()
 	campaigns.SetCampaign(cmp.Id, *cmp)
 
-	influencerPool := []*dealOffer{}
+	influencerPool := []*DealOffer{}
 	for _, inf := range s.auth.Influencers.GetAll() {
 		// Only email deals to people who have opted in to email deals
-		if !inf.DealPing {
+		// if pingOnly is true
+		if pingOnly && !inf.DealPing {
 			continue
 		}
 
@@ -466,9 +467,14 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 		// if rand.Intn(100) > (25 + len(inf.ActiveDeals) + len(inf.CompleteDeals)) {
 		// 	return nil
 		// }
-		influencerPool = append(influencerPool, &dealOffer{&inf, deals[0]})
-
+		influencerPool = append(influencerPool, &DealOffer{inf, deals[0]})
 	}
+
+	return influencerPool
+}
+
+func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
+	influencerPool := getDealsForCmp(s, cmp, true)
 
 	// Shuffle the pool if it's a normal campaign!
 	for i := range influencerPool {

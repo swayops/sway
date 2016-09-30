@@ -637,7 +637,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 		for _, inf := range s.auth.Influencers.GetAll() {
 			if inf.AgencyId == targetAg {
 				inf.Clean()
-				st := reporting.GetInfluencerBreakdown(&inf, s.Cfg, -1, inf.Rep, inf.CurrentRep, "", inf.AgencyId)
+				st := reporting.GetInfluencerBreakdown(inf, s.Cfg, -1, inf.Rep, inf.CurrentRep, "", inf.AgencyId)
 				total := st["total"]
 				if total != nil {
 					inf.AgencySpend = total.AgencySpent
@@ -691,7 +691,7 @@ func setPlatform(s *Server) gin.HandlerFunc {
 		}
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -721,7 +721,7 @@ func setCategory(s *Server) gin.HandlerFunc {
 		inf.Categories = append(inf.Categories, cat)
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -751,7 +751,7 @@ func setInviteCode(s *Server) gin.HandlerFunc {
 		inf.AgencyId = agencyId
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -790,7 +790,7 @@ func setGender(s *Server) gin.HandlerFunc {
 			inf.Male, inf.Female = false, true
 		}
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -828,7 +828,7 @@ func setReminder(s *Server) gin.HandlerFunc {
 		inf.DealPing = reminder
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -866,7 +866,7 @@ func setBan(s *Server) gin.HandlerFunc {
 		inf.Banned = ban
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -915,7 +915,7 @@ func setAddress(s *Server) gin.HandlerFunc {
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Save the influencer
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -926,7 +926,7 @@ func setAddress(s *Server) gin.HandlerFunc {
 }
 
 type IncompleteInfluencer struct {
-	*influencer.Influencer
+	influencer.Influencer
 	FacebookURL  string `json:"facebookUrl,omitempty"`
 	InstagramURL string `json:"instagramUrl,omitempty"`
 	TwitterURL   string `json:"twitterUrl,omitempty"`
@@ -938,7 +938,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 		var influencers []*IncompleteInfluencer
 		for _, inf := range s.auth.Influencers.GetAll() {
 			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
-				incInf := &IncompleteInfluencer{&inf, "", "", "", ""}
+				incInf := &IncompleteInfluencer{inf, "", "", "", ""}
 				if inf.Twitter != nil {
 					incInf.TwitterURL = "https://twitter.com/" + inf.Twitter.Id
 				}
@@ -998,6 +998,18 @@ func getCategories(s *Server) gin.HandlerFunc {
 }
 
 ///////// Deals /////////
+func getDealsForCampaign(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
+			return
+		}
+
+		c.JSON(200, getDealsForCmp(s, cmp, false))
+	}
+}
+
 func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -1142,7 +1154,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			inf.ActiveDeals = append(inf.ActiveDeals, foundDeal)
 
 			// Save the Influencer
-			if err = saveInfluencer(s, tx, &inf); err != nil {
+			if err = saveInfluencer(s, tx, inf); err != nil {
 				return
 			}
 
@@ -1457,7 +1469,7 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(&inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
+		c.JSON(200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
 	}
 }
 
@@ -1475,7 +1487,7 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(&inf, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
+		c.JSON(200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
 	}
 }
 
@@ -1493,7 +1505,7 @@ func getAgencyInfluencerStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(&inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
+		c.JSON(200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
 	}
 }
 
@@ -2003,7 +2015,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Save the influencer
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -2085,7 +2097,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		if err := saveAllActiveDeals(s, &inf); err != nil {
+		if err := saveAllActiveDeals(s, inf); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
@@ -2150,7 +2162,7 @@ func requestCheck(s *Server) gin.HandlerFunc {
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Save the influencer
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -2296,7 +2308,7 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Save the influencer
-			return saveInfluencer(s, tx, &inf)
+			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -2472,7 +2484,7 @@ func click(s *Server) gin.HandlerFunc {
 
 		// SAVE!
 		// Also saves influencers!
-		if err := saveAllCompletedDeals(s, &inf); err != nil {
+		if err := saveAllCompletedDeals(s, inf); err != nil {
 			c.Redirect(302, foundDeal.Link)
 			return
 		}
