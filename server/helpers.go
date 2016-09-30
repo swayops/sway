@@ -470,9 +470,14 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 		// 	return nil
 		// }
 		if cmp.Id == "4" {
-			log.Println("INSERTING", cmp.Id, inf.Id)
+			log.Println("INSERTING", inf.Id)
 		}
 		influencerPool = append(influencerPool, &DealOffer{&inf, deals[0]})
+	}
+	if cmp.Id == "4" {
+		for _, i := range influencerPool {
+			log.Println("IN POOL", i.Influencer.Id)
+		}
 	}
 	return influencerPool
 }
