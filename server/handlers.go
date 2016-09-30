@@ -554,7 +554,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
-			log.Println("ADDING", added)
+
 			if added > 0 {
 				addDealsToCampaign(&cmp, added)
 			}
