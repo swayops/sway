@@ -57,25 +57,25 @@ func explore(srv *Server) error {
 
 		switch deal.AssignedPlatform {
 		case platform.Twitter:
-			if tweet := findTwitterMatch(&inf, deal, targetLink); tweet != nil {
+			if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
 				if err = srv.ApproveTweet(tweet, deal); err != nil {
 					log.Println("Failed to approve tweet", err)
 				}
 			}
 		case platform.Facebook:
-			if post := findFacebookMatch(&inf, deal, targetLink); post != nil {
+			if post := findFacebookMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveFacebook(post, deal); err != nil {
 					log.Println("Failed to approve fb post", err)
 				}
 			}
 		case platform.Instagram:
-			if post := findInstagramMatch(&inf, deal, targetLink); post != nil {
+			if post := findInstagramMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveInstagram(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
 				}
 			}
 		case platform.YouTube:
-			if post := findYouTubeMatch(&inf, deal, targetLink); post != nil {
+			if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveYouTube(post, deal); err != nil {
 					log.Println("Failed to approve instagram post", err)
 				}
@@ -149,7 +149,7 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		inf.ActiveDeals = activeDeals
 
 		// Save the Influencer
-		if err := saveInfluencer(srv, tx, &inf); err != nil {
+		if err := saveInfluencer(srv, tx, inf); err != nil {
 			log.Println("Error saving influencer!", err)
 			return err
 		}
@@ -219,7 +219,7 @@ func hasReqHash(text string, hashtags []string) bool {
 	return false
 }
 
-func findTwitterMatch(inf *influencer.Influencer, deal *common.Deal, link string) *twitter.Tweet {
+func findTwitterMatch(inf influencer.Influencer, deal *common.Deal, link string) *twitter.Tweet {
 	if inf.Twitter == nil {
 		return nil
 	}
@@ -293,7 +293,7 @@ func findTwitterMatch(inf *influencer.Influencer, deal *common.Deal, link string
 	return nil
 }
 
-func findFacebookMatch(inf *influencer.Influencer, deal *common.Deal, link string) *facebook.Post {
+func findFacebookMatch(inf influencer.Influencer, deal *common.Deal, link string) *facebook.Post {
 	if inf.Facebook == nil {
 		return nil
 	}
@@ -359,7 +359,7 @@ func findFacebookMatch(inf *influencer.Influencer, deal *common.Deal, link strin
 	return nil
 }
 
-func findInstagramMatch(inf *influencer.Influencer, deal *common.Deal, link string) *instagram.Post {
+func findInstagramMatch(inf influencer.Influencer, deal *common.Deal, link string) *instagram.Post {
 	if inf.Instagram == nil {
 		return nil
 	}
@@ -425,7 +425,7 @@ func findInstagramMatch(inf *influencer.Influencer, deal *common.Deal, link stri
 	return nil
 }
 
-func findYouTubeMatch(inf *influencer.Influencer, deal *common.Deal, link string) *youtube.Post {
+func findYouTubeMatch(inf influencer.Influencer, deal *common.Deal, link string) *youtube.Post {
 	if inf.YouTube == nil {
 		return nil
 	}

@@ -161,7 +161,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	return data
 }
 
-func GetInfluencerStats(inf *influencer.Influencer, cfg *config.Config, from, to time.Time, cid, agid string) (*ReportStats, error) {
+func GetInfluencerStats(inf influencer.Influencer, cfg *config.Config, from, to time.Time, cid, agid string) (*ReportStats, error) {
 	stats := &ReportStats{}
 	dates := common.GetDateRange(from, to)
 
@@ -215,7 +215,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 	return tg
 }
 
-func GetInfluencerBreakdown(inf *influencer.Influencer, cfg *config.Config, offset int, rep map[string]float64, currentRep float64, cid, agid string) map[string]*ReportStats {
+func GetInfluencerBreakdown(inf influencer.Influencer, cfg *config.Config, offset int, rep map[string]float64, currentRep float64, cid, agid string) map[string]*ReportStats {
 	// Retrieves influencer totals for the range and influencer stats by day
 	tg := make(map[string]*ReportStats)
 

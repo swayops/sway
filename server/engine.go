@@ -161,7 +161,7 @@ func updateInfluencers(s *Server) error {
 		}
 
 		// Also saves influencers!
-		if err = saveAllCompletedDeals(s, &inf); err != nil {
+		if err = saveAllCompletedDeals(s, inf); err != nil {
 			return err
 		}
 
@@ -256,7 +256,7 @@ func depleteBudget(s *Server) error {
 				// exchangeMarkup = what the exchange fee is for this transaction
 
 				// Save the deal in influencers and campaigns
-				if err := saveAllCompletedDeals(s, &inf); err != nil {
+				if err := saveAllCompletedDeals(s, inf); err != nil {
 					// Insert file informant notification
 					log.Println("Error saving deals!", err, inf.Id)
 				}
@@ -303,7 +303,7 @@ func auditTaxes(srv *Server) error {
 						sigsFound += 1
 					}
 					// Save the influencer since we just updated it's social media data
-					if err := saveInfluencer(srv, tx, &inf); err != nil {
+					if err := saveInfluencer(srv, tx, inf); err != nil {
 						log.Println("Errored saving influencer", err)
 						return err
 					}
@@ -352,7 +352,7 @@ func emailDeals(s *Server) error {
 		if err := s.db.Update(func(tx *bolt.Tx) error {
 			inf.LastEmail = int32(time.Now().Unix())
 			// Save the influencer since we just updated it's social media data
-			if err := saveInfluencer(s, tx, &inf); err != nil {
+			if err := saveInfluencer(s, tx, inf); err != nil {
 				log.Println("Errored saving influencer", err)
 				return err
 			}

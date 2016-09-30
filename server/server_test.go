@@ -1174,7 +1174,7 @@ func TestPerks(t *testing.T) {
 	var cmpLoad common.Campaign
 	r := rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 
