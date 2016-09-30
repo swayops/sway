@@ -1229,15 +1229,10 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	var cmpDeals []*DealOffer
-
-	if *genData {
-		goto SKIP_APPROVE_1
-	}
-
 	// lets see if this campaign has any influencers that
 	// could do a deal for them.. should be zero since it's not
 	// approved!
+	var cmpDeals []*DealOffer
 	r = rst.DoTesting(t, "GET", "/getDealsForCampaign/4", nil, &cmpDeals)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -1247,6 +1242,10 @@ func TestPerks(t *testing.T) {
 	if len(cmpDeals) > 0 {
 		t.Fatal("Should be zero eligible deals!")
 		return
+	}
+
+	if *genData {
+		goto SKIP_APPROVE_1
 	}
 
 	// approve campaign
@@ -1284,20 +1283,19 @@ SKIP_APPROVE_1:
 
 	// Lets make sure there are deals for
 	// this campaign now!
-	var campDeals []*DealOffer
-	r = rst.DoTesting(t, "GET", "/getDealsForCampaign/4", nil, &campDeals)
+	r = rst.DoTesting(t, "GET", "/getDealsForCampaign/4", nil, &cmpDeals)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	if len(campDeals) == 0 {
+	if len(cmpDeals) == 0 {
 		t.Fatal("Expected campaign deals!")
 		return
 	}
 
 	found := false
-	for _, offer := range campDeals {
+	for _, offer := range cmpDeals {
 		if offer.Influencer.Id == inf.ExpID {
 			found = true
 		}
