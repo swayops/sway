@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"log"
 	"time"
 
@@ -80,6 +81,14 @@ func run(srv *Server) error {
 		log.Println("Initiating engine run @", time.Now().String())
 	}
 
+	// Lets confirm that there are budget keys
+	// for the new month before we kick this off.
+	// This is for the case that it's the first
+	// of the month and billing hasnt run yet
+	if !shouldRun(srv) {
+		return nil
+	}
+
 	// Update all influencer stats/completed deal stats
 	// If anything fails to update.. just stop here
 	// This ensures that Deltas aren't accounted for twice
@@ -120,6 +129,24 @@ func run(srv *Server) error {
 	}
 
 	return nil
+}
+
+var ErrStore = errors.New("Empty budget store!")
+
+func shouldRun(s *Server) bool {
+	// Iterate over all active campaigns
+	for _, cmp := range s.Campaigns.GetStore() {
+		// Get this month's store for this campaign
+		// If there's even one that's AVAILABLE
+		// it means billing HAS run so lets
+		// CONTINUE the engine
+		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+		if err == nil && store != nil {
+			return true
+		}
+	}
+	s.Alert("Budget store for this month not available", ErrStore)
+	return false
 }
 
 func updateInfluencers(s *Server) error {
