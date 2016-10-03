@@ -400,9 +400,17 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// Email eligible influencers!
 		if cmp.Perks == nil {
 			if len(cmp.Whitelist) > 0 {
-				go emailList(s, &cmp, common.SliceMap(cmp.Whitelist))
+				go func() {
+					// Wait an hour before emailing
+					time.Sleep(1 * time.Hour)
+					emailList(s, cmp.Id, nil)
+				}()
 			} else {
-				go emailDeal(s, &cmp)
+				go func() {
+					// Wait 2 hours before emailing
+					time.Sleep(2 * time.Hour)
+					emailDeal(s, cmp.Id)
+				}()
 			}
 		}
 
@@ -578,7 +586,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.Whitelist = updatedWl
 		if len(additions) > 0 {
-			go emailList(s, &cmp, additions)
+			go emailList(s, cmp.Id, additions)
 		}
 
 		// Save the Campaign
@@ -2061,9 +2069,17 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 
 		// Email eligible influencers now that perks are approved!
 		if len(cmp.Whitelist) > 0 {
-			go emailList(s, &cmp, common.SliceMap(cmp.Whitelist))
+			go func() {
+				// Wait an hour before emailing
+				time.Sleep(1 * time.Hour)
+				emailList(s, cmp.Id, nil)
+			}()
 		} else {
-			go emailDeal(s, &cmp)
+			go func() {
+				// Wait 2 hours before emailing
+				time.Sleep(2 * time.Hour)
+				emailDeal(s, cmp.Id)
+			}()
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))

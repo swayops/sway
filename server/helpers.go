@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"log"
 	"math"
 	"math/rand"
@@ -473,7 +474,21 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 	return influencerPool
 }
 
-func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
+var ErrWhitelist = errors.New("This campaign has a whitelist!")
+
+func emailDeal(s *Server, cid string) (bool, error) {
+	cmp := common.GetCampaign(cid, s.db, s.Cfg)
+	if cmp == nil {
+		log.Println("Cannot find campaign when emailing deal", cid)
+		return false, ErrCampaign
+	}
+
+	if len(cmp.Whitelist) > 0 {
+		// If this camaign has a whitelist.. use
+		// emailList!
+		return false, ErrWhitelist
+	}
+
 	influencerPool := getDealsForCmp(s, cmp, true)
 
 	// Shuffle the pool if it's a normal campaign!
@@ -486,14 +501,13 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 
 	emailed := 0
 	for _, offer := range influencerPool {
-		if emailed >= 50 && len(cmp.Whitelist) == 0 {
-			// Email no more than 50 UNLESS there's a whitelist!
+		if emailed >= 50 {
 			break
 		}
 
 		err := offer.Influencer.EmailDeal(offer.Deal, s.Cfg)
 		if err != nil {
-			log.Println("Error emailing for new campaign!")
+			log.Println("Error emailing for new campaign!", cid, err, offer.Influencer.EmailAddress)
 			continue
 		}
 
@@ -503,8 +517,21 @@ func emailDeal(s *Server, cmp *common.Campaign) (bool, error) {
 	return true, nil
 }
 
-func emailList(s *Server, cmp *common.Campaign, emails []string) {
-	if len(emails) > 0 {
+func emailList(s *Server, cid string, override []string) {
+	cmp := common.GetCampaign(cid, s.db, s.Cfg)
+	if cmp == nil {
+		log.Println("Cannot find campaign", cid)
+		return
+	}
+
+	var list []string
+	if len(override) > 0 {
+		list = override
+	} else {
+		list = common.SliceMap(cmp.Whitelist)
+	}
+
+	if len(list) > 0 {
 		// NOTE: Emailing generic emails means that there's
 		// a chance people get emails for deals they aren't
 		// eligible for due to cmp filters!
@@ -516,13 +543,21 @@ func emailList(s *Server, cmp *common.Campaign, emails []string) {
 			Company:       cmp.Company,
 		}
 
-		for _, email := range emails {
+		for _, email := range list {
 			// Email everyone in whitelist!
 			inf := &influencer.Influencer{
 				EmailAddress: misc.TrimEmail(email),
 			}
-			inf.EmailDeal(genericDeal, s.Cfg)
+			err := inf.EmailDeal(genericDeal, s.Cfg)
+			if err != nil {
+				log.Println("Error emailing for new campaign WL!", cid, err, inf.EmailAddress)
+				continue
+			}
 		}
+	} else {
+		// This would be hit in the case that the campaign
+		// was taken OFF a whitelist in the time.Sleep of 1 hour
+		// before emailList was hit!
+		emailDeal(s, cmp.Id)
 	}
-
 }
