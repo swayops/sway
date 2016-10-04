@@ -43,7 +43,7 @@ func saveImageToDisk(fileNameBase, data, id string) (string, error) {
 		return "", err
 	}
 
-	if imgCfg.Width < 750 || imgCfg.Height < 685 {
+	if imgCfg.Width < 750 || imgCfg.Height < 389 {
 		return "", ErrSize
 	}
 

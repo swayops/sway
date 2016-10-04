@@ -504,11 +504,11 @@ func delCampaign(s *Server) gin.HandlerFunc {
 type CampaignUpdate struct {
 	Geos       []*geo.GeoRecord `json:"geos,omitempty"`
 	Categories []string         `json:"categories,omitempty"`
-	Status     bool             `json:"status,omitempty"`
-	Budget     float64          `json:"budget,omitempty"`
-	Male       bool             `json:"male,omitempty"`
-	Female     bool             `json:"female,omitempty"`
-	Name       string           `json:"name,omitempty"`
+	Status     *bool            `json:"status,omitempty"`
+	Budget     *float64         `json:"budget,omitempty"`
+	Male       *bool            `json:"male,omitempty"`
+	Female     *bool            `json:"female,omitempty"`
+	Name       *string          `json:"name,omitempty"`
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
 	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
 }
@@ -543,7 +543,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
@@ -569,25 +569,31 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		if !upd.Male && !upd.Female {
+		if upd.Male != nil {
+			cmp.Male = *upd.Male
+		}
+
+		if upd.Female != nil {
+			cmp.Female = *upd.Female
+		}
+
+		if !cmp.Male && !cmp.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
 
-		if upd.Budget == 0 {
-			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
-			return
+		if upd.Name != nil {
+			if *upd.Name == "" {
+				c.JSON(400, misc.StatusErr("Please provide a valid name"))
+				return
+			}
+			cmp.Name = *upd.Name
 		}
-		if upd.Name == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid name"))
-			return
-		}
-		cmp.Name = upd.Name
 
-		if cmp.Budget != upd.Budget {
+		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
 			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, upd.Budget, dspFee, exchangeFee); err != nil {
+			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, *upd.Budget, dspFee, exchangeFee); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -596,12 +602,14 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			if added > 0 {
 				addDealsToCampaign(&cmp, added)
 			}
-			cmp.Budget = upd.Budget
+
+			cmp.Budget = *upd.Budget
 		}
 
-		cmp.Status = upd.Status
+		if upd.Status != nil {
+			cmp.Status = *upd.Status
+		}
 		cmp.Geos = upd.Geos
-		cmp.Male, cmp.Female = upd.Male, upd.Female
 		cmp.Categories = common.LowerSlice(upd.Categories)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)

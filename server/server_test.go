@@ -1718,15 +1718,15 @@ func TestImages(t *testing.T) {
 	}
 
 	// Try uploading a bad image
-	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", smallImage, nil)
+	r = rst.DoTesting(t, "PUT", "/campaign/1", smallImage, nil)
 	if r.Status != 400 {
 		t.Fatal("Bad status code!")
 	}
 
 	// Upload correct image
-	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", goodImage, nil)
+	r = rst.DoTesting(t, "PUT", "/campaign/1", goodImage, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 	}
 
 	// Make sure image url now correct
@@ -2468,7 +2468,10 @@ func TestBilling(t *testing.T) {
 			}
 
 			// For the second last campaign lets increase the budget!
-			upd := &CampaignUpdate{Status: true, Male: true, Female: true, Budget: 5000, Name: "The day wlker"}
+			trueVal := true
+			budgetVal := float64(5000)
+			name := "The day wlker"
+			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {
 				t.Fatal("Bad status code!")
@@ -2508,7 +2511,10 @@ func TestBilling(t *testing.T) {
 		if i == 7 {
 			decreaseCid = cid
 			// For the last campaign lets decrease the budget!
-			upd := &CampaignUpdate{Status: true, Male: true, Female: true, Budget: 10, Name: "The day wlker"}
+			trueVal := true
+			budgetVal := float64(10)
+			name := "The day wlker"
+			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {
 				t.Fatal("Bad status code!")
