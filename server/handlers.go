@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -306,6 +305,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if !strings.HasPrefix(cmp.ImageData, "data:image/") {
+			c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+			return
+		}
+
 		// Lets make sure this is a valid advertiser
 		adv := s.auth.GetAdvertiser(cmp.AdvertiserId)
 		if adv == nil {
@@ -368,18 +372,24 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.CreatedAt = time.Now().Unix()
 
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) { // have to get an id early for saveImage
+			cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign)
+			return
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, filename), ""
+
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
-				return
-			}
-
-			// Set the default image URL for starters to a random default image
-			// OVERWRITTEN when uploadImage called
-			if cmp.ImageURL == "" {
-				cmp.ImageURL = getImageUrl(s, "campaign", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
-			}
-
 			// Create their budget key
 			// NOTE: Create budget key requires cmp.Id be set
 			var spendable float64
@@ -496,6 +506,7 @@ type CampaignUpdate struct {
 	Female     bool             `json:"female,omitempty"`
 	Name       string           `json:"name,omitempty"`
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
+	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -530,6 +541,21 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
 			return
+		}
+
+		if upd.ImageData != "" {
+			if !strings.HasPrefix(upd.ImageData, "data:image/") {
+				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				return
+			}
+
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id)
+			if err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			cmp.ImageURL, upd.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, filename), ""
 		}
 
 		for _, g := range upd.Geos {
@@ -2396,7 +2422,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 		}
 
 		bucket := c.Param("bucket")
-		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, bucket, id)
+		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, id)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return

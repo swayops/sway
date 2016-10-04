@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"io/ioutil"
+	"path/filepath"
 	"strings"
 
 	"image"
@@ -24,7 +25,7 @@ var (
 	ErrInvalidImage = errors.New("Invalid image!")
 )
 
-func saveImageToDisk(fileNameBase, data, bucket, id string) (string, error) {
+func saveImageToDisk(fileNameBase, data, id string) (string, error) {
 	idx := strings.Index(data, ";base64,")
 	if idx < 0 {
 		return "", ErrInvalidImage
@@ -53,5 +54,5 @@ func saveImageToDisk(fileNameBase, data, bucket, id string) (string, error) {
 }
 
 func getImageUrl(s *Server, bucket, filename string) string {
-	return s.Cfg.ServerURL + "/" + s.Cfg.ImageUrlPath + bucket + "/" + filename
+	return s.Cfg.ServerURL + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
 }

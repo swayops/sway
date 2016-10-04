@@ -22,7 +22,8 @@ type Campaign struct {
 	AgencyId     string `json:"agencyId"`
 
 	// Image URL for the campaign
-	ImageURL string `json:"imageUrl"`
+	ImageURL  string `json:"imageUrl"`
+	ImageData string `json:"imageData,omitempty"` // this is input-only and never saved to the db
 
 	Company string `json:"company,omitempty"`
 
