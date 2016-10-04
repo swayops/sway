@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -305,11 +306,6 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if !strings.HasPrefix(cmp.ImageData, "data:image/") {
-			c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
-			return
-		}
-
 		// Lets make sure this is a valid advertiser
 		adv := s.auth.GetAdvertiser(cmp.AdvertiserId)
 		if adv == nil {
@@ -380,13 +376,21 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id)
-		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
-			return
-		}
+		if cmp.ImageData != "" {
+			if !strings.HasPrefix(cmp.ImageData, "data:image/") {
+				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				return
+			}
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id)
+			if err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
 
-		cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, filename), ""
+			cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, filename), ""
+		} else {
+			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
+		}
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
