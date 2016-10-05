@@ -5,6 +5,7 @@
 	"serverURL": "http://localhost:8080",
 	"apiPath": "/api/v1/",
 	"dashboardPath": "../dashboard/",
+	"infAppPath": "../influencerApp/",
 
 	"sandbox": true,
 

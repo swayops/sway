@@ -69,6 +69,7 @@ type Config struct {
 	ServerURL     string `json:"serverURL"` // this is mainly used for internal directs
 	APIPath       string `json:"apiPath"`
 	DashboardPath string `json:"dashboardPath"`
+	InfAppPath    string `json:"infAppPath"`
 
 	GeoLocation string            `json:"geoLoc"`
 	GeoDB       *maxminddb.Reader `json:"geoDb"`

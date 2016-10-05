@@ -56,13 +56,14 @@ func staticGzipServe(dir string) func(c *gin.Context) {
 		gzw.Reset(c.Writer)
 		http.ServeFile(gzipResponseWriter{gzw, c.Writer}, c.Request, fp)
 		gzw.Close()
+		gzw.Reset(nil)
 		gzipWriterPool.Put(gzw)
 	}
 }
 
 func fileExists(fp string) bool {
 	st, err := os.Stat(fp)
-	return err == nil && !st.IsDir()
+	return os.IsExist(err) && !st.IsDir()
 }
 
 // from https://github.com/NYTimes/gziphandler/blob/master/gzip.go
