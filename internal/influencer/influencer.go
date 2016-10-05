@@ -723,14 +723,7 @@ func (inf *Influencer) IsViral(deal *common.Deal, stats *common.Stats) bool {
 }
 
 func isViral(likes int32, avg float64) bool {
-	log.Println("YO", likes, avg, float64(likes)/avg)
-	if likes == 0 {
-		return false
-	}
-
-	if float64(likes)/avg > 2 {
-		// This post made >200% of average likes
-		return true
-	}
-	return false
+	// If this post made >200% of average likes
+	// it's viral
+	return likes > 0 && float64(likes)/avg > 2
 }
