@@ -221,6 +221,10 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	initDashboardRoutes(srv, r)
 	initInfAppRoutes(srv, r)
 
+	staticGzer := staticGzipServe("./images/")
+	r.HEAD("/images/*fp", staticGzer)
+	r.GET("/images/*fp", staticGzer)
+
 	r = r.Group(srv.Cfg.APIPath)
 
 	// Public endpoint
