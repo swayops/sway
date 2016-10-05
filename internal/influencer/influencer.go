@@ -708,3 +708,29 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 	}
 	return nil
 }
+
+func (inf *Influencer) IsViral(deal *common.Deal, stats *common.Stats) bool {
+	if deal.Tweet != nil && inf.Twitter != nil {
+		return isViral(stats.Likes, inf.Twitter.AvgLikes)
+	} else if deal.Facebook != nil && inf.Facebook != nil {
+		return isViral(stats.Likes, inf.Facebook.AvgLikes)
+	} else if deal.Instagram != nil && inf.Instagram != nil {
+		return isViral(stats.Likes, inf.Instagram.AvgLikes)
+	} else if deal.YouTube != nil && inf.YouTube != nil {
+		return isViral(stats.Likes, inf.YouTube.AvgLikes)
+	}
+	return false
+}
+
+func isViral(likes int32, avg float64) bool {
+	log.Println("YO", likes, avg, float64(likes)/avg)
+	if likes == 0 {
+		return false
+	}
+
+	if float64(likes)/avg > 2 {
+		// This post made >200% of average likes
+		return true
+	}
+	return false
+}
