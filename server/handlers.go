@@ -2531,6 +2531,8 @@ type FeedCell struct {
 	Clicks   int32 `json:"clicks,omitempty"`
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
+
+	Viral bool `json:"viral,omitempty"`
 }
 
 func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
@@ -2583,6 +2585,13 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 								d.Published = deal.YouTube.Published
 								d.Views = int32(deal.YouTube.Views)
 							}
+
+							// Check for virality
+							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+							if ok {
+								d.Viral = inf.IsViral(deal, total)
+							}
+
 							feed = append(feed, d)
 						}
 					}
