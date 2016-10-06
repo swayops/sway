@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var client http.Client
+
 func Request(method, endpoint, reqData string, respData interface{}) error {
 	endpoint = strings.Replace(endpoint, " ", "%20", -1)
-
-	client := &http.Client{}
 
 	var r *http.Request
 	if reqData == "" {
