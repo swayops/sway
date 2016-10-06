@@ -40,7 +40,6 @@ type Twitter struct {
 	LastTweetId  string         `json:"lastTw,omitempty"`      // the id of the last tweet
 	LatestTweets Tweets         `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
 	LastUpdated  int32          `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float64        `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
 }
@@ -100,7 +99,6 @@ func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
 		tw.LatestTweets = nil
 	}
 	tw.LastTweetId = tws.LastId()
-	tw.Score = tw.GetScore()
 	tw.LastLocation = tws.LatestLocation()
 
 	tw.LastUpdated = int32(time.Now().Unix())

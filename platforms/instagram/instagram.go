@@ -29,8 +29,6 @@ type Instagram struct {
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
 	LinkInBio string `json:"link,omitempty"`
-
-	Score float64
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
@@ -93,7 +91,6 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 		return err
 	}
 
-	in.Score = in.GetScore()
 	in.LastUpdated = int32(time.Now().Unix())
 	return nil
 }

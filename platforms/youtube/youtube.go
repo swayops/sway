@@ -22,8 +22,6 @@ type YouTube struct {
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
-
-	Score float64 `json:"score,omitempty"`
 }
 
 var (
