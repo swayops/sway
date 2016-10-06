@@ -1,6 +1,7 @@
 package youtube
 
 import (
+	"errors"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -21,9 +22,11 @@ type YouTube struct {
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
-
-	Score float64 `json:"score,omitempty"`
 }
+
+var (
+	ErrEligible = errors.New("Youtube account is not eligible!")
+)
 
 func New(name string, cfg *config.Config) (*YouTube, error) {
 	userId, err := getUserIdFromName(name, cfg)
@@ -37,7 +40,15 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 	}
 
 	err = yt.UpdateData(cfg, cfg.Sandbox)
-	return yt, err
+	if err != nil {
+		return nil, err
+	}
+
+	if len(yt.LatestPosts) == 0 || yt.Subscribers == 0 {
+		return nil, ErrEligible
+	}
+
+	return yt, nil
 }
 
 func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {

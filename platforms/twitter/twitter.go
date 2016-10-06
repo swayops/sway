@@ -1,6 +1,7 @@
 package twitter
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -24,6 +25,7 @@ var (
 		AuthorizeTokenUrl: "https://api.twitter.com/oauth/authorize",
 		AccessTokenUrl:    "https://api.twitter.com/oauth/access_token",
 	}
+	ErrEligible = errors.New("Twitter account is not eligible!")
 )
 
 type Twitter struct {
@@ -38,7 +40,6 @@ type Twitter struct {
 	LastTweetId  string         `json:"lastTw,omitempty"`      // the id of the last tweet
 	LatestTweets Tweets         `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
 	LastUpdated  int32          `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
-	Score        float64        `json:"score,omitempty"`
 
 	client *http.Client `json:"client,omitempty"`
 }
@@ -50,10 +51,19 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 
 	tw = &Twitter{Id: id}
 	if tw.client, err = getClient(cfg); err != nil {
-		return
+		return nil, err
 	}
+
 	err = tw.UpdateData(cfg, cfg.Sandbox)
-	return
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tw.LatestTweets) == 0 || tw.Followers == 0 {
+		return nil, ErrEligible
+	}
+
+	return tw, nil
 }
 
 func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
@@ -89,7 +99,6 @@ func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
 		tw.LatestTweets = nil
 	}
 	tw.LastTweetId = tws.LastId()
-	tw.Score = tw.GetScore()
 	tw.LastLocation = tws.LatestLocation()
 
 	tw.LastUpdated = int32(time.Now().Unix())
