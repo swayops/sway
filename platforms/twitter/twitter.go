@@ -1,6 +1,7 @@
 package twitter
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -24,6 +25,7 @@ var (
 		AuthorizeTokenUrl: "https://api.twitter.com/oauth/authorize",
 		AccessTokenUrl:    "https://api.twitter.com/oauth/access_token",
 	}
+	ErrEligible = errors.New("Twitter account is not eligible!")
 )
 
 type Twitter struct {
@@ -50,10 +52,19 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 
 	tw = &Twitter{Id: id}
 	if tw.client, err = getClient(cfg); err != nil {
-		return
+		return nil, err
 	}
+
 	err = tw.UpdateData(cfg, cfg.Sandbox)
-	return
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tw.LatestTweets) == 0 || tw.Followers == 0 {
+		return nil, ErrEligible
+	}
+
+	return tw, nil
 }
 
 func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {

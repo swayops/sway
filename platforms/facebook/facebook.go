@@ -1,10 +1,15 @@
 package facebook
 
 import (
+	"errors"
 	"time"
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/misc"
+)
+
+var (
+	ErrEligible = errors.New("Facebook account is not eligible!")
 )
 
 type Facebook struct {
@@ -26,7 +31,15 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 		Id: id,
 	}
 	err := fb.UpdateData(cfg, cfg.Sandbox)
-	return fb, err
+	if err != nil {
+		return nil, err
+	}
+
+	if fb.Followers == 0 || len(fb.LatestPosts) == 0 {
+		return nil, ErrEligible
+
+	}
+	return fb, nil
 }
 
 func (fb *Facebook) UpdateData(cfg *config.Config, savePosts bool) error {

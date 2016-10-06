@@ -1,6 +1,7 @@
 package instagram
 
 import (
+	"errors"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -10,6 +11,9 @@ import (
 
 // AUTH:
 // https://api.instagram.com/oauth/authorize/?client_id={{CLIENT_ID}}&redirect_uri=http://lol:8080&response_type=token&scope=basic+public_content
+var (
+	ErrEligible = errors.New("Instagram account is not eligible!")
+)
 
 type Instagram struct {
 	UserName      string  `json:"userName"`
@@ -41,7 +45,15 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 	}
 
 	err = in.UpdateData(cfg, cfg.Sandbox)
-	return in, err
+	if err != nil {
+		return nil, err
+	}
+
+	if in.Followers == 0 || len(in.LatestPosts) == 0 {
+		return nil, ErrEligible
+	}
+
+	return in, nil
 }
 
 func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
