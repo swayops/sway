@@ -301,7 +301,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if cmp.Budget <= 0 {
+		if cmp.Budget <= 150 {
 			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
 			return
 		}
