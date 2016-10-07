@@ -78,3 +78,7 @@ func (pt *Post) Hashtags() []string {
 	}
 	return tags
 }
+
+func (pt *Post) Clear() {
+	pt.LikesDelta, pt.CommentsDelta = 0, 0
+}
