@@ -183,10 +183,6 @@ func initDashboardRoutes(srv *Server, r gin.IRouter) {
 		c.File(serve)
 		c.Abort()
 	})
-
-	staticGzer := staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
-	r.HEAD("/static/*fp", staticGzer)
-	r.GET("/static/*fp", staticGzer)
 }
 
 func initInfAppRoutes(srv *Server, r gin.IRouter) {
@@ -211,19 +207,23 @@ func initInfAppRoutes(srv *Server, r gin.IRouter) {
 		c.File(serve)
 		c.Abort()
 	})
-
-	staticGzer := staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
-	r.HEAD("/infApp/static/*fp", staticGzer)
-	r.GET("/infApp/static/*fp", staticGzer)
 }
 
 func (srv *Server) initializeRoutes(r gin.IRouter) {
-	initDashboardRoutes(srv, r)
-	initInfAppRoutes(srv, r)
-
 	staticGzer := staticGzipServe("./images/")
 	r.HEAD("/images/*fp", staticGzer)
 	r.GET("/images/*fp", staticGzer)
+
+	staticGzer = staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
+	r.HEAD("/infApp/static/*fp", staticGzer)
+	r.GET("/infApp/static/*fp", staticGzer)
+
+	staticGzer = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+	r.HEAD("/static/*fp", staticGzer)
+	r.GET("/static/*fp", staticGzer)
+
+	initDashboardRoutes(srv, r)
+	initInfAppRoutes(srv, r)
 
 	r = r.Group(srv.Cfg.APIPath)
 
