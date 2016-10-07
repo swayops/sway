@@ -108,3 +108,7 @@ func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 
 	return nil, nil
 }
+
+func (pt *Post) Clear() {
+	pt.LikesDelta, pt.CommentsDelta = 0, 0
+}

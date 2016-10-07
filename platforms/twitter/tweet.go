@@ -147,6 +147,10 @@ func (t *Tweet) Urls() (out []string) {
 	return
 }
 
+func (t *Tweet) Clear() {
+	t.RetweetsDelta, t.FavoritesDelta = 0, 0
+}
+
 func (t *Tweet) UpdateData(cfg *config.Config) (ban, err error) {
 	// // If the post is more than 4 days old AND
 	// // it has been updated in the last week, SKIP!

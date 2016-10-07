@@ -296,6 +296,9 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
 
+	// Clear out deltas since they've been used now!
+	deal.ClearDeltas()
+
 	return store, spentDelta, m
 }
 

@@ -301,7 +301,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if cmp.Budget <= 0 {
+		if cmp.Budget < 150 {
 			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
 			return
 		}
@@ -2562,6 +2562,9 @@ type FeedCell struct {
 	URL          string `json:"url,omitempty"`
 	Caption      string `json:"caption,omitempty"`
 
+	CampaignID   string `json:"campaignID,omitempty"`
+	CampaignName string `json:"campaignName,omitempty"`
+
 	Published int32 `json:"published,omitempty"`
 
 	Views    int32 `json:"views,omitempty"`
@@ -2594,6 +2597,8 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 					for _, deal := range cmp.Deals {
 						if deal.Completed > 0 {
 							d := &FeedCell{
+								CampaignID:   cmp.Id,
+								CampaignName: cmp.Name,
 								Username:     deal.InfluencerName,
 								URL:          deal.PostUrl,
 								InfluencerID: deal.InfluencerId,
