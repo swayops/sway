@@ -245,9 +245,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.POST("/forgotPassword", srv.auth.ReqResetHandler)
 	r.POST("/resetPassword", srv.auth.ResetHandler)
 
-	verifyGroup.GET("/user", func(c *gin.Context) {
-		c.JSON(200, auth.GetCtxUser(c).Trim())
-	})
+	verifyGroup.GET("/user", userProfile(srv))
 
 	verifyGroup.GET("/user/:id", userProfile(srv))
 

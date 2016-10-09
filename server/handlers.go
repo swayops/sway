@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -2379,27 +2380,63 @@ func userProfile(srv *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cu := auth.GetCtxUser(c)
 		id := c.Param("id")
+
+		if id == "" {
+			goto SKIP
+		}
+
 		switch {
 		case cu.Admin:
 		case cu.AdAgency != nil:
 			checkAdAgency(c)
 		case cu.TalentAgency != nil:
 			checkTalentAgency(c)
-		case cu.ID == id:
-			c.JSON(200, cu.Trim())
-			return
 		default:
 			misc.AbortWithErr(c, http.StatusUnauthorized, auth.ErrUnauthorized)
 		}
 		if c.IsAborted() {
 			return
 		}
-		if cu = srv.auth.GetUser(id); cu != nil {
-			c.JSON(200, cu.Trim())
-		} else {
+
+		if cu = srv.auth.GetUser(id); cu == nil {
 			misc.AbortWithErr(c, http.StatusNotFound, auth.ErrInvalidUserID)
 		}
 
+	SKIP:
+		cu = cu.Trim()
+
+		if cu.Advertiser == nil { // return the user if it isn't an advertiser
+			c.JSON(200, cu)
+			return
+		}
+
+		var advWithCampaigns struct {
+			*auth.User
+			HasCampaigns bool `json:"hasCmps"`
+		}
+
+		advWithCampaigns.User = cu
+
+		srv.db.View(func(tx *bolt.Tx) error {
+			return tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp struct {
+					AdvertiserId string `json:"advertiserId"`
+				}
+				if json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				// if the campaign's adv id is the same as this user it means he has at least one cmp
+				// set the flag and break the foreach early
+				if cmp.AdvertiserId == cu.ID {
+					advWithCampaigns.HasCampaigns = true
+					return io.EOF
+				}
+				return
+			})
+		})
+
+		c.JSON(200, &advWithCampaigns)
 	}
 }
 
