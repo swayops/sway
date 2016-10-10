@@ -89,15 +89,19 @@ func setHighLevelSheet(xf misc.Sheeter, cmp *common.Campaign, from, to time.Time
 			channels += ", YouTube"
 		}
 	}
+
 	sheet.AddRow("Channels", channels)
-	sheet.AddRow("Total Influencers", tot.Influencers)
-	sheet.AddRow("Total Engagements Generated", tot.Engagements)
-	sheet.AddRow("Total Est Views", tot.Views)
-	sheet.AddRow("Total Clicks", tot.Clicks)
 
-	sheet.AddRow("")
+	if tot != nil {
+		sheet.AddRow("Total Influencers", tot.Influencers)
+		sheet.AddRow("Total Engagements Generated", tot.Engagements)
+		sheet.AddRow("Total Est Views", tot.Views)
+		sheet.AddRow("Total Clicks", tot.Clicks)
 
-	sheet.AddRow("Total spent", fmt.Sprintf("$%0.2f", tot.Spent))
+		sheet.AddRow("")
+
+		sheet.AddRow("Total spent", fmt.Sprintf("$%0.2f", tot.Spent))
+	}
 }
 
 func setChannelLevelSheet(xf misc.Sheeter, from, to time.Time, channel map[string]*ReportStats) {
