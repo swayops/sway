@@ -496,6 +496,8 @@ func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
 func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
+	// NOTE: The campaigns being passed only has campaigns with active
+	// advertisers and agencies
 	var (
 		infDeals []*common.Deal
 	)
