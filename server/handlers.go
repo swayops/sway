@@ -33,30 +33,7 @@ import (
 ///////// Talent Agencies ///////////
 func putTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			ag   auth.TalentAgency
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
-
-		if err := c.BindJSON(&ag); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.StoreWithData(s.auth, tx, &ag)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-		c.JSON(200, misc.StatusOK(id))
+		saveUserHelper(s, c, "talentAgency")
 	}
 }
 
@@ -109,29 +86,7 @@ func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 ///////// Ad Agencies /////////
 func putAdAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			ag   auth.AdAgency
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
-
-		if err := c.BindJSON(&ag); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.StoreWithData(s.auth, tx, &ag)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-		}
-		c.JSON(200, misc.StatusOK(id))
+		saveUserHelper(s, c, "adAgency")
 	}
 }
 
@@ -184,35 +139,8 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 ///////// Advertisers /////////
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			adv  auth.User
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
+		saveUserHelper(s, c, "advertiser")
 
-		if err := c.BindJSON(&adv); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if adv.Advertiser == nil {
-			misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.Update(&adv).StoreWithData(s.auth, tx, adv.Advertiser)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-		}
-
-		c.JSON(200, misc.StatusOK(id))
 	}
 }
 

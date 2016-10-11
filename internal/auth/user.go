@@ -40,6 +40,7 @@ type User struct {
 	Email     string `json:"email,omitempty"`
 	Phone     string `json:"phone,omitempty"`
 	Address   string `json:"address,omitempty"`
+	ImageURL  string `json:"imageUrl,omitempty"`
 	Status    bool   `json:"status,omitempty"`
 	CreatedAt int64  `json:"createdAt,omitempty"`
 	UpdatedAt int64  `json:"updatedAt,omitempty"`
@@ -83,6 +84,9 @@ func (u *User) Update(o *User) *User {
 	}
 	if o.Address != "" {
 		u.Address = o.Address
+	}
+	if o.ImageURL != "" {
+		u.ImageURL = o.ImageURL
 	}
 	u.Status = o.Status
 	u.UpdatedAt = time.Now().Unix()

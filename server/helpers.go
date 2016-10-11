@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -560,4 +561,69 @@ func emailList(s *Server, cid string, override []string) {
 		// before emailList was hit!
 		emailDeal(s, cmp.Id)
 	}
+}
+
+// saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
+func saveUserImage(s *Server, u *auth.User) error {
+	if !strings.HasPrefix(u.ImageURL, "data:image/") {
+		return nil
+	}
+
+	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID)
+	if err != nil {
+		return err
+	}
+
+	u.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
+
+	return nil
+}
+
+func saveUserHelper(s *Server, c *gin.Context, userType string) {
+	var (
+		incUser auth.User
+		user    = auth.GetCtxUser(c)
+		id      = c.Param("id")
+		su      auth.SpecUser
+	)
+
+	if err := c.BindJSON(&incUser); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
+	switch userType {
+	case "advertiser":
+		su = incUser.Advertiser
+	case "adAgency":
+		su = incUser.AdAgency
+	case "talentAgency":
+		su = incUser.TalentAgency
+	case "inf":
+		su = incUser.InfluencerLoad
+	}
+
+	if su == nil {
+		misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
+		return
+	}
+
+	if err := saveUserImage(s, &incUser); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		if id != user.ID {
+			user = s.auth.GetUserTx(tx, id)
+		}
+		if user == nil {
+			return auth.ErrInvalidID
+		}
+		return user.Update(&incUser).StoreWithData(s.auth, tx, su)
+	}); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+	c.JSON(200, misc.StatusOK(id))
 }
