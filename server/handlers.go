@@ -136,6 +136,13 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 	}
 }
 
+func putAdmin(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		saveUserHelper(s, c, "admin")
+
+	}
+}
+
 ///////// Advertisers /////////
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {

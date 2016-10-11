@@ -249,6 +249,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	verifyGroup.GET("/user/:id", userProfile(srv))
 
+	adminGroup.PUT("/admin", putAdmin(srv)) // save profile for admin
+
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
 		nil, putTalentAgency, nil)

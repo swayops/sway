@@ -601,9 +601,11 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		su = incUser.TalentAgency
 	case "inf":
 		su = incUser.InfluencerLoad
+	case "admin":
+
 	}
 
-	if su == nil {
+	if su == nil && userType != "admin" {
 		misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
 		return
 	}
@@ -619,6 +621,9 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		}
 		if user == nil {
 			return auth.ErrInvalidID
+		}
+		if su == nil { // admin
+			user.Update(&incUser).Store(s.auth, tx)
 		}
 		return user.Update(&incUser).StoreWithData(s.auth, tx, su)
 	}); err != nil {
