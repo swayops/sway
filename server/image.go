@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -31,6 +32,8 @@ func saveImageToDisk(fileNameBase, data, id string, minWidth, minHeight int) (st
 		return "", ErrInvalidImage
 	}
 
+	os.MkdirAll(filepath.Dir(fileNameBase), 0755)
+
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(data[idx+8:]))
 	buff := bytes.Buffer{}
 	_, err := buff.ReadFrom(reader)
@@ -48,7 +51,7 @@ func saveImageToDisk(fileNameBase, data, id string, minWidth, minHeight int) (st
 	}
 
 	fileName := fileNameBase + "." + fm
-	ioutil.WriteFile(fileName, buff.Bytes(), 0644)
+	err = ioutil.WriteFile(fileName, buff.Bytes(), 0644)
 
 	return id + "." + fm, err
 }
