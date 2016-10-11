@@ -623,7 +623,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			return auth.ErrInvalidID
 		}
 		if su == nil { // admin
-			user.Update(&incUser).Store(s.auth, tx)
+			return user.Update(&incUser).Store(s.auth, tx)
 		}
 		return user.Update(&incUser).StoreWithData(s.auth, tx, su)
 	}); err != nil {
