@@ -2598,7 +2598,7 @@ func TestBilling(t *testing.T) {
 
 		if cid == decreaseCid {
 			// This is the campaign that was decreased!
-			if newStore.Budget != 10 {
+			if newStore.Budget != 150 {
 				t.Fatal("Store does not have updated budget!")
 			}
 		}
