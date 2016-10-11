@@ -144,7 +144,7 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	s.auth.Influencers.SetInfluencer(inf.Id, inf)
 
 	// Save in the DB
-	return u.StoreWithData(s.auth, tx, &auth.Influencer{&inf})
+	return u.StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
 }
 
 //TODO discuss with Shahzil and handle scopes
@@ -569,7 +569,7 @@ func saveUserImage(s *Server, u *auth.User) error {
 		return nil
 	}
 
-	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID)
+	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, 300, 300)
 	if err != nil {
 		return err
 	}

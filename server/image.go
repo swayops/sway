@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -21,11 +22,10 @@ type UploadImage struct {
 
 var (
 	ErrBucket       = errors.New("Invalid bucket!")
-	ErrSize         = errors.New("Invalid size!")
 	ErrInvalidImage = errors.New("Invalid image!")
 )
 
-func saveImageToDisk(fileNameBase, data, id string) (string, error) {
+func saveImageToDisk(fileNameBase, data, id string, minWidth, minHeight int) (string, error) {
 	idx := strings.Index(data, ";base64,")
 	if idx < 0 {
 		return "", ErrInvalidImage
@@ -43,8 +43,8 @@ func saveImageToDisk(fileNameBase, data, id string) (string, error) {
 		return "", err
 	}
 
-	if imgCfg.Width < 750 || imgCfg.Height < 389 {
-		return "", ErrSize
+	if imgCfg.Width < minWidth || imgCfg.Height < minHeight {
+		return "", fmt.Errorf("Invalid size, min size is %dx%d!", minWidth, minHeight)
 	}
 
 	fileName := fileNameBase + "." + fm

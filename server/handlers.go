@@ -310,7 +310,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
 				return
 			}
-			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id)
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, 750, 389)
 			if err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
@@ -482,7 +482,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id)
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id, 750, 389)
 			if err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
@@ -2399,7 +2399,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 		}
 
 		bucket := c.Param("bucket")
-		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, id)
+		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, id, 750, 389)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return
