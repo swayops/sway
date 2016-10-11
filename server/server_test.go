@@ -376,7 +376,7 @@ func TestCampaigns(t *testing.T) {
 	}
 	cmp := common.Campaign{
 		AdvertiserId: adv.ExpID,
-		Budget:       10.5,
+		Budget:       150,
 		Name:         "The Day Walker",
 		Instagram:    true,
 		Male:         true,
@@ -384,8 +384,8 @@ func TestCampaigns(t *testing.T) {
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 	}
-	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
-	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate1 := `{"name":"Blade V","budget":150,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":150,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
 	badAdvId := cmp
 	badAdvId.AdvertiserId = "1"
 
@@ -1130,7 +1130,7 @@ func TestPerks(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       100.5,
+		Budget:       150.5,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Male:         true,
@@ -1603,7 +1603,7 @@ func TestInfluencerEmail(t *testing.T) {
 		cmp := common.Campaign{
 			Status:       true,
 			AdvertiserId: adv.ExpID,
-			Budget:       float64(i * 10),
+			Budget:       float64(i + 150),
 			Name:         "The Day Walker " + strconv.Itoa(i),
 			Twitter:      true,
 			Male:         true,
@@ -1614,7 +1614,7 @@ func TestInfluencerEmail(t *testing.T) {
 		}
 		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 		if r.Status != 200 {
-			t.Fatal("Bad status code!")
+			t.Fatalf("Bad status code: %s", r.Value)
 		}
 	}
 
@@ -1674,7 +1674,7 @@ func TestImages(t *testing.T) {
 
 	cmp := common.Campaign{
 		AdvertiserId: adv.ExpID,
-		Budget:       10.5,
+		Budget:       150.5,
 		Name:         "The Day Walker",
 		Instagram:    true,
 		Male:         true,
@@ -1685,7 +1685,7 @@ func TestImages(t *testing.T) {
 
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatalf("Bad status code: %s", r.Value)
 	}
 
 	// Make sure the default image url was set
@@ -1720,7 +1720,7 @@ func TestImages(t *testing.T) {
 	// Try uploading a bad image
 	r = rst.DoTesting(t, "PUT", "/campaign/1", smallImage, nil)
 	if r.Status != 400 {
-		t.Fatal("Bad status code!")
+		t.Fatalf("Bad status code: %s", r.Value)
 	}
 
 	// Upload correct image
@@ -1844,7 +1844,7 @@ func TestInfluencerGeo(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       100,
+		Budget:       150,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Male:         true,
@@ -1916,7 +1916,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
-	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":150,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateGood, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -2512,7 +2512,7 @@ func TestBilling(t *testing.T) {
 			decreaseCid = cid
 			// For the last campaign lets decrease the budget!
 			trueVal := true
-			budgetVal := float64(10)
+			budgetVal := float64(150)
 			name := "The day wlker"
 			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
@@ -2527,7 +2527,7 @@ func TestBilling(t *testing.T) {
 				t.Fatal("Bad status code!")
 			}
 
-			if load.Budget != 10 {
+			if load.Budget != 150 {
 				t.Fatal("Campaign budget did not decrease!")
 			}
 		}
