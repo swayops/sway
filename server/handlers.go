@@ -2289,6 +2289,7 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 
 		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, isAmerican, s.Cfg.Sandbox)
 		if err != nil {
+			s.Alert("Hellosign signature request failed for "+inf.Id, err)
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}

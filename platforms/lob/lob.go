@@ -65,12 +65,6 @@ func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config
 	form.Add("to[address_country]", addr.Country)
 
 	form.Add("from", fromAddr)
-	// form.Add("from[name]", "Shahzil Abid")
-	// form.Add("from[address_line1]", "123 Test Street")
-	// form.Add("from[address_city]", "Mountain View")
-	// form.Add("from[address_state]", "CA")
-	// form.Add("from[address_zip]", "94041")
-	// form.Add("from[address_country]", "US")
 
 	form.Add("bank_account", bankAcct)
 	form.Add("amount", strconv.FormatFloat(payout, 'f', 6, 64))
