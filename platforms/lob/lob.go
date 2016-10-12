@@ -3,10 +3,14 @@ package lob
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/swayops/sway/config"
 )
 
 const (
@@ -44,13 +48,13 @@ type Track struct {
 	Id string `json:"id"`
 }
 
-func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (*Check, error) {
+func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config.Config) (*Check, error) {
 	if addr == nil || addr.AddressOne == "" {
 		return nil, ErrAddr
 	}
 
 	form := url.Values{}
-	form.Add("description", "Influencer Payout Check")
+	form.Add("description", fmt.Sprintf("Influencer (%s) Payout", id))
 
 	form.Add("to[name]", name)
 	form.Add("to[address_line1]", addr.AddressOne)
@@ -71,14 +75,17 @@ func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (
 	form.Add("bank_account", bankAcct)
 	form.Add("amount", strconv.FormatFloat(payout, 'f', 6, 64))
 
-	form.Add("logo", "http://s33.postimg.org/jidpxyzwv/test.png")
+	if !cfg.Sandbox {
+		form.Add("logo", cfg.ServerURL+"/"+filepath.Join(cfg.ImageUrlPath, "sway_logo.png"))
+	}
+
 	form.Add("check_bottom", "<h1 style='padding-top:4in;'>Sway Influencer Check</h1>")
 
 	req, err := http.NewRequest("POST", lobEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
 	}
-	if sandbox {
+	if cfg.Sandbox {
 		req.SetBasicAuth(lobTestAuth, "")
 	} else {
 		req.SetBasicAuth(lobProdAuth, "")
