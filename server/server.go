@@ -222,8 +222,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.HEAD("/static/*fp", staticGzer)
 	r.GET("/static/*fp", staticGzer)
 
-	initDashboardRoutes(srv, r)
 	initInfAppRoutes(srv, r)
+	initDashboardRoutes(srv, r)
 
 	r = r.Group(srv.Cfg.APIPath)
 
