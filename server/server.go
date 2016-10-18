@@ -193,9 +193,9 @@ func initInfAppRoutes(srv *Server, r gin.IRouter) {
 		if !strings.HasPrefix(p, "infApp") {
 			return
 		}
-		p = p[7:] // strip infApp/
-		if idx := strings.Index(p, "/"); idx > -1 {
-			p = p[:idx]
+		parts := strings.Split(p, "/")
+		if len(parts) > 0 {
+			p = parts[0]
 		}
 		serve := idxFile
 		switch p {
