@@ -145,7 +145,7 @@ func shouldRun(s *Server) bool {
 			return true
 		}
 	}
-	s.Alert("Budget store for this month not available", ErrStore)
+	s.Alert("Budget store for this month not available.. Run billing!", ErrStore)
 	return false
 }
 
