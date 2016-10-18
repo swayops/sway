@@ -493,7 +493,7 @@ func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
 	return nil
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -510,7 +510,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		location = inf.GetLatestGeo()
 	}
 
-	for _, cmp := range campaigns.GetStore() {
+	var store map[string]common.Campaign
+	if forcedCampaign != "" {
+		store = campaigns.GetCampaignAsStore(forcedCampaign)
+	} else {
+		store = campaigns.GetStore()
+	}
+
+	for _, cmp := range store {
 		targetDeal := &common.Deal{}
 		dealFound := false
 		if !cmp.IsValid() {
@@ -658,7 +665,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 	if misc.WithinLast(inf.LastEmail, 24*7) {
 		return false, nil
 	}
-	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", nil, false, cfg)
+	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, false, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}

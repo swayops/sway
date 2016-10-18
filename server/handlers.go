@@ -1011,7 +1011,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "",
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "", "",
 			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
 		c.JSON(200, deals)
 	}
@@ -1020,8 +1020,9 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 func getDeal(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			dealId = c.Param("dealId")
-			infId  = c.Param("influencerId")
+			campaignId = c.Param("campaignId")
+			dealId     = c.Param("dealId")
+			infId      = c.Param("influencerId")
 		)
 
 		if len(infId) == 0 {
@@ -1034,13 +1035,18 @@ func getDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if len(campaignId) == 0 {
+			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			return
+		}
+
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, false, s.Cfg)
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, false, s.Cfg)
 		if len(deals) != 1 {
 			c.JSON(500, misc.StatusErr("Deal no longer available"))
 			return
@@ -1083,7 +1089,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			dealId = ""
 			dbg = true
 		}
-		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, true, s.Cfg)
+		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, true, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				if dbg || deal.Id == dealId {

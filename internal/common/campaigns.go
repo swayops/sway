@@ -87,6 +87,21 @@ func (p *Campaigns) SetCampaign(id string, cmp Campaign) {
 	p.mux.Unlock()
 }
 
+func (p *Campaigns) GetCampaignAsStore(cid string) map[string]Campaign {
+	// Override used when you want just one campaign as a store
+	// Made for influencer.GetAvailableDeals
+	store := make(map[string]Campaign)
+
+	p.mux.RLock()
+	val, ok := p.store[cid]
+	if ok {
+		store[cid] = val
+	}
+	p.mux.RUnlock()
+
+	return store
+}
+
 func (p *Campaigns) GetStore() map[string]Campaign {
 	store := make(map[string]Campaign)
 	p.mux.RLock()

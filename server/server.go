@@ -294,7 +294,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	infScope := srv.auth.CheckScopes(scopes["inf"])
 	infOwnership := srv.auth.CheckOwnership(auth.InfluencerItem, "influencerId")
 	verifyGroup.GET("/getDeals/:influencerId/:lat/:long", infScope, infOwnership, getDealsForInfluencer(srv))
-	verifyGroup.GET("/getDeal/:influencerId/:dealId", infScope, infOwnership, getDeal(srv))
+	verifyGroup.GET("/getDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, getDeal(srv))
 	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
 	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))

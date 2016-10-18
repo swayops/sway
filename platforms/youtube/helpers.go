@@ -269,21 +269,21 @@ func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, di
 
 	likes, err = getCount(i.Stats.Likes)
 	if err != nil {
-		log.Println("Error extracting likes data", endpoint)
+		log.Println("Error extracting likes data", endpoint, err)
 		err = ErrStats
 		return
 	}
 
 	dislikes, err = getCount(i.Stats.Dislikes)
 	if err != nil {
-		log.Println("Error extracting dislikes data", endpoint)
+		log.Println("Error extracting dislikes data", endpoint, err)
 		err = ErrStats
 		return
 	}
 
 	comments, err = getCount(i.Stats.Comments)
 	if err != nil {
-		log.Println("Error extracting comments data", endpoint)
+		log.Println("Error extracting comments data", endpoint, err)
 		err = ErrStats
 		return
 	}
