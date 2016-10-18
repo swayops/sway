@@ -65,9 +65,10 @@ func (inf *InfluencerLoad) Check() error {
 	// 	}
 	// }
 
-	if len(inf.InstagramId)+len(inf.FbId)+len(inf.TwitterId)+len(inf.YouTubeId) == 0 {
-		return ErrPlatform
-	}
+	// discussed with Nick and we should allow this for now
+	// if len(inf.InstagramId)+len(inf.FbId)+len(inf.TwitterId)+len(inf.YouTubeId) == 0 {
+	// 	return ErrPlatform
+	// }
 
 	return nil
 }
