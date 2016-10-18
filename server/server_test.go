@@ -261,7 +261,7 @@ func TestNewInfluencer(t *testing.T) {
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Geo: &geo.GeoRecord{},
+			Categories: []string{"BAD CAT"},
 		},
 	}
 

@@ -221,7 +221,7 @@ func depleteBudget(s *Server) error {
 			continue
 		}
 		updatedStore := false
-
+		now := int32(time.Now().Unix())
 		// Look for any completed deals
 		for _, deal := range cmp.Deals {
 			if deal.Completed == 0 {

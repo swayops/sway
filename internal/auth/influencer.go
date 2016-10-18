@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 )
 
@@ -50,7 +51,7 @@ func (inf *InfluencerLoad) Check() error {
 	// Not required at sign up now..
 	// Admin will audit and set gender, geo and categories
 
-	// if inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn" {
+	// if inf.Gender != "" && (inf.Gender != "m" && inf.Gender != "f" && inf.Gender != "unicorn") {
 	// 	return ErrBadGender
 	// }
 
@@ -58,12 +59,12 @@ func (inf *InfluencerLoad) Check() error {
 	// 	return ErrNoGeo
 	// }
 
-	// inf.Categories = common.LowerSlice(inf.Categories)
-	// for _, cat := range inf.Categories {
-	// 	if _, ok := common.CATEGORIES[cat]; !ok {
-	// 		return ErrBadCat
-	// 	}
-	// }
+	inf.Categories = common.LowerSlice(inf.Categories)
+	for _, cat := range inf.Categories {
+		if _, ok := common.CATEGORIES[cat]; !ok {
+			return ErrBadCat
+		}
+	}
 
 	// discussed with Nick and we should allow this for now
 	// if len(inf.InstagramId)+len(inf.FbId)+len(inf.TwitterId)+len(inf.YouTubeId) == 0 {

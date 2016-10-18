@@ -711,6 +711,50 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 	return nil
 }
 
+func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error {
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.InfluencerHeadsUpEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have 4 days to complete the deal for %s!", deal.Company), inf.EmailAddress, inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
+func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error {
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.InfluencerTimeoutEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s has expired!", deal.Company), inf.EmailAddress, inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
 func (inf *Influencer) IsViral(deal *common.Deal, stats *common.Stats) bool {
 	if deal.Tweet != nil && inf.Twitter != nil {
 		return isViral(stats.Likes, inf.Twitter.AvgLikes)

@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -33,7 +34,8 @@ func explore(srv *Server) error {
 
 	// The influencer has 14 days to do the deal before it's put
 	// back into the pool
-	minTs := int32(time.Now().Unix()) - (DEAL_TIMEOUT)
+	now := int32(time.Now().Unix())
+	minTs := now - (DEAL_TIMEOUT)
 
 	for _, deal := range activeDeals {
 		// Go over all assigned deals in the platform
@@ -86,15 +88,28 @@ func explore(srv *Server) error {
 
 		// If the deal has not been approved and it has gone past the
 		// dealTimeout.. put it back in the pool!
-		if minTs > deal.Assigned && deal.Completed == 0 {
-			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
-				return err
-			}
-			if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
-				"action": "timeout",
-				"deal":   deal,
-			}); err != nil {
-				log.Println("Failed to log cleared deal!", inf.Id, deal.CampaignId)
+		if deal.Completed == 0 {
+			daysSinceAssigned := (now - deal.Assigned) / 86400
+			if daysSinceAssigned > 4 && daysSinceAssigned <= 5 {
+				// Lets warn the influencer that they have 4 days left!
+				if err := inf.DealHeadsUp(deal, srv.Cfg); err != nil {
+					srv.Alert(fmt.Sprintf("Error emailing deal heads up to %s for deal %s", inf.Id, deal.Id), err)
+				}
+			} else if minTs > deal.Assigned {
+				// Ok lets time out!
+				if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
+					return err
+				}
+				if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
+					"action": "timeout",
+					"deal":   deal,
+				}); err != nil {
+					log.Println("Failed to log cleared deal!", inf.Id, deal.CampaignId)
+				}
+
+				if err := inf.DealTimeout(deal, srv.Cfg); err != nil {
+					srv.Alert(fmt.Sprintf("Error emailing timeout emails  to %s for deal %s", inf.Id, deal.Id), err)
+				}
 			}
 		}
 	}
