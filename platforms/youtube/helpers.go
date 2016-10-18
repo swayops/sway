@@ -220,7 +220,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 
 			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)
 			if err != nil {
-				continue
+				return
 			}
 
 			p.LikesDelta = p.Likes

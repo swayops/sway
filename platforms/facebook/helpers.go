@@ -72,29 +72,32 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 			PostURL:     getPostUrl(p.Id),
 		}
 
-		if lk, err := getLikes(p.Id, cfg); err == nil {
+		if lk, lkErr := getLikes(p.Id, cfg); lkErr == nil {
 			fbPost.Likes = lk
 			fbPost.LikesDelta = lk
 			likes += lk
 		} else {
-			continue
+			err = lkErr
+			return
 		}
 
-		if cm, err := getComments(p.Id, cfg); err == nil {
+		if cm, cmErr := getComments(p.Id, cfg); cmErr == nil {
 			fbPost.Comments = cm
 			fbPost.CommentsDelta = cm
 			comments += cm
 		} else {
-			continue
+			err = cmErr
+			return
 		}
 
-		if sh, pType, err := getShares(p.Id, cfg); err == nil {
+		if sh, pType, shErr := getShares(p.Id, cfg); shErr == nil {
 			fbPost.Shares = sh
 			fbPost.SharesDelta = sh
 			fbPost.Type = pType
 			shares += sh
 		} else {
-			continue
+			err = shErr
+			return
 		}
 
 		fbPosts = append(fbPosts, fbPost)

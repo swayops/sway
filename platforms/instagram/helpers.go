@@ -130,7 +130,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 	for _, post := range media.Data {
 		raw, err = strconv.ParseInt(post.Published, 10, 64)
 		if err != nil {
-			continue
+			return 0, 0, posts, latestGeo, err
 		}
 		published = int32(raw)
 
