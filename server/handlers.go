@@ -1017,6 +1017,38 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getDeal(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			dealId = c.Param("dealId")
+			infId  = c.Param("influencerId")
+		)
+
+		if len(infId) == 0 {
+			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			return
+		}
+
+		if len(dealId) == 0 {
+			c.JSON(500, misc.StatusErr("Deal ID undefined"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, false, s.Cfg)
+		if len(deals) != 1 {
+			c.JSON(500, misc.StatusErr("Deal no longer available"))
+			return
+		}
+		c.JSON(200, deals[0])
+	}
+}
+
 func assignDeal(s *Server) gin.HandlerFunc {
 	// Influencer accepting deal
 	// Must pass in influencer ID and deal ID
