@@ -1339,6 +1339,19 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
+	// Get all deals completed by the influencer in the last X hours
+	return func(c *gin.Context) {
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, inf.CompletedDeals)
+	}
+}
+
 // Budget
 func getBudgetInfo(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
