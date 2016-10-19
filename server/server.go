@@ -298,7 +298,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
 	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
-	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
 
 	// Influencers

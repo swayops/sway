@@ -1309,7 +1309,19 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, inf.ActiveDeals)
+		var deals []*common.Deal
+		for _, d := range inf.ActiveDeals {
+			// Lets update the spendable!
+			store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, d.CampaignId, "")
+			if err == nil && store != nil {
+				d.Spendable = misc.TruncateFloat(store.Spendable, 2)
+			} else {
+				d.Spendable = 0
+			}
+			deals = append(deals, d)
+		}
+
+		c.JSON(200, deals)
 	}
 }
 
@@ -1324,19 +1336,6 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(dealId))
-	}
-}
-
-func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
-	// Get all deals completed by the influencer in the last X hours
-	return func(c *gin.Context) {
-		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
-		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
-
-		c.JSON(200, inf.CleanCompletedDeals())
 	}
 }
 
