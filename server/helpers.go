@@ -640,6 +640,9 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		changePass = true
 	}
 
+	if incUser.ID == "" {
+		incUser.ID = id // for saveImage
+	}
 	if err := saveUserImage(s, &incUser.User); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
