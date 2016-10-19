@@ -364,6 +364,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			}
 		}
 
+		go s.Notify(
+			fmt.Sprintf("New campaign created %s (%s)", cmp.Name, cmp.Id),
+			fmt.Sprintf("%s (%s) created a campaign for %f", adv.Name, adv.ID, cmp.Budget),
+		)
+
 		c.JSON(200, misc.StatusOK(cmp.Id))
 	}
 }

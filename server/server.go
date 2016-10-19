@@ -385,3 +385,15 @@ func (srv *Server) Alert(msg string, err error) {
 		log.Println("Error sending alert email!")
 	}
 }
+
+func (srv *Server) Notify(subject, msg string) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	email := templates.NotifyEmail.Render(map[string]interface{}{"msg": msg})
+	if resp, err := srv.Cfg.MailClient().SendMessage(email, subject, "shahzil@swayops.com", "Shahzil Abid",
+		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		log.Println("Error sending notify email!")
+	}
+}

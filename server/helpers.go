@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -515,6 +516,11 @@ func emailDeal(s *Server, cid string) (bool, error) {
 		emailed += 1
 	}
 
+	s.Notify(
+		fmt.Sprintf("Emailed %d influencers for campaign %s", emailed, cid),
+		fmt.Sprintf("Sway has successfully emailed %d influencers for campaign %s!", emailed, cid),
+	)
+
 	return true, nil
 }
 
@@ -561,6 +567,11 @@ func emailList(s *Server, cid string, override []string) {
 		// before emailList was hit!
 		emailDeal(s, cmp.Id)
 	}
+
+	s.Notify(
+		fmt.Sprintf("Emailed %d whitelisted influencers for campaign %s", len(list), cid),
+		fmt.Sprintf("Sway has successfully emailed %d whitelisted influencers for campaign %s!", len(list), cid),
+	)
 }
 
 // saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
