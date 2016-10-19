@@ -592,10 +592,16 @@ func saveUserImage(s *Server, u *auth.User) error {
 
 func saveUserHelper(s *Server, c *gin.Context, userType string) {
 	var (
-		incUser auth.User
-		user    = auth.GetCtxUser(c)
-		id      = c.Param("id")
-		su      auth.SpecUser
+		incUser struct {
+			auth.User
+			// support changing passwords
+			OldPass string `json:"oldPass"`
+			Pass    string `json:"pass"`
+			Pass2   string `json:"pass2"`
+		}
+		user = auth.GetCtxUser(c)
+		id   = c.Param("id")
+		su   auth.SpecUser
 	)
 
 	if err := c.BindJSON(&incUser); err != nil {
@@ -621,7 +627,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		return
 	}
 
-	if err := saveUserImage(s, &incUser); err != nil {
+	if err := saveUserImage(s, &incUser.User); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}
@@ -634,9 +640,9 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			return auth.ErrInvalidID
 		}
 		if su == nil { // admin
-			return user.Update(&incUser).Store(s.auth, tx)
+			return user.Update(&incUser.User).Store(s.auth, tx)
 		}
-		return user.Update(&incUser).StoreWithData(s.auth, tx, su)
+		return user.Update(&incUser.User).StoreWithData(s.auth, tx, su)
 	}); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return

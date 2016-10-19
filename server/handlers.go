@@ -589,6 +589,12 @@ var (
 	ErrBadCat    = errors.New("Please provide a valid category")
 )
 
+func putInfluencer(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		saveUserHelper(s, c, "inf")
+	}
+}
+
 func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("id"))
