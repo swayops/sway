@@ -667,6 +667,43 @@ func getBio(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getCompletedDeal(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		dealId := c.Param("dealId")
+		if dealId == "" {
+			c.JSON(500, misc.StatusErr("invalid deal id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		var d *common.Deal
+		for _, deal := range inf.CompletedDeals {
+			if deal.Id == dealId {
+				d = deal
+				break
+			}
+		}
+
+		if d == nil {
+			c.JSON(500, misc.StatusErr("deal not found"))
+			return
+		}
+
+		c.JSON(200, d)
+	}
+}
+
 func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []influencer.Influencer
