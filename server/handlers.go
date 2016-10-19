@@ -606,6 +606,65 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 	}
 }
 
+type Bio struct {
+	Id       string   `json:"id,omitempty"`
+	Name     string   `json:"name,omitempty"`
+	Networks []string `json:"networks,omitempty"`
+
+	Deals       int32 `json:"deals,omitempty"` // # of deals completed
+	Followers   int64 `json:"followers,omitempty"`
+	Engagements int64 `json:"engagements,omitempty"`
+
+	CompletedDeals []*BioDeal `json:"completedDeals,omitempty"`
+}
+
+type BioDeal struct {
+	Id          string `json:"id,omitempty"`
+	Name        string `json:"cmpName,omitempty"`
+	Engagements int64  `json:"engagements,omitempty"`
+	Image       string `json:"image,omitempty"`
+}
+
+func getBio(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		var (
+			eng      int64
+			bioDeals []*BioDeal
+		)
+		for _, deal := range inf.CompletedDeals {
+			total := deal.TotalStats()
+			dealEng := int64(total.Likes + total.Comments + total.Shares + total.Clicks)
+
+			eng += dealEng
+
+			d := &BioDeal{
+				Id:          deal.Id,
+				Engagements: dealEng,
+				Image:       deal.CampaignImage,
+				Name:        deal.CampaignName,
+			}
+			bioDeals = append(bioDeals, d)
+		}
+
+		bio := &Bio{
+			Id:             inf.Id,
+			Name:           inf.Name,
+			Networks:       inf.GetNetworks(),
+			Deals:          int32(len(inf.CompletedDeals)),
+			Followers:      inf.GetFollowers(),
+			Engagements:    eng,
+			CompletedDeals: bioDeals,
+		}
+		c.JSON(200, bio)
+	}
+}
+
 func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []influencer.Influencer

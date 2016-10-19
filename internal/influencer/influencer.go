@@ -354,6 +354,23 @@ func (inf *Influencer) GetFollowers() int64 {
 	return fw
 }
 
+func (inf *Influencer) GetNetworks() []string {
+	var networks []string
+	if inf.Facebook != nil {
+		networks = append(networks, "Facebook")
+	}
+	if inf.Instagram != nil {
+		networks = append(networks, "Instagram")
+	}
+	if inf.Twitter != nil {
+		networks = append(networks, "Twitter")
+	}
+	if inf.YouTube != nil {
+		networks = append(networks, "YouTube")
+	}
+	return networks
+}
+
 func (inf *Influencer) GetPostURLs(ts int32) []string {
 	var urls []string
 
@@ -630,7 +647,8 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 					Count:    1}
 			}
 
-			// Add some display attributes
+			// Add some display attributes..
+			// These will be saved permanently if they accept deal!
 			targetDeal.CampaignName = cmp.Name
 			targetDeal.CampaignImage = cmp.ImageURL
 			targetDeal.Company = cmp.Company

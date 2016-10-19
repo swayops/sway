@@ -314,6 +314,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
+	verifyGroup.GET("/bio/:influencerId", infOwnership, getBio(srv))
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
