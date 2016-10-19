@@ -1309,7 +1309,7 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, inf.CleanAssignedDeals())
+		c.JSON(200, inf.ActiveDeals)
 	}
 }
 
