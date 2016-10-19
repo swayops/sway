@@ -651,6 +651,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			if err := s.auth.ChangePasswordTx(tx, incUser.Email, incUser.OldPass, incUser.Pass, false); err != nil {
 				return err
 			}
+			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
 		}
 		if su == nil { // admin
 			return user.Update(&incUser.User).Store(s.auth, tx)
