@@ -640,6 +640,11 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		changePass = true
 	}
 
+	if err := saveUserImage(s, &incUser.User); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		if id != user.ID {
 			user = s.auth.GetUserTx(tx, id)
@@ -658,11 +663,6 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		}
 		return user.Update(&incUser.User).StoreWithData(s.auth, tx, su)
 	}); err != nil {
-		misc.AbortWithErr(c, 400, err)
-		return
-	}
-
-	if err := saveUserImage(s, &incUser.User); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}
