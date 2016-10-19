@@ -599,9 +599,10 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			Pass    string `json:"pass"`
 			Pass2   string `json:"pass2"`
 		}
-		user = auth.GetCtxUser(c)
-		id   = c.Param("id")
-		su   auth.SpecUser
+		user       = auth.GetCtxUser(c)
+		id         = c.Param("id")
+		su         auth.SpecUser
+		changePass = false
 	)
 
 	if err := c.BindJSON(&incUser); err != nil {
@@ -627,9 +628,16 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		return
 	}
 
-	if err := saveUserImage(s, &incUser.User); err != nil {
-		misc.AbortWithErr(c, 400, err)
-		return
+	if incUser.OldPass != "" && incUser.Pass != "" {
+		if len(incUser.Pass) < 8 {
+			misc.AbortWithErr(c, 400, auth.ErrInvalidPass)
+			return
+		}
+		if incUser.Pass != incUser.Pass2 {
+			misc.AbortWithErr(c, 400, auth.ErrPasswordMismatch)
+			return
+		}
+		changePass = true
 	}
 
 	if err := s.db.Update(func(tx *bolt.Tx) error {
@@ -639,6 +647,11 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		if user == nil {
 			return auth.ErrInvalidID
 		}
+		if changePass {
+			if err := s.auth.ChangePasswordTx(tx, incUser.Email, incUser.OldPass, incUser.Pass, false); err != nil {
+				return err
+			}
+		}
 		if su == nil { // admin
 			return user.Update(&incUser.User).Store(s.auth, tx)
 		}
@@ -647,5 +660,11 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}
+
+	if err := saveUserImage(s, &incUser.User); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
 	c.JSON(200, misc.StatusOK(id))
 }
