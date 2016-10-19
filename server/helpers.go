@@ -628,7 +628,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		return
 	}
 
-	if incUser.OldPass != "" && incUser.Pass != "" {
+	if incUser.OldPass != "" && incUser.Pass != "" && incUser.OldPass != incUser.Pass {
 		if len(incUser.Pass) < 8 {
 			misc.AbortWithErr(c, 400, auth.ErrInvalidPass)
 			return
