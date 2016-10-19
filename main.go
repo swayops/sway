@@ -12,6 +12,8 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
 	cfg, err := config.New("config/config.json")
 	if err != nil {
 		log.Fatal(err)
