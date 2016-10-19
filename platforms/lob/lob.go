@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -24,7 +25,8 @@ const (
 )
 
 var (
-	ErrAddr = errors.New("Missing address!")
+	ErrAddr    = errors.New("Missing address!")
+	ErrBadAddr = errors.New("Address doesn't seem to be found. Please email engage@swayops.com with your login email / username and the address your trying to use")
 )
 
 type AddressLoad struct {
@@ -149,11 +151,13 @@ func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 	}
 
 	if len(verify.Message) > 0 {
-		err = errors.New(verify.Message)
+		log.Printf("%+v: %v", addr, verify.Message)
+		err = ErrBadAddr
 		return nil, err
 	}
 	if verify.ErrorData != nil {
-		err = errors.New(verify.ErrorData.Message)
+		log.Printf("%+v: %v", addr, verify.ErrorData.Message)
+		err = ErrBadAddr
 		return nil, err
 	}
 
