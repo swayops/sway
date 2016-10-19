@@ -607,7 +607,7 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 }
 
 type Bio struct {
-	Id       string   `json:"id,omitempty"`
+	ID       string   `json:"id,omitempty"`
 	Name     string   `json:"name,omitempty"`
 	Networks []string `json:"networks,omitempty"`
 
@@ -619,7 +619,8 @@ type Bio struct {
 }
 
 type BioDeal struct {
-	Id          string `json:"id,omitempty"`
+	ID          string `json:"id,omitempty"`
+	CampaignID  string `json:"campaignId,omitempty"`
 	Name        string `json:"cmpName,omitempty"`
 	Engagements int64  `json:"engagements,omitempty"`
 	Image       string `json:"image,omitempty"`
@@ -644,7 +645,8 @@ func getBio(s *Server) gin.HandlerFunc {
 			eng += dealEng
 
 			d := &BioDeal{
-				Id:          deal.Id,
+				ID:          deal.Id,
+				CampaignID:  deal.CampaignId,
 				Engagements: dealEng,
 				Image:       deal.CampaignImage,
 				Name:        deal.CampaignName,
@@ -653,7 +655,7 @@ func getBio(s *Server) gin.HandlerFunc {
 		}
 
 		bio := &Bio{
-			Id:             inf.Id,
+			ID:             inf.Id,
 			Name:           inf.Name,
 			Networks:       inf.GetNetworks(),
 			Deals:          int32(len(inf.CompletedDeals)),
