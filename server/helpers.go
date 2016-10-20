@@ -576,16 +576,25 @@ func emailList(s *Server, cid string, override []string) {
 
 // saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
 func saveUserImage(s *Server, u *auth.User) error {
-	if !strings.HasPrefix(u.ImageURL, "data:image/") {
-		return nil
+	if strings.HasPrefix(u.ImageURL, "data:image/") {
+
+		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, 300, 300)
+		if err != nil {
+			return err
+		}
+
+		u.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
 	}
 
-	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, 300, 300)
-	if err != nil {
-		return err
-	}
+	if strings.HasPrefix(u.CoverImageURL, "data:image/") {
+		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID),
+			u.CoverImageURL, u.ID+"-cover", 300, 300)
+		if err != nil {
+			return err
+		}
 
-	u.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
+		u.CoverImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
+	}
 
 	return nil
 }
