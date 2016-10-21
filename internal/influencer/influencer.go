@@ -226,6 +226,8 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 		return nil
 	}
 
+	inf.setSwayRep()
+
 	// Used by sway engine to periodically update influencer data
 
 	// Always allow updates if they have an active deal
@@ -269,7 +271,6 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 		}
 	}
 
-	inf.setSwayRep()
 	inf.LastSocialUpdate = int32(time.Now().Unix())
 
 	return nil
