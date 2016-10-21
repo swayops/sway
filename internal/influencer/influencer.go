@@ -133,7 +133,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		CreatedAt:    created,
 	}
 
-	if address != nil {
+	if address != nil && address.AddressOne != "" {
 		addr, err := lob.VerifyAddress(address, cfg.Sandbox)
 		if err != nil {
 			return nil, err
