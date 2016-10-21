@@ -1127,6 +1127,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 }
 
 func getDeal(s *Server) gin.HandlerFunc {
+	// Gets assigned deal
 	return func(c *gin.Context) {
 		var (
 			campaignId = c.Param("campaignId")
@@ -1155,12 +1156,20 @@ func getDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, false, s.Cfg)
-		if len(deals) != 1 {
-			c.JSON(500, misc.StatusErr("Deal no longer available"))
+		var d *common.Deal
+		for _, deal := range inf.ActiveDeals {
+			if deal.Id == dealId {
+				d = deal
+				break
+			}
+		}
+
+		if d == nil {
+			c.JSON(500, misc.StatusErr("Deal not found"))
 			return
 		}
-		c.JSON(200, deals[0])
+
+		c.JSON(200, d)
 	}
 }
 
