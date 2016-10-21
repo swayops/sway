@@ -2163,7 +2163,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 		}
 
 		if err := inf.CheckEmail(check, s.Cfg); err != nil {
-			srv.Alert("Failed to email check information to influencer " + inf.Id, err)
+			s.Alert("Failed to email check information to influencer "+inf.Id, err)
 		}
 
 		c.JSON(200, misc.StatusOK(infId))

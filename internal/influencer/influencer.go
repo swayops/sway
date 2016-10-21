@@ -795,7 +795,7 @@ func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error 
 }
 
 func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
-	if !cfg.Sandbox || 1 == 1 {
+	if !cfg.Sandbox {
 		if cfg.ReplyMailClient() == nil {
 			return ErrEmail
 		}
@@ -816,8 +816,6 @@ func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
 		strPayout := strconv.FormatFloat(check.Payout, 'f', 2, 64)
 
 		email := templates.CheckEmail.Render(map[string]interface{}{"Name": firstName, "Delivery": delivery, "Payout": strPayout})
-		log.Println("DIS DA EMAIL", email)
-		return nil
 		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your check has been mailed!"), inf.EmailAddress, inf.Name,
 			[]string{""})
 		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
