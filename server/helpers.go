@@ -578,7 +578,7 @@ func emailList(s *Server, cid string, override []string) {
 func saveUserImage(s *Server, u *auth.User) error {
 	if strings.HasPrefix(u.ImageURL, "data:image/") {
 
-		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, 300, 300)
+		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, "", 300, 300)
 		if err != nil {
 			return err
 		}
@@ -588,7 +588,7 @@ func saveUserImage(s *Server, u *auth.User) error {
 
 	if strings.HasPrefix(u.CoverImageURL, "data:image/") {
 		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID),
-			u.CoverImageURL, u.ID+"-cover", 300, 300)
+			u.CoverImageURL, u.ID, "-cover", 300, 300)
 		if err != nil {
 			return err
 		}
@@ -652,6 +652,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 	if incUser.ID == "" {
 		incUser.ID = id // for saveImage
 	}
+
 	if err := saveUserImage(s, &incUser.User); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return

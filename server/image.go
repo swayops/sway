@@ -26,7 +26,7 @@ var (
 	ErrInvalidImage = errors.New("Invalid image!")
 )
 
-func saveImageToDisk(fileNameBase, data, id string, minWidth, minHeight int) (string, error) {
+func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight int) (string, error) {
 	idx := strings.Index(data, ";base64,")
 	if idx < 0 {
 		return "", ErrInvalidImage
@@ -50,10 +50,10 @@ func saveImageToDisk(fileNameBase, data, id string, minWidth, minHeight int) (st
 		return "", fmt.Errorf("Invalid size, min size is %dx%d!", minWidth, minHeight)
 	}
 
-	fileName := fileNameBase + "." + fm
+	fileName := fileNameBase + suffix + "." + fm
 	err = ioutil.WriteFile(fileName, buff.Bytes(), 0644)
 
-	return id + "." + fm, err
+	return id + suffix + "." + fm, err
 }
 
 func getImageUrl(s *Server, bucket, filename string) string {
