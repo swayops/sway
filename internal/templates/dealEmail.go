@@ -126,9 +126,33 @@ const timeOutEmail = `
 </div>
 `
 
+const checkTmpl = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Congratulations {{Name}}!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		We have just sent out your check for ${{Payout}}! It will take approximately {{Delivery}} business days to arrive.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Feel free to call or email me with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
 	InfluencerEmail        = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail     = MustacheMust(infCmpEmail)
 	InfluencerHeadsUpEmail = MustacheMust(headsUpEmail)
 	InfluencerTimeoutEmail = MustacheMust(timeOutEmail)
+	CheckEmail             = MustacheMust(checkTmpl)
 )

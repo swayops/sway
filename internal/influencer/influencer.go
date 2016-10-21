@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -510,6 +511,19 @@ func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
 	return nil
 }
 
+func (inf *Influencer) IsAmerican() bool {
+	if inf.Address == nil {
+		return false
+	}
+
+	cy := strings.ToLower(inf.Address.Country)
+	if cy == "us" || cy == "usa" {
+		return true
+	}
+
+	return false
+}
+
 func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
@@ -772,6 +786,39 @@ func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error 
 
 		email := templates.InfluencerTimeoutEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
 		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s has expired!", deal.Company), inf.EmailAddress, inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
+func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
+	if !cfg.Sandbox || 1 == 1 {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		var delivery string
+		if inf.IsAmerican() {
+			delivery = "4 - 6"
+		} else {
+			delivery = "9 - 13"
+		}
+
+		strPayout := strconv.FormatFloat(check.Payout, 'f', 2, 64)
+
+		email := templates.CheckEmail.Render(map[string]interface{}{"Name": firstName, "Delivery": delivery, "Payout": strPayout})
+		log.Println("DIS DA EMAIL", email)
+		return nil
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your check has been mailed!"), inf.EmailAddress, inf.Name,
 			[]string{""})
 		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			return ErrEmail

@@ -2162,6 +2162,10 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if err := inf.CheckEmail(check, s.Cfg); err != nil {
+			srv.Alert("Failed to email check information to influencer " + inf.Id, err)
+		}
+
 		c.JSON(200, misc.StatusOK(infId))
 	}
 }
@@ -2441,12 +2445,7 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var isAmerican bool
-		if strings.ToLower(inf.Address.Country) == "us" {
-			isAmerican = true
-		}
-
-		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, isAmerican, s.Cfg.Sandbox)
+		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, inf.IsAmerican(), s.Cfg.Sandbox)
 		if err != nil {
 			s.Alert("Hellosign signature request failed for "+inf.Id, err)
 			c.JSON(500, misc.StatusErr(err.Error()))
