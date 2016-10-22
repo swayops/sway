@@ -592,7 +592,7 @@ var (
 )
 
 type InfluencerUpdate struct {
-	Name        string          `json:"name,omitempty"`              // Required to send
+	Name        *string         `json:"name,omitempty"`              // Required to send
 	InstagramId string          `json:"instagram,omitempty"`         // Required to send
 	FbId        string          `json:"facebook,omitempty"`          // Required to send
 	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
@@ -728,14 +728,15 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			inf.Address = cleanAddr
 		}
 
-		upd.Name = strings.TrimSpace(upd.Name)
+		if upd.Name != nil {
+			name := strings.TrimSpace(*upd.Name)
+			if len(strings.Split(name, " ")) < 2 {
+				c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+				return
+			}
 
-		if len(strings.Split(upd.Name, " ")) < 2 {
-			c.JSON(400, misc.StatusErr(ErrNoName.Error()))
-			return
+			inf.Name = name
 		}
-
-		inf.Name = upd.Name
 
 		// Update User properties
 		var user *auth.User
