@@ -140,6 +140,9 @@ func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
 
 	var verify Verification
 	err = json.NewDecoder(resp.Body).Decode(&verify)
