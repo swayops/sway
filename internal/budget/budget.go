@@ -18,8 +18,6 @@ import (
 // 		"CID": {
 // 			"budget": 20,
 // 			"leftover": 10, // leftover from last month which was added
-// 			"dspFee": 4, // amount dsp took
-// 			"exchangeFee": 4, // amount exchange took
 // 			"spendable": 10,
 // 		}
 // 	}
@@ -36,12 +34,9 @@ type Store struct {
 	Leftover  float64 `json:"leftover,omitempty"` // Left over budget from last month
 	Spendable float64 `json:"spendable,omitempty"`
 	Spent     float64 `json:"spent,omitempty"`
-
-	DspFee      float64 `json:"dspFee,omitempty"`
-	ExchangeFee float64 `json:"exchangeFee,omitempty"`
 }
 
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float64, billing bool) (float64, error) {
+func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing bool) (float64, error) {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	var spendable float64
 
@@ -83,11 +78,9 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		// NOTE: This will automatically reset Pending too
 		spendable = leftover + monthlyBudget
 		store := &Store{
-			Budget:      monthlyBudget,
-			Leftover:    leftover,
-			Spendable:   spendable,
-			DspFee:      dspFee,
-			ExchangeFee: exchangeFee,
+			Budget:    monthlyBudget,
+			Leftover:  leftover,
+			Spendable: spendable,
 		}
 
 		st[cmp.Id] = store
@@ -98,7 +91,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			"campaignId": cmp.Id,
 			"store":      store,
 		}); err != nil {
-			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee)
+			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable)
 		}
 
 		if b, err = json.Marshal(&st); err != nil {
@@ -117,7 +110,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 	return spendable, nil
 }
 
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float64) (float64, error) {
+func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
 		return 0, err
@@ -152,12 +145,10 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		// NOTE: Leftover is not added to spendable because it already
 		// should have been added last time billing ran!
 		newStore := &Store{
-			Budget:      oldBudget + tbaBudget,
-			Leftover:    store.Leftover,
-			Spendable:   store.Spendable + tbaBudget,
-			Spent:       store.Spent,
-			DspFee:      dspFee,
-			ExchangeFee: exchangeFee,
+			Budget:    oldBudget + tbaBudget,
+			Leftover:  store.Leftover,
+			Spendable: store.Spendable + tbaBudget,
+			Spent:     store.Spent,
 		}
 
 		st[cid] = newStore
@@ -169,20 +160,18 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			"store":       newStore,
 			"addedBudget": tbaBudget,
 		}); err != nil {
-			log.Println("Failed to log budget decrease!", cid, tbaBudget, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee, err)
+			log.Println("Failed to log budget decrease!", cid, tbaBudget, store.Budget, store.Spendable, err)
 		}
 
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
 		// Save the budget in pending for when a transfer is made on the 1st
 		newStore := &Store{
-			Budget:      store.Budget,
-			Leftover:    store.Leftover,
-			Spendable:   store.Spendable,
-			Spent:       store.Spent,
-			DspFee:      store.DspFee,
-			ExchangeFee: store.ExchangeFee,
-			Pending:     newBudget,
+			Budget:    store.Budget,
+			Leftover:  store.Leftover,
+			Spendable: store.Spendable,
+			Spent:     store.Spent,
+			Pending:   newBudget,
 		}
 
 		st[cid] = newStore
@@ -193,7 +182,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			"campaignId": cid,
 			"store":      newStore,
 		}); err != nil {
-			log.Println("Failed to log budget decrease!", cid, store.Pending, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee, err)
+			log.Println("Failed to log budget decrease!", cid, store.Pending, store.Budget, store.Spendable, err)
 		}
 	}
 

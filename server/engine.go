@@ -221,6 +221,8 @@ func depleteBudget(s *Server) error {
 			continue
 		}
 		updatedStore := false
+
+		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 		// Look for any completed deals
 		for _, deal := range cmp.Deals {
 			if deal.Completed == 0 {
@@ -238,8 +240,8 @@ func depleteBudget(s *Server) error {
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				// DSP and Exchange fee taken away from the prinicpal
-				dspMarkup := spentDelta * store.DspFee
-				exchangeMarkup := spentDelta * store.ExchangeFee
+				dspMarkup := spentDelta * dspFee
+				exchangeMarkup := spentDelta * exchangeFee
 
 				// Talent agency payout will be taken away from the influencer portion
 				influencerPool := spentDelta - (dspMarkup + exchangeMarkup)

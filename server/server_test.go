@@ -114,8 +114,7 @@ func TestAdAgencyChain(t *testing.T) {
 
 		// update the advertiser and check if the update worked
 		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1}}, 200, nil},
-		// Add AFTER FIX FOR OVERWRITE
-		// {"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.1, ExchangeFee: 0.2, Blacklist: map[string]bool{"randomInf": true,}}},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.1, ExchangeFee: 0.2, Blacklist: map[string]bool{"randomInf": true,}}},
 
 		// sign in as admin and see if they can access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -925,12 +924,6 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 }
 
 func checkStore(t *testing.T, store, compareStore *budget.Store) {
-	if store != nil && compareStore != nil {
-		if store.DspFee != compareStore.DspFee && store.ExchangeFee != compareStore.ExchangeFee {
-			t.Fatal("Fees changed!")
-		}
-	}
-
 	if compareStore != nil {
 		oldV := store.Spent + store.Spendable
 		newV := compareStore.Spendable + compareStore.Spent
@@ -2598,10 +2591,6 @@ func TestBilling(t *testing.T) {
 
 		if newStore.Spent > 0 {
 			t.Fatal("Bad new store values!")
-		}
-
-		if newStore.ExchangeFee != 0.2 {
-			t.Fatal("Bad exchange fee!")
 		}
 
 		if int32(store.Spendable) != int32(newStore.Leftover) {
