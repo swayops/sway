@@ -743,13 +743,13 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		user.ImageURL, err = getUserImage(s, upd.ImageURL, user)
+		user.ImageURL, err = getUserImage(s, upd.ImageURL, "", 300, 300, user)
 		if err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
 
-		user.CoverImageURL, err = getUserImage(s, upd.CoverImageURL, user)
+		user.CoverImageURL, err = getUserImage(s, upd.CoverImageURL, "-cover", 750, 375, user)
 		if err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
@@ -762,8 +762,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			}
 
 			if changed {
-				nuser := s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
-				user = nuser.Update(user)
+				ouser := s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
+				user = ouser.Update(user)
 			}
 
 			return saveInfluencerWithUser(s, tx, inf, user)
@@ -771,6 +771,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
+
+		c.JSON(200, misc.StatusOK(inf.Id))
 	}
 }
 

@@ -47,7 +47,7 @@ func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight 
 	}
 
 	if imgCfg.Width < minWidth || imgCfg.Height < minHeight {
-		return "", fmt.Errorf("Invalid size, min size is %dx%d!", minWidth, minHeight)
+		return "", fmt.Errorf("Invalid size (%dx%d), min size is %dx%d!", imgCfg.Width, imgCfg.Height, minWidth, minHeight)
 	}
 
 	fileName := fileNameBase + suffix + "." + fm
