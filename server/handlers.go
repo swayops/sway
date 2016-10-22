@@ -585,7 +585,7 @@ var (
 	ErrBadGender = errors.New("Please provide a gender ('m' or 'f')")
 	ErrNoAgency  = errors.New("Please provide an agency id")
 	ErrNoGeo     = errors.New("Please provide a geo")
-	ErrNoName    = errors.New("Please provide a name")
+	ErrNoName    = errors.New("Please provide a valid name")
 	ErrBadCat    = errors.New("Please provide a valid category")
 	ErrPlatform  = errors.New("Platform not found!")
 	ErrUnmarshal = errors.New("Failed to unmarshal data!")
@@ -728,7 +728,14 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			inf.Address = cleanAddr
 		}
 
-		inf.Name = upd.Name // it will always be assigned
+		upd.Name = strings.TrimSpace(upd.Name)
+
+		if len(strings.Split(upd.Name, " ")) < 2 {
+			c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+			return
+		}
+
+		inf.Name = upd.Name
 
 		// Update User properties
 		var user *auth.User
