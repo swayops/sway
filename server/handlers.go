@@ -592,13 +592,13 @@ var (
 )
 
 type InfluencerUpdate struct {
-	InstagramId string          `json:"instagram,omitempty"` // Required to send
-	FbId        string          `json:"facebook,omitempty"`  // Required to send
-	TwitterId   string          `json:"twitter,omitempty"`   // Required to send
-	YouTubeId   string          `json:"youtube,omitempty"`   // Required to send
-	DealPing    bool            `json:"dealPing,omitempty"`  // Required to send
-	Gender      string          `json:"gender,omitempty"`    // Required to send
-	Address     lob.AddressLoad `json:"address,omitempty"`   // Required to send
+	InstagramId string          `json:"instagram,omitempty"`         // Required to send
+	FbId        string          `json:"facebook,omitempty"`          // Required to send
+	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
+	YouTubeId   string          `json:"youtube,omitempty"`           // Required to send
+	DealPing    *bool           `json:"dealPing" binding:"required"` // Required to send
+	Gender      string          `json:"gender,omitempty"`            // Required to send
+	Address     lob.AddressLoad `json:"address,omitempty"`           // Required to send
 
 	InviteCode string `json:"inviteCode,omitempty"` // Optional
 
@@ -705,7 +705,11 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		// Update DealPing
-		inf.DealPing = upd.DealPing
+		if upd.DealPing != nil {
+			// Set to a pointer so we don't default to
+			// false incase front end doesnt send the value
+			inf.DealPing = *upd.DealPing
+		}
 
 		// Update Address
 		if upd.Address.AddressOne != "" {
@@ -736,45 +740,25 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var changePass bool
-		if upd.OldPass != "" && upd.Pass != "" && upd.OldPass != upd.Pass {
-			if len(upd.Pass) < 8 {
-				misc.AbortWithErr(c, 400, auth.ErrInvalidPass)
-				return
-			}
-			if upd.Pass != upd.Pass2 {
-				misc.AbortWithErr(c, 400, auth.ErrPasswordMismatch)
-				return
-			}
-			changePass = true
+		user.ImageURL, err = getUserImage(s, upd.ImageURL, user)
+		if err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
 		}
 
-		if strings.HasPrefix(upd.ImageURL, "data:image/") {
-			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID), upd.ImageURL, user.ID, "", 300, 300)
-			if err != nil {
-				misc.AbortWithErr(c, 400, err)
-				return
-			}
-
-			user.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
-		}
-
-		if strings.HasPrefix(upd.CoverImageURL, "data:image/") {
-			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
-				upd.CoverImageURL, user.ID, "-cover", 300, 300)
-			if err != nil {
-				misc.AbortWithErr(c, 400, err)
-				return
-			}
-
-			user.CoverImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
+		user.CoverImageURL, err = getUserImage(s, upd.CoverImageURL, user)
+		if err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
 		}
 
 		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if changePass {
-				if err := s.auth.ChangePasswordTx(tx, user.Email, upd.OldPass, upd.Pass, false); err != nil {
-					return err
-				}
+			changed, err := savePassword(s, tx, upd.OldPass, upd.Pass, upd.Pass2, user)
+			if err != nil {
+				return err
+			}
+
+			if changed {
 				user = s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
 			}
 
@@ -2818,7 +2802,6 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 			if len(adv.Blacklist) == 0 {
 				adv.Blacklist = make(map[string]bool)
 			}
-
 			adv.Blacklist[infId] = true
 			return user.StoreWithData(s.auth, tx, adv)
 		}); err != nil {

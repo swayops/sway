@@ -132,6 +132,39 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 	return 0, 0
 }
 
+func getUserImage(s *Server, data string, user *auth.User) (string, error) {
+	if !strings.HasPrefix(data, "data:image/") {
+		return "", nil
+	}
+
+	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
+		data, user.ID, "-cover", 300, 300)
+	if err != nil {
+		return "", err
+	}
+
+	return getImageUrl(s, s.Cfg.Bucket.User, filename), nil
+}
+
+func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *auth.User) (bool, error) {
+	if oldPass != "" && pass != "" && oldPass != pass {
+		if len(pass) < 8 {
+			return false, auth.ErrInvalidPass
+		}
+		if pass != pass2 {
+			return false, auth.ErrPasswordMismatch
+		}
+
+		if err := s.auth.ChangePasswordTx(tx, user.Email, oldPass, pass, false); err != nil {
+			return false, err
+		}
+
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
 func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	if inf.Id == "" {
 		return auth.ErrInvalidID
