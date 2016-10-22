@@ -287,6 +287,14 @@ func TestNewInfluencer(t *testing.T) {
 			"facebook":   M{"id": "justinbieber"},
 		}},
 
+		// change their password
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com", "facebook": "justinbieber", "oldPass": defaultPass, "pass":"newPassword", "pass2":"newPassword"}, 200, nil},
+		// try to sign in.. should fail
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 400, nil},
+		// try with proper password
+		{"POST", "/signIn", M{"email": inf.Email, "pass": "newPassword"}, 200, nil},
+
+
 		// try to load it as a different user
 		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 401, nil},

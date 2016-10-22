@@ -592,22 +592,23 @@ var (
 )
 
 type InfluencerUpdate struct {
-	InstagramId string `json:"instagram,omitempty"`
-	FbId        string `json:"facebook,omitempty"`
-	TwitterId   string `json:"twitter,omitempty"`
-	YouTubeId   string `json:"youtube,omitempty"`
-	InviteCode  string `json:"inviteCode,omitempty"`
-	DealPing    bool   `json:"dealPing,omitempty"`
+	InstagramId string          `json:"instagram,omitempty"` // Required to send
+	FbId        string          `json:"facebook,omitempty"`  // Required to send
+	TwitterId   string          `json:"twitter,omitempty"`   // Required to send
+	YouTubeId   string          `json:"youtube,omitempty"`   // Required to send
+	DealPing    bool            `json:"dealPing,omitempty"`  // Required to send
+	Gender      string          `json:"gender,omitempty"`    // Required to send
+	Address     lob.AddressLoad `json:"address,omitempty"`   // Required to send
 
-	Gender string `json:"gender,omitempty"`
+	InviteCode string `json:"inviteCode,omitempty"` // Optional
 
-	Address lob.AddressLoad `json:"address,omitempty"`
+	// User methods
+	OldPass string `json:"oldPass"` // Optional
+	Pass    string `json:"pass"`    // Optional
+	Pass2   string `json:"pass2"`   // Optional
 
-	// user auth.User
-	// // support changing passwords
-	// OldPass string `json:"oldPass"`
-	// Pass    string `json:"pass"`
-	// Pass2   string `json:"pass2"`
+	ImageURL      string `json:"imageUrl,omitempty"`      // Optional
+	CoverImageURL string `json:"coverImageUrl,omitempty"` // Optional
 }
 
 func putInfluencer(s *Server) gin.HandlerFunc {
@@ -723,13 +724,63 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		// Update User properties
-		// NOTE: Ahmed.. please update the user properties
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Save the influencer
-			return saveInfluencer(s, tx, inf)
+		var user *auth.User
+		if err := s.db.View(func(tx *bolt.Tx) (err error) {
+			user = s.auth.GetUserTx(tx, inf.Id)
+			if user == nil {
+				return auth.ErrInvalidID
+			}
+			return nil
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var changePass bool
+		if upd.OldPass != "" && upd.Pass != "" && upd.OldPass != upd.Pass {
+			if len(upd.Pass) < 8 {
+				misc.AbortWithErr(c, 400, auth.ErrInvalidPass)
+				return
+			}
+			if upd.Pass != upd.Pass2 {
+				misc.AbortWithErr(c, 400, auth.ErrPasswordMismatch)
+				return
+			}
+			changePass = true
+		}
+
+		if strings.HasPrefix(upd.ImageURL, "data:image/") {
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID), upd.ImageURL, user.ID, "", 300, 300)
+			if err != nil {
+				misc.AbortWithErr(c, 400, err)
+				return
+			}
+
+			user.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
+		}
+
+		if strings.HasPrefix(upd.CoverImageURL, "data:image/") {
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
+				upd.CoverImageURL, user.ID, "-cover", 300, 300)
+			if err != nil {
+				misc.AbortWithErr(c, 400, err)
+				return
+			}
+
+			user.CoverImageURL = getImageUrl(s, s.Cfg.Bucket.User, filename)
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			if changePass {
+				if err := s.auth.ChangePasswordTx(tx, user.Email, upd.OldPass, upd.Pass, false); err != nil {
+					return err
+				}
+				user = s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
+			}
+
+			return saveInfluencerWithUser(s, tx, inf, *user)
+		}); err != nil {
+			misc.AbortWithErr(c, 400, err)
 			return
 		}
 	}

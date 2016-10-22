@@ -148,6 +148,18 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	return u.StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
 }
 
+func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user auth.User) error {
+	if inf.Id == "" {
+		return auth.ErrInvalidID
+	}
+
+	// Save in the cache
+	s.auth.Influencers.SetInfluencer(inf.Id, inf)
+
+	// Save in the DB
+	return user.Update(&user).StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
+}
+
 //TODO discuss with Shahzil and handle scopes
 func createRoutes(r *gin.RouterGroup, srv *Server, endpoint, idName string, scopes auth.ScopeMap, ownershipItemType auth.ItemType,
 	get, post, put, del func(*Server) gin.HandlerFunc) {
