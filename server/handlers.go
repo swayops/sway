@@ -333,8 +333,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			// Create their budget key
 			// NOTE: Create budget key requires cmp.Id be set
 			var spendable float64
-			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, dspFee, exchangeFee, false); err != nil {
+			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -533,8 +532,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, *upd.Budget, dspFee, exchangeFee); err != nil {
+			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, *upd.Budget); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -1750,12 +1748,15 @@ func runBilling(s *Server) gin.HandlerFunc {
 					)
 					advertiserSheets[cmp.AdvertiserId] = sheet
 				}
+
+				// Be wary of fees changing mid-month
+				dspFee, exchangeFee := getAdvertiserFees(s.auth, adAgency.ID)
 				sheet.AddRow(
 					cmp.Id,
 					cmp.Name,
 					emails,
-					fmt.Sprintf("%0.2f", data.DspFee*100)+"%",
-					fmt.Sprintf("%0.2f", data.ExchangeFee*100)+"%",
+					fmt.Sprintf("%0.2f", dspFee*100)+"%",
+					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
 					misc.TruncateFloat(data.Spent, 2),
 				)
 			} else {
@@ -1785,14 +1786,15 @@ func runBilling(s *Server) gin.HandlerFunc {
 					)
 					agencySheets[adAgency.ID] = sheet
 				}
+				dspFee, exchangeFee := getAdvertiserFees(s.auth, adAgency.ID)
 				sheet.AddRow(
 					cmp.AdvertiserId,
 					advertiser.Name,
 					cmp.Id,
 					cmp.Name,
 					emails,
-					fmt.Sprintf("%0.2f", data.DspFee*100)+"%",
-					fmt.Sprintf("%0.2f", data.ExchangeFee*100)+"%",
+					fmt.Sprintf("%0.2f", dspFee*100)+"%",
+					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
 					misc.TruncateFloat(data.Spent, 2),
 				)
 			}
@@ -2015,8 +2017,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
 					var spendable float64
-					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true); err != nil {
 						log.Println("Error creating budget key!", err)
 						return err
 					}
