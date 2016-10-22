@@ -587,11 +587,163 @@ var (
 	ErrNoGeo     = errors.New("Please provide a geo")
 	ErrNoName    = errors.New("Please provide a name")
 	ErrBadCat    = errors.New("Please provide a valid category")
+	ErrPlatform  = errors.New("Platform not found!")
+	ErrUnmarshal = errors.New("Failed to unmarshal data!")
 )
+
+type InfluencerUpdate struct {
+	InstagramId string   `json:"instagram,omitempty"`
+	FbId        string   `json:"facebook,omitempty"`
+	TwitterId   string   `json:"twitter,omitempty"`
+	YouTubeId   string   `json:"youtube,omitempty"`
+	Categories  []string `json:"categories,omitempty"`
+	InviteCode  string   `json:"inviteCode,omitempty"`
+	DealPing    bool     `json:"dealPing,omitempty"`
+
+	Gender string `json:"gender,omitempty"`
+
+	Address lob.AddressLoad `json:"address,omitempty"`
+
+	// user auth.User
+	// // support changing passwords
+	// OldPass string `json:"oldPass"`
+	// Pass    string `json:"pass"`
+	// Pass2   string `json:"pass2"`
+}
 
 func putInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		saveUserHelper(s, c, "inf")
+		inf, ok := s.auth.Influencers.Get(c.Param("id"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Please provide a valid influencer ID"))
+			return
+		}
+
+		var (
+			upd InfluencerUpdate
+			err error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		// Update platforms
+		if upd.InstagramId != "" {
+			if inf.Instagram == nil || (inf.Instagram != nil && upd.InstagramId != inf.Instagram.UserName) {
+				// Make sure that the instagram id has actually been updated
+				err = inf.NewInsta(upd.InstagramId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			// If the ID is sent as empty, they'll be emptied out
+			inf.Instagram = nil
+		}
+
+		if upd.FbId != "" {
+			if inf.Facebook == nil || (inf.Facebook != nil && upd.FbId != inf.Facebook.Id) {
+				// Make sure that the id has actually been updated
+				err = inf.NewFb(upd.FbId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			// If the ID is sent as empty, they'll be emptied out
+			inf.Facebook = nil
+		}
+
+		if upd.TwitterId != "" {
+			if inf.Twitter == nil || (inf.Twitter != nil && upd.TwitterId != inf.Twitter.Id) {
+				// Make sure that the id has actually been updated
+				err = inf.NewTwitter(upd.TwitterId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			inf.Twitter = nil
+		}
+
+		if upd.YouTubeId != "" {
+			if inf.YouTube == nil || (inf.YouTube != nil && upd.YouTubeId != inf.YouTube.UserName) {
+				// Make sure that the id has actually been updated
+				err = inf.NewTwitter(upd.YouTubeId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			// If the ID is sent as empty, they'll be emptied out
+			inf.YouTube = nil
+		}
+
+		// Update Categories
+		var filteredCats []string
+		for _, cat := range upd.Categories {
+			if _, ok := common.CATEGORIES[cat]; !ok {
+				c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
+				return
+			}
+			filteredCats = append(filteredCats, cat)
+		}
+		inf.Categories = filteredCats
+
+		// Update Invite Code
+		if upd.InviteCode != "" {
+			agencyId := common.GetIDFromInvite(upd.InviteCode)
+			if agencyId == "" {
+				agencyId = auth.SwayOpsTalentAgencyID
+			}
+			inf.AgencyId = agencyId
+		}
+
+		// Update Gender
+		switch upd.Gender {
+		case "mf", "fm", "unicorn":
+			inf.Male, inf.Female = true, true
+		case "m":
+			inf.Male, inf.Female = true, false
+		case "f":
+			inf.Male, inf.Female = false, true
+		}
+
+		// Update DealPing
+		inf.DealPing = upd.DealPing
+
+		// Update Address
+		if upd.Address.AddressOne != "" {
+			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg.Sandbox)
+			if err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if !geo.IsValidGeo(&geo.GeoRecord{State: cleanAddr.State, Country: cleanAddr.Country}) {
+				c.JSON(400, misc.StatusErr("Address does not convert to a valid geo!"))
+				return
+			}
+
+			inf.Address = cleanAddr
+		}
+
+		// Update User properties
+		// NOTE: Ahmed.. please update the user properties
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Save the influencer
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
 	}
 }
 
@@ -602,6 +754,7 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
+
 		c.JSON(200, inf)
 	}
 }
@@ -741,194 +894,6 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	}
 }
 
-var (
-	ErrPlatform  = errors.New("Platform not found!")
-	ErrUnmarshal = errors.New("Failed to unmarshal data!")
-)
-
-func setPlatform(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Alter influencer bucket
-		var (
-			infId    = c.Param("influencerId")
-			id       = c.Param("id")
-			platform = c.Param("platform")
-			err      error
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		switch platform {
-		case "instagram":
-			err = inf.NewInsta(id, s.Cfg)
-		case "facebook":
-			err = inf.NewFb(id, s.Cfg)
-		case "twitter":
-			err = inf.NewTwitter(id, s.Cfg)
-		case "youtube":
-			err = inf.NewYouTube(id, s.Cfg)
-		default:
-			c.JSON(500, misc.StatusErr(ErrPlatform.Error()))
-			return
-		}
-
-		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setCategory(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		cat := strings.ToLower(c.Param("category"))
-		if _, ok := common.CATEGORIES[cat]; !ok {
-			c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-		inf.Categories = append(inf.Categories, cat)
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setInviteCode(s *Server) gin.HandlerFunc {
-	// Sets the agency id for the influencer via an invite code
-	return func(c *gin.Context) {
-		agencyId := common.GetIDFromInvite(c.Params.ByName("inviteCode"))
-		if agencyId == "" {
-			agencyId = auth.SwayOpsTalentAgencyID
-		}
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		inf.AgencyId = agencyId
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setGender(s *Server) gin.HandlerFunc {
-	// Sets the gender for the influencer id
-	return func(c *gin.Context) {
-		gender := strings.ToLower(c.Params.ByName("gender"))
-		switch gender {
-		case "m", "f", "mf", "fm", "unicorn":
-		default:
-			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-		switch gender {
-		case "mf", "fm", "unicorn":
-			inf.Male, inf.Female = true, true
-		case "m":
-			inf.Male, inf.Female = true, false
-		case "f":
-			inf.Male, inf.Female = false, true
-		}
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setReminder(s *Server) gin.HandlerFunc {
-	// Sets the reminder for the influencer id
-	return func(c *gin.Context) {
-		state := strings.ToLower(c.Params.ByName("state"))
-
-		var reminder bool
-		if state == "t" || state == "true" {
-			reminder = true
-		} else if state == "f" || state == "false" {
-			reminder = false
-		} else {
-			c.JSON(400, misc.StatusErr("Please submit a valid reminder state"))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		inf.DealPing = reminder
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
 func setBan(s *Server) gin.HandlerFunc {
 	// Sets the banned value for the influencer id
 	return func(c *gin.Context) {
@@ -957,55 +922,6 @@ func setBan(s *Server) gin.HandlerFunc {
 		inf.Banned = ban
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setAddress(s *Server) gin.HandlerFunc {
-	// Sets the address for the influencer
-	return func(c *gin.Context) {
-		var (
-			addr lob.AddressLoad
-			err  error
-		)
-
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&addr); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
-			return
-		}
-
-		cleanAddr, err := lob.VerifyAddress(&addr, s.Cfg.Sandbox)
-		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
-			return
-		}
-
-		if !geo.IsValidGeo(&geo.GeoRecord{State: cleanAddr.State, Country: cleanAddr.Country}) {
-			c.JSON(400, misc.StatusErr("Address does not convert to a valid geo!"))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		inf.Address = cleanAddr
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Save the influencer
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))

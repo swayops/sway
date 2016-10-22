@@ -306,13 +306,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		nil, putInfluencer, nil)
 
 	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
-	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", infOwnership, setPlatform(srv))
-	verifyGroup.GET("/setCategory/:influencerId/:category", infOwnership, setCategory(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
-	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
-	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
-	verifyGroup.GET("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
-	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
 	verifyGroup.GET("/bio/:influencerId", infOwnership, getBio(srv))
@@ -375,11 +369,11 @@ func (srv *Server) Run() (err error) {
 }
 
 func (srv *Server) Alert(msg string, err error) {
+	log.Println(msg, err)
+
 	if srv.Cfg.Sandbox {
 		return
 	}
-
-	log.Println(msg, err)
 
 	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
 	if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", "shahzil@swayops.com", "Shahzil Abid",

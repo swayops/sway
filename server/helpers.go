@@ -626,8 +626,6 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		su = incUser.AdAgency
 	case "talentAgency":
 		su = incUser.TalentAgency
-	case "inf":
-		su = incUser.InfluencerLoad
 	case "admin":
 
 	}

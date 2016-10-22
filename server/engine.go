@@ -36,9 +36,9 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Run engine every 6 hours
-	ticker := time.NewTicker(6 * time.Hour)
+	runTicker := time.NewTicker(6 * time.Hour)
 	go func() {
-		for range ticker.C {
+		for range runTicker.C {
 			if err := run(srv); err != nil {
 				log.Println("Err running engine", err)
 			}
@@ -46,10 +46,10 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Check social media keys every hour!
-	addr := &lob.AddressLoad{"4 Pennsylvania Plaza", "", "New York", "NY", "US", "10001"}
-	ticker = time.NewTicker(10 * time.Minute)
+	addr := &lob.AddressLoad{"917 HARTFORD WAY", "", "BEVERLY HILLS", "CA", "US", "90210"}
+	alertTicker := time.NewTicker(30 * time.Second)
 	go func() {
-		for range ticker.C {
+		for range alertTicker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
 				srv.Alert("Error running Facebook init!", err)
 			}

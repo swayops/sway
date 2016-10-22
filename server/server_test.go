@@ -169,8 +169,7 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
-		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"categories": []string{"business"}, "twitter": "SwayOps_com"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"business"},
@@ -270,8 +269,7 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
-		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"categories": []string{"business"}, "twitter": "SwayOps_com"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
@@ -279,7 +277,7 @@ func TestNewInfluencer(t *testing.T) {
 		}},
 
 		// Add a social media platofrm
-		{"GET", "/setPlatform/" + inf.ExpID + "/facebook/" + "justinbieber", nil, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com", "facebook": "justinbieber", "categories": []string{"business"}}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
@@ -1550,7 +1548,8 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 
 	// Lets set this influencer to NOT receive emails now!
-	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/false", nil, nil)
+	updLoad := &InfluencerUpdate{DealPing: false, TwitterId: "cnn", Gender: "m"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1574,7 +1573,8 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 
 	// Lets set this influencer to receive emails now!
-	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/true", nil, nil)
+	updLoad = &InfluencerUpdate{DealPing: true, TwitterId: "cnn", Gender: "m"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1630,7 +1630,7 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 
 	if load.LastEmail == 0 {
-		t.Fatal("No email was sent wth!")
+		t.Fatal("No email was sent wth!", inf.ExpID)
 	}
 
 	// Lets force email again and make sure a new email doesnt get sent
@@ -1798,14 +1798,15 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Lets update the address for the influencer now!
-	addr := &lob.AddressLoad{
+	addr := lob.AddressLoad{
 		AddressOne: "8 Saint Elias",
 		City:       "Trabuco Canyon",
 		State:      "CAlifornia",
 		Country:    "US",
 	}
 
-	r = rst.DoTesting(t, "POST", "/setAddress/"+inf.ExpID, addr, nil)
+	updLoad := &InfluencerUpdate{Address: addr, TwitterId: "cnn"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
