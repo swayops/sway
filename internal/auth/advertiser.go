@@ -60,7 +60,12 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	adv.ExchangeFee = 0.2 // Global exchange fee
 
 	if u.Advertiser != nil && len(u.Advertiser.Blacklist) > 0 {
-		adv.Blacklist = u.Advertiser.Blacklist
+		if adv.Blacklist == nil {
+			adv.Blacklist = map[string]bool{}
+		}
+		for k := range u.Advertiser.Blacklist {
+			adv.Blacklist[k] = true
+		}
 	}
 
 	u.Advertiser = adv
