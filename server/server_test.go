@@ -169,7 +169,8 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"PUT", "/influencer/" + inf.ExpID, M{"categories": []string{"business"}, "twitter": "SwayOps_com"}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com"}, 200, nil},
+		{"PUT", "/setCategories/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"business"},
@@ -269,7 +270,8 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"PUT", "/influencer/" + inf.ExpID, M{"categories": []string{"business"}, "twitter": "SwayOps_com"}, 200, nil},
+		{"PUT", "/setCategories/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
@@ -277,7 +279,7 @@ func TestNewInfluencer(t *testing.T) {
 		}},
 
 		// Add a social media platofrm
-		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com", "facebook": "justinbieber", "categories": []string{"business"}}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com", "facebook": "justinbieber"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},

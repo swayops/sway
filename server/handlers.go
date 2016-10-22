@@ -592,13 +592,12 @@ var (
 )
 
 type InfluencerUpdate struct {
-	InstagramId string   `json:"instagram,omitempty"`
-	FbId        string   `json:"facebook,omitempty"`
-	TwitterId   string   `json:"twitter,omitempty"`
-	YouTubeId   string   `json:"youtube,omitempty"`
-	Categories  []string `json:"categories,omitempty"`
-	InviteCode  string   `json:"inviteCode,omitempty"`
-	DealPing    bool     `json:"dealPing,omitempty"`
+	InstagramId string `json:"instagram,omitempty"`
+	FbId        string `json:"facebook,omitempty"`
+	TwitterId   string `json:"twitter,omitempty"`
+	YouTubeId   string `json:"youtube,omitempty"`
+	InviteCode  string `json:"inviteCode,omitempty"`
+	DealPing    bool   `json:"dealPing,omitempty"`
 
 	Gender string `json:"gender,omitempty"`
 
@@ -685,17 +684,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			inf.YouTube = nil
 		}
 
-		// Update Categories
-		var filteredCats []string
-		for _, cat := range upd.Categories {
-			if _, ok := common.CATEGORIES[cat]; !ok {
-				c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
-				return
-			}
-			filteredCats = append(filteredCats, cat)
-		}
-		inf.Categories = filteredCats
-
 		// Update Invite Code
 		if upd.InviteCode != "" {
 			agencyId := common.GetIDFromInvite(upd.InviteCode)
@@ -744,6 +732,50 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+	}
+}
+
+type CategoriesSet struct {
+	Categories []string `json:"categories,omitempty"`
+}
+
+func setCategories(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Please provide a valid influencer ID"))
+			return
+		}
+
+		var (
+			upd CategoriesSet
+			err error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		var filteredCats []string
+		for _, cat := range upd.Categories {
+			if _, ok := common.CATEGORIES[cat]; !ok {
+				c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
+				return
+			}
+			filteredCats = append(filteredCats, cat)
+		}
+
+		inf.Categories = filteredCats
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(inf.Id))
 	}
 }
 

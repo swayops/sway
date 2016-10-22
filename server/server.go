@@ -307,6 +307,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
+	verifyGroup.PUT("/setCategories/:influencerId", infOwnership, setCategories(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
 	verifyGroup.GET("/bio/:influencerId", infOwnership, getBio(srv))
