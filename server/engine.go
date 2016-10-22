@@ -46,7 +46,7 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Check social media keys every hour!
-	addr := &lob.AddressLoad{"4 Pennsylvania Plaza", "", "New York", "NY", "USA", "10001"}
+	addr := &lob.AddressLoad{"4 Pennsylvania Plaza", "", "New York", "NY", "US", "10001"}
 	ticker = time.NewTicker(10 * time.Minute)
 	go func() {
 		for range ticker.C {
