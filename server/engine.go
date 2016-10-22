@@ -47,7 +47,7 @@ func newSwayEngine(srv *Server) error {
 
 	// Check social media keys every hour!
 	addr := &lob.AddressLoad{"917 HARTFORD WAY", "", "BEVERLY HILLS", "CA", "US", "90210"}
-	alertTicker := time.NewTicker(30 * time.Second)
+	alertTicker := time.NewTicker(30 * time.Minute)
 	go func() {
 		for range alertTicker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
