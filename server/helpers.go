@@ -181,7 +181,7 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	return u.StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
 }
 
-func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user auth.User) error {
+func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user *auth.User) error {
 	if inf.Id == "" {
 		return auth.ErrInvalidID
 	}
@@ -190,7 +190,7 @@ func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, u
 	s.auth.Influencers.SetInfluencer(inf.Id, inf)
 
 	// Save in the DB
-	return user.Update(&user).StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
+	return user.Update(user).StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
 }
 
 //TODO discuss with Shahzil and handle scopes

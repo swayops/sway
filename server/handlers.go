@@ -592,6 +592,7 @@ var (
 )
 
 type InfluencerUpdate struct {
+	Name        string          `json:"name,omitempty"`              // Required to send
 	InstagramId string          `json:"instagram,omitempty"`         // Required to send
 	FbId        string          `json:"facebook,omitempty"`          // Required to send
 	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
@@ -727,6 +728,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			inf.Address = cleanAddr
 		}
 
+		inf.Name = upd.Name // it will always be assigned
+
 		// Update User properties
 		var user *auth.User
 		if err := s.db.View(func(tx *bolt.Tx) (err error) {
@@ -759,10 +762,11 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			}
 
 			if changed {
-				user = s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
+				nuser := s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
+				user = nuser.Update(user)
 			}
 
-			return saveInfluencerWithUser(s, tx, inf, *user)
+			return saveInfluencerWithUser(s, tx, inf, user)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
