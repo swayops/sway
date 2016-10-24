@@ -14,7 +14,7 @@ var (
 	ErrInvalidParentID  = errors.New("invalid parent id")
 	ErrInvalidAgencyID  = errors.New("invalid agency id")
 	ErrInvalidID        = errors.New("invalid item id")
-	ErrInvalidName      = errors.New("invalid or missing name")
+	ErrInvalidName      = errors.New("invalid or missing name (must be full name)")
 	ErrInvalidEmail     = errors.New("invalid or missing email")
 	ErrUserExists       = errors.New("the email address already exists")
 	ErrInvalidUserType  = errors.New("invalid or missing user type")
