@@ -134,7 +134,7 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 
 func getUserImage(s *Server, data, suffix string, minW, minH int, user *auth.User) (string, error) {
 	if !strings.HasPrefix(data, "data:image/") {
-		return "", nil
+		return data, nil
 	}
 
 	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
