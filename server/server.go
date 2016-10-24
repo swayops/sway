@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -165,16 +166,22 @@ var scopes = map[string]auth.ScopeMap{
 	},
 }
 
+// TODO: clean this up or move to meteora router
 func initDashboardRoutes(srv *Server, r gin.IRouter) {
 	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
 	favIcoFile := filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
 	r.Use(func(c *gin.Context) {
-		p := c.Request.URL.Path[1:]
+		fp := c.Request.URL.Path[1:]
+		p := fp
 		if idx := strings.Index(p, "/"); idx > -1 {
 			p = p[:idx]
+			fp = fp[idx+1:]
 		}
 		serve := idxFile
 		switch p {
+		case "invite":
+			c.Redirect(http.StatusPermanentRedirect, "/infApp/signup/"+fp)
+			return
 		case "favicon.ico":
 			serve = favIcoFile
 		case "static", "api":
