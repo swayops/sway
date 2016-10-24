@@ -26,7 +26,7 @@ const (
 
 var (
 	ErrCode    = errors.New(`Non-200 Instagram Status Code`)
-	ErrUnknown = errors.New(`Data not found!`)
+	ErrUnknown = errors.New(`Instagram data not found!`)
 )
 
 type UserSearch struct {

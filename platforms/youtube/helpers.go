@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	ErrUnknown = errors.New(`Data not found!`)
+	ErrUnknown = errors.New(`YouTube data not found!`)
 	ErrEmpty   = errors.New("Empty post items!")
 	ErrStats   = errors.New("Unable to retrieve video stats")
 	ErrContent = errors.New("Empty content items")
