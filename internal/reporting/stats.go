@@ -71,7 +71,6 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 
 			// This value falls in our target range!
 			eng := getEngagements(st)
-			views := getViews(st, eng)
 
 			if tg.Total == nil {
 				tg.Total = &Totals{}
@@ -80,7 +79,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Engagements += eng
 			tg.Total.Likes += st.Likes
 			tg.Total.Clicks += st.Clicks
-			tg.Total.Views += views
+			tg.Total.Views += st.Views
 			tg.Total.Spent += st.Influencer + st.TotalMarkup()
 			tg.Total.Shares += st.Shares
 			tg.Total.Comments += st.Comments
@@ -99,19 +98,19 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 				tg.Channel = make(map[string]*ReportStats)
 			}
 
-			fillReportStats(deal.AssignedPlatform, tg.Channel, st, views, deal.InfluencerId, deal.AssignedPlatform)
+			fillReportStats(deal.AssignedPlatform, tg.Channel, st, deal.InfluencerId, deal.AssignedPlatform)
 
 			if tg.Influencer == nil || len(tg.Influencer) == 0 {
 				tg.Influencer = make(map[string]*ReportStats)
 			}
 
-			fillReportStats(deal.InfluencerName, tg.Influencer, st, views, deal.InfluencerId, deal.AssignedPlatform)
+			fillReportStats(deal.InfluencerName, tg.Influencer, st, deal.InfluencerId, deal.AssignedPlatform)
 
 			if tg.Post == nil || len(tg.Post) == 0 {
 				tg.Post = make(map[string]*ReportStats)
 			}
 
-			fillContentLevelStats(deal.PostUrl, deal.AssignedPlatform, deal.Published(), tg.Post, st, views, deal.InfluencerId)
+			fillContentLevelStats(deal.PostUrl, deal.AssignedPlatform, deal.Published(), tg.Post, st, deal.InfluencerId)
 
 			continue
 		}
@@ -123,7 +122,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 	return tg, nil
 }
 
-func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats, views int32, infId, channel string) map[string]*ReportStats {
+func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats, infId, channel string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
 		stats = &ReportStats{}
@@ -133,7 +132,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats,
 	stats.Likes += st.Likes
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
-	stats.Views += views
+	stats.Views += st.Views
 	stats.Clicks += st.Clicks
 	stats.Spent += st.Influencer + st.TotalMarkup()
 	stats.InfluencerId = infId
@@ -141,7 +140,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats,
 	return data
 }
 
-func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *common.Stats, views int32, infId string) map[string]*ReportStats {
+func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *common.Stats, infId string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
 		stats = &ReportStats{}
@@ -152,7 +151,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	stats.Clicks += st.Clicks
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
-	stats.Views += views
+	stats.Views += st.Views
 	stats.Spent += st.Influencer + st.TotalMarkup()
 	stats.PlatformId = platformId
 	stats.Published = getPostDate(ts)
@@ -172,12 +171,11 @@ func GetInfluencerStats(inf influencer.Influencer, cfg *config.Config, from, to 
 
 		st := deal.Get(dates, agid)
 		eng := getEngagements(st)
-		views := getViews(st, eng)
 		stats.Clicks += st.Clicks
 		stats.Likes += st.Likes
 		stats.Comments += st.Comments
 		stats.Shares += st.Shares
-		stats.Views += views
+		stats.Views += st.Views
 		stats.Spent += st.Influencer
 		stats.AgencySpent += st.Agency
 		stats.Engagements += eng

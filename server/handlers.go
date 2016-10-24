@@ -2744,19 +2744,15 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							if deal.Tweet != nil {
 								d.Caption = deal.Tweet.Text
 								d.Published = int32(deal.Tweet.CreatedAt.Unix())
-								d.Views = reporting.GetViews(d.Likes, 0, d.Shares)
 							} else if deal.Facebook != nil {
 								d.Caption = deal.Facebook.Caption
 								d.Published = int32(deal.Facebook.Published.Unix())
-								d.Views = reporting.GetViews(d.Likes, d.Comments, d.Shares)
 							} else if deal.Instagram != nil {
 								d.Caption = deal.Instagram.Caption
 								d.Published = deal.Instagram.Published
-								d.Views = reporting.GetViews(d.Likes, d.Comments, 0)
 							} else if deal.YouTube != nil {
 								d.Caption = deal.YouTube.Description
 								d.Published = deal.YouTube.Published
-								d.Views = int32(deal.YouTube.Views)
 							}
 
 							// Check for virality

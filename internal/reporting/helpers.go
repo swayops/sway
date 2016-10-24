@@ -7,28 +7,8 @@ import (
 	"github.com/swayops/sway/internal/common"
 )
 
-const (
-	engagementViewRatio = 0.04
-)
-
 func getEngagements(st *common.Stats) int32 {
 	return st.Likes + st.Dislikes + st.Comments + st.Shares
-}
-
-func getViews(st *common.Stats, eng int32) int32 {
-	var views int32
-	if st.Views == 0 {
-		// There are no concrete views so lets gueestimate!
-		// Assume engagement rate is 4% of views!
-		views = int32(float64(eng) / engagementViewRatio)
-	} else {
-		views += st.Views
-	}
-	return views
-}
-
-func GetViews(likes, comments, shares int32) int32 {
-	return int32(float64(likes+comments+shares) / engagementViewRatio)
 }
 
 func GetReportDate(date string) time.Time {
