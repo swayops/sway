@@ -525,7 +525,7 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -538,7 +538,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		return infDeals
 	}
 
-	if location == nil && !skipGeo {
+	if location == nil {
 		location = inf.GetLatestGeo()
 	}
 
@@ -698,7 +698,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 	if misc.WithinLast(inf.LastEmail, 24*7) {
 		return false, nil
 	}
-	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, false, cfg)
+	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}
