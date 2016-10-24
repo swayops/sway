@@ -525,7 +525,7 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -557,7 +557,9 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		for _, deal := range cmp.Deals {
-			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" && !dealFound {
+			// Query is only passed in from getDeal so an influencer can view deals they're
+			// currently assigned to
+			if (query || (deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "")) && !dealFound {
 				if forcedDeal != "" && deal.Id != forcedDeal {
 					continue
 				}
@@ -590,11 +592,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// If you already have a/have done deal for this campaign, screw off
 		dealFound = false
-		for _, d := range inf.ActiveDeals {
-			if d.CampaignId == targetDeal.CampaignId {
-				dealFound = true
+		if !query {
+			// With the query flag beign used by getDeal,
+			// we may be looking for details on an assigned deal
+			for _, d := range inf.ActiveDeals {
+				if d.CampaignId == targetDeal.CampaignId {
+					dealFound = true
+				}
 			}
 		}
+
 		for _, d := range inf.CompletedDeals {
 			if d.CampaignId == targetDeal.CampaignId {
 				dealFound = true
@@ -698,7 +705,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 	if misc.WithinLast(inf.LastEmail, 24*7) {
 		return false, nil
 	}
-	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, cfg)
+	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, false, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}

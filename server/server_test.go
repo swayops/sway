@@ -114,7 +114,7 @@ func TestAdAgencyChain(t *testing.T) {
 
 		// update the advertiser and check if the update worked
 		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1}}, 200, nil},
-		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.1, ExchangeFee: 0.2, Blacklist: map[string]bool{"randomInf": true,}}},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.1, ExchangeFee: 0.2, Blacklist: map[string]bool{"randomInf": true}}},
 
 		// sign in as admin and see if they can access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -1346,10 +1346,35 @@ SKIP_APPROVE_1:
 		t.Fatal("Incorrect perk values set!")
 	}
 
+	// lets make sure the getDeal endpoint works and has
+	// all necessary data!
+	var dealGet common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &dealGet)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if dealGet.Spendable == 0 || len(dealGet.Platforms) == 0 || dealGet.Perk.Count != 1 || dealGet.Link == "" {
+		t.Fatal("Get deal query did not work!")
+	}
+
 	// pick up deal for influencer
 	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id+"/twitter", nil, &deals)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
+	}
+
+	// make sure get deal still works!
+	var postDeal common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &postDeal)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if postDeal.Spendable == 0 || len(postDeal.Platforms) == 0 || postDeal.Link == "" {
+		t.Fatal("Get deal query did not work post assignment!")
 	}
 
 	// check campaign perk status and count (make sure both were updated)
