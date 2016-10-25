@@ -306,6 +306,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
 	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
+	verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
@@ -349,8 +350,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 	adminGroup.GET("/forceEngine", forceEngine(srv))
-
-	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
