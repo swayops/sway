@@ -15,6 +15,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	engineDelay = 4 // hours
+)
+
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
 	// This will be used by "GetAvailableDeals"
@@ -35,8 +39,8 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Run engine every 6 hours
-	runTicker := time.NewTicker(6 * time.Hour)
+	// Run engine every 4 hours
+	runTicker := time.NewTicker(engineDelay * time.Hour)
 	go func() {
 		for range runTicker.C {
 			if err := run(srv); err != nil {
@@ -236,7 +240,7 @@ func depleteBudget(s *Server) error {
 			}
 
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
-			store, spentDelta, m = budget.AdjustStore(store, deal)
+			store, spentDelta, m = budget.AdjustStore(store, deal, engineDelay)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				// DSP and Exchange fee taken away from the prinicpal

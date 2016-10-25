@@ -245,41 +245,90 @@ type Metrics struct {
 	Views    int32 `json:"views,omitempty"`
 }
 
-func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
+func AdjustStore(store *Store, deal *common.Deal, engineDelay int32) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
+	var (
+		firstTouch                     bool
+		shares, likes, comments, views int32
+	)
+
+	if len(deal.Reporting) == 0 && misc.WithinLast(deal.Completed, engineDelay) {
+		// This implies that we have no reporting for this deal,
+		// and it was done within the last 4 hours (engine run time)
+		// hence it was JUST discovered by exporer and we need to
+		// look at it's total engagements (what it got between being posted
+		// to our explorer picking it up) and not just deltas!
+		firstTouch = true
+	}
 
 	m := &Metrics{}
 
 	oldSpendable := store.Spendable
 	if deal.Tweet != nil {
 		// Considering retweets as shares and favorites as likes!
-		m.Shares += int32(deal.Tweet.RetweetsDelta)
-		m.Likes += int32(deal.Tweet.FavoritesDelta)
+		if firstTouch {
+			shares = int32(deal.Tweet.Retweets)
+			likes = int32(deal.Tweet.Favorites)
+		} else {
+			shares = int32(deal.Tweet.RetweetsDelta)
+			likes = int32(deal.Tweet.FavoritesDelta)
+		}
 
-		store.deductSpendable(float64(deal.Tweet.RetweetsDelta) * TW_RETWEET)
-		store.deductSpendable(float64(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
+		m.Shares += shares
+		m.Likes += likes
+
+		store.deductSpendable(float64(shares) * TW_RETWEET)
+		store.deductSpendable(float64(likes) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		m.Likes += int32(deal.Facebook.LikesDelta)
-		m.Shares += int32(deal.Facebook.SharesDelta)
-		m.Comments += int32(deal.Facebook.CommentsDelta)
+		if firstTouch {
+			likes = int32(deal.Facebook.Likes)
+			shares = int32(deal.Facebook.Shares)
+			comments = int32(deal.Facebook.Comments)
+		} else {
+			likes = int32(deal.Facebook.LikesDelta)
+			shares = int32(deal.Facebook.SharesDelta)
+			comments = int32(deal.Facebook.CommentsDelta)
+		}
 
-		store.deductSpendable(float64(deal.Facebook.LikesDelta) * FB_LIKE)
-		store.deductSpendable(float64(deal.Facebook.SharesDelta) * FB_SHARE)
-		store.deductSpendable(float64(deal.Facebook.CommentsDelta) * FB_COMMENT)
+		m.Likes += likes
+		m.Shares += shares
+		m.Comments += comments
+
+		store.deductSpendable(float64(likes) * FB_LIKE)
+		store.deductSpendable(float64(shares) * FB_SHARE)
+		store.deductSpendable(float64(comments) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		m.Likes += int32(deal.Instagram.LikesDelta)
-		m.Comments += int32(deal.Instagram.CommentsDelta)
+		if firstTouch {
+			likes = int32(deal.Instagram.Likes)
+			comments = int32(deal.Instagram.Comments)
+		} else {
+			likes = int32(deal.Instagram.LikesDelta)
+			comments = int32(deal.Instagram.CommentsDelta)
+		}
 
-		store.deductSpendable(float64(deal.Instagram.LikesDelta) * INSTA_LIKE)
-		store.deductSpendable(float64(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
+		m.Likes += likes
+		m.Comments += comments
+
+		store.deductSpendable(float64(likes) * INSTA_LIKE)
+		store.deductSpendable(float64(comments) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		m.Views += int32(deal.YouTube.ViewsDelta)
-		m.Likes += int32(deal.YouTube.LikesDelta)
-		m.Comments += int32(deal.YouTube.CommentsDelta)
+		if firstTouch {
+			views = int32(deal.YouTube.Views)
+			likes = int32(deal.YouTube.Likes)
+			comments = int32(deal.YouTube.Comments)
+		} else {
+			views = int32(deal.YouTube.ViewsDelta)
+			likes = int32(deal.YouTube.LikesDelta)
+			comments = int32(deal.YouTube.CommentsDelta)
+		}
 
-		store.deductSpendable(float64(deal.YouTube.ViewsDelta) * YT_VIEW)
-		store.deductSpendable(float64(deal.YouTube.LikesDelta) * YT_LIKE)
-		store.deductSpendable(float64(deal.YouTube.CommentsDelta) * YT_COMMENT)
+		m.Views += views
+		m.Likes += likes
+		m.Comments += comments
+
+		store.deductSpendable(float64(views) * YT_VIEW)
+		store.deductSpendable(float64(likes) * YT_LIKE)
+		store.deductSpendable(float64(comments) * YT_COMMENT)
 	}
 
 	spentDelta := oldSpendable - store.Spendable

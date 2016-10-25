@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -180,7 +179,7 @@ func initDashboardRoutes(srv *Server, r gin.IRouter) {
 		serve := idxFile
 		switch p {
 		case "invite":
-			c.Redirect(http.StatusPermanentRedirect, "/infApp/signup/"+fp)
+			c.Redirect(308, "/infApp/signup/"+fp)
 			return
 		case "favicon.ico":
 			serve = favIcoFile
