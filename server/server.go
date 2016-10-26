@@ -399,3 +399,13 @@ func (srv *Server) Notify(subject, msg string) {
 		log.Println("Error sending notify email!")
 	}
 }
+
+func (srv *Server) Close() error {
+	log.Println("exiting...")
+	// srv.r.Close() // not implemented in gin nor net/http
+	srv.db.Close()
+	srv.budgetDb.Close()
+	srv.Cfg.Loggers.Close()
+	log.Println("done...")
+	return nil
+}

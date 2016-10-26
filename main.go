@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/closer"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/server"
 )
@@ -32,10 +33,11 @@ func main() {
 		log.Fatal(err)
 	}
 
+	defer closer.Defer(srv.Close)()
+
 	// Listen and Serve
 	if err = srv.Run(); err != nil {
 		log.Fatalf("Failed to listen: %v", err)
-
 	}
 
 }
