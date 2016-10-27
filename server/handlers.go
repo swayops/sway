@@ -782,11 +782,12 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 	}
 }
 
-type CategoriesSet struct {
+type AuditSet struct {
 	Categories []string `json:"categories,omitempty"`
+	Gender     string   `json:"gender,omitempty"`
 }
 
-func setCategories(s *Server) gin.HandlerFunc {
+func setAudit(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
@@ -795,7 +796,7 @@ func setCategories(s *Server) gin.HandlerFunc {
 		}
 
 		var (
-			upd CategoriesSet
+			upd AuditSet
 			err error
 		)
 		defer c.Request.Body.Close()
@@ -814,6 +815,15 @@ func setCategories(s *Server) gin.HandlerFunc {
 		}
 
 		inf.Categories = filteredCats
+
+		switch upd.Gender {
+		case "mf", "fm", "unicorn":
+			inf.Male, inf.Female = true, true
+		case "m":
+			inf.Male, inf.Female = true, false
+		case "f":
+			inf.Male, inf.Female = false, true
+		}
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)

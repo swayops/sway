@@ -173,7 +173,7 @@ func TestTalentAgencyChain(t *testing.T) {
 
 		// update the influencer and check if the update worked
 		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com"}, 200, nil},
-		{"PUT", "/setCategories/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
+		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"business"},
@@ -273,7 +273,7 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"PUT", "/setCategories/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
+		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
