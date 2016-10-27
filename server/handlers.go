@@ -2103,9 +2103,15 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 }
 
 func getPendingPerks(s *Server) gin.HandlerFunc {
+	type PerkWithCmpInfo struct {
+		AdvertiserID string `json:"advID"`
+		CampaignID   string `json:"cmpID"`
+		CampaignName string `json:"cmpName"`
+		*common.Perk
+	}
 	// Get list of perks that need to be mailed out
 	return func(c *gin.Context) {
-		perks := make(map[string][]*common.Perk)
+		var perks []PerkWithCmpInfo
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -2116,7 +2122,12 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 
 				for _, d := range cmp.Deals {
 					if d.Perk != nil && !d.Perk.Status {
-						perks[cmp.Id] = append(perks[cmp.Id], d.Perk)
+						perks = append(perks, PerkWithCmpInfo{
+							AdvertiserID: cmp.AdvertiserId,
+							CampaignID:   cmp.Id,
+							CampaignName: cmp.Name,
+							Perk:         d.Perk,
+						})
 					}
 				}
 				return
