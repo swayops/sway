@@ -3,6 +3,7 @@ package instagram
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -40,7 +41,7 @@ type SearchData struct {
 }
 
 func getUserIdFromName(name string, cfg *config.Config) (string, error) {
-	endpoint := fmt.Sprintf(searchesUrl, cfg.Instagram.Endpoint, name, cfg.Instagram.AccessToken)
+	endpoint := fmt.Sprintf(searchesUrl, cfg.Instagram.Endpoint, name, getToken(cfg.Instagram.AccessTokens))
 
 	var search UserSearch
 	err := misc.Request("GET", endpoint, "", &search)
@@ -104,7 +105,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 	var latestGeo *geo.GeoRecord
 
 	posts := []*Post{}
-	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.AccessToken)
+	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, getToken(cfg.Instagram.AccessTokens))
 
 	var media UserPost
 	err := misc.Request("GET", endpoint, "", &media)
@@ -190,7 +191,7 @@ type Counts struct {
 
 func getUserInfo(id string, cfg *config.Config) (flw float64, url string, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
-	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, cfg.Instagram.AccessToken)
+	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, getToken(cfg.Instagram.AccessTokens))
 	var user BasicUser
 	err = misc.Request("GET", endpoint, "", &user)
 	if err != nil {
@@ -214,4 +215,12 @@ func getUserInfo(id string, cfg *config.Config) (flw float64, url string, err er
 type PostById struct {
 	Meta *Meta     `json:"meta"`
 	Data *PostData `json:"data"`
+}
+
+func getToken(tokens []string) string {
+	if len(tokens) > 0 {
+		s := tokens[rand.Intn(len(tokens))]
+		return s
+	}
+	return ""
 }
