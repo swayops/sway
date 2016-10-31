@@ -2077,6 +2077,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 }
 
 func getPendingCampaigns(s *Server) gin.HandlerFunc {
+	// Have we received the perks from advertiser?
 	return func(c *gin.Context) {
 		var campaigns []*common.Campaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
@@ -2102,13 +2103,14 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 	}
 }
 
+type PerkWithCmpInfo struct {
+	AdvertiserID string `json:"advID"`
+	CampaignID   string `json:"cmpID"`
+	CampaignName string `json:"cmpName"`
+	*common.Perk
+}
+
 func getPendingPerks(s *Server) gin.HandlerFunc {
-	type PerkWithCmpInfo struct {
-		AdvertiserID string `json:"advID"`
-		CampaignID   string `json:"cmpID"`
-		CampaignName string `json:"cmpName"`
-		*common.Perk
-	}
 	// Get list of perks that need to be mailed out
 	return func(c *gin.Context) {
 		var perks []PerkWithCmpInfo
@@ -2137,6 +2139,7 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
+
 		c.JSON(200, perks)
 	}
 }

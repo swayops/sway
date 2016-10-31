@@ -1440,34 +1440,34 @@ SKIP_APPROVE_1:
 	}
 
 	// get pending perk sendouts for admin
-	var pendingPerks map[string][]*common.Perk
+	var pendingPerks []PerkWithCmpInfo
+
 	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &pendingPerks)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
 	if len(pendingPerks) != 1 {
-		t.Fatal("Unexpected number of perks.. should have 1!")
+		t.Fatal("Unexpected number of perks.. should have 1!", len(pendingPerks))
 	}
 
-	pk, ok := pendingPerks["4"]
-	if !ok {
-		t.Fatal("Perk request not found")
-	}
-
-	if len(pk) != 1 {
+	if len(pendingPerks) != 1 {
 		t.Fatal("Unexpected number of perks")
 	}
 
-	if pk[0].Status {
+	if pendingPerks[0].CampaignID != "4" {
+		t.Fatal("Unknown perk request campaign ID!")
+	}
+
+	if pendingPerks[0].Status {
 		t.Fatal("Incorrect perk status value!")
 	}
 
-	if pk[0].Address == nil {
+	if pendingPerks[0].Address == nil {
 		t.Fatal("No address for perk!")
 	}
 
-	var emptyPerks map[string][]*common.Perk
+	var emptyPerks []PerkWithCmpInfo
 
 	if *genData {
 		goto SKIP_APPROVE_2
