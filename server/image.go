@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,13 +57,20 @@ func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight 
 	return id + suffix + "." + fm, err
 }
 
-func getImageUrl(s *Server, bucket, typ, filename string) string {
+func getImageUrl(s *Server, bucket, typ, filename string, addDomain bool) string {
+	var base string
 	switch typ {
 	case "dash":
-		return s.Cfg.DashURL + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
-	case "inf":
-		return s.Cfg.InfAppURL + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
+		if addDomain {
+			base = s.Cfg.DashURL
+		}
 
+	case "inf":
+		if addDomain {
+			base = s.Cfg.InfAppURL
+		}
+	default:
+		log.Panicf("invalid type: %v", typ)
 	}
-	panic("invalid type")
+	return base + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
 }

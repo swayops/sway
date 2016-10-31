@@ -143,7 +143,7 @@ func getUserImage(s *Server, data, suffix string, minW, minH int, user *auth.Use
 		return "", err
 	}
 
-	return getImageUrl(s, "dash", s.Cfg.Bucket.User, filename), nil
+	return getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false), nil
 }
 
 func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *auth.User) (bool, error) {
@@ -628,7 +628,7 @@ func saveUserImage(s *Server, u *auth.User) error {
 			return err
 		}
 
-		u.ImageURL = getImageUrl(s, "dash", s.Cfg.Bucket.User, filename)
+		u.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false)
 	}
 
 	if strings.HasPrefix(u.CoverImageURL, "data:image/") {
@@ -638,7 +638,7 @@ func saveUserImage(s *Server, u *auth.User) error {
 			return err
 		}
 
-		u.CoverImageURL = getImageUrl(s, "dash", s.Cfg.Bucket.User, filename)
+		u.CoverImageURL = getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false)
 	}
 
 	return nil

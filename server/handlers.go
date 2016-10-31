@@ -323,9 +323,9 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			cmp.ImageURL, cmp.ImageData = getImageUrl(s, "dash", s.Cfg.Bucket.Campaign, filename), ""
+			cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
 		} else {
-			cmp.ImageURL = getImageUrl(s, "dash", s.Cfg.Bucket.Campaign, DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
+			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))], false)
 		}
 
 		// Save the Campaign
@@ -499,7 +499,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			cmp.ImageURL, upd.ImageData = getImageUrl(s, "dash", s.Cfg.Bucket.Campaign, filename), ""
+			cmp.ImageURL, upd.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
 		}
 
 		for _, g := range upd.Geos {
@@ -2608,7 +2608,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			imageURL = getImageUrl(s, "dash", "campaign", filename)
+			imageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false)
 			cmp.ImageURL = imageURL
 
 			// Save the Campaign
