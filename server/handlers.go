@@ -323,9 +323,9 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, filename), ""
+			cmp.ImageURL, cmp.ImageData = getImageUrl(s, "dash", s.Cfg.Bucket.Campaign, filename), ""
 		} else {
-			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
+			cmp.ImageURL = getImageUrl(s, "dash", s.Cfg.Bucket.Campaign, DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
 		}
 
 		// Save the Campaign
@@ -499,7 +499,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			cmp.ImageURL, upd.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, filename), ""
+			cmp.ImageURL, upd.ImageData = getImageUrl(s, "dash", s.Cfg.Bucket.Campaign, filename), ""
 		}
 
 		for _, g := range upd.Geos {
@@ -2608,7 +2608,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			imageURL = getImageUrl(s, "campaign", filename)
+			imageURL = getImageUrl(s, "dash", "campaign", filename)
 			cmp.ImageURL = imageURL
 
 			// Save the Campaign
@@ -2636,6 +2636,7 @@ func getLatestGeo(s *Server) gin.HandlerFunc {
 }
 
 func click(s *Server) gin.HandlerFunc {
+	domain := s.Cfg.Domain
 	return func(c *gin.Context) {
 		var (
 			infId      = c.Param("influencerId")
@@ -2701,7 +2702,7 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		// One click per 30 days allowed per deal!
-		misc.SetCookie(c.Writer, "click", prevClicks, 24*30*time.Hour)
+		misc.SetCookie(c.Writer, domain, "click", prevClicks, 24*30*time.Hour)
 
 		c.Redirect(302, foundDeal.Link)
 	}

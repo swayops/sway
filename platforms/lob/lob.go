@@ -72,7 +72,7 @@ func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config
 	form.Add("amount", strconv.FormatFloat(payout, 'f', 6, 64))
 
 	if !cfg.Sandbox {
-		form.Add("logo", cfg.ServerURL+"/"+filepath.Join(cfg.ImageUrlPath, "sway_logo.png"))
+		form.Add("logo", cfg.DashURL+"/"+filepath.Join(cfg.ImageUrlPath, "sway_logo.png"))
 	}
 
 	form.Add("check_bottom", "<h1 style='padding-top:4in;'>Sway Influencer Check</h1>")

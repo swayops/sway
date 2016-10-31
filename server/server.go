@@ -166,53 +166,66 @@ var scopes = map[string]auth.ScopeMap{
 }
 
 // TODO: clean this up or move to meteora router
-func initDashboardRoutes(srv *Server, r gin.IRouter) {
-	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
-	favIcoFile := filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
-	r.Use(func(c *gin.Context) {
-		fp := c.Request.URL.Path[1:]
-		p := fp
-		if idx := strings.Index(p, "/"); idx > -1 {
-			p = p[:idx]
-			fp = fp[idx+1:]
+func getDashRoutes(srv *Server) func(c *gin.Context) {
+	var (
+		idxFile    = filepath.Join(srv.Cfg.DashboardPath, "index.html")
+		favIcoFile = filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
+		staticGzer = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+	)
+	return func(c *gin.Context) {
+		p := c.Request.URL.Path[1:]
+		parts := strings.Split(p, "/")
+		if len(parts) > 0 {
+			p = parts[0]
 		}
+
 		serve := idxFile
 		switch p {
+		case "api":
+			return
 		case "invite":
-			c.Redirect(308, "/infApp/signup/"+fp)
+			if len(parts) == 2 {
+				c.Redirect(308, srv.Cfg.InfAppURL+"/signup/"+parts[1])
+			} else {
+				misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
+			}
 			return
 		case "favicon.ico":
 			serve = favIcoFile
-		case "static", "api":
+		case "static":
+			staticGzer(c)
 			return
 		}
 		c.File(serve)
 		c.Abort()
-	})
+	}
 }
 
-func initInfAppRoutes(srv *Server, r gin.IRouter) {
-	idxFile := filepath.Join(srv.Cfg.InfAppPath, "index.html")
-	favIcoFile := filepath.Join(srv.Cfg.InfAppPath, "/static/img/favicon.ico")
-	r.Use(func(c *gin.Context) {
+func getInfAppRoutes(srv *Server) func(c *gin.Context) {
+	var (
+		idxFile    = filepath.Join(srv.Cfg.InfAppPath, "index.html")
+		favIcoFile = filepath.Join(srv.Cfg.InfAppPath, "/static/img/favicon.ico")
+		staticGzer = staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
+	)
+	return func(c *gin.Context) {
 		p := c.Request.URL.Path[1:]
-		if !strings.HasPrefix(p, "infApp") {
-			return
-		}
 		parts := strings.Split(p, "/")
 		if len(parts) > 0 {
 			p = parts[0]
 		}
 		serve := idxFile
 		switch p {
+		case "api":
+			return
 		case "favicon.ico":
 			serve = favIcoFile
 		case "static":
+			staticGzer(c)
 			return
 		}
 		c.File(serve)
 		c.Abort()
-	})
+	}
 }
 
 func (srv *Server) initializeRoutes(r gin.IRouter) {
@@ -220,16 +233,33 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.HEAD("/images/*fp", staticGzer)
 	r.GET("/images/*fp", staticGzer)
 
-	staticGzer = staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
-	r.HEAD("/infApp/static/*fp", staticGzer)
-	r.GET("/infApp/static/*fp", staticGzer)
+	infAppRoutes := getInfAppRoutes(srv)
+	dashRoutes := getDashRoutes(srv)
 
-	staticGzer = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
-	r.HEAD("/static/*fp", staticGzer)
-	r.GET("/static/*fp", staticGzer)
+	r.Use(func(c *gin.Context) {
+		var subdomain string
+		if dot := strings.IndexRune(c.Request.Host, '.'); dot > -1 {
+			subdomain = c.Request.Host[:dot]
+		}
+		switch subdomain {
+		case "":
+		case "inf":
+			infAppRoutes(c)
+		case "dash":
+			dashRoutes(c)
+		}
+	})
 
-	initInfAppRoutes(srv, r)
-	initDashboardRoutes(srv, r)
+	// staticGzer = staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
+	// r.HEAD("/infApp/static/*fp", staticGzer)
+	// r.GET("/infApp/static/*fp", staticGzer)
+
+	// staticGzer = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+	// r.HEAD("/static/*fp", staticGzer)
+	// r.GET("/static/*fp", staticGzer)
+
+	// initInfAppRoutes(srv, r)
+	// initDashboardRoutes(srv, r)
 
 	r = r.Group(srv.Cfg.APIPath)
 

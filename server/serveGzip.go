@@ -25,8 +25,13 @@ func staticGzipServe(dir string) func(c *gin.Context) {
 		return strings.Contains(c.Request.Header.Get(acceptEncoding), "gzip")
 	}
 	return func(c *gin.Context) {
+		p := c.Param("fp")
+		if p == "" {
+			p = c.Request.URL.Path[len("/static/"):]
+		}
+
 		var (
-			fp   = filepath.Join(dir, c.Param("fp"))
+			fp   = filepath.Join(dir, p)
 			ext  = strings.ToLower(filepath.Ext(fp))
 			typ  = mime.TypeByExtension(ext)
 			pass bool

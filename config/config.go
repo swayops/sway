@@ -38,7 +38,7 @@ func New(loc string) (*Config, error) {
 		return nil, err
 	}
 
-	c.ClickUrl = c.ServerURL + "/click/"
+	c.ClickUrl = c.DashURL + "/click/"
 
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
@@ -66,7 +66,9 @@ type Config struct {
 	BudgetBucket string `json:"budgetBucket"`
 	AuthDBName   string `json:"authDbName"`
 
-	ServerURL     string `json:"serverURL"` // this is mainly used for internal directs
+	Domain        string `json:"domain"`    // for cookies, important
+	DashURL       string `json:"dashURL"`   // this is mainly used for internal directs
+	InfAppURL     string `json:"infAppURL"` // this is mainly used for internal directs
 	APIPath       string `json:"apiPath"`
 	DashboardPath string `json:"dashboardPath"`
 	InfAppPath    string `json:"infAppPath"`

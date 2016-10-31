@@ -56,6 +56,13 @@ func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight 
 	return id + suffix + "." + fm, err
 }
 
-func getImageUrl(s *Server, bucket, filename string) string {
-	return s.Cfg.ServerURL + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
+func getImageUrl(s *Server, bucket, typ, filename string) string {
+	switch typ {
+	case "dash":
+		return s.Cfg.DashURL + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
+	case "inf":
+		return s.Cfg.InfAppURL + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
+
+	}
+	panic("invalid type")
 }
