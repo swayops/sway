@@ -11,6 +11,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/hoisie/mustache"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
@@ -168,10 +169,17 @@ var scopes = map[string]auth.ScopeMap{
 // TODO: clean this up or move to meteora router
 func getDashRoutes(srv *Server) func(c *gin.Context) {
 	var (
-		idxFile    = filepath.Join(srv.Cfg.DashboardPath, "index.html")
-		favIcoFile = filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
-		staticGzer = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+		idxFile     = filepath.Join(srv.Cfg.DashboardPath, "index.html")
+		favIcoFile  = filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
+		staticGzer  = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+		idxFileHTML []byte
 	)
+	tmpl, err := mustache.ParseFile(idxFile)
+	if err != nil {
+		log.Panic(err)
+	}
+	idxFileHTML = []byte(tmpl.Render(gin.H{"infAppUrl": srv.Cfg.InfAppURL}))
+
 	return func(c *gin.Context) {
 		p := c.Request.URL.Path[1:]
 		parts := strings.Split(p, "/")
@@ -179,7 +187,6 @@ func getDashRoutes(srv *Server) func(c *gin.Context) {
 			p = parts[0]
 		}
 
-		serve := idxFile
 		switch p {
 		case "api":
 			return
@@ -191,12 +198,13 @@ func getDashRoutes(srv *Server) func(c *gin.Context) {
 			}
 			return
 		case "favicon.ico":
-			serve = favIcoFile
+			c.File(favIcoFile)
 		case "static":
 			staticGzer(c)
 			return
+		default:
+			c.Data(200, gin.MIMEHTML, idxFileHTML)
 		}
-		c.File(serve)
 		c.Abort()
 	}
 }
