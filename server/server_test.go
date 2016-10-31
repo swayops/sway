@@ -1177,7 +1177,7 @@ func TestPerks(t *testing.T) {
 	var cmpLoad common.Campaign
 	r := rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!", string(r.Value))
+		t.Fatalf("Bad status code: %+v", r)
 		return
 	}
 
@@ -1732,14 +1732,7 @@ func TestImages(t *testing.T) {
 		t.Fatal("Incorrect default image set!")
 	}
 
-	// HTTPTest doesn't use the port from sway config.. so lets account for that!
-	parts := strings.Split(load.ImageURL, "8080") // DIRTY HACK
-	if len(parts) != 2 {
-		t.Fatal("WTF MATE?")
-		return
-	}
-
-	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
+	r = rst.DoTesting(t, "GET", load.ImageURL, nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1772,23 +1765,15 @@ func TestImages(t *testing.T) {
 		t.Fatal("Incorrect image url!")
 	}
 
-	// make sure image url works
-	// HTTPTest doesn't use the port from sway config.. so lets account for that!
-	parts = strings.Split(load.ImageURL, "8080") // DIRTY HACK
-	if len(parts) != 2 {
-		t.Fatal("WTF MATE?")
-		return
-	}
-
-	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
+	r = rst.DoTesting(t, "GET", load.ImageURL, nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
 	// Remove saved image (and indirectly check if it exists)!
-	err := os.Remove("./" + parts[1])
+	err := os.Remove("./" + load.ImageURL)
 	if err != nil {
-		t.Fatal("File does not exist!", ".."+parts[1])
+		t.Fatal("File does not exist!", ".."+load.ImageURL)
 	}
 }
 
