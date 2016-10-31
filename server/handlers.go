@@ -590,7 +590,8 @@ var (
 )
 
 type InfluencerUpdate struct {
-	Name        *string         `json:"name,omitempty"`              // Required to send
+	Name        *string         `json:"name,omitempty"` // Required to send
+	Phone       *string         `json:"phone,omitempty"`
 	InstagramId string          `json:"instagram,omitempty"`         // Required to send
 	FbId        string          `json:"facebook,omitempty"`          // Required to send
 	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
@@ -726,16 +727,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			inf.Address = cleanAddr
 		}
 
-		if upd.Name != nil {
-			name := strings.TrimSpace(*upd.Name)
-			if len(strings.Split(name, " ")) < 2 {
-				c.JSON(400, misc.StatusErr(ErrNoName.Error()))
-				return
-			}
-
-			inf.Name = name
-		}
-
 		// Update User properties
 		var user *auth.User
 		if err := s.db.View(func(tx *bolt.Tx) (err error) {
@@ -747,6 +738,20 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
+		}
+
+		if upd.Name != nil {
+			name := strings.TrimSpace(*upd.Name)
+			if len(strings.Split(name, " ")) < 2 {
+				c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+				return
+			}
+
+			user.Name = name
+		}
+
+		if upd.Phone != nil {
+			user.Phone = strings.TrimSpace(*upd.Phone)
 		}
 
 		user.ImageURL, err = getUserImage(s, upd.ImageURL, "", 300, 300, user)
