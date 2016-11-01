@@ -53,7 +53,7 @@ func (x *XLSXFile) WriteTo(w io.Writer) (n int64, err error) {
 		return 0, ErrEmptyDocument
 	}
 	var (
-		cmd = exec.Command("python", x.j2x)
+		cmd = exec.Command("python3", x.j2x)
 		j   []byte
 	)
 	if j, err = json.Marshal(x.Sheets); err != nil {
