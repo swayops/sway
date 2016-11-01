@@ -3,8 +3,7 @@
 export NODE_ENV=production
 
 pushd $GOPATH/src/github.com/swayops/sway
-go get -u ./...
-go install -ldflags "-X github.com/swayops/sway/server.gitBuild=$(git describe --always --abbrev=16)" || exit 1
+go get -u -ldflags "-X github.com/swayops/sway/server.gitBuild=$(git describe --always --abbrev=16)" || exit 1
 popd
 
 for repo in $GOPATH/src/github.com/swayops/{dashboard,influencerApp}; do
