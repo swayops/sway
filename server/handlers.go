@@ -1227,6 +1227,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		// Set the shortened URL for the influencer
 		shortened, err := google.ShortenURL(getClickUrl(infId, foundDeal, s.Cfg), s.Cfg)
 		if err != nil {
+			s.Alert("Failed to shorten URL!", err)
 			c.JSON(500, misc.StatusErr("Internal error! Please try again in a few minutes"))
 			return
 		}
