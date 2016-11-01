@@ -245,17 +245,16 @@ type Metrics struct {
 	Views    int32 `json:"views,omitempty"`
 }
 
-func AdjustStore(store *Store, deal *common.Deal, engineDelay int32) (*Store, float64, *Metrics) {
+func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
 	var (
 		firstTouch                     bool
 		shares, likes, comments, views int32
 	)
 
-	if len(deal.Reporting) == 0 && misc.WithinLast(deal.Completed, engineDelay) {
+	if len(deal.Reporting) == 0 {
 		// This implies that we have no reporting for this deal,
-		// and it was done within the last 4 hours (engine run time)
-		// hence it was JUST discovered by exporer and we need to
+		// hence it was JUST discovered by explorer and we need to
 		// look at it's total engagements (what it got between being posted
 		// to our explorer picking it up) and not just deltas!
 		firstTouch = true

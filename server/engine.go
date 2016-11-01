@@ -240,7 +240,7 @@ func depleteBudget(s *Server) error {
 			}
 
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
-			store, spentDelta, m = budget.AdjustStore(store, deal, engineDelay)
+			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				// DSP and Exchange fee taken away from the prinicpal
