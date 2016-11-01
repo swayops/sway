@@ -1811,7 +1811,7 @@ func TestInfluencerGeo(t *testing.T) {
 		t.Fatal("Bad source for geo!")
 	}
 
-	if load.State != "NY" || load.Country != "US" {
+	if load.State != "ny" || load.Country != "us" {
 		t.Fatal("Incorrect geo set using IP!")
 	}
 
