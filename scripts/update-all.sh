@@ -8,7 +8,7 @@ for repo in $GOPATH/src/github.com/swayops/{dashboard,influencerApp}; do
 	popd
 done
 
-pushd github.com/swayops/sway
+pushd $GOPATH/src/github.com/swayops/sway
 go get -u ./...
 go install -ldflags "-X github.com/swayops/sway/server.gitBuild=$(git describe --always --abbrev=16)" || exit 1
 popd
