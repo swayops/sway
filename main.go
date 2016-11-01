@@ -33,11 +33,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	defer closer.Defer(srv.Close)()
+	defer func() {
+		recover() // ignore the panic
+		closer.Defer(srv.Close)()
+	}()
 
 	// Listen and Serve
 	if err = srv.Run(); err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		// using panic rather than fatal because fatal would terminal the program
+		// and it would never call our closer
+		log.Panicf("Failed to listen: %v", err)
 	}
 
 }

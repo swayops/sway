@@ -26,6 +26,8 @@ const (
 	adminPass        = "Rf_j@Z9hM3-"
 )
 
+var gitBuild string = "n/a"
+
 var ErrUserId = errors.New("Unexpected user id")
 
 // Server is the main server of the sway server
@@ -258,18 +260,11 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		}
 	})
 
-	// staticGzer = staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
-	// r.HEAD("/infApp/static/*fp", staticGzer)
-	// r.GET("/infApp/static/*fp", staticGzer)
-
-	// staticGzer = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
-	// r.HEAD("/static/*fp", staticGzer)
-	// r.GET("/static/*fp", staticGzer)
-
-	// initInfAppRoutes(srv, r)
-	// initDashboardRoutes(srv, r)
-
 	r = r.Group(srv.Cfg.APIPath)
+
+	r.GET("/version", func(c *gin.Context) {
+		c.JSON(200, gin.H{"version": gitBuild})
+	})
 
 	// Public endpoint
 	r.GET("/click/:influencerId/:campaignId/:dealId", click(srv))
@@ -400,14 +395,13 @@ func (srv *Server) Run() (err error) {
 
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		err = srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
-		wg.Done()
 	}()
 	if tls := srv.Cfg.TLS; tls != nil {
-		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			err = srv.r.RunTLS(srv.Cfg.Host+":"+tls.Port, tls.Cert, tls.Key)
-			wg.Done()
 		}()
 	}
 	wg.Wait()
@@ -442,10 +436,11 @@ func (srv *Server) Notify(subject, msg string) {
 
 func (srv *Server) Close() error {
 	log.Println("exiting...")
+
 	// srv.r.Close() // not implemented in gin nor net/http
 	srv.db.Close()
 	srv.budgetDb.Close()
 	srv.Cfg.Loggers.Close()
-	log.Println("done...")
+
 	return nil
 }
