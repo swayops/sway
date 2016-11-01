@@ -401,7 +401,7 @@ func (srv *Server) Run() (err error) {
 	wg.Add(1)
 
 	go func() {
-		err = srv.r.Run(":" + srv.Cfg.Port)
+		err = srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
 		wg.Done()
 	}()
 

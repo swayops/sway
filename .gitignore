@@ -5,3 +5,4 @@ data/*
 debug
 logs/*
 images/*
+config/config.json.user

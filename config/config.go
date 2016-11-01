@@ -18,19 +18,21 @@ var (
 	ErrInvalidConfig = errors.New("invalid config")
 )
 
-func New(loc string) (*Config, error) {
+func New(loc string) (_ *Config, err error) {
 	var c Config
 
-	f, err := os.Open(loc)
-	if err != nil {
-		log.Println("Config error", err)
-		return nil, err
+	if err = loadJson(loc, &c); err != nil {
+		log.Printf("error loading config: %v", err)
+		return
 	}
 
-	if err := json.NewDecoder(f).Decode(&c); err != nil {
-		log.Println("Config error", err)
-		return nil, err
+	if err = loadJson(loc+".user", &c); err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("error loading userconfig: %v", err)
+			return
+		}
 	}
+	log.Printf("%+v", c)
 
 	c.GeoDB, err = geo.NewGeoDB(c.GeoLocation)
 	if err != nil {
@@ -54,6 +56,16 @@ func New(loc string) (*Config, error) {
 	c.Loggers = jl
 
 	return &c, nil
+}
+
+func loadJson(fp string, out interface{}) error {
+	f, err := os.Open(fp)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return json.NewDecoder(f).Decode(out)
+
 }
 
 type Config struct {
