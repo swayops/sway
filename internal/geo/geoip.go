@@ -71,7 +71,7 @@ func GetGeoFromIP(geoDb *maxminddb.Reader, ip string) *GeoRecord {
 	_, caOK := CA_PROVINCES[state]
 
 	if !usOK && !caOK {
-		log.Println("State did not match on IP lookup", state)
+		log.Println("State did not match on IP lookup", state, parseIp)
 		return nil
 	}
 

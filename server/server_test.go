@@ -1963,28 +1963,31 @@ func TestInfluencerGeo(t *testing.T) {
 
 	// Lets try a UK user who should get a deal!
 	// Create a UK influencer
-	ukInf := getSignupUser()
-	ukInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
-		InfluencerLoad: influencer.InfluencerLoad{
-			IP:        "131.228.17.26", // London
-			TwitterId: "cnn",
-		},
-	}
-	r = rst.DoTesting(t, "POST", "/signUp", &ukInf, nil)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-	}
 
-	// Influencer should get a deal
-	r = rst.DoTesting(t, "GET", "/getDeals/"+ukInf.ExpID+"/0/0", nil, &deals)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-	}
+	// NOTE: Add this test once we allow non US/CA campaigns
 
-	deals = getDeals(st.ID, deals)
-	if len(deals) == 0 {
-		t.Fatal("Unexpected number of deals!")
-	}
+	// ukInf := getSignupUser()
+	// ukInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+	// 	InfluencerLoad: influencer.InfluencerLoad{
+	// 		IP:        "131.228.17.26", // London
+	// 		TwitterId: "cnn",
+	// 	},
+	// }
+	// r = rst.DoTesting(t, "POST", "/signUp", &ukInf, nil)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// }
+
+	// // Influencer should get a deal
+	// r = rst.DoTesting(t, "GET", "/getDeals/"+ukInf.ExpID+"/0/0", nil, &deals)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// }
+
+	// deals = getDeals(st.ID, deals)
+	// if len(deals) == 0 {
+	// 	t.Fatal("Unexpected number of deals!")
+	// }
 }
 
 func TestChecks(t *testing.T) {
