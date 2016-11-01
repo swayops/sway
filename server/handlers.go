@@ -991,14 +991,8 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 func setBan(s *Server) gin.HandlerFunc {
 	// Sets the banned value for the influencer id
 	return func(c *gin.Context) {
-		state := strings.ToLower(c.Params.ByName("state"))
-
-		var ban bool
-		if state == "t" || state == "true" {
-			ban = true
-		} else if state == "f" || state == "false" {
-			ban = false
-		} else {
+		ban, err := strconv.ParseBool(c.Params.ByName("state"))
+		if err != nil {
 			c.JSON(400, misc.StatusErr("Please submit a valid ban state"))
 			return
 		}

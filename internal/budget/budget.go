@@ -92,6 +92,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			"store":      store,
 		}); err != nil {
 			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable)
+			return err
 		}
 
 		if b, err = json.Marshal(&st); err != nil {
@@ -161,6 +162,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64
 			"addedBudget": tbaBudget,
 		}); err != nil {
 			log.Println("Failed to log budget decrease!", cid, tbaBudget, store.Budget, store.Spendable, err)
+			return 0, err
 		}
 
 	} else if newBudget < oldBudget {
@@ -183,6 +185,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64
 			"store":      newStore,
 		}); err != nil {
 			log.Println("Failed to log budget decrease!", cid, store.Pending, store.Budget, store.Spendable, err)
+			return 0, err
 		}
 	}
 
