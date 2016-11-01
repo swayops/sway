@@ -277,9 +277,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
 
-	r.GET("/ip", func(c *gin.Context) {
-		c.JSON(200, gin.H{"ip": c.ClientIP()})
-	})
 	// /apiKey easier takes the GET request of a logged in user or
 	// POST with the user's email/password
 	verifyGroup.GET("/apiKey", srv.auth.APIKeyHandler)

@@ -223,6 +223,11 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		sup.ParentID = SwayOpsAdAgencyID
 	} else if typ == InfluencerScope {
 		sup.ParentID = SwayOpsTalentAgencyID
+
+		if sup.InfluencerLoad != nil && sup.InfluencerLoad.IP == "" {
+			sup.InfluencerLoad.IP = c.ClientIP()
+		}
+
 	} else {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
