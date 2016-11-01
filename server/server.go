@@ -399,12 +399,17 @@ func (srv *Server) Run() (err error) {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
-
 	go func() {
 		err = srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
 		wg.Done()
 	}()
-
+	if tls := srv.Cfg.TLS; tls != nil {
+		wg.Add(1)
+		go func() {
+			err = srv.r.RunTLS(srv.Cfg.Host+":"+tls.Port, tls.Cert, tls.Key)
+			wg.Done()
+		}()
+	}
 	wg.Wait()
 	return
 }

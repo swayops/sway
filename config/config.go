@@ -32,7 +32,10 @@ func New(loc string) (_ *Config, err error) {
 			return
 		}
 	}
-	log.Printf("%+v", c)
+
+	if c.TLS != nil && c.TLS.Port != "" {
+		c.TLS.Port = "443"
+	}
 
 	c.GeoDB, err = geo.NewGeoDB(c.GeoLocation)
 	if err != nil {
@@ -71,6 +74,12 @@ func loadJson(fp string, out interface{}) error {
 type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
+
+	TLS *struct {
+		Port string `json:"port"`
+		Cert string `json:"certFile"`
+		Key  string `json:"keyFile"`
+	} `json:"tls"`
 
 	DBPath       string `json:"dbPath"`
 	DBName       string `json:"dbName"`
