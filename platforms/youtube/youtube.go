@@ -44,7 +44,7 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 		return nil, err
 	}
 
-	if len(yt.LatestPosts) == 0 || yt.Subscribers == 0 {
+	if len(yt.LatestPosts) < 10 {
 		return nil, ErrEligible
 	}
 

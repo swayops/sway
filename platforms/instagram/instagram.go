@@ -47,7 +47,7 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 		return nil, err
 	}
 
-	if in.Followers == 0 || len(in.LatestPosts) == 0 {
+	if in.Followers < 10 {
 		return nil, ErrEligible
 	}
 

@@ -35,7 +35,7 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 		return nil, err
 	}
 
-	if fb.Followers == 0 || len(fb.LatestPosts) == 0 {
+	if fb.Followers < 10 {
 		return nil, ErrEligible
 
 	}
