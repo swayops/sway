@@ -128,8 +128,8 @@ func (a *Auth) SignOutHandler(c *gin.Context) {
 		return a.SignOutTx(tx, tok)
 	})
 	w, domain := c.Writer, a.cfg.Domain
-	misc.DeleteCookie(w, domain, "token")
-	misc.DeleteCookie(w, domain, "key")
+	misc.DeleteCookie(w, domain, "token", !a.cfg.Sandbox)
+	misc.DeleteCookie(w, domain, "key", !a.cfg.Sandbox)
 	c.JSON(200, misc.StatusOK(""))
 }
 
@@ -161,8 +161,8 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 
 	mac := CreateMAC(login.Password, tok, salt)
 	w, domain := c.Writer, a.cfg.Domain
-	misc.SetCookie(w, domain, "token", tok, TokenAge)
-	misc.SetCookie(w, domain, "key", mac, TokenAge)
+	misc.SetCookie(w, domain, "token", tok, !a.cfg.Sandbox, TokenAge)
+	misc.SetCookie(w, domain, "key", mac, !a.cfg.Sandbox, TokenAge)
 	c.JSON(200, misc.StatusOK(login.UserID))
 	return true
 }

@@ -1,18 +1,19 @@
 package misc
 
 import (
+	"log"
 	"net/http"
 	"time"
 )
 
-func SetCookie(w http.ResponseWriter, domain, name, value string, dur time.Duration) {
+func SetCookie(w http.ResponseWriter, domain, name, value string, secure bool, dur time.Duration) {
 	cookie := &http.Cookie{
 		Path:     "/",
 		Domain:   domain,
 		Name:     name,
 		Value:    value,
 		HttpOnly: true,
-		//Secure:   true,
+		Secure:   secure,
 	}
 	if dur > 0 {
 		cookie.Expires = time.Now().Add(dur)
@@ -28,7 +29,7 @@ func RefreshCookie(w http.ResponseWriter, r *http.Request, domain, name string, 
 	if err != nil {
 		return
 	}
-
+	log.Printf("%+v", c)
 	c.Path, c.Expires = "/", time.Now().Add(dur)
 	c.Domain = domain
 
@@ -43,6 +44,6 @@ func GetCookie(r *http.Request, name string) string {
 	}
 }
 
-func DeleteCookie(w http.ResponseWriter, domain, name string) {
-	SetCookie(w, domain, name, "deleted", -1)
+func DeleteCookie(w http.ResponseWriter, domain, name string, secure bool) {
+	SetCookie(w, domain, name, "deleted", secure, -1)
 }

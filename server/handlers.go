@@ -2709,7 +2709,7 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		// One click per 30 days allowed per deal!
-		misc.SetCookie(c.Writer, domain, "click", prevClicks, 24*30*time.Hour)
+		misc.SetCookie(c.Writer, domain, "click", prevClicks, !s.Cfg.Sandbox, 24*30*time.Hour)
 
 		c.Redirect(302, foundDeal.Link)
 	}
