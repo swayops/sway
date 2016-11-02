@@ -1513,7 +1513,11 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			completionRate := 100 * (float64(dealsComplete-dealsAccept) / float64(dealsComplete))
+			var completionRate float64
+			if dealsComplete > 0 {
+				completionRate = 100 * (float64(dealsComplete-dealsAccept) / float64(dealsComplete))
+			}
+
 			a = &AdminStats{
 				AdAgencies:            len(getAdAgencies(s, tx)),
 				Advertisers:           len(getAdvertisers(s, tx)),
