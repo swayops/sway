@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,10 @@ func main() {
 	if !cfg.Sandbox {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(ginLogger("/static", "/favicon.ico"))
+
 	// Ping test
 	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
@@ -45,4 +49,28 @@ func main() {
 		log.Panicf("Failed to listen: %v", err)
 	}
 
+}
+
+func ginLogger(prefixesToSkip ...string) gin.HandlerFunc {
+	// shamelessly copied from gin.Logger
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		for _, pre := range prefixesToSkip {
+			if strings.HasPrefix(path, pre) {
+				return
+			}
+		}
+		start := time.Now()
+
+		c.Next()
+
+		end := time.Now()
+		latency := end.Sub(start)
+
+		clientIP := c.ClientIP()
+		method := c.Request.Method
+		statusCode := c.Writer.Status()
+
+		log.Printf("[%s] [%d] %s %s [%s]", clientIP, statusCode, method, path, latency)
+	}
 }
