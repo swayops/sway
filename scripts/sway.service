@@ -3,16 +3,16 @@ Description=Sway API
 After=network.target
 
 [Service]
-TimeoutStartSec=300s
 User=sway
 Group=sway
-Environment=HOME=/mnt/sway/
+Environment=HOME=/home/sway/
 WorkingDirectory=/home/sway/code/src/github.com/swayops/sway
-LimitNOFILE=10000
 ExecStart=/home/sway/code/bin/sway
 ExecStartPre=/sbin/setcap 'cap_net_bind_service=+ep' /home/sway/code/bin/sway
 Restart=always
 StartLimitInterval=600
+TimeoutStartSec=300s
+LimitNOFILE=10000
 RestartSec=30
 PermissionsStartOnly=true
 

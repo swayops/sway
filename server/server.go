@@ -391,13 +391,17 @@ func (srv *Server) startEngine() error {
 // Run starts the server
 func (srv *Server) Run() error {
 	errCh := make(chan error, 2)
+	host := srv.Cfg.Host
+	if host == "" {
+		host = "*.swayops.com"
+	}
 	go func() {
-		log.Printf("listening on http://%s:%s", srv.Cfg.Host, srv.Cfg.Port)
+		log.Printf("listening on http://%s:%s", host, srv.Cfg.Port)
 		errCh <- srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
 	}()
 	if tls := srv.Cfg.TLS; tls != nil {
 		go func() {
-			log.Printf("listening on https://%s:%s", srv.Cfg.Host, tls.Port)
+			log.Printf("listening on https://%s:%s", host, tls.Port)
 			errCh <- srv.r.RunTLS(srv.Cfg.Host+":"+tls.Port, tls.Cert, tls.Key)
 		}()
 	}
