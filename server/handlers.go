@@ -674,7 +674,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		if upd.YouTubeId != "" {
 			if inf.YouTube == nil || (inf.YouTube != nil && upd.YouTubeId != inf.YouTube.UserName) {
 				// Make sure that the id has actually been updated
-				err = inf.NewTwitter(upd.YouTubeId, s.Cfg)
+				err = inf.NewYouTube(upd.YouTubeId, s.Cfg)
 				if err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
 					return
