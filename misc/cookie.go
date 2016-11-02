@@ -1,7 +1,6 @@
 package misc
 
 import (
-	"log"
 	"net/http"
 	"time"
 )
@@ -29,7 +28,7 @@ func RefreshCookie(w http.ResponseWriter, r *http.Request, domain, name string, 
 	if err != nil {
 		return
 	}
-	log.Printf("%+v", c)
+
 	c.Path, c.Expires = "/", time.Now().Add(dur)
 	c.Domain = domain
 
