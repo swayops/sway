@@ -53,6 +53,7 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 	err = misc.Request("GET", endpoint, "", &posts)
 	if err != nil || len(posts.Data) == 0 {
 		log.Println("Error extracting posts", endpoint)
+		err = ErrEligible
 		return
 	}
 

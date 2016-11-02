@@ -172,12 +172,12 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com"}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian"}, 200, nil},
 		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"business"},
-			"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "kimkardashian"},
 		}},
 
 		// sign in as admin and see if they can access the influencer
@@ -274,24 +274,24 @@ func TestNewInfluencer(t *testing.T) {
 
 		// update
 		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
-		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com"}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
-			"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "kimkardashian"},
 		}},
 
 		// Add a social media platofrm
-		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com", "facebook": "justinbieber"}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian", "facebook": "justinbieber"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
-			"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "kimkardashian"},
 			"facebook":   M{"id": "justinbieber"},
 		}},
 
 		// change their password
-		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "SwayOps_com", "facebook": "justinbieber", "oldPass": defaultPass, "pass": "newPassword", "pass2": "newPassword"}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian", "facebook": "justinbieber", "oldPass": defaultPass, "pass": "newPassword", "pass2": "newPassword"}, 200, nil},
 		// try to sign in.. should fail
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 400, nil},
 		// try with proper password

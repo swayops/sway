@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	ErrEligible = errors.New("Facebook account is not eligible!")
+	ErrEligible  = errors.New("Facebook account is not eligible! Must be a Facebook page (not a personal profile)!")
+	ErrFollowers = errors.New("Unfortunately, your Facebook page does not qualify minimum follower count")
 )
 
 type Facebook struct {
@@ -31,12 +32,13 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 		Id: id,
 	}
 	err := fb.UpdateData(cfg, cfg.Sandbox)
+
 	if err != nil {
 		return nil, err
 	}
 
 	if fb.Followers < 10 {
-		return nil, ErrEligible
+		return nil, ErrFollowers
 
 	}
 	return fb, nil
