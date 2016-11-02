@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -388,16 +389,28 @@ func (srv *Server) startEngine() error {
 	return newSwayEngine(srv)
 }
 
+func redirectToHTTPS(w http.ResponseWriter, req *http.Request) {
+	http.Redirect(w, req, "https://"+req.Host+req.URL.String(), http.StatusMovedPermanently)
+}
+
 // Run starts the server
 func (srv *Server) Run() error {
-	errCh := make(chan error, 2)
-	host := srv.Cfg.Host
+	var (
+		errCh   = make(chan error, 2)
+		host    = srv.Cfg.Host
+		sandbox = srv.Cfg.Sandbox
+	)
 	if host == "" {
 		host = "*.swayops.com"
 	}
 	go func() {
-		log.Printf("listening on http://%s:%s", host, srv.Cfg.Port)
-		errCh <- srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
+		if sandbox {
+			log.Printf("listening on http://%s:%s", host, srv.Cfg.Port)
+			errCh <- srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
+		} else {
+			log.Printf("listening on http://%s:%s and redirecting to https", host, srv.Cfg.Port)
+			errCh <- http.ListenAndServe(srv.Cfg.Host+":"+srv.Cfg.Port, http.HandlerFunc(redirectToHTTPS))
+		}
 	}()
 	if tls := srv.Cfg.TLS; tls != nil {
 		go func() {
