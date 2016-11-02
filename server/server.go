@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
@@ -390,22 +389,19 @@ func (srv *Server) startEngine() error {
 }
 
 // Run starts the server
-func (srv *Server) Run() (err error) {
-	var wg sync.WaitGroup
-
-	wg.Add(1)
+func (srv *Server) Run() error {
+	errCh := make(chan error, 2)
 	go func() {
-		defer wg.Done()
-		err = srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
+		log.Printf("listening on http://%s:%s", srv.Cfg.Host, srv.Cfg.Port)
+		errCh <- srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
 	}()
 	if tls := srv.Cfg.TLS; tls != nil {
 		go func() {
-			defer wg.Done()
-			err = srv.r.RunTLS(srv.Cfg.Host+":"+tls.Port, tls.Cert, tls.Key)
+			log.Printf("listening on https://%s:%s", srv.Cfg.Host, tls.Port)
+			errCh <- srv.r.RunTLS(srv.Cfg.Host+":"+tls.Port, tls.Cert, tls.Key)
 		}()
 	}
-	wg.Wait()
-	return
+	return <-errCh
 }
 
 func (srv *Server) Alert(msg string, err error) {
