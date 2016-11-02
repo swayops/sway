@@ -26,7 +26,7 @@ const infEmailTmpl = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access these you simply need to go into our influencer app at "INSERT SIGN IN URL WHEN ITS TIME" and hit the "Accept Endorsement" button.<br/> Feel free to call or email me with any questions.
+		In order to access these you simply need to go into our influencer app at https://inf.swayops.com/login and hit the "Accept Endorsement" button for the above deal in your feed.<br/> Feel free to call or email me with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
@@ -66,7 +66,7 @@ const infCmpEmail = `
 		</table>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access this deal you simply need to go into our influencer app at "INSERT SIGN UP URL HEREE when we get it" and hit the "Accept Endorsement" button.<br/> Feel free to call or email me with any questions.
+		In order to access this deal you simply need to go into our influencer app at https://inf.swayops.com/login and hit the "Accept Endorsement" button for the above deal in your feed.<br/> Feel free to call or email me with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
@@ -89,7 +89,7 @@ const headsUpEmail = `
 		Just wanted to reach out and let you know that you only have 4 days left to complete the deal for {{Company}}. After the 4 days, we will unfortunately be forced to retract the deal from you!
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If you would like to access the deal requirements, please visit ""INSERT SIGN IN URL""".<br/> Feel free to call or email me with any questions.
+		If you would like to access the deal requirements, please visit https://inf.swayops.com/login <br/> Feel free to call or email me with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
@@ -112,7 +112,7 @@ const timeOutEmail = `
 		We regret to inform you that we have been forced to retract the deal for {{Company}} from you. Due to strict campaign requirements, there was a limit on the number of days we allow a deal to be left incomplete.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If you would like to access more deals, please visit ""INSERT SIGN IN URL""".
+		If you would like to access more deals, please visit https://inf.swayops.com/login .
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
