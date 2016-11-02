@@ -59,7 +59,7 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 		return nil, err
 	}
 
-	if len(tw.LatestTweets) < 10 {
+	if tw.Followers < 10 {
 		return nil, ErrEligible
 	}
 
