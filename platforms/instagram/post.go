@@ -78,7 +78,7 @@ func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 	// 	return nil
 	// }
 
-	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, cfg.Instagram.AccessToken)
+	endpoint := fmt.Sprintf(postInfoUrl, cfg.Instagram.Endpoint, pt.Id, getToken(cfg.Instagram.AccessTokens))
 
 	var post DataByPost
 	err := misc.Request("GET", endpoint, "", &post)

@@ -5,9 +5,10 @@ import (
 	"time"
 )
 
-func SetCookie(w http.ResponseWriter, name, value string, dur time.Duration) {
+func SetCookie(w http.ResponseWriter, domain, name, value string, dur time.Duration) {
 	cookie := &http.Cookie{
 		Path:     "/",
+		Domain:   domain,
 		Name:     name,
 		Value:    value,
 		HttpOnly: true,
@@ -18,15 +19,19 @@ func SetCookie(w http.ResponseWriter, name, value string, dur time.Duration) {
 	} else {
 		cookie.MaxAge = -1
 	}
+
 	http.SetCookie(w, cookie)
 }
 
-func RefreshCookie(w http.ResponseWriter, r *http.Request, name string, dur time.Duration) {
+func RefreshCookie(w http.ResponseWriter, r *http.Request, domain, name string, dur time.Duration) {
 	c, err := r.Cookie(name)
 	if err != nil {
 		return
 	}
+
 	c.Path, c.Expires = "/", time.Now().Add(dur)
+	c.Domain = domain
+
 	http.SetCookie(w, c)
 }
 
@@ -38,6 +43,6 @@ func GetCookie(r *http.Request, name string) string {
 	}
 }
 
-func DeleteCookie(w http.ResponseWriter, name string) {
-	SetCookie(w, name, "deleted", -1)
+func DeleteCookie(w http.ResponseWriter, domain, name string) {
+	SetCookie(w, domain, name, "deleted", -1)
 }

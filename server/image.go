@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"image"
@@ -20,15 +24,16 @@ type UploadImage struct {
 
 var (
 	ErrBucket       = errors.New("Invalid bucket!")
-	ErrSize         = errors.New("Invalid size!")
 	ErrInvalidImage = errors.New("Invalid image!")
 )
 
-func saveImageToDisk(fileNameBase, data, bucket, id string) (string, error) {
+func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight int) (string, error) {
 	idx := strings.Index(data, ";base64,")
 	if idx < 0 {
 		return "", ErrInvalidImage
 	}
+
+	os.MkdirAll(filepath.Dir(fileNameBase), 0755)
 
 	reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(data[idx+8:]))
 	buff := bytes.Buffer{}
@@ -42,16 +47,30 @@ func saveImageToDisk(fileNameBase, data, bucket, id string) (string, error) {
 		return "", err
 	}
 
-	if imgCfg.Width < 750 || imgCfg.Height < 685 {
-		return "", ErrSize
+	if imgCfg.Width < minWidth || imgCfg.Height < minHeight {
+		return "", fmt.Errorf("Invalid size (%dx%d), min size is %dx%d!", imgCfg.Width, imgCfg.Height, minWidth, minHeight)
 	}
 
-	fileName := fileNameBase + "." + fm
-	ioutil.WriteFile(fileName, buff.Bytes(), 0644)
+	fileName := fileNameBase + suffix + "." + fm
+	err = ioutil.WriteFile(fileName, buff.Bytes(), 0644)
 
-	return id + "." + fm, err
+	return id + suffix + "." + fm, err
 }
 
-func getImageUrl(s *Server, bucket, filename string) string {
-	return s.Cfg.ServerURL + "/" + s.Cfg.ImageUrlPath + bucket + "/" + filename
+func getImageUrl(s *Server, bucket, typ, filename string, addDomain bool) string {
+	var base string
+	switch typ {
+	case "dash":
+		if addDomain {
+			base = s.Cfg.DashURL
+		}
+
+	case "inf":
+		if addDomain {
+			base = s.Cfg.InfAppURL
+		}
+	default:
+		log.Panicf("invalid type: %v", typ)
+	}
+	return base + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -32,30 +33,7 @@ import (
 ///////// Talent Agencies ///////////
 func putTalentAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			ag   auth.TalentAgency
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
-
-		if err := c.BindJSON(&ag); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.StoreWithData(s.auth, tx, &ag)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-		c.JSON(200, misc.StatusOK(id))
+		saveUserHelper(s, c, "talentAgency")
 	}
 }
 
@@ -108,29 +86,7 @@ func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 ///////// Ad Agencies /////////
 func putAdAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			ag   auth.AdAgency
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
-
-		if err := c.BindJSON(&ag); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.StoreWithData(s.auth, tx, &ag)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-		}
-		c.JSON(200, misc.StatusOK(id))
+		saveUserHelper(s, c, "adAgency")
 	}
 }
 
@@ -180,38 +136,18 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 	}
 }
 
+func putAdmin(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		saveUserHelper(s, c, "admin")
+
+	}
+}
+
 ///////// Advertisers /////////
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			adv  auth.User
-			user = auth.GetCtxUser(c)
-			id   = c.Param("id")
-		)
+		saveUserHelper(s, c, "advertiser")
 
-		if err := c.BindJSON(&adv); err != nil {
-			misc.AbortWithErr(c, 400, err)
-			return
-		}
-
-		if adv.Advertiser == nil {
-			misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if id != user.ID {
-				user = s.auth.GetUserTx(tx, id)
-			}
-			if user == nil {
-				return auth.ErrInvalidID
-			}
-			return user.Update(&adv).StoreWithData(s.auth, tx, adv.Advertiser)
-		}); err != nil {
-			misc.AbortWithErr(c, 400, err)
-		}
-
-		c.JSON(200, misc.StatusOK(id))
 	}
 }
 
@@ -368,23 +304,36 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.CreatedAt = time.Now().Unix()
 
-		// Save the Campaign
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign); err != nil {
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) { // have to get an id early for saveImage
+			cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign)
+			return
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		if cmp.ImageData != "" {
+			if !strings.HasPrefix(cmp.ImageData, "data:image/") {
+				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				return
+			}
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, "", 750, 389)
+			if err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
 
-			// Set the default image URL for starters to a random default image
-			// OVERWRITTEN when uploadImage called
-			if cmp.ImageURL == "" {
-				cmp.ImageURL = getImageUrl(s, "campaign", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))])
-			}
+			cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
+		} else {
+			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))], false)
+		}
 
+		// Save the Campaign
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Create their budget key
 			// NOTE: Create budget key requires cmp.Id be set
 			var spendable float64
-			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, dspFee, exchangeFee, false); err != nil {
+			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -413,6 +362,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				}()
 			}
 		}
+
+		go s.Notify(
+			fmt.Sprintf("New campaign created %s (%s)", cmp.Name, cmp.Id),
+			fmt.Sprintf("%s (%s) created a campaign for %f", adv.Name, adv.ID, cmp.Budget),
+		)
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
 	}
@@ -490,12 +444,13 @@ func delCampaign(s *Server) gin.HandlerFunc {
 type CampaignUpdate struct {
 	Geos       []*geo.GeoRecord `json:"geos,omitempty"`
 	Categories []string         `json:"categories,omitempty"`
-	Status     bool             `json:"status,omitempty"`
-	Budget     float64          `json:"budget,omitempty"`
-	Male       bool             `json:"male,omitempty"`
-	Female     bool             `json:"female,omitempty"`
-	Name       string           `json:"name,omitempty"`
+	Status     *bool            `json:"status,omitempty"`
+	Budget     *float64         `json:"budget,omitempty"`
+	Male       *bool            `json:"male,omitempty"`
+	Female     *bool            `json:"female,omitempty"`
+	Name       *string          `json:"name,omitempty"`
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
+	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -528,8 +483,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
+		}
+
+		if upd.ImageData != "" {
+			if !strings.HasPrefix(upd.ImageData, "data:image/") {
+				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				return
+			}
+
+			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id, "", 750, 389)
+			if err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			cmp.ImageURL, upd.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
 		}
 
 		for _, g := range upd.Geos {
@@ -539,25 +509,30 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		if !upd.Male && !upd.Female {
+		if upd.Male != nil {
+			cmp.Male = *upd.Male
+		}
+
+		if upd.Female != nil {
+			cmp.Female = *upd.Female
+		}
+
+		if !cmp.Male && !cmp.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
 
-		if upd.Budget == 0 {
-			c.JSON(400, misc.StatusErr("Please provide a valid budget"))
-			return
+		if upd.Name != nil {
+			if *upd.Name == "" {
+				c.JSON(400, misc.StatusErr("Please provide a valid name"))
+				return
+			}
+			cmp.Name = *upd.Name
 		}
-		if upd.Name == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid name"))
-			return
-		}
-		cmp.Name = upd.Name
 
-		if cmp.Budget != upd.Budget {
+		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, upd.Budget, dspFee, exchangeFee); err != nil {
+			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, *upd.Budget); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -566,12 +541,14 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			if added > 0 {
 				addDealsToCampaign(&cmp, added)
 			}
-			cmp.Budget = upd.Budget
+
+			cmp.Budget = *upd.Budget
 		}
 
-		cmp.Status = upd.Status
+		if upd.Status != nil {
+			cmp.Status = *upd.Status
+		}
 		cmp.Geos = upd.Geos
-		cmp.Male, cmp.Female = upd.Male, upd.Female
 		cmp.Categories = common.LowerSlice(upd.Categories)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)
@@ -606,9 +583,263 @@ var (
 	ErrBadGender = errors.New("Please provide a gender ('m' or 'f')")
 	ErrNoAgency  = errors.New("Please provide an agency id")
 	ErrNoGeo     = errors.New("Please provide a geo")
-	ErrNoName    = errors.New("Please provide a name")
+	ErrNoName    = errors.New("Please provide a valid name")
 	ErrBadCat    = errors.New("Please provide a valid category")
+	ErrPlatform  = errors.New("Platform not found!")
+	ErrUnmarshal = errors.New("Failed to unmarshal data!")
 )
+
+type InfluencerUpdate struct {
+	Name        *string         `json:"name,omitempty"` // Required to send
+	Phone       *string         `json:"phone,omitempty"`
+	InstagramId string          `json:"instagram,omitempty"`         // Required to send
+	FbId        string          `json:"facebook,omitempty"`          // Required to send
+	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
+	YouTubeId   string          `json:"youtube,omitempty"`           // Required to send
+	DealPing    *bool           `json:"dealPing" binding:"required"` // Required to send
+	Gender      string          `json:"gender,omitempty"`            // Required to send
+	Address     lob.AddressLoad `json:"address,omitempty"`           // Required to send
+
+	InviteCode string `json:"inviteCode,omitempty"` // Optional
+
+	// User methods
+	OldPass string `json:"oldPass"` // Optional
+	Pass    string `json:"pass"`    // Optional
+	Pass2   string `json:"pass2"`   // Optional
+
+	ImageURL      string `json:"imageUrl,omitempty"`      // Optional
+	CoverImageURL string `json:"coverImageUrl,omitempty"` // Optional
+}
+
+func putInfluencer(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		inf, ok := s.auth.Influencers.Get(c.Param("id"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Please provide a valid influencer ID"))
+			return
+		}
+
+		var (
+			upd InfluencerUpdate
+			err error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		// Update platforms
+		if upd.InstagramId != "" {
+			if inf.Instagram == nil || (inf.Instagram != nil && upd.InstagramId != inf.Instagram.UserName) {
+				// Make sure that the instagram id has actually been updated
+				err = inf.NewInsta(upd.InstagramId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			// If the ID is sent as empty, they'll be emptied out
+			inf.Instagram = nil
+		}
+
+		if upd.FbId != "" {
+			if inf.Facebook == nil || (inf.Facebook != nil && upd.FbId != inf.Facebook.Id) {
+				// Make sure that the id has actually been updated
+				err = inf.NewFb(upd.FbId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			// If the ID is sent as empty, they'll be emptied out
+			inf.Facebook = nil
+		}
+
+		if upd.TwitterId != "" {
+			if inf.Twitter == nil || (inf.Twitter != nil && upd.TwitterId != inf.Twitter.Id) {
+				// Make sure that the id has actually been updated
+				err = inf.NewTwitter(upd.TwitterId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			inf.Twitter = nil
+		}
+
+		if upd.YouTubeId != "" {
+			if inf.YouTube == nil || (inf.YouTube != nil && upd.YouTubeId != inf.YouTube.UserName) {
+				// Make sure that the id has actually been updated
+				err = inf.NewYouTube(upd.YouTubeId, s.Cfg)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+			}
+		} else {
+			// If the ID is sent as empty, they'll be emptied out
+			inf.YouTube = nil
+		}
+
+		// Update Invite Code
+		if upd.InviteCode != "" {
+			agencyId := common.GetIDFromInvite(upd.InviteCode)
+			if agencyId == "" {
+				agencyId = auth.SwayOpsTalentAgencyID
+			}
+			inf.AgencyId = agencyId
+		}
+
+		// Update Gender
+		switch upd.Gender {
+		case "mf", "fm", "unicorn":
+			inf.Male, inf.Female = true, true
+		case "m":
+			inf.Male, inf.Female = true, false
+		case "f":
+			inf.Male, inf.Female = false, true
+		}
+
+		// Update DealPing
+		if upd.DealPing != nil {
+			// Set to a pointer so we don't default to
+			// false incase front end doesnt send the value
+			inf.DealPing = *upd.DealPing
+		}
+
+		// Update Address
+		if upd.Address.AddressOne != "" {
+			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg.Sandbox)
+			if err != nil {
+				c.JSON(400, misc.StatusErr(err.Error()))
+				return
+			}
+
+			if !geo.IsValidGeo(&geo.GeoRecord{State: cleanAddr.State, Country: cleanAddr.Country}) {
+				c.JSON(400, misc.StatusErr("Address does not convert to a valid geo!"))
+				return
+			}
+
+			inf.Address = cleanAddr
+		}
+
+		// Update User properties
+		var user *auth.User
+		if err := s.db.View(func(tx *bolt.Tx) (err error) {
+			user = s.auth.GetUserTx(tx, inf.Id)
+			if user == nil {
+				return auth.ErrInvalidID
+			}
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		if upd.Name != nil {
+			name := strings.TrimSpace(*upd.Name)
+			if len(strings.Split(name, " ")) < 2 {
+				c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+				return
+			}
+
+			user.Name = name
+		}
+
+		if upd.Phone != nil {
+			user.Phone = strings.TrimSpace(*upd.Phone)
+		}
+
+		user.ImageURL, err = getUserImage(s, upd.ImageURL, "", 300, 300, user)
+		if err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+		user.CoverImageURL, err = getUserImage(s, upd.CoverImageURL, "-cover", 750, 375, user)
+		if err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			changed, err := savePassword(s, tx, upd.OldPass, upd.Pass, upd.Pass2, user)
+			if err != nil {
+				return err
+			}
+
+			if changed {
+				ouser := s.auth.GetUserTx(tx, user.ID) // always reload after changing the password
+				user = ouser.Update(user)
+			}
+
+			return saveInfluencerWithUser(s, tx, inf, user)
+		}); err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(inf.Id))
+	}
+}
+
+type AuditSet struct {
+	Categories []string `json:"categories,omitempty"`
+	Gender     string   `json:"gender,omitempty"`
+}
+
+func setAudit(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Please provide a valid influencer ID"))
+			return
+		}
+
+		var (
+			upd AuditSet
+			err error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		var filteredCats []string
+		for _, cat := range upd.Categories {
+			if _, ok := common.CATEGORIES[cat]; !ok {
+				c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
+				return
+			}
+			filteredCats = append(filteredCats, cat)
+		}
+
+		inf.Categories = filteredCats
+
+		switch upd.Gender {
+		case "mf", "fm", "unicorn":
+			inf.Male, inf.Female = true, true
+		case "m":
+			inf.Male, inf.Female = true, false
+		case "f":
+			inf.Male, inf.Female = false, true
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(inf.Id))
+	}
+}
 
 func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -617,7 +848,106 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
+
 		c.JSON(200, inf)
+	}
+}
+
+type Bio struct {
+	ID       string   `json:"id,omitempty"`
+	Name     string   `json:"name,omitempty"`
+	Networks []string `json:"networks,omitempty"`
+
+	Deals       int32 `json:"deals,omitempty"` // # of deals completed
+	Followers   int64 `json:"followers,omitempty"`
+	Engagements int64 `json:"engagements,omitempty"`
+
+	CompletedDeals []*BioDeal `json:"completedDeals,omitempty"`
+}
+
+type BioDeal struct {
+	ID          string `json:"id,omitempty"`
+	CampaignID  string `json:"campaignId,omitempty"`
+	Name        string `json:"cmpName,omitempty"`
+	Engagements int64  `json:"engagements,omitempty"`
+	Image       string `json:"image,omitempty"`
+}
+
+func getBio(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		var (
+			eng      int64
+			bioDeals []*BioDeal
+		)
+		for _, deal := range inf.CompletedDeals {
+			total := deal.TotalStats()
+			dealEng := int64(total.Likes + total.Comments + total.Shares + total.Clicks)
+
+			eng += dealEng
+
+			d := &BioDeal{
+				ID:          deal.Id,
+				CampaignID:  deal.CampaignId,
+				Engagements: dealEng,
+				Image:       deal.CampaignImage,
+				Name:        deal.CampaignName,
+			}
+			bioDeals = append(bioDeals, d)
+		}
+
+		bio := &Bio{
+			ID:             inf.Id,
+			Name:           inf.Name,
+			Networks:       inf.GetNetworks(),
+			Deals:          int32(len(inf.CompletedDeals)),
+			Followers:      inf.GetFollowers(),
+			Engagements:    eng,
+			CompletedDeals: bioDeals,
+		}
+		c.JSON(200, bio)
+	}
+}
+
+func getCompletedDeal(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		dealId := c.Param("dealId")
+		if dealId == "" {
+			c.JSON(500, misc.StatusErr("invalid deal id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		var d *common.Deal
+		for _, deal := range inf.CompletedDeals {
+			if deal.Id == dealId {
+				d = deal
+				break
+			}
+		}
+
+		if d == nil {
+			c.JSON(500, misc.StatusErr("deal not found"))
+			return
+		}
+
+		c.JSON(200, d)
 	}
 }
 
@@ -658,205 +988,11 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 	}
 }
 
-var (
-	ErrPlatform  = errors.New("Platform not found!")
-	ErrUnmarshal = errors.New("Failed to unmarshal data!")
-)
-
-func setPlatform(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Alter influencer bucket
-		var (
-			infId    = c.Param("influencerId")
-			id       = c.Param("id")
-			platform = c.Param("platform")
-			err      error
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		switch platform {
-		case "instagram":
-			err = inf.NewInsta(id, s.Cfg)
-		case "facebook":
-			err = inf.NewFb(id, s.Cfg)
-		case "twitter":
-			err = inf.NewTwitter(id, s.Cfg)
-		case "youtube":
-			err = inf.NewYouTube(id, s.Cfg)
-		default:
-			c.JSON(500, misc.StatusErr(ErrPlatform.Error()))
-			return
-		}
-
-		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setCategory(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		cat := strings.ToLower(c.Param("category"))
-		if _, ok := common.CATEGORIES[cat]; !ok {
-			c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-		inf.Categories = append(inf.Categories, cat)
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setInviteCode(s *Server) gin.HandlerFunc {
-	// Sets the agency id for the influencer via an invite code
-	return func(c *gin.Context) {
-		agencyId := common.GetIDFromInvite(c.Params.ByName("inviteCode"))
-		if agencyId == "" {
-			agencyId = auth.SwayOpsTalentAgencyID
-		}
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		inf.AgencyId = agencyId
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setGender(s *Server) gin.HandlerFunc {
-	// Sets the gender for the influencer id
-	return func(c *gin.Context) {
-		gender := strings.ToLower(c.Params.ByName("gender"))
-		switch gender {
-		case "m", "f", "mf", "fm", "unicorn":
-		default:
-			c.JSON(400, misc.StatusErr(ErrBadGender.Error()))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-		switch gender {
-		case "mf", "fm", "unicorn":
-			inf.Male, inf.Female = true, true
-		case "m":
-			inf.Male, inf.Female = true, false
-		case "f":
-			inf.Male, inf.Female = false, true
-		}
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setReminder(s *Server) gin.HandlerFunc {
-	// Sets the reminder for the influencer id
-	return func(c *gin.Context) {
-		state := strings.ToLower(c.Params.ByName("state"))
-
-		var reminder bool
-		if state == "t" || state == "true" {
-			reminder = true
-		} else if state == "f" || state == "false" {
-			reminder = false
-		} else {
-			c.JSON(400, misc.StatusErr("Please submit a valid reminder state"))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		inf.DealPing = reminder
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
 func setBan(s *Server) gin.HandlerFunc {
 	// Sets the banned value for the influencer id
 	return func(c *gin.Context) {
-		state := strings.ToLower(c.Params.ByName("state"))
-
-		var ban bool
-		if state == "t" || state == "true" {
-			ban = true
-		} else if state == "f" || state == "false" {
-			ban = false
-		} else {
+		ban, err := strconv.ParseBool(c.Params.ByName("state"))
+		if err != nil {
 			c.JSON(400, misc.StatusErr("Please submit a valid ban state"))
 			return
 		}
@@ -874,55 +1010,6 @@ func setBan(s *Server) gin.HandlerFunc {
 		inf.Banned = ban
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
-
-func setAddress(s *Server) gin.HandlerFunc {
-	// Sets the address for the influencer
-	return func(c *gin.Context) {
-		var (
-			addr lob.AddressLoad
-			err  error
-		)
-
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&addr); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
-			return
-		}
-
-		cleanAddr, err := lob.VerifyAddress(&addr, s.Cfg.Sandbox)
-		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
-			return
-		}
-
-		if !geo.IsValidGeo(&geo.GeoRecord{State: cleanAddr.State, Country: cleanAddr.Country}) {
-			c.JSON(400, misc.StatusErr("Address does not convert to a valid geo!"))
-			return
-		}
-
-		var (
-			infId = c.Param("influencerId")
-		)
-
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		inf.Address = cleanAddr
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Save the influencer
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -1037,9 +1124,48 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "",
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "", "",
 			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
 		c.JSON(200, deals)
+	}
+}
+
+func getDeal(s *Server) gin.HandlerFunc {
+	// Gets assigned deal
+	return func(c *gin.Context) {
+		var (
+			campaignId = c.Param("campaignId")
+			dealId     = c.Param("dealId")
+			infId      = c.Param("influencerId")
+		)
+
+		if len(infId) == 0 {
+			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			return
+		}
+
+		if len(dealId) == 0 {
+			c.JSON(500, misc.StatusErr("Deal ID undefined"))
+			return
+		}
+
+		if len(campaignId) == 0 {
+			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, true, s.Cfg)
+		if len(deals) != 1 {
+			c.JSON(500, misc.StatusErr("Deal no longer available"))
+			return
+		}
+		c.JSON(200, deals[0])
 	}
 }
 
@@ -1077,7 +1203,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			dealId = ""
 			dbg = true
 		}
-		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, dealId, nil, true, s.Cfg)
+		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, false, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				if dbg || deal.Id == dealId {
@@ -1095,6 +1221,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		// Set the shortened URL for the influencer
 		shortened, err := google.ShortenURL(getClickUrl(infId, foundDeal, s.Cfg), s.Cfg)
 		if err != nil {
+			s.Alert("Failed to shorten URL!", err)
 			c.JSON(500, misc.StatusErr("Internal error! Please try again in a few minutes"))
 			return
 		}
@@ -1188,7 +1315,19 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, inf.CleanAssignedDeals())
+		var deals []*common.Deal
+		for _, d := range inf.ActiveDeals {
+			// Lets update the spendable!
+			store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, d.CampaignId, "")
+			if err == nil && store != nil {
+				d.Spendable = misc.TruncateFloat(store.Spendable, 2)
+			} else {
+				d.Spendable = 0
+			}
+			deals = append(deals, d)
+		}
+
+		c.JSON(200, deals)
 	}
 }
 
@@ -1215,7 +1354,7 @@ func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, inf.CleanCompletedDeals())
+		c.JSON(200, inf.CompletedDeals)
 	}
 }
 
@@ -1374,7 +1513,11 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			completionRate := 100 * (float64(dealsComplete-dealsAccept) / float64(dealsComplete))
+			var completionRate float64
+			if dealsComplete > 0 {
+				completionRate = 100 * (float64(dealsComplete-dealsAccept) / float64(dealsComplete))
+			}
+
 			a = &AdminStats{
 				AdAgencies:            len(getAdAgencies(s, tx)),
 				Advertisers:           len(getAdvertisers(s, tx)),
@@ -1611,12 +1754,15 @@ func runBilling(s *Server) gin.HandlerFunc {
 					)
 					advertiserSheets[cmp.AdvertiserId] = sheet
 				}
+
+				// Be wary of fees changing mid-month
+				dspFee, exchangeFee := getAdvertiserFees(s.auth, adAgency.ID)
 				sheet.AddRow(
 					cmp.Id,
 					cmp.Name,
 					emails,
-					fmt.Sprintf("%0.2f", data.DspFee*100)+"%",
-					fmt.Sprintf("%0.2f", data.ExchangeFee*100)+"%",
+					fmt.Sprintf("%0.2f", dspFee*100)+"%",
+					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
 					misc.TruncateFloat(data.Spent, 2),
 				)
 			} else {
@@ -1646,14 +1792,15 @@ func runBilling(s *Server) gin.HandlerFunc {
 					)
 					agencySheets[adAgency.ID] = sheet
 				}
+				dspFee, exchangeFee := getAdvertiserFees(s.auth, adAgency.ID)
 				sheet.AddRow(
 					cmp.AdvertiserId,
 					advertiser.Name,
 					cmp.Id,
 					cmp.Name,
 					emails,
-					fmt.Sprintf("%0.2f", data.DspFee*100)+"%",
-					fmt.Sprintf("%0.2f", data.ExchangeFee*100)+"%",
+					fmt.Sprintf("%0.2f", dspFee*100)+"%",
+					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
 					misc.TruncateFloat(data.Spent, 2),
 				)
 			}
@@ -1876,8 +2023,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
 					var spendable float64
-					dspFee, exchangeFee := getAdvertiserFeesFromTx(s.auth, tx, cmp.AdvertiserId)
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, dspFee, exchangeFee, true); err != nil {
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true); err != nil {
 						log.Println("Error creating budget key!", err)
 						return err
 					}
@@ -1935,6 +2081,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 }
 
 func getPendingCampaigns(s *Server) gin.HandlerFunc {
+	// Have we received the perks from advertiser?
 	return func(c *gin.Context) {
 		var campaigns []*common.Campaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
@@ -1960,10 +2107,17 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 	}
 }
 
+type PerkWithCmpInfo struct {
+	AdvertiserID string `json:"advID"`
+	CampaignID   string `json:"cmpID"`
+	CampaignName string `json:"cmpName"`
+	*common.Perk
+}
+
 func getPendingPerks(s *Server) gin.HandlerFunc {
 	// Get list of perks that need to be mailed out
 	return func(c *gin.Context) {
-		perks := make(map[string][]*common.Perk)
+		var perks []PerkWithCmpInfo
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -1974,7 +2128,12 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 
 				for _, d := range cmp.Deals {
 					if d.Perk != nil && !d.Perk.Status {
-						perks[cmp.Id] = append(perks[cmp.Id], d.Perk)
+						perks = append(perks, PerkWithCmpInfo{
+							AdvertiserID: cmp.AdvertiserId,
+							CampaignID:   cmp.Id,
+							CampaignName: cmp.Name,
+							Perk:         d.Perk,
+						})
 					}
 				}
 				return
@@ -1984,6 +2143,7 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
+
 		c.JSON(200, perks)
 	}
 }
@@ -2010,7 +2170,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		check, err := lob.CreateCheck(inf.Name, inf.Address, inf.PendingPayout, s.Cfg.Sandbox)
+		check, err := lob.CreateCheck(inf.Id, inf.Name, inf.Address, inf.PendingPayout, s.Cfg)
 		if err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -2027,6 +2187,10 @@ func approveCheck(s *Server) gin.HandlerFunc {
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
+		}
+
+		if err := inf.CheckEmail(check, s.Cfg); err != nil {
+			s.Alert("Failed to email check information to influencer "+inf.Id, err)
 		}
 
 		c.JSON(200, misc.StatusOK(infId))
@@ -2124,7 +2288,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 
 var (
 	ErrSorry        = errors.New("Sorry! You are currently not eligible for a check!")
-	ErrInvalidFunds = errors.New("Must have atleast $50 USD to be paid out!")
+	ErrInvalidFunds = errors.New("Must have atleast $10 USD to be paid out!")
 	ErrThirtyDays   = errors.New("Must wait atleast 30 days since last check to receive a payout!")
 	ErrAddress      = errors.New("Please set an address for your profile!")
 	ErrTax          = errors.New("Please fill out all necessary tax forms!")
@@ -2154,7 +2318,7 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if inf.PendingPayout < 50 {
+		if inf.PendingPayout < 10 {
 			c.JSON(500, misc.StatusErr(ErrInvalidFunds.Error()))
 			return
 		}
@@ -2308,13 +2472,9 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var isAmerican bool
-		if strings.ToLower(inf.Address.Country) == "us" {
-			isAmerican = true
-		}
-
-		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, isAmerican, s.Cfg.Sandbox)
+		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, inf.IsAmerican(), s.Cfg.Sandbox)
 		if err != nil {
+			s.Alert("Hellosign signature request failed for "+inf.Id, err)
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
@@ -2341,27 +2501,63 @@ func userProfile(srv *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cu := auth.GetCtxUser(c)
 		id := c.Param("id")
+
+		if id == "" {
+			goto SKIP
+		}
+
 		switch {
 		case cu.Admin:
 		case cu.AdAgency != nil:
 			checkAdAgency(c)
 		case cu.TalentAgency != nil:
 			checkTalentAgency(c)
-		case cu.ID == id:
-			c.JSON(200, cu.Trim())
-			return
 		default:
 			misc.AbortWithErr(c, http.StatusUnauthorized, auth.ErrUnauthorized)
 		}
 		if c.IsAborted() {
 			return
 		}
-		if cu = srv.auth.GetUser(id); cu != nil {
-			c.JSON(200, cu.Trim())
-		} else {
+
+		if cu = srv.auth.GetUser(id); cu == nil {
 			misc.AbortWithErr(c, http.StatusNotFound, auth.ErrInvalidUserID)
 		}
 
+	SKIP:
+		cu = cu.Trim()
+
+		if cu.Advertiser == nil { // return the user if it isn't an advertiser
+			c.JSON(200, cu)
+			return
+		}
+
+		var advWithCampaigns struct {
+			*auth.User
+			HasCampaigns bool `json:"hasCmps"`
+		}
+
+		advWithCampaigns.User = cu
+
+		srv.db.View(func(tx *bolt.Tx) error {
+			return tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp struct {
+					AdvertiserId string `json:"advertiserId"`
+				}
+				if json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				// if the campaign's adv id is the same as this user it means he has at least one cmp
+				// set the flag and break the foreach early
+				if cmp.AdvertiserId == cu.ID {
+					advWithCampaigns.HasCampaigns = true
+					return io.EOF
+				}
+				return
+			})
+		})
+
+		c.JSON(200, &advWithCampaigns)
 	}
 }
 
@@ -2396,7 +2592,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 		}
 
 		bucket := c.Param("bucket")
-		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, bucket, id)
+		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, id, "", 750, 389)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return
@@ -2419,7 +2615,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			imageURL = getImageUrl(s, "campaign", filename)
+			imageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false)
 			cmp.ImageURL = imageURL
 
 			// Save the Campaign
@@ -2447,6 +2643,7 @@ func getLatestGeo(s *Server) gin.HandlerFunc {
 }
 
 func click(s *Server) gin.HandlerFunc {
+	domain := s.Cfg.Domain
 	return func(c *gin.Context) {
 		var (
 			infId      = c.Param("influencerId")
@@ -2512,7 +2709,7 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		// One click per 30 days allowed per deal!
-		misc.SetCookie(c.Writer, "click", prevClicks, 24*30*time.Hour)
+		misc.SetCookie(c.Writer, domain, "click", prevClicks, 24*30*time.Hour)
 
 		c.Redirect(302, foundDeal.Link)
 	}
@@ -2576,19 +2773,15 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							if deal.Tweet != nil {
 								d.Caption = deal.Tweet.Text
 								d.Published = int32(deal.Tweet.CreatedAt.Unix())
-								d.Views = reporting.GetViews(d.Likes, 0, d.Shares)
 							} else if deal.Facebook != nil {
 								d.Caption = deal.Facebook.Caption
 								d.Published = int32(deal.Facebook.Published.Unix())
-								d.Views = reporting.GetViews(d.Likes, d.Comments, d.Shares)
 							} else if deal.Instagram != nil {
 								d.Caption = deal.Instagram.Caption
 								d.Published = deal.Instagram.Published
-								d.Views = reporting.GetViews(d.Likes, d.Comments, 0)
 							} else if deal.YouTube != nil {
 								d.Caption = deal.YouTube.Description
 								d.Published = deal.YouTube.Published
-								d.Views = int32(deal.YouTube.Views)
 							}
 
 							// Check for virality
@@ -2641,7 +2834,6 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 			if len(adv.Blacklist) == 0 {
 				adv.Blacklist = make(map[string]bool)
 			}
-
 			adv.Blacklist[infId] = true
 			return user.StoreWithData(s.auth, tx, adv)
 		}); err != nil {

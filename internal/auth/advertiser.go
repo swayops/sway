@@ -58,6 +58,16 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	// Make sure IDs are congruent each create/update
 	adv.ID, adv.AgencyID = u.ID, u.ParentID
 	adv.ExchangeFee = 0.2 // Global exchange fee
+
+	if u.Advertiser != nil && len(u.Advertiser.Blacklist) > 0 {
+		if adv.Blacklist == nil {
+			adv.Blacklist = map[string]bool{}
+		}
+		for k := range u.Advertiser.Blacklist {
+			adv.Blacklist[k] = true
+		}
+	}
+
 	u.Advertiser = adv
 
 	return nil

@@ -41,11 +41,11 @@ func StatusOK(id string) gin.H {
 	if len(id) == 0 {
 		return gin.H{"status": "success"}
 	}
-	return gin.H{"status": "success", "id": id}
+	return gin.H{"status": "success", "id": id, "code": 200}
 }
 
 func StatusErr(msg string) gin.H {
-	return gin.H{"status": "error", "msg": msg}
+	return gin.H{"status": "error", "msg": msg, "code": 400}
 }
 
 func AbortWithErr(c *gin.Context, code int, err error) {

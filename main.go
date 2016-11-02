@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/swayops/closer"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/server"
 )
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
+	log.SetFlags(log.Lshortfile)
+
 	cfg, err := config.New("config/config.json")
 	if err != nil {
 		log.Fatal(err)
@@ -30,10 +33,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	defer func() {
+		recover() // ignore the panic
+		closer.Defer(srv.Close)()
+	}()
+
 	// Listen and Serve
 	if err = srv.Run(); err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-
+		// using panic rather than fatal because fatal would terminal the program
+		// and it would never call our closer
+		log.Panicf("Failed to listen: %v", err)
 	}
 
 }

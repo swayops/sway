@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	ErrUnknown = errors.New(`Data not found!`)
+	ErrUnknown = errors.New(`YouTube data not found!`)
 	ErrEmpty   = errors.New("Empty post items!")
 	ErrStats   = errors.New("Unable to retrieve video stats")
 	ErrContent = errors.New("Empty content items")
@@ -220,7 +220,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 
 			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)
 			if err != nil {
-				continue
+				return
 			}
 
 			p.LikesDelta = p.Likes
@@ -269,21 +269,21 @@ func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, di
 
 	likes, err = getCount(i.Stats.Likes)
 	if err != nil {
-		log.Println("Error extracting likes data", endpoint)
+		log.Println("Error extracting likes data", endpoint, err)
 		err = ErrStats
 		return
 	}
 
 	dislikes, err = getCount(i.Stats.Dislikes)
 	if err != nil {
-		log.Println("Error extracting dislikes data", endpoint)
+		log.Println("Error extracting dislikes data", endpoint, err)
 		err = ErrStats
 		return
 	}
 
 	comments, err = getCount(i.Stats.Comments)
 	if err != nil {
-		log.Println("Error extracting comments data", endpoint)
+		log.Println("Error extracting comments data", endpoint, err)
 		err = ErrStats
 		return
 	}

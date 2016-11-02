@@ -34,18 +34,20 @@ type Login struct {
 }
 
 type User struct {
-	ID        string `json:"id"`
-	ParentID  string `json:"parentId,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Email     string `json:"email,omitempty"`
-	Phone     string `json:"phone,omitempty"`
-	Address   string `json:"address,omitempty"`
-	Status    bool   `json:"status,omitempty"`
-	CreatedAt int64  `json:"createdAt,omitempty"`
-	UpdatedAt int64  `json:"updatedAt,omitempty"`
-	APIKey    string `json:"apiKeys,omitempty"`
-	Salt      string `json:"salt,omitempty"`
-	Admin     bool   `json:"admin,omitempty"`
+	ID            string `json:"id"`
+	ParentID      string `json:"parentId,omitempty"`
+	Name          string `json:"name,omitempty"`
+	Email         string `json:"email,omitempty"`
+	Phone         string `json:"phone,omitempty"`
+	Address       string `json:"address,omitempty"`
+	ImageURL      string `json:"imageUrl,omitempty"`
+	CoverImageURL string `json:"coverImageUrl,omitempty"`
+	Status        bool   `json:"status,omitempty"`
+	CreatedAt     int64  `json:"createdAt,omitempty"`
+	UpdatedAt     int64  `json:"updatedAt,omitempty"`
+	APIKey        string `json:"apiKeys,omitempty"`
+	Salt          string `json:"salt,omitempty"`
+	Admin         bool   `json:"admin,omitempty"`
 	//	Data      json.RawMessage `json:"Data,omitempty"`
 
 	AdAgency     *AdAgency     `json:"adAgency,omitempty"`
@@ -81,9 +83,19 @@ func (u *User) Update(o *User) *User {
 	if o.Phone != "" {
 		u.Phone = o.Phone
 	}
+
 	if o.Address != "" {
 		u.Address = o.Address
 	}
+
+	if o.ImageURL != "" {
+		u.ImageURL = o.ImageURL
+	}
+
+	if o.CoverImageURL != "" {
+		u.CoverImageURL = o.CoverImageURL
+	}
+
 	u.Status = o.Status
 	u.UpdatedAt = time.Now().Unix()
 	return u

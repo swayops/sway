@@ -3,6 +3,7 @@ package geo
 import (
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/oschwald/maxminddb-golang"
@@ -53,23 +54,36 @@ func GetGeoFromIP(geoDb *maxminddb.Reader, ip string) *GeoRecord {
 	var record MaxmindRecord
 	err := geoDb.Lookup(parseIp, &record)
 	if err != nil {
-		log.Println("Failed Geo IP lookup", err)
 		return nil
 	}
 
 	if len(record.State) == 0 {
-		log.Println("Failed Geo IP State lookup", err)
 		return nil
 	}
-	state := record.State[0].IsoCode
+
+	state := strings.ToLower(record.State[0].IsoCode)
 	if state == "" {
 		log.Println("Failed Geo IP State lookup", err)
 		return nil
 	}
 
-	country := record.Country.ISOCode
+	_, usOK := US_STATES[state]
+	_, caOK := CA_PROVINCES[state]
+
+	if !usOK && !caOK {
+		log.Println("State did not match on IP lookup", state, parseIp)
+		return nil
+	}
+
+	country := strings.ToLower(record.Country.ISOCode)
 	if country == "" {
 		log.Println("Failed Geo IP Country lookup", err)
+		return nil
+	}
+
+	_, ok := COUNTRIES[country]
+	if !ok {
+		log.Println("Country did not match on IP lookup", country)
 		return nil
 	}
 

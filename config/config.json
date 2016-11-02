@@ -2,9 +2,12 @@
 	"port": "8080",
 	"dbPath": "data/",
 	"dbName": "sway",
-	"serverURL": "http://localhost:8080",
+	"domain": ".swayops.fake",
+	"dashURL": "http://dash.swayops.fake:8080",
+	"infAppURL": "http://inf.swayops.fake:8080",
 	"apiPath": "/api/v1/",
 	"dashboardPath": "../dashboard/",
+	"infAppPath": "../influencerApp/",
 
 	"sandbox": true,
 
@@ -34,12 +37,12 @@
 
 	"youtube": {
 		"endpoint": "https://www.googleapis.com/youtube/v3/",
-		"clientId": "AIzaSyAizEan5PRtX4schZU8M9ragKCm8rG_79s"
+		"clientId": "AIzaSyD4NwxB_AUVr3eHJt2aRxbm778DypmSwHE"
 	},
 
 	"instagram": {
 		"endpoint": "https://api.instagram.com/v1/",
-		"accessToken": "3418302142.8016227.5815d22ac12c44bcb29dbbf7dfb53353"
+		"accessTokens": ["3418302142.8016227.5815d22ac12c44bcb29dbbf7dfb53353", "4085832479.f7eef29.9b254a911782400c859037ed0cdca16b"]
 	},
 
 	"twitter": {

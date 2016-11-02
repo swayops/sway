@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -80,6 +81,7 @@ func TestMain(m *testing.M) {
 	panicIf(err)
 
 	ts = httptest.NewTLSServer(r)
+	ts.URL = strings.Replace(ts.URL, "127.0.0.1", "dash.swayops.fake", 1)
 	defer ts.Close()
 
 	code = m.Run()

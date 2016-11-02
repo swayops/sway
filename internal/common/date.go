@@ -4,7 +4,7 @@ import "time"
 
 func GetMonthOffset(offset int) string {
 	t := time.Now().UTC()
-	t = t.AddDate(0, -offset, 0)
+	t = time.Date(t.Year(), t.Month()-time.Month(offset), 1, 0, 0, 0, 0, time.UTC)
 	return t.Format("2006-01")
 }
 

@@ -15,6 +15,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	engineDelay = 4 // hours
+)
+
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
 	// This will be used by "GetAvailableDeals"
@@ -35,10 +39,10 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Run engine every 6 hours
-	ticker := time.NewTicker(6 * time.Hour)
+	// Run engine every 4 hours
+	runTicker := time.NewTicker(engineDelay * time.Hour)
 	go func() {
-		for range ticker.C {
+		for range runTicker.C {
 			if err := run(srv); err != nil {
 				log.Println("Err running engine", err)
 			}
@@ -46,10 +50,10 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Check social media keys every hour!
-	addr := &lob.AddressLoad{"4 Pennsylvania Plaza", "", "New York", "NY", "USA", "10001"}
-	ticker = time.NewTicker(10 * time.Minute)
+	addr := &lob.AddressLoad{"917 HARTFORD WAY", "", "BEVERLY HILLS", "CA", "US", "90210"}
+	alertTicker := time.NewTicker(30 * time.Minute)
 	go func() {
-		for range ticker.C {
+		for range alertTicker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
 				srv.Alert("Error running Facebook init!", err)
 			}
@@ -145,7 +149,7 @@ func shouldRun(s *Server) bool {
 			return true
 		}
 	}
-	s.Alert("Budget store for this month not available", ErrStore)
+	s.Alert("Budget store for this month not available.. Run billing!", ErrStore)
 	return false
 }
 
@@ -222,6 +226,7 @@ func depleteBudget(s *Server) error {
 		}
 		updatedStore := false
 
+		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 		// Look for any completed deals
 		for _, deal := range cmp.Deals {
 			if deal.Completed == 0 {
@@ -239,8 +244,8 @@ func depleteBudget(s *Server) error {
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
 				// DSP and Exchange fee taken away from the prinicpal
-				dspMarkup := spentDelta * store.DspFee
-				exchangeMarkup := spentDelta * store.ExchangeFee
+				dspMarkup := spentDelta * dspFee
+				exchangeMarkup := spentDelta * exchangeFee
 
 				// Talent agency payout will be taken away from the influencer portion
 				influencerPool := spentDelta - (dspMarkup + exchangeMarkup)

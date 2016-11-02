@@ -9,7 +9,7 @@ import (
 )
 
 type YouTube struct {
-	UserName string `json:"name"`
+	UserName string `json:"userName"`
 	UserId   string `json:"id"`
 
 	AvgLikes    float64 `json:"avgLikes,omitempty"`
@@ -44,7 +44,7 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 		return nil, err
 	}
 
-	if len(yt.LatestPosts) == 0 || yt.Subscribers == 0 {
+	if yt.Subscribers < 10 {
 		return nil, ErrEligible
 	}
 

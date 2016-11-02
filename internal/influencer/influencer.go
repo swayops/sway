@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -132,7 +133,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		CreatedAt:    created,
 	}
 
-	if address != nil {
+	if address != nil && address.AddressOne != "" {
 		addr, err := lob.VerifyAddress(address, cfg.Sandbox)
 		if err != nil {
 			return nil, err
@@ -225,6 +226,8 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 		return nil
 	}
 
+	inf.setSwayRep()
+
 	// Used by sway engine to periodically update influencer data
 
 	// Always allow updates if they have an active deal
@@ -268,7 +271,6 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 		}
 	}
 
-	inf.setSwayRep()
 	inf.LastSocialUpdate = int32(time.Now().Unix())
 
 	return nil
@@ -352,6 +354,23 @@ func (inf *Influencer) GetFollowers() int64 {
 		fw += int64(inf.YouTube.Subscribers)
 	}
 	return fw
+}
+
+func (inf *Influencer) GetNetworks() []string {
+	var networks []string
+	if inf.Facebook != nil {
+		networks = append(networks, "Facebook")
+	}
+	if inf.Instagram != nil {
+		networks = append(networks, "Instagram")
+	}
+	if inf.Twitter != nil {
+		networks = append(networks, "Twitter")
+	}
+	if inf.YouTube != nil {
+		networks = append(networks, "YouTube")
+	}
+	return networks
 }
 
 func (inf *Influencer) GetPostURLs(ts int32) []string {
@@ -493,9 +512,24 @@ func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
 	return nil
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedDeal string, location *geo.GeoRecord, skipGeo bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) IsAmerican() bool {
+	if inf.Address == nil {
+		return false
+	}
+
+	cy := strings.ToLower(inf.Address.Country)
+	if cy == "us" || cy == "usa" {
+		return true
+	}
+
+	return false
+}
+
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
+	// NOTE: The campaigns being passed only has campaigns with active
+	// advertisers and agencies
 	var (
 		infDeals []*common.Deal
 	)
@@ -504,11 +538,18 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		return infDeals
 	}
 
-	if location == nil && !skipGeo {
+	if location == nil {
 		location = inf.GetLatestGeo()
 	}
 
-	for _, cmp := range campaigns.GetStore() {
+	var store map[string]common.Campaign
+	if forcedCampaign != "" {
+		store = campaigns.GetCampaignAsStore(forcedCampaign)
+	} else {
+		store = campaigns.GetStore()
+	}
+
+	for _, cmp := range store {
 		targetDeal := &common.Deal{}
 		dealFound := false
 		if !cmp.IsValid() {
@@ -516,7 +557,9 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		for _, deal := range cmp.Deals {
-			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" && !dealFound {
+			// Query is only passed in from getDeal so an influencer can view deals they're
+			// currently assigned to
+			if (query || (deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "")) && !dealFound {
 				if forcedDeal != "" && deal.Id != forcedDeal {
 					continue
 				}
@@ -549,11 +592,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// If you already have a/have done deal for this campaign, screw off
 		dealFound = false
-		for _, d := range inf.ActiveDeals {
-			if d.CampaignId == targetDeal.CampaignId {
-				dealFound = true
+		if !query {
+			// With the query flag beign used by getDeal,
+			// we may be looking for details on an assigned deal
+			for _, d := range inf.ActiveDeals {
+				if d.CampaignId == targetDeal.CampaignId {
+					dealFound = true
+				}
 			}
 		}
+
 		for _, d := range inf.CompletedDeals {
 			if d.CampaignId == targetDeal.CampaignId {
 				dealFound = true
@@ -621,7 +669,8 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 					Count:    1}
 			}
 
-			// Add some display attributes
+			// Add some display attributes..
+			// These will be saved permanently if they accept deal!
 			targetDeal.CampaignName = cmp.Name
 			targetDeal.CampaignImage = cmp.ImageURL
 			targetDeal.Company = cmp.Company
@@ -656,7 +705,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 	if misc.WithinLast(inf.LastEmail, 24*7) {
 		return false, nil
 	}
-	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", nil, false, cfg)
+	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, false, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}
@@ -701,6 +750,81 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 
 		email := templates.InfluencerCmpEmail.Render(map[string]interface{}{"Name": firstName, "deal": []*common.Deal{deal}})
 		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("%s is requesting you!", deal.Company), inf.EmailAddress, inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
+func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error {
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.InfluencerHeadsUpEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have 4 days to complete the deal for %s!", deal.Company), inf.EmailAddress, inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
+func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error {
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.InfluencerTimeoutEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s has expired!", deal.Company), inf.EmailAddress, inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
+func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		var delivery string
+		if inf.IsAmerican() {
+			delivery = "4 - 6"
+		} else {
+			delivery = "9 - 13"
+		}
+
+		strPayout := strconv.FormatFloat(check.Payout, 'f', 2, 64)
+
+		email := templates.CheckEmail.Render(map[string]interface{}{"Name": firstName, "Delivery": delivery, "Payout": strPayout})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your check has been mailed!"), inf.EmailAddress, inf.Name,
 			[]string{""})
 		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			return ErrEmail

@@ -13,6 +13,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	engagementViewRatio = 0.04
+)
+
 // This deal represents a possible bid
 // for an influencer. Do NOT confuse this
 // with a Campaign
@@ -140,7 +144,12 @@ func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
 	data.Dislikes += dislikes
 	data.Comments += comments
 	data.Shares += shares
-	data.Views += views
+	if views > 0 {
+		data.Views += views
+	} else {
+		// Estimate views if there are none
+		data.Views += int32(float64(likes+comments+shares) / engagementViewRatio)
+	}
 }
 
 func (d *Deal) PerkIncr() {

@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
+	"github.com/hoisie/mustache"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
@@ -24,6 +25,8 @@ const (
 	TalentAdminEmail = "talentAgency@swayops.com"
 	adminPass        = "Rf_j@Z9hM3-"
 )
+
+var gitBuild string = "n/a"
 
 var ErrUserId = errors.New("Unexpected user id")
 
@@ -165,30 +168,103 @@ var scopes = map[string]auth.ScopeMap{
 	},
 }
 
-func (srv *Server) initializeRoutes(r gin.IRouter) {
-	idxFile := filepath.Join(srv.Cfg.DashboardPath, "index.html")
-	favIcoFile := filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
-	r.Use(func(c *gin.Context) {
+// TODO: clean this up or move to meteora router
+func getDashRoutes(srv *Server) func(c *gin.Context) {
+	var (
+		idxFile     = filepath.Join(srv.Cfg.DashboardPath, "index.html")
+		favIcoFile  = filepath.Join(srv.Cfg.DashboardPath, "/static/img/favicon.ico")
+		staticGzer  = staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
+		idxFileHTML []byte
+	)
+	tmpl, err := mustache.ParseFile(idxFile)
+	if err != nil {
+		log.Panic(err)
+	}
+	idxFileHTML = []byte(tmpl.Render(gin.H{"infAppUrl": srv.Cfg.InfAppURL}))
+
+	return func(c *gin.Context) {
 		p := c.Request.URL.Path[1:]
-		if idx := strings.Index(p, "/"); idx > -1 {
-			p = p[:idx]
+		parts := strings.Split(p, "/")
+		if len(parts) > 0 {
+			p = parts[0]
+		}
+
+		switch p {
+		case "api":
+			return
+		case "invite":
+			if len(parts) == 2 {
+				c.Redirect(308, srv.Cfg.InfAppURL+"/signup/"+parts[1])
+			} else {
+				misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
+			}
+			return
+		case "favicon.ico":
+			c.File(favIcoFile)
+		case "static":
+			staticGzer(c)
+			return
+		default:
+			c.Data(200, gin.MIMEHTML, idxFileHTML)
+		}
+		c.Abort()
+	}
+}
+
+func getInfAppRoutes(srv *Server) func(c *gin.Context) {
+	var (
+		idxFile    = filepath.Join(srv.Cfg.InfAppPath, "index.html")
+		favIcoFile = filepath.Join(srv.Cfg.InfAppPath, "/static/img/favicon.ico")
+		staticGzer = staticGzipServe(filepath.Join(srv.Cfg.InfAppPath, "static"))
+	)
+	return func(c *gin.Context) {
+		p := c.Request.URL.Path[1:]
+		parts := strings.Split(p, "/")
+		if len(parts) > 0 {
+			p = parts[0]
 		}
 		serve := idxFile
 		switch p {
+		case "api":
+			return
 		case "favicon.ico":
 			serve = favIcoFile
-		case "static", "api":
+		case "static":
+			staticGzer(c)
 			return
 		}
 		c.File(serve)
 		c.Abort()
+	}
+}
+
+func (srv *Server) initializeRoutes(r gin.IRouter) {
+	staticGzer := staticGzipServe("./images/")
+	r.HEAD("/images/*fp", staticGzer)
+	r.GET("/images/*fp", staticGzer)
+
+	infAppRoutes := getInfAppRoutes(srv)
+	dashRoutes := getDashRoutes(srv)
+
+	r.Use(func(c *gin.Context) {
+		var subdomain string
+		if dot := strings.IndexRune(c.Request.Host, '.'); dot > -1 {
+			subdomain = c.Request.Host[:dot]
+		}
+		switch subdomain {
+		case "":
+		case "inf":
+			infAppRoutes(c)
+		case "dash":
+			dashRoutes(c)
+		}
 	})
 
-	staticGzer := staticGzipServe(filepath.Join(srv.Cfg.DashboardPath, "static"))
-	r.HEAD("/static/*fp", staticGzer)
-	r.GET("/static/*fp", staticGzer)
-
 	r = r.Group(srv.Cfg.APIPath)
+
+	r.GET("/version", func(c *gin.Context) {
+		c.JSON(200, gin.H{"version": gitBuild})
+	})
 
 	// Public endpoint
 	r.GET("/click/:influencerId/:campaignId/:dealId", click(srv))
@@ -208,11 +284,11 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.POST("/forgotPassword", srv.auth.ReqResetHandler)
 	r.POST("/resetPassword", srv.auth.ResetHandler)
 
-	verifyGroup.GET("/user", func(c *gin.Context) {
-		c.JSON(200, auth.GetCtxUser(c).Trim())
-	})
+	verifyGroup.GET("/user", userProfile(srv))
 
 	verifyGroup.GET("/user/:id", userProfile(srv))
+
+	adminGroup.PUT("/admin/:id", putAdmin(srv)) // save profile for admin
 
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
@@ -254,25 +330,24 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	infScope := srv.auth.CheckScopes(scopes["inf"])
 	infOwnership := srv.auth.CheckOwnership(auth.InfluencerItem, "influencerId")
 	verifyGroup.GET("/getDeals/:influencerId/:lat/:long", infScope, infOwnership, getDealsForInfluencer(srv))
+	verifyGroup.GET("/getDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, getDeal(srv))
 	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
 	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
 	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
+	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
+	verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
-		nil, nil, nil)
+		nil, putInfluencer, nil)
 
 	adminGroup.GET("/getInfluencersByCategory/:category", getInfluencersByCategory(srv))
-	verifyGroup.GET("/setPlatform/:influencerId/:platform/:id", infOwnership, setPlatform(srv))
-	verifyGroup.GET("/setCategory/:influencerId/:category", infOwnership, setCategory(srv))
+	verifyGroup.PUT("/setAudit/:influencerId", infOwnership, setAudit(srv))
 	verifyGroup.GET("/getCategories", getCategories(srv))
-	verifyGroup.GET("/setInviteCode/:influencerId/:inviteCode", infOwnership, infScope, infOwnership, setInviteCode(srv))
-	verifyGroup.POST("/setGender/:influencerId/:gender", infOwnership, setGender(srv))
-	verifyGroup.POST("/setReminder/:influencerId/:state", infOwnership, setReminder(srv))
-	verifyGroup.POST("/setAddress/:influencerId", infOwnership, setAddress(srv))
 	verifyGroup.GET("/requestCheck/:influencerId", infScope, infOwnership, requestCheck(srv))
 	verifyGroup.GET("/getLatestGeo/:influencerId", infOwnership, getLatestGeo(srv))
+	verifyGroup.GET("/bio/:influencerId", infOwnership, getBio(srv))
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
@@ -306,8 +381,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 	adminGroup.GET("/forceEngine", forceEngine(srv))
 
-	adminGroup.GET("/emailTaxForm/:influencerId", emailTaxForm(srv))
-
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
 }
@@ -316,31 +389,71 @@ func (srv *Server) startEngine() error {
 	return newSwayEngine(srv)
 }
 
+func redirectToHTTPS(w http.ResponseWriter, req *http.Request) {
+	http.Redirect(w, req, "https://"+req.Host+req.URL.String(), http.StatusMovedPermanently)
+}
+
 // Run starts the server
-func (srv *Server) Run() (err error) {
-	var wg sync.WaitGroup
-
-	wg.Add(1)
-
+func (srv *Server) Run() error {
+	var (
+		errCh   = make(chan error, 2)
+		host    = srv.Cfg.Host
+		sandbox = srv.Cfg.Sandbox
+	)
+	if host == "" {
+		host = "*.swayops.com"
+	}
 	go func() {
-		err = srv.r.Run(":" + srv.Cfg.Port)
-		wg.Done()
+		if sandbox {
+			log.Printf("listening on http://%s:%s", host, srv.Cfg.Port)
+			errCh <- srv.r.Run(srv.Cfg.Host + ":" + srv.Cfg.Port)
+		} else {
+			log.Printf("listening on http://%s:%s and redirecting to https", host, srv.Cfg.Port)
+			errCh <- http.ListenAndServe(srv.Cfg.Host+":"+srv.Cfg.Port, http.HandlerFunc(redirectToHTTPS))
+		}
 	}()
-
-	wg.Wait()
-	return
+	if tls := srv.Cfg.TLS; tls != nil {
+		go func() {
+			log.Printf("listening on https://%s:%s", host, tls.Port)
+			errCh <- srv.r.RunTLS(srv.Cfg.Host+":"+tls.Port, tls.Cert, tls.Key)
+		}()
+	}
+	return <-errCh
 }
 
 func (srv *Server) Alert(msg string, err error) {
+	log.Println(msg, err)
+
 	if srv.Cfg.Sandbox {
 		return
 	}
-
-	log.Println(msg, err)
 
 	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
 	if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", "shahzil@swayops.com", "Shahzil Abid",
 		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		log.Println("Error sending alert email!")
 	}
+}
+
+func (srv *Server) Notify(subject, msg string) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	email := templates.NotifyEmail.Render(map[string]interface{}{"msg": msg})
+	if resp, err := srv.Cfg.MailClient().SendMessage(email, subject, "shahzil@swayops.com", "Shahzil Abid",
+		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		log.Println("Error sending notify email!")
+	}
+}
+
+func (srv *Server) Close() error {
+	log.Println("exiting...")
+
+	// srv.r.Close() // not implemented in gin nor net/http
+	srv.db.Close()
+	srv.budgetDb.Close()
+	srv.Cfg.Loggers.Close()
+
+	return nil
 }

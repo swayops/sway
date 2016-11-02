@@ -22,7 +22,8 @@ type Campaign struct {
 	AgencyId     string `json:"agencyId"`
 
 	// Image URL for the campaign
-	ImageURL string `json:"imageUrl"`
+	ImageURL  string `json:"imageUrl"`
+	ImageData string `json:"imageData,omitempty"` // this is input-only and never saved to the db
 
 	Company string `json:"company,omitempty"`
 
@@ -84,6 +85,21 @@ func (p *Campaigns) SetCampaign(id string, cmp Campaign) {
 	p.mux.Lock()
 	p.store[id] = cmp
 	p.mux.Unlock()
+}
+
+func (p *Campaigns) GetCampaignAsStore(cid string) map[string]Campaign {
+	// Override used when you want just one campaign as a store
+	// Made for influencer.GetAvailableDeals
+	store := make(map[string]Campaign)
+
+	p.mux.RLock()
+	val, ok := p.store[cid]
+	if ok {
+		store[cid] = val
+	}
+	p.mux.RUnlock()
+
+	return store
 }
 
 func (p *Campaigns) GetStore() map[string]Campaign {

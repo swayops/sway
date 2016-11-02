@@ -3,10 +3,15 @@ package lob
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/swayops/sway/config"
 )
 
 const (
@@ -20,7 +25,8 @@ const (
 )
 
 var (
-	ErrAddr = errors.New("Missing address!")
+	ErrAddr    = errors.New("Missing address!")
+	ErrBadAddr = errors.New("Address doesn't seem to be found. Please email engage@swayops.com with your login email / username and the address your trying to use")
 )
 
 type AddressLoad struct {
@@ -44,13 +50,13 @@ type Track struct {
 	Id string `json:"id"`
 }
 
-func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (*Check, error) {
+func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config.Config) (*Check, error) {
 	if addr == nil || addr.AddressOne == "" {
 		return nil, ErrAddr
 	}
 
 	form := url.Values{}
-	form.Add("description", "Influencer Payout Check")
+	form.Add("description", fmt.Sprintf("Influencer (%s) Payout", id))
 
 	form.Add("to[name]", name)
 	form.Add("to[address_line1]", addr.AddressOne)
@@ -61,24 +67,21 @@ func CreateCheck(name string, addr *AddressLoad, payout float64, sandbox bool) (
 	form.Add("to[address_country]", addr.Country)
 
 	form.Add("from", fromAddr)
-	// form.Add("from[name]", "Shahzil Abid")
-	// form.Add("from[address_line1]", "123 Test Street")
-	// form.Add("from[address_city]", "Mountain View")
-	// form.Add("from[address_state]", "CA")
-	// form.Add("from[address_zip]", "94041")
-	// form.Add("from[address_country]", "US")
 
 	form.Add("bank_account", bankAcct)
 	form.Add("amount", strconv.FormatFloat(payout, 'f', 6, 64))
 
-	form.Add("logo", "http://s33.postimg.org/jidpxyzwv/test.png")
+	if !cfg.Sandbox {
+		form.Add("logo", cfg.DashURL+"/"+filepath.Join(cfg.ImageUrlPath, "sway_logo.png"))
+	}
+
 	form.Add("check_bottom", "<h1 style='padding-top:4in;'>Sway Influencer Check</h1>")
 
 	req, err := http.NewRequest("POST", lobEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
 	}
-	if sandbox {
+	if cfg.Sandbox {
 		req.SetBasicAuth(lobTestAuth, "")
 	} else {
 		req.SetBasicAuth(lobProdAuth, "")
@@ -137,6 +140,9 @@ func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
 
 	var verify Verification
 	err = json.NewDecoder(resp.Body).Decode(&verify)
@@ -148,11 +154,13 @@ func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 	}
 
 	if len(verify.Message) > 0 {
-		err = errors.New(verify.Message)
+		log.Printf("%+v: %v", addr, verify.Message)
+		err = ErrBadAddr
 		return nil, err
 	}
 	if verify.ErrorData != nil {
-		err = errors.New(verify.ErrorData.Message)
+		log.Printf("%+v: %v", addr, verify.ErrorData.Message)
+		err = ErrBadAddr
 		return nil, err
 	}
 

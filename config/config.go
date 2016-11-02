@@ -18,18 +18,23 @@ var (
 	ErrInvalidConfig = errors.New("invalid config")
 )
 
-func New(loc string) (*Config, error) {
+func New(loc string) (_ *Config, err error) {
 	var c Config
 
-	f, err := os.Open(loc)
-	if err != nil {
-		log.Println("Config error", err)
-		return nil, err
+	if err = loadJson(loc, &c); err != nil {
+		log.Printf("error loading config: %v", err)
+		return
 	}
 
-	if err := json.NewDecoder(f).Decode(&c); err != nil {
-		log.Println("Config error", err)
-		return nil, err
+	if err = loadJson(loc+".user", &c); err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("error loading userconfig: %v", err)
+			return
+		}
+	}
+
+	if c.TLS != nil && c.TLS.Port == "" {
+		c.TLS.Port = "443"
 	}
 
 	c.GeoDB, err = geo.NewGeoDB(c.GeoLocation)
@@ -38,7 +43,7 @@ func New(loc string) (*Config, error) {
 		return nil, err
 	}
 
-	c.ClickUrl = c.ServerURL + "/click/"
+	c.ClickUrl = c.DashURL + "/click/"
 
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
@@ -56,9 +61,25 @@ func New(loc string) (*Config, error) {
 	return &c, nil
 }
 
+func loadJson(fp string, out interface{}) error {
+	f, err := os.Open(fp)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return json.NewDecoder(f).Decode(out)
+
+}
+
 type Config struct {
 	Host string `json:"host"`
 	Port string `json:"port"`
+
+	TLS *struct {
+		Port string `json:"port"`
+		Cert string `json:"certFile"`
+		Key  string `json:"keyFile"`
+	} `json:"tls"`
 
 	DBPath       string `json:"dbPath"`
 	DBName       string `json:"dbName"`
@@ -66,9 +87,12 @@ type Config struct {
 	BudgetBucket string `json:"budgetBucket"`
 	AuthDBName   string `json:"authDbName"`
 
-	ServerURL     string `json:"serverURL"` // this is mainly used for internal directs
+	Domain        string `json:"domain"`    // for cookies, important
+	DashURL       string `json:"dashURL"`   // this is mainly used for internal directs
+	InfAppURL     string `json:"infAppURL"` // this is mainly used for internal directs
 	APIPath       string `json:"apiPath"`
 	DashboardPath string `json:"dashboardPath"`
+	InfAppPath    string `json:"infAppPath"`
 
 	GeoLocation string            `json:"geoLoc"`
 	GeoDB       *maxminddb.Reader `json:"geoDb"`
@@ -106,8 +130,8 @@ type Config struct {
 	} `json:"youtube"`
 
 	Instagram struct {
-		Endpoint    string `json:"endpoint"`
-		AccessToken string `json:"accessToken"`
+		Endpoint     string   `json:"endpoint"`
+		AccessTokens []string `json:"accessTokens"`
 	} `json:"instagram"`
 
 	Facebook struct {

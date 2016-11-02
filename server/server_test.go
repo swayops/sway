@@ -102,16 +102,19 @@ func TestAdAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": ag.Email, "pass": defaultPass}, 200, nil},
 
 		// change the agency's name
-		{"PUT", "/adAgency/" + ag.ExpID, &auth.AdAgency{ID: ag.ExpID, Name: "the rain man", Status: true}, 200, nil},
+		{"PUT", "/adAgency/" + ag.ExpID, &auth.User{AdAgency: &auth.AdAgency{ID: ag.ExpID, Name: "the rain man", Status: true}}, 200, nil},
 		{"GET", "/adAgency/" + ag.ExpID, nil, 200, M{"name": "the rain man"}},
 
 		// create a new advertiser as the new agency and signin
 		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
 		{"POST", "/signIn", M{"email": adv.Email, "pass": defaultPass}, 200, nil},
 
+		// ban a user for this adv
+		{"GET", "/advertiserBan/" + adv.ExpID + "/randomInf", nil, 200, nil},
+
 		// update the advertiser and check if the update worked
-		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.2}}, 200, nil},
-		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.2, ExchangeFee: 0.2}},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1}}, 200, nil},
+		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: ag.ExpID, DspFee: 0.1, ExchangeFee: 0.2, Blacklist: map[string]bool{"randomInf": true}}},
 
 		// sign in as admin and see if they can access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -161,7 +164,7 @@ func TestTalentAgencyChain(t *testing.T) {
 
 		// change the agency's name and fee and check if it stuck
 		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.2, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
-		{"PUT", "/talentAgency/" + ag.ExpID, &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}, 200, nil},
+		{"PUT", "/talentAgency/" + ag.ExpID, &auth.User{TalentAgency: &auth.TalentAgency{ID: ag.ExpID, Name: "X", Fee: 0.3, Status: true}}, 200, nil},
 		{"GET", "/talentAgency/" + ag.ExpID, nil, 200, M{"fee": 0.3, "inviteCode": common.GetCodeFromID(ag.ExpID)}},
 
 		// create a new influencer as the new agency and signin
@@ -169,12 +172,12 @@ func TestTalentAgencyChain(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update the influencer and check if the update worked
-		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
-		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian"}, 200, nil},
+		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
 			"categories": []string{"business"},
-			"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "kimkardashian"},
 		}},
 
 		// sign in as admin and see if they can access the influencer
@@ -261,7 +264,7 @@ func TestNewInfluencer(t *testing.T) {
 	badInf := getSignupUser()
 	badInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Geo: &geo.GeoRecord{},
+			Categories: []string{"BAD CAT"},
 		},
 	}
 
@@ -270,22 +273,29 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
-		{"GET", "/setCategory/" + inf.ExpID + "/business", nil, 200, nil},
-		{"GET", "/setPlatform/" + inf.ExpID + "/twitter/" + "SwayOps_com", nil, 200, nil},
+		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
-			"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "kimkardashian"},
 		}},
 
 		// Add a social media platofrm
-		{"GET", "/setPlatform/" + inf.ExpID + "/facebook/" + "justinbieber", nil, 200, nil},
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian", "facebook": "justinbieber"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   auth.SwayOpsTalentAgencyID,
 			"categories": []string{"business"},
-			"twitter":    M{"id": "SwayOps_com"},
+			"twitter":    M{"id": "kimkardashian"},
 			"facebook":   M{"id": "justinbieber"},
 		}},
+
+		// change their password
+		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian", "facebook": "justinbieber", "oldPass": defaultPass, "pass": "newPassword", "pass2": "newPassword"}, 200, nil},
+		// try to sign in.. should fail
+		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 400, nil},
+		// try with proper password
+		{"POST", "/signIn", M{"email": inf.Email, "pass": "newPassword"}, 200, nil},
 
 		// try to load it as a different user
 		{"POST", "/signIn", adminAdAgencyReq, 200, nil},
@@ -376,7 +386,7 @@ func TestCampaigns(t *testing.T) {
 	}
 	cmp := common.Campaign{
 		AdvertiserId: adv.ExpID,
-		Budget:       10.5,
+		Budget:       150,
 		Name:         "The Day Walker",
 		Instagram:    true,
 		Male:         true,
@@ -384,8 +394,8 @@ func TestCampaigns(t *testing.T) {
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
 	}
-	cmpUpdate1 := `{"name":"Blade V","budget":10.5,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
-	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":10.5,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate1 := `{"name":"Blade V","budget":150,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
+	cmpUpdate2 := `{"advertiserId": "` + adv.ExpID + `", "name":"Blade VI?","budget":150,"status":true,"tags":["mmmm"],"link":"blade.org","female": true,"instagram":true}`
 	badAdvId := cmp
 	badAdvId.AdvertiserId = "1"
 
@@ -914,12 +924,6 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 }
 
 func checkStore(t *testing.T, store, compareStore *budget.Store) {
-	if store != nil && compareStore != nil {
-		if store.DspFee != compareStore.DspFee && store.ExchangeFee != compareStore.ExchangeFee {
-			t.Fatal("Fees changed!")
-		}
-	}
-
 	if compareStore != nil {
 		oldV := store.Spent + store.Spendable
 		newV := compareStore.Spendable + compareStore.Spent
@@ -1130,7 +1134,7 @@ func TestPerks(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       100.5,
+		Budget:       150.5,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Male:         true,
@@ -1173,7 +1177,7 @@ func TestPerks(t *testing.T) {
 	var cmpLoad common.Campaign
 	r := rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!", string(r.Value))
+		t.Fatalf("Bad status code: %+v", r)
 		return
 	}
 
@@ -1342,10 +1346,35 @@ SKIP_APPROVE_1:
 		t.Fatal("Incorrect perk values set!")
 	}
 
+	// lets make sure the getDeal endpoint works and has
+	// all necessary data!
+	var dealGet common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &dealGet)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if dealGet.Spendable == 0 || len(dealGet.Platforms) == 0 || dealGet.Perk.Count != 1 || dealGet.Link == "" {
+		t.Fatal("Get deal query did not work!")
+	}
+
 	// pick up deal for influencer
 	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id+"/twitter", nil, &deals)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
+	}
+
+	// make sure get deal still works!
+	var postDeal common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &postDeal)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if postDeal.Spendable == 0 || len(postDeal.Platforms) == 0 || postDeal.Link == "" {
+		t.Fatal("Get deal query did not work post assignment!")
 	}
 
 	// check campaign perk status and count (make sure both were updated)
@@ -1411,34 +1440,34 @@ SKIP_APPROVE_1:
 	}
 
 	// get pending perk sendouts for admin
-	var pendingPerks map[string][]*common.Perk
+	var pendingPerks []PerkWithCmpInfo
+
 	r = rst.DoTesting(t, "GET", "/getPendingPerks", nil, &pendingPerks)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
 	if len(pendingPerks) != 1 {
-		t.Fatal("Unexpected number of perks.. should have 1!")
+		t.Fatal("Unexpected number of perks.. should have 1!", len(pendingPerks))
 	}
 
-	pk, ok := pendingPerks["4"]
-	if !ok {
-		t.Fatal("Perk request not found")
-	}
-
-	if len(pk) != 1 {
+	if len(pendingPerks) != 1 {
 		t.Fatal("Unexpected number of perks")
 	}
 
-	if pk[0].Status {
+	if pendingPerks[0].CampaignID != "4" {
+		t.Fatal("Unknown perk request campaign ID!")
+	}
+
+	if pendingPerks[0].Status {
 		t.Fatal("Incorrect perk status value!")
 	}
 
-	if pk[0].Address == nil {
+	if pendingPerks[0].Address == nil {
 		t.Fatal("No address for perk!")
 	}
 
-	var emptyPerks map[string][]*common.Perk
+	var emptyPerks []PerkWithCmpInfo
 
 	if *genData {
 		goto SKIP_APPROVE_2
@@ -1550,7 +1579,9 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 
 	// Lets set this influencer to NOT receive emails now!
-	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/false", nil, nil)
+	offPing := false
+	updLoad := &InfluencerUpdate{DealPing: &offPing, TwitterId: "cnn", Gender: "m"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1574,7 +1605,9 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 
 	// Lets set this influencer to receive emails now!
-	r = rst.DoTesting(t, "POST", "/setReminder/"+inf.ExpID+"/true", nil, nil)
+	onPing := true
+	updLoad = &InfluencerUpdate{DealPing: &onPing, TwitterId: "cnn", Gender: "m"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1603,7 +1636,7 @@ func TestInfluencerEmail(t *testing.T) {
 		cmp := common.Campaign{
 			Status:       true,
 			AdvertiserId: adv.ExpID,
-			Budget:       float64(i * 10),
+			Budget:       float64(i + 150),
 			Name:         "The Day Walker " + strconv.Itoa(i),
 			Twitter:      true,
 			Male:         true,
@@ -1614,7 +1647,7 @@ func TestInfluencerEmail(t *testing.T) {
 		}
 		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 		if r.Status != 200 {
-			t.Fatal("Bad status code!")
+			t.Fatalf("Bad status code: %s", r.Value)
 		}
 	}
 
@@ -1630,7 +1663,7 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 
 	if load.LastEmail == 0 {
-		t.Fatal("No email was sent wth!")
+		t.Fatal("No email was sent wth!", inf.ExpID)
 	}
 
 	// Lets force email again and make sure a new email doesnt get sent
@@ -1674,7 +1707,7 @@ func TestImages(t *testing.T) {
 
 	cmp := common.Campaign{
 		AdvertiserId: adv.ExpID,
-		Budget:       10.5,
+		Budget:       150.5,
 		Name:         "The Day Walker",
 		Instagram:    true,
 		Male:         true,
@@ -1685,7 +1718,7 @@ func TestImages(t *testing.T) {
 
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatalf("Bad status code: %s", r.Value)
 	}
 
 	// Make sure the default image url was set
@@ -1699,14 +1732,7 @@ func TestImages(t *testing.T) {
 		t.Fatal("Incorrect default image set!")
 	}
 
-	// HTTPTest doesn't use the port from sway config.. so lets account for that!
-	parts := strings.Split(load.ImageURL, "8080") // DIRTY HACK
-	if len(parts) != 2 {
-		t.Fatal("WTF MATE?")
-		return
-	}
-
-	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
+	r = rst.DoTesting(t, "GET", load.ImageURL, nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1718,15 +1744,15 @@ func TestImages(t *testing.T) {
 	}
 
 	// Try uploading a bad image
-	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", smallImage, nil)
+	r = rst.DoTesting(t, "PUT", "/campaign/1", smallImage, nil)
 	if r.Status != 400 {
-		t.Fatal("Bad status code!")
+		t.Fatalf("Bad status code: %s", r.Value)
 	}
 
 	// Upload correct image
-	r = rst.DoTesting(t, "POST", "/uploadImage/1/campaign", goodImage, nil)
+	r = rst.DoTesting(t, "PUT", "/campaign/1", goodImage, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 	}
 
 	// Make sure image url now correct
@@ -1739,23 +1765,15 @@ func TestImages(t *testing.T) {
 		t.Fatal("Incorrect image url!")
 	}
 
-	// make sure image url works
-	// HTTPTest doesn't use the port from sway config.. so lets account for that!
-	parts = strings.Split(load.ImageURL, "8080") // DIRTY HACK
-	if len(parts) != 2 {
-		t.Fatal("WTF MATE?")
-		return
-	}
-
-	r = rst.DoTesting(t, "GET", parts[1], nil, nil)
+	r = rst.DoTesting(t, "GET", load.ImageURL, nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
 	// Remove saved image (and indirectly check if it exists)!
-	err := os.Remove("./" + parts[1])
+	err := os.Remove("./" + load.ImageURL)
 	if err != nil {
-		t.Fatal("File does not exist!", ".."+parts[1])
+		t.Fatal("File does not exist!", ".."+load.ImageURL)
 	}
 }
 
@@ -1793,19 +1811,20 @@ func TestInfluencerGeo(t *testing.T) {
 		t.Fatal("Bad source for geo!")
 	}
 
-	if load.State != "NY" || load.Country != "US" {
+	if load.State != "ny" || load.Country != "us" {
 		t.Fatal("Incorrect geo set using IP!")
 	}
 
 	// Lets update the address for the influencer now!
-	addr := &lob.AddressLoad{
+	addr := lob.AddressLoad{
 		AddressOne: "8 Saint Elias",
 		City:       "Trabuco Canyon",
 		State:      "CAlifornia",
 		Country:    "US",
 	}
 
-	r = rst.DoTesting(t, "POST", "/setAddress/"+inf.ExpID, addr, nil)
+	updLoad := &InfluencerUpdate{Address: addr, TwitterId: "cnn"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -1844,7 +1863,7 @@ func TestInfluencerGeo(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       100,
+		Budget:       150,
 		Name:         "The Day Walker",
 		Twitter:      true,
 		Male:         true,
@@ -1916,7 +1935,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 
 	// Update campaign with geo that doesnt match our California influencer!
-	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":10,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":150,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateGood, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -1944,28 +1963,31 @@ func TestInfluencerGeo(t *testing.T) {
 
 	// Lets try a UK user who should get a deal!
 	// Create a UK influencer
-	ukInf := getSignupUser()
-	ukInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
-		InfluencerLoad: influencer.InfluencerLoad{
-			IP:        "131.228.17.26", // London
-			TwitterId: "cnn",
-		},
-	}
-	r = rst.DoTesting(t, "POST", "/signUp", &ukInf, nil)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-	}
 
-	// Influencer should get a deal
-	r = rst.DoTesting(t, "GET", "/getDeals/"+ukInf.ExpID+"/0/0", nil, &deals)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-	}
+	// NOTE: Add this test once we allow non US/CA campaigns
 
-	deals = getDeals(st.ID, deals)
-	if len(deals) == 0 {
-		t.Fatal("Unexpected number of deals!")
-	}
+	// ukInf := getSignupUser()
+	// ukInf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+	// 	InfluencerLoad: influencer.InfluencerLoad{
+	// 		IP:        "131.228.17.26", // London
+	// 		TwitterId: "cnn",
+	// 	},
+	// }
+	// r = rst.DoTesting(t, "POST", "/signUp", &ukInf, nil)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// }
+
+	// // Influencer should get a deal
+	// r = rst.DoTesting(t, "GET", "/getDeals/"+ukInf.ExpID+"/0/0", nil, &deals)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// }
+
+	// deals = getDeals(st.ID, deals)
+	// if len(deals) == 0 {
+	// 	t.Fatal("Unexpected number of deals!")
+	// }
 }
 
 func TestChecks(t *testing.T) {
@@ -2468,7 +2490,10 @@ func TestBilling(t *testing.T) {
 			}
 
 			// For the second last campaign lets increase the budget!
-			upd := &CampaignUpdate{Status: true, Male: true, Female: true, Budget: 5000, Name: "The day wlker"}
+			trueVal := true
+			budgetVal := float64(5000)
+			name := "The day wlker"
+			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {
 				t.Fatal("Bad status code!")
@@ -2508,7 +2533,10 @@ func TestBilling(t *testing.T) {
 		if i == 7 {
 			decreaseCid = cid
 			// For the last campaign lets decrease the budget!
-			upd := &CampaignUpdate{Status: true, Male: true, Female: true, Budget: 10, Name: "The day wlker"}
+			trueVal := true
+			budgetVal := float64(150)
+			name := "The day wlker"
+			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {
 				t.Fatal("Bad status code!")
@@ -2521,7 +2549,7 @@ func TestBilling(t *testing.T) {
 				t.Fatal("Bad status code!")
 			}
 
-			if load.Budget != 10 {
+			if load.Budget != 150 {
 				t.Fatal("Campaign budget did not decrease!")
 			}
 		}
@@ -2578,10 +2606,6 @@ func TestBilling(t *testing.T) {
 			t.Fatal("Bad new store values!")
 		}
 
-		if newStore.ExchangeFee != 0.2 {
-			t.Fatal("Bad exchange fee!")
-		}
-
 		if int32(store.Spendable) != int32(newStore.Leftover) {
 			t.Fatal("Didn't carry over leftover from last month!")
 		}
@@ -2592,7 +2616,7 @@ func TestBilling(t *testing.T) {
 
 		if cid == decreaseCid {
 			// This is the campaign that was decreased!
-			if newStore.Budget != 10 {
+			if newStore.Budget != 150 {
 				t.Fatal("Store does not have updated budget!")
 			}
 		}

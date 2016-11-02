@@ -14,6 +14,7 @@ import (
 )
 
 func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
+	domain := a.cfg.Domain
 	return func(c *gin.Context) {
 		var ri *reqInfo
 		a.db.View(func(tx *bolt.Tx) error {
@@ -34,8 +35,8 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 		}
 		c.Set(gin.AuthUserKey, ri.user)
 		if !ri.isApiKey {
-			misc.RefreshCookie(w, r, "token", TokenAge)
-			misc.RefreshCookie(w, r, "key", TokenAge)
+			misc.RefreshCookie(w, r, domain, "token", TokenAge)
+			misc.RefreshCookie(w, r, domain, "key", TokenAge)
 			a.refreshToken(ri.stoken, TokenAge)
 		}
 	}
@@ -126,9 +127,9 @@ func (a *Auth) SignOutHandler(c *gin.Context) {
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
 		return a.SignOutTx(tx, tok)
 	})
-	w := c.Writer
-	misc.DeleteCookie(w, "token")
-	misc.DeleteCookie(w, "key")
+	w, domain := c.Writer, a.cfg.Domain
+	misc.DeleteCookie(w, domain, "token")
+	misc.DeleteCookie(w, domain, "key")
 	c.JSON(200, misc.StatusOK(""))
 }
 
@@ -159,9 +160,9 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	}
 
 	mac := CreateMAC(login.Password, tok, salt)
-	w := c.Writer
-	misc.SetCookie(w, "token", tok, TokenAge)
-	misc.SetCookie(w, "key", mac, TokenAge)
+	w, domain := c.Writer, a.cfg.Domain
+	misc.SetCookie(w, domain, "token", tok, TokenAge)
+	misc.SetCookie(w, domain, "key", mac, TokenAge)
 	c.JSON(200, misc.StatusOK(login.UserID))
 	return true
 }
@@ -222,6 +223,11 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		sup.ParentID = SwayOpsAdAgencyID
 	} else if typ == InfluencerScope {
 		sup.ParentID = SwayOpsTalentAgencyID
+
+		if sup.InfluencerLoad != nil && sup.InfluencerLoad.IP == "" {
+			sup.InfluencerLoad.IP = c.ClientIP()
+		}
+
 	} else {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
@@ -291,7 +297,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 	tmplData := struct {
 		Sandbox bool
 		URL     string
-	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.ServerURL, stok)}
+	}{a.cfg.Sandbox, fmt.Sprintf(resetPasswordUrl, a.cfg.DashURL, stok)}
 
 	log.Println("resetPassword request:", tmplData.URL)
 

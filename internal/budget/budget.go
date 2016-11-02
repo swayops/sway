@@ -18,8 +18,6 @@ import (
 // 		"CID": {
 // 			"budget": 20,
 // 			"leftover": 10, // leftover from last month which was added
-// 			"dspFee": 4, // amount dsp took
-// 			"exchangeFee": 4, // amount exchange took
 // 			"spendable": 10,
 // 		}
 // 	}
@@ -36,12 +34,9 @@ type Store struct {
 	Leftover  float64 `json:"leftover,omitempty"` // Left over budget from last month
 	Spendable float64 `json:"spendable,omitempty"`
 	Spent     float64 `json:"spent,omitempty"`
-
-	DspFee      float64 `json:"dspFee,omitempty"`
-	ExchangeFee float64 `json:"exchangeFee,omitempty"`
 }
 
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending, dspFee, exchangeFee float64, billing bool) (float64, error) {
+func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing bool) (float64, error) {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	var spendable float64
 
@@ -83,11 +78,9 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		// NOTE: This will automatically reset Pending too
 		spendable = leftover + monthlyBudget
 		store := &Store{
-			Budget:      monthlyBudget,
-			Leftover:    leftover,
-			Spendable:   spendable,
-			DspFee:      dspFee,
-			ExchangeFee: exchangeFee,
+			Budget:    monthlyBudget,
+			Leftover:  leftover,
+			Spendable: spendable,
 		}
 
 		st[cmp.Id] = store
@@ -98,7 +91,8 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			"campaignId": cmp.Id,
 			"store":      store,
 		}); err != nil {
-			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee)
+			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable)
+			return err
 		}
 
 		if b, err = json.Marshal(&st); err != nil {
@@ -117,7 +111,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 	return spendable, nil
 }
 
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee, exchangeFee float64) (float64, error) {
+func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
 		return 0, err
@@ -152,12 +146,10 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 		// NOTE: Leftover is not added to spendable because it already
 		// should have been added last time billing ran!
 		newStore := &Store{
-			Budget:      oldBudget + tbaBudget,
-			Leftover:    store.Leftover,
-			Spendable:   store.Spendable + tbaBudget,
-			Spent:       store.Spent,
-			DspFee:      dspFee,
-			ExchangeFee: exchangeFee,
+			Budget:    oldBudget + tbaBudget,
+			Leftover:  store.Leftover,
+			Spendable: store.Spendable + tbaBudget,
+			Spent:     store.Spent,
 		}
 
 		st[cid] = newStore
@@ -169,20 +161,19 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			"store":       newStore,
 			"addedBudget": tbaBudget,
 		}); err != nil {
-			log.Println("Failed to log budget decrease!", cid, tbaBudget, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee, err)
+			log.Println("Failed to log budget decrease!", cid, tbaBudget, store.Budget, store.Spendable, err)
+			return 0, err
 		}
 
 	} else if newBudget < oldBudget {
 		// If the budget has DECREASED...
 		// Save the budget in pending for when a transfer is made on the 1st
 		newStore := &Store{
-			Budget:      store.Budget,
-			Leftover:    store.Leftover,
-			Spendable:   store.Spendable,
-			Spent:       store.Spent,
-			DspFee:      store.DspFee,
-			ExchangeFee: store.ExchangeFee,
-			Pending:     newBudget,
+			Budget:    store.Budget,
+			Leftover:  store.Leftover,
+			Spendable: store.Spendable,
+			Spent:     store.Spent,
+			Pending:   newBudget,
 		}
 
 		st[cid] = newStore
@@ -193,7 +184,8 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget, dspFee
 			"campaignId": cid,
 			"store":      newStore,
 		}); err != nil {
-			log.Println("Failed to log budget decrease!", cid, store.Pending, store.Budget, store.Spendable, store.DspFee, store.ExchangeFee, err)
+			log.Println("Failed to log budget decrease!", cid, store.Pending, store.Budget, store.Spendable, err)
+			return 0, err
 		}
 	}
 
@@ -258,39 +250,87 @@ type Metrics struct {
 
 func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
+	var (
+		firstTouch                     bool
+		shares, likes, comments, views int32
+	)
+
+	if len(deal.Reporting) == 0 {
+		// This implies that we have no reporting for this deal,
+		// hence it was JUST discovered by explorer and we need to
+		// look at it's total engagements (what it got between being posted
+		// to our explorer picking it up) and not just deltas!
+		firstTouch = true
+	}
 
 	m := &Metrics{}
 
 	oldSpendable := store.Spendable
 	if deal.Tweet != nil {
 		// Considering retweets as shares and favorites as likes!
-		m.Shares += int32(deal.Tweet.RetweetsDelta)
-		m.Likes += int32(deal.Tweet.FavoritesDelta)
+		if firstTouch {
+			shares = int32(deal.Tweet.Retweets)
+			likes = int32(deal.Tweet.Favorites)
+		} else {
+			shares = int32(deal.Tweet.RetweetsDelta)
+			likes = int32(deal.Tweet.FavoritesDelta)
+		}
 
-		store.deductSpendable(float64(deal.Tweet.RetweetsDelta) * TW_RETWEET)
-		store.deductSpendable(float64(deal.Tweet.FavoritesDelta) * TW_FAVORITE)
+		m.Shares += shares
+		m.Likes += likes
+
+		store.deductSpendable(float64(shares) * TW_RETWEET)
+		store.deductSpendable(float64(likes) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		m.Likes += int32(deal.Facebook.LikesDelta)
-		m.Shares += int32(deal.Facebook.SharesDelta)
-		m.Comments += int32(deal.Facebook.CommentsDelta)
+		if firstTouch {
+			likes = int32(deal.Facebook.Likes)
+			shares = int32(deal.Facebook.Shares)
+			comments = int32(deal.Facebook.Comments)
+		} else {
+			likes = int32(deal.Facebook.LikesDelta)
+			shares = int32(deal.Facebook.SharesDelta)
+			comments = int32(deal.Facebook.CommentsDelta)
+		}
 
-		store.deductSpendable(float64(deal.Facebook.LikesDelta) * FB_LIKE)
-		store.deductSpendable(float64(deal.Facebook.SharesDelta) * FB_SHARE)
-		store.deductSpendable(float64(deal.Facebook.CommentsDelta) * FB_COMMENT)
+		m.Likes += likes
+		m.Shares += shares
+		m.Comments += comments
+
+		store.deductSpendable(float64(likes) * FB_LIKE)
+		store.deductSpendable(float64(shares) * FB_SHARE)
+		store.deductSpendable(float64(comments) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		m.Likes += int32(deal.Instagram.LikesDelta)
-		m.Comments += int32(deal.Instagram.CommentsDelta)
+		if firstTouch {
+			likes = int32(deal.Instagram.Likes)
+			comments = int32(deal.Instagram.Comments)
+		} else {
+			likes = int32(deal.Instagram.LikesDelta)
+			comments = int32(deal.Instagram.CommentsDelta)
+		}
 
-		store.deductSpendable(float64(deal.Instagram.LikesDelta) * INSTA_LIKE)
-		store.deductSpendable(float64(deal.Instagram.CommentsDelta) * INSTA_COMMENT)
+		m.Likes += likes
+		m.Comments += comments
+
+		store.deductSpendable(float64(likes) * INSTA_LIKE)
+		store.deductSpendable(float64(comments) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		m.Views += int32(deal.YouTube.ViewsDelta)
-		m.Likes += int32(deal.YouTube.LikesDelta)
-		m.Comments += int32(deal.YouTube.CommentsDelta)
+		if firstTouch {
+			views = int32(deal.YouTube.Views)
+			likes = int32(deal.YouTube.Likes)
+			comments = int32(deal.YouTube.Comments)
+		} else {
+			views = int32(deal.YouTube.ViewsDelta)
+			likes = int32(deal.YouTube.LikesDelta)
+			comments = int32(deal.YouTube.CommentsDelta)
+		}
 
-		store.deductSpendable(float64(deal.YouTube.ViewsDelta) * YT_VIEW)
-		store.deductSpendable(float64(deal.YouTube.LikesDelta) * YT_LIKE)
-		store.deductSpendable(float64(deal.YouTube.CommentsDelta) * YT_COMMENT)
+		m.Views += views
+		m.Likes += likes
+		m.Comments += comments
+
+		store.deductSpendable(float64(views) * YT_VIEW)
+		store.deductSpendable(float64(likes) * YT_LIKE)
+		store.deductSpendable(float64(comments) * YT_COMMENT)
 	}
 
 	spentDelta := oldSpendable - store.Spendable

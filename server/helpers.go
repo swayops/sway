@@ -4,10 +4,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -130,6 +132,39 @@ func getAdvertiserFeesFromTx(a *auth.Auth, tx *bolt.Tx, advId string) (float64, 
 	return 0, 0
 }
 
+func getUserImage(s *Server, data, suffix string, minW, minH int, user *auth.User) (string, error) {
+	if !strings.HasPrefix(data, "data:image/") {
+		return data, nil
+	}
+
+	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
+		data, user.ID, suffix, minW, minH)
+	if err != nil {
+		return "", err
+	}
+
+	return getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false), nil
+}
+
+func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *auth.User) (bool, error) {
+	if oldPass != "" && pass != "" && oldPass != pass {
+		if len(pass) < 8 {
+			return false, auth.ErrInvalidPass
+		}
+		if pass != pass2 {
+			return false, auth.ErrPasswordMismatch
+		}
+
+		if err := s.auth.ChangePasswordTx(tx, user.Email, oldPass, pass, false); err != nil {
+			return false, err
+		}
+
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
 func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	if inf.Id == "" {
 		return auth.ErrInvalidID
@@ -143,7 +178,19 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 	s.auth.Influencers.SetInfluencer(inf.Id, inf)
 
 	// Save in the DB
-	return u.StoreWithData(s.auth, tx, &auth.Influencer{&inf})
+	return u.StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
+}
+
+func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user *auth.User) error {
+	if inf.Id == "" {
+		return auth.ErrInvalidID
+	}
+
+	// Save in the cache
+	s.auth.Influencers.SetInfluencer(inf.Id, inf)
+
+	// Save in the DB
+	return user.Update(user).StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
 }
 
 //TODO discuss with Shahzil and handle scopes
@@ -457,7 +504,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", nil, false, s.Cfg)
+		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", "", nil, false, s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}
@@ -514,6 +561,11 @@ func emailDeal(s *Server, cid string) (bool, error) {
 		emailed += 1
 	}
 
+	s.Notify(
+		fmt.Sprintf("Emailed %d influencers for campaign %s", emailed, cid),
+		fmt.Sprintf("Sway has successfully emailed %d influencers for campaign %s!", emailed, cid),
+	)
+
 	return true, nil
 }
 
@@ -560,4 +612,116 @@ func emailList(s *Server, cid string, override []string) {
 		// before emailList was hit!
 		emailDeal(s, cmp.Id)
 	}
+
+	s.Notify(
+		fmt.Sprintf("Emailed %d whitelisted influencers for campaign %s", len(list), cid),
+		fmt.Sprintf("Sway has successfully emailed %d whitelisted influencers for campaign %s!", len(list), cid),
+	)
+}
+
+// saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
+func saveUserImage(s *Server, u *auth.User) error {
+	if strings.HasPrefix(u.ImageURL, "data:image/") {
+
+		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, "", 300, 300)
+		if err != nil {
+			return err
+		}
+
+		u.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false)
+	}
+
+	if strings.HasPrefix(u.CoverImageURL, "data:image/") {
+		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID),
+			u.CoverImageURL, u.ID, "-cover", 300, 300)
+		if err != nil {
+			return err
+		}
+
+		u.CoverImageURL = getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false)
+	}
+
+	return nil
+}
+
+func saveUserHelper(s *Server, c *gin.Context, userType string) {
+	var (
+		incUser struct {
+			auth.User
+			// support changing passwords
+			OldPass string `json:"oldPass"`
+			Pass    string `json:"pass"`
+			Pass2   string `json:"pass2"`
+		}
+		user       = auth.GetCtxUser(c)
+		id         = c.Param("id")
+		su         auth.SpecUser
+		changePass = false
+	)
+
+	if err := c.BindJSON(&incUser); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
+	switch userType {
+	case "advertiser":
+		su = incUser.Advertiser
+	case "adAgency":
+		su = incUser.AdAgency
+	case "talentAgency":
+		su = incUser.TalentAgency
+	case "admin":
+
+	}
+
+	if su == nil && userType != "admin" {
+		misc.AbortWithErr(c, 400, auth.ErrInvalidRequest)
+		return
+	}
+
+	if incUser.OldPass != "" && incUser.Pass != "" && incUser.OldPass != incUser.Pass {
+		if len(incUser.Pass) < 8 {
+			misc.AbortWithErr(c, 400, auth.ErrInvalidPass)
+			return
+		}
+		if incUser.Pass != incUser.Pass2 {
+			misc.AbortWithErr(c, 400, auth.ErrPasswordMismatch)
+			return
+		}
+		changePass = true
+	}
+
+	if incUser.ID == "" {
+		incUser.ID = id // for saveImage
+	}
+
+	if err := saveUserImage(s, &incUser.User); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		if id != user.ID {
+			user = s.auth.GetUserTx(tx, id)
+		}
+		if user == nil {
+			return auth.ErrInvalidID
+		}
+		if changePass {
+			if err := s.auth.ChangePasswordTx(tx, incUser.Email, incUser.OldPass, incUser.Pass, false); err != nil {
+				return err
+			}
+			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
+		}
+		if su == nil { // admin
+			return user.Update(&incUser.User).Store(s.auth, tx)
+		}
+		return user.Update(&incUser.User).StoreWithData(s.auth, tx, su)
+	}); err != nil {
+		misc.AbortWithErr(c, 400, err)
+		return
+	}
+
+	c.JSON(200, misc.StatusOK(id))
 }
