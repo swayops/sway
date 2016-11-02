@@ -68,7 +68,7 @@ func staticGzipServe(dir string) func(c *gin.Context) {
 
 func fileExists(fp string) bool {
 	st, err := os.Stat(fp)
-	return os.IsExist(err) && !st.IsDir()
+	return err == nil && !st.IsDir()
 }
 
 // from https://github.com/NYTimes/gziphandler/blob/master/gzip.go

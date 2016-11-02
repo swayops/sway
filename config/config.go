@@ -33,7 +33,7 @@ func New(loc string) (_ *Config, err error) {
 		}
 	}
 
-	if c.TLS != nil && c.TLS.Port != "" {
+	if c.TLS != nil && c.TLS.Port == "" {
 		c.TLS.Port = "443"
 	}
 
