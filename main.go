@@ -13,7 +13,7 @@ import (
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	log.SetFlags(log.LstdFlags | log.LUTC | log.Lshortfile)
+	log.SetFlags(log.Lshortfile)
 
 	cfg, err := config.New("config/config.json")
 	if err != nil {
