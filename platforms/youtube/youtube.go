@@ -9,7 +9,7 @@ import (
 )
 
 type YouTube struct {
-	UserName string `json:"name"`
+	UserName string `json:"userName"`
 	UserId   string `json:"id"`
 
 	AvgLikes    float64 `json:"avgLikes,omitempty"`
