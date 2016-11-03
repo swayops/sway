@@ -754,13 +754,13 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			user.Phone = strings.TrimSpace(*upd.Phone)
 		}
 
-		user.ImageURL, err = getUserImage(s, upd.ImageURL, "", 300, 300, user)
+		user.ImageURL, err = getUserImage(s, upd.ImageURL, "", 168, 168, user)
 		if err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
 
-		user.CoverImageURL, err = getUserImage(s, upd.CoverImageURL, "-cover", 750, 375, user)
+		user.CoverImageURL, err = getUserImage(s, upd.CoverImageURL, "-cover", 300, 150, user)
 		if err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
