@@ -1046,7 +1046,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				}
 
 				if inf.YouTube != nil {
-					incInf.YouTubeURL = "https://www.youtube.com/user/" + inf.YouTube.UserName
+					incInf.YouTubeURL = "https://www.youtube.com/channel/" + inf.YouTube.UserId
 				}
 				influencers = append(influencers, incInf)
 			}
