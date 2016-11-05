@@ -1705,7 +1705,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		agencyXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
 		agencySheets := make(map[string]*misc.Sheet)
 
-		// Agency Invoice
+		// Advertiser Agency Invoice
 		for cId, data := range store {
 			var (
 				emails string
@@ -1756,7 +1756,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				}
 
 				// Be wary of fees changing mid-month
-				dspFee, exchangeFee := getAdvertiserFees(s.auth, adAgency.ID)
+				dspFee, exchangeFee := getAdvertiserFees(s.auth, advertiser.ID)
 				sheet.AddRow(
 					cmp.Id,
 					cmp.Name,
@@ -1792,7 +1792,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					)
 					agencySheets[adAgency.ID] = sheet
 				}
-				dspFee, exchangeFee := getAdvertiserFees(s.auth, adAgency.ID)
+				dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 				sheet.AddRow(
 					cmp.AdvertiserId,
 					advertiser.Name,
