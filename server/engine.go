@@ -38,8 +38,8 @@ func newSwayEngine(srv *Server) error {
 	// Run scrap emails every hour
 	scrapTicker := time.NewTicker(1 * time.Hour)
 	go func() {
-		for range scrapTicker.C {
-			if time.Now().UTC().Hour() == 20 {
+		for t := range scrapTicker.C {
+			if t.UTC().Hour() == 20 {
 				// Only run at 1pm PST (8pm UTC)
 				emailScraps(srv)
 			}
