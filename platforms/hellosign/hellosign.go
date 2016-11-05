@@ -75,6 +75,9 @@ func SendSignatureRequest(name, email, infId string, us, sandbox bool) (string, 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
 
 	var hsResp Response
 	err = json.NewDecoder(resp.Body).Decode(&hsResp)

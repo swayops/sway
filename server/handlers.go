@@ -2430,10 +2430,11 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if err := depleteBudget(s); err != nil {
+		if _, err := depleteBudget(s); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+
 		c.JSON(200, misc.StatusOK(""))
 	}
 }
@@ -2567,7 +2568,7 @@ func forceEmail(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		err := emailDeals(s)
+		_, err := emailDeals(s)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return
@@ -2896,5 +2897,60 @@ func getAllActiveDeals(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, deals)
+	}
+}
+
+func setScrap(s *Server) gin.HandlerFunc {
+	// Ingests a scrap and puts it into pool
+	return func(c *gin.Context) {
+		var (
+			scraps []*common.Scrap
+			err    error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&scraps); err != nil || len(scraps) == 0 {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			return
+		}
+
+		if err := saveScraps(s, scraps); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func getScraps(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		scraps, err := getAllScraps(s)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, scraps)
+	}
+}
+
+func forceScrapEmail(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		count, err := emailScraps(s)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, gin.H{"count": count})
 	}
 }
