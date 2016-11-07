@@ -25,7 +25,7 @@ type YouTube struct {
 }
 
 var (
-	ErrEligible = errors.New("Youtube account is not eligible!")
+	ErrEligible = errors.New("Youtube account is not eligible")
 )
 
 func New(name string, cfg *config.Config) (*YouTube, error) {

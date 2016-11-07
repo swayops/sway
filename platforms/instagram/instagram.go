@@ -12,7 +12,7 @@ import (
 // AUTH:
 // https://api.instagram.com/oauth/authorize/?client_id={{CLIENT_ID}}&redirect_uri=http://lol:8080&response_type=token&scope=basic+public_content
 var (
-	ErrEligible = errors.New("Instagram account is not eligible!")
+	ErrEligible = errors.New("Instagram account is not eligible")
 )
 
 type Instagram struct {

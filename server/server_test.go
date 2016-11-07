@@ -2408,6 +2408,162 @@ func TestClicks(t *testing.T) {
 	}
 }
 
+type Count struct {
+	Count int `json:"count"`
+}
+
+func TestScraps(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create some scraps
+	scraps := []common.Scrap{}
+	scraps = append(scraps, common.Scrap{
+		Name:         "Vanilla Ice",
+		YouTube:      true,
+		EmailAddress: "john23@a.b",
+	})
+
+	scraps = append(scraps, common.Scrap{
+		Name:         "Rick Astley",
+		YouTube:      true,
+		EmailAddress: "john24@a.b",
+	})
+
+	scraps = append(scraps, common.Scrap{
+		Name:         "Tig Bitties",
+		Instagram:    true,
+		EmailAddress: "john25@a.b",
+	})
+
+	r = rst.DoTesting(t, "POST", "/setScrap", &scraps, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create a campaign
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:   0.2,
+		AgencyID: "2",
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/signUp", adv, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: st.ID,
+		Budget:       1000,
+		Name:         "The Day Walker",
+		Instagram:    true,
+		Male:         true,
+		Female:       true,
+		Link:         "http://www.blank.org?s=t",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Force scrap email
+	var count Count
+	r = rst.DoTesting(t, "GET", "/forceScrapEmail", nil, &count)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Only Tig Bitties should get an email!
+	if count.Count != 1 {
+		t.Fatal("Didn't email right amount of scraps!")
+		return
+	}
+
+	// Lets get all scraps to verify values
+	var getScraps []*common.Scrap
+	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(getScraps) != 3 {
+		t.Fatal("Wrong number of scraps!")
+		return
+	}
+
+	for _, sc := range getScraps {
+		if sc.Name == "Tig Bitties" {
+			if len(sc.SentEmails) != 1 {
+				t.Fatal("Low number of sent emails")
+				return
+			}
+		} else {
+			if len(sc.SentEmails) > 0 {
+				t.Fatal("High number of sent emails")
+				return
+			}
+		}
+	}
+
+	// Lets run a scrap email again.. values should be the same
+	// since we haven't hit the 48 hour threshold for second email!
+	var newCount Count
+	r = rst.DoTesting(t, "GET", "/forceScrapEmail", nil, &newCount)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Only Tig Bitties should have gotten an email!
+	if newCount.Count != 0 {
+		t.Fatal("Didn't email right amount of scraps!")
+		return
+	}
+
+	// Verify values again!
+	var lastScraps []*common.Scrap
+	r = rst.DoTesting(t, "GET", "/getScraps", nil, &lastScraps)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(lastScraps) != 3 {
+		t.Fatal("Wrong number of scraps!")
+		return
+	}
+
+	for _, sc := range lastScraps {
+		if sc.Name == "Tig Bitties" {
+			if len(sc.SentEmails) != 1 {
+				t.Fatal("Low number of sent emails")
+				return
+			}
+		} else {
+			if len(sc.SentEmails) > 0 {
+				t.Fatal("High number of sent emails")
+				return
+			}
+		}
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")

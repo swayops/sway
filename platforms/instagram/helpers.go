@@ -26,8 +26,7 @@ const (
 )
 
 var (
-	ErrCode    = errors.New(`Non-200 Instagram Status Code`)
-	ErrUnknown = errors.New(`Instagram data not found!`)
+	ErrUnknown = errors.New(`Instagram data not found`)
 )
 
 type UserSearch struct {
@@ -50,7 +49,7 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 	}
 
 	if search.Meta.Code != 200 {
-		return "", ErrCode
+		return "", ErrUnknown
 	}
 
 	if len(search.Data) > 0 {
@@ -114,7 +113,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 	}
 
 	if media.Meta.Code != 200 {
-		return 0, 0, posts, latestGeo, ErrCode
+		return 0, 0, posts, latestGeo, ErrUnknown
 	}
 
 	if media.Data == nil || len(media.Data) == 0 {

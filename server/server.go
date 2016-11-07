@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
@@ -26,9 +27,11 @@ const (
 	adminPass        = "Rf_j@Z9hM3-"
 )
 
-var gitBuild string = "n/a"
-
-var ErrUserId = errors.New("Unexpected user id")
+var (
+	gitBuild    string = "n/a"
+	ErrUserId          = errors.New("Unexpected user id")
+	mailingList        = []string{"shahzil@swayops.com"}
+)
 
 // Server is the main server of the sway server
 type Server struct {
@@ -300,6 +303,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 	adminGroup.POST("/setBan/:influencerId/:state", setBan(srv))
 	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
+	adminGroup.POST("/setScrap", setScrap(srv))
+	adminGroup.GET("/getScraps", getScraps(srv))
 
 	// AdAgency
 	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
@@ -380,6 +385,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 	adminGroup.GET("/forceEngine", forceEngine(srv))
+	adminGroup.GET("/forceScrapEmail", forceScrapEmail(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
@@ -429,9 +435,11 @@ func (srv *Server) Alert(msg string, err error) {
 	}
 
 	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
-	if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", "shahzil@swayops.com", "Shahzil Abid",
-		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-		log.Println("Error sending alert email!")
+	for _, addr := range mailingList {
+		if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", addr, "Important Person",
+			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			log.Println("Error sending alert email!")
+		}
 	}
 }
 
@@ -441,9 +449,39 @@ func (srv *Server) Notify(subject, msg string) {
 	}
 
 	email := templates.NotifyEmail.Render(map[string]interface{}{"msg": msg})
-	if resp, err := srv.Cfg.MailClient().SendMessage(email, subject, "shahzil@swayops.com", "Shahzil Abid",
-		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-		log.Println("Error sending notify email!")
+
+	for _, addr := range mailingList {
+		if resp, err := srv.Cfg.MailClient().SendMessage(email, subject, addr, "Important Person",
+			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			log.Println("Error sending notify email!")
+		}
+	}
+}
+
+func (srv *Server) Digest(updatedInf, foundDeals int32, totalDepleted float64, sigsFound, dealsEmailed int32, start time.Time) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	now := time.Now()
+
+	load := map[string]interface{}{
+		"startTime":     start.String(),
+		"updatedInf":    updatedInf,
+		"foundDeals":    foundDeals,
+		"totalDepleted": totalDepleted,
+		"sigsFound":     sigsFound,
+		"dealsEmailed":  dealsEmailed,
+		"endTime":       now.String(),
+		"runtime":       now.Unix() - start.Unix(),
+	}
+
+	email := templates.EngineEmail.Render(load)
+	for _, addr := range mailingList {
+		if resp, err := srv.Cfg.MailClient().SendMessage(email, "Engine Digest", addr, "Important Person",
+			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			log.Println("Error sending engine digest email email!")
+		}
 	}
 }
 
