@@ -267,7 +267,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	})
 
 	// Public endpoint
-	r.GET("/click/:influencerId/:campaignId/:dealId", click(srv))
+	r.GET("/cl/:id", click(srv))
 
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))

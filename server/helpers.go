@@ -78,7 +78,9 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 	return nil
 }
 
-func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaign {
+var ErrClick = errors.New("Err shortening url")
+
+func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *bolt.Tx) *common.Campaign {
 	// Assuming each deal will be paying out max of $5
 	// Lower this if you want less deals
 
@@ -111,6 +113,14 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaig
 			CampaignId:   cmp.Id,
 			AdvertiserId: cmp.AdvertiserId,
 		}
+
+		shortenedID := common.ShortenID(d, tx, s.Cfg)
+		if shortenedID == "" {
+			s.Alert("Error shortening ID", ErrClick)
+			continue
+		}
+
+		d.ShortenedLink = getClickUrl(shortenedID, s.Cfg)
 		cmp.Deals[d.Id] = d
 	}
 
@@ -461,8 +471,8 @@ func getActiveAdAgencies(s *Server) map[string]bool {
 	return out
 }
 
-func getClickUrl(infId string, deal *common.Deal, cfg *config.Config) string {
-	return cfg.ClickUrl + infId + "/" + deal.CampaignId + "/" + deal.Id
+func getClickUrl(id string, cfg *config.Config) string {
+	return cfg.ClickUrl + id
 }
 
 func Float64Frombytes(bytes []byte) float64 {

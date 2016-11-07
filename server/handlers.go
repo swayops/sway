@@ -25,7 +25,6 @@ import (
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
-	"github.com/swayops/sway/platforms/google"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/lob"
 )
@@ -339,7 +338,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			addDealsToCampaign(&cmp, spendable)
+			addDealsToCampaign(&cmp, spendable, s, tx)
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -539,7 +538,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}
 
 			if added > 0 {
-				addDealsToCampaign(&cmp, added)
+				s.db.Update(func(tx *bolt.Tx) error {
+					addDealsToCampaign(&cmp, added, s, tx)
+					return nil
+				})
 			}
 
 			cmp.Budget = *upd.Budget
@@ -1203,6 +1205,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			dealId = ""
 			dbg = true
 		}
+
 		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, false, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
@@ -1217,15 +1220,6 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Unforunately, the requested deal is no longer available!"))
 			return
 		}
-
-		// Set the shortened URL for the influencer
-		shortened, err := google.ShortenURL(getClickUrl(infId, foundDeal, s.Cfg), s.Cfg)
-		if err != nil {
-			s.Alert("Failed to shorten URL!", err)
-			c.JSON(500, misc.StatusErr("Internal error! Please try again in a few minutes"))
-			return
-		}
-		foundDeal.ShortenedLink = shortened
 
 		// Assign the deal & Save the Campaign
 		// DEALS are located in the INFLUENCER struct AND the CAMPAIGN struct
@@ -2029,7 +2023,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					}
 
 					// Add fresh deals for this month
-					addDealsToCampaign(cmp, spendable)
+					addDealsToCampaign(cmp, spendable, s, tx)
 
 					if err = saveCampaign(tx, cmp, s); err != nil {
 						log.Println("Error saving campaign for billing", err)
@@ -2642,14 +2636,32 @@ func getLatestGeo(s *Server) gin.HandlerFunc {
 	}
 }
 
+var ErrID = errors.New("Invalid click URL")
+
 func click(s *Server) gin.HandlerFunc {
 	domain := s.Cfg.Domain
 	return func(c *gin.Context) {
 		var (
-			infId      = c.Param("influencerId")
-			campaignId = c.Param("campaignId")
-			dealId     = c.Param("dealId")
+			id = c.Param("id")
+			v  []byte
 		)
+
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			v = tx.Bucket([]byte(s.Cfg.Bucket.URL)).Get([]byte(id))
+			return nil
+		}); err != nil {
+			c.JSON(500, ErrID)
+			return
+		}
+
+		parts := strings.Split(string(v), "::")
+		if len(parts) != 2 {
+			c.JSON(500, ErrID)
+			return
+		}
+
+		campaignId := parts[0]
+		dealId := parts[1]
 
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 		if cmp == nil {
@@ -2668,11 +2680,7 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if foundDeal.InfluencerId != infId {
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
-
+		infId := foundDeal.InfluencerId
 		// Stored as a comma separated list of dealIDs satisfied
 		prevClicks := misc.GetCookie(c.Request, "click")
 		if strings.Contains(prevClicks, foundDeal.Id) {
@@ -2688,28 +2696,32 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		var added bool
 		for _, infDeal := range inf.CompletedDeals {
 			if foundDeal.Id == infDeal.Id && infDeal.Completed > 0 {
 				infDeal.Click()
+				added = true
 				break
 			}
 		}
 
 		// SAVE!
 		// Also saves influencers!
-		if err := saveAllCompletedDeals(s, inf); err != nil {
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
+		if added {
+			if err := saveAllCompletedDeals(s, inf); err != nil {
+				c.Redirect(302, foundDeal.Link)
+				return
+			}
 
-		if prevClicks != "" {
-			prevClicks += "," + foundDeal.Id
-		} else {
-			prevClicks += foundDeal.Id
-		}
+			if prevClicks != "" {
+				prevClicks += "," + foundDeal.Id
+			} else {
+				prevClicks += foundDeal.Id
+			}
 
-		// One click per 30 days allowed per deal!
-		misc.SetCookie(c.Writer, domain, "click", prevClicks, !s.Cfg.Sandbox, 24*30*time.Hour)
+			// One click per 30 days allowed per deal!
+			misc.SetCookie(c.Writer, domain, "click", prevClicks, !s.Cfg.Sandbox, 24*30*time.Hour)
+		}
 
 		c.Redirect(302, foundDeal.Link)
 	}

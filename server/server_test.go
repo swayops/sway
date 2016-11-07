@@ -2229,12 +2229,17 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	return
 }
 
+func getTestClick(url string) string {
+	idx := strings.Index(url, "/cl/")
+	return url[idx:]
+}
+
 func TestClicks(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
 
 	// Make sure click endpoint accessible without signing in
-	r := rst.DoTesting(t, "GET", "/click/1/1/1", nil, nil)
+	r := rst.DoTesting(t, "GET", "/cl/1", nil, nil)
 	if r.Status == 401 {
 		t.Fatal("Unexpected unauthorized error!")
 		return
@@ -2295,13 +2300,13 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "goo.gl") {
+	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "/cl/") {
 		t.Fatal("Unexpected shortened link")
 		return
 	}
 
 	// Try faking a click for an active deal.. shouldn't work but should redirect!
-	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+load.ActiveDeals[0].Id, nil, nil)
+	r = rst.DoTesting(t, "GET", getTestClick(load.ActiveDeals[0].ShortenedLink), nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -2352,14 +2357,13 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(newLoad.CompletedDeals[0].ShortenedLink, "goo.gl") {
+	if !strings.Contains(getTestClick(newLoad.CompletedDeals[0].ShortenedLink), "/cl/") {
 		t.Fatal("Bad shortened link")
 		return
 	}
 
 	// Try a real click
-	// Can't hit the shortened link since it will redirect to localhost! NO MAS!
-	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+newLoad.CompletedDeals[0].Id, nil, nil)
+	r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink), nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -2383,7 +2387,7 @@ func TestClicks(t *testing.T) {
 	}
 
 	// Try clicking again.. should fail because of unique check!
-	r = rst.DoTesting(t, "GET", "/click/"+inf.ExpID+"/"+cid+"/"+newLoad.CompletedDeals[0].Id, nil, nil)
+	r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink), nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
