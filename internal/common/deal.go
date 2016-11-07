@@ -202,13 +202,15 @@ func (d *Deal) Click() {
 }
 
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {
+	// Only returns monetary information
+	// Used for billing
+
 	key := GetMonthOffset(offset)
 	if d.Reporting == nil {
 		return
 	}
 
 	data := &Stats{}
-
 	for d, stats := range d.Reporting {
 		if strings.Index(d, key) == 0 {
 			data.DSP += stats.DSP
