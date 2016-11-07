@@ -87,7 +87,11 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
 			}
-			if err := misc.InitIndex(tx, val, 1); err != nil {
+			idxStart := uint64(1)
+			if val == cfg.Bucket.URL {
+				idxStart = 10000
+			}
+			if err := misc.InitIndex(tx, val, idxStart); err != nil {
 				return err
 			}
 		}

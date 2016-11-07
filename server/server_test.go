@@ -2239,7 +2239,7 @@ func TestClicks(t *testing.T) {
 	defer putClient(rst)
 
 	// Make sure click endpoint accessible without signing in
-	r := rst.DoTesting(t, "GET", "/cl/1", nil, nil)
+	r := rst.DoTesting(t, "GET", "/cl/JxA", nil, nil)
 	if r.Status == 401 {
 		t.Fatal("Unexpected unauthorized error!")
 		return
