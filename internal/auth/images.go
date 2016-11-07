@@ -1,4 +1,4 @@
-package server
+package auth
 
 import (
 	"bytes"
@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/swayops/sway/config"
 
 	"image"
 	_ "image/gif"
@@ -27,7 +29,7 @@ var (
 	ErrInvalidImage = errors.New("Invalid image!")
 )
 
-func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight int) (string, error) {
+func SaveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight int) (string, error) {
 	idx := strings.Index(data, ";base64,")
 	if idx < 0 {
 		return "", ErrInvalidImage
@@ -57,20 +59,44 @@ func saveImageToDisk(fileNameBase, data, id, suffix string, minWidth, minHeight 
 	return id + suffix + "." + fm, err
 }
 
-func getImageUrl(s *Server, bucket, typ, filename string, addDomain bool) string {
+func GetImageUrl(cfg *config.Config, bucket, typ, filename string, addDomain bool) string {
 	var base string
 	switch typ {
 	case "dash":
 		if addDomain {
-			base = s.Cfg.DashURL
+			base = cfg.DashURL
 		}
 
 	case "inf":
 		if addDomain {
-			base = s.Cfg.InfAppURL
+			base = cfg.InfAppURL
 		}
 	default:
 		log.Panicf("invalid type: %v", typ)
 	}
-	return base + "/" + filepath.Join(s.Cfg.ImageUrlPath, bucket, filename)
+	return base + "/" + filepath.Join(cfg.ImageUrlPath, bucket, filename)
+}
+
+// saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
+func SaveUserImage(cfg *config.Config, u *User) error {
+	if strings.HasPrefix(u.ImageURL, "data:image/") {
+		filename, err := SaveImageToDisk(filepath.Join(cfg.ImagesDir, cfg.Bucket.User, u.ID), u.ImageURL, u.ID, "", 300, 300)
+		if err != nil {
+			return err
+		}
+
+		u.ImageURL = GetImageUrl(cfg, cfg.Bucket.User, "dash", filename, false)
+	}
+
+	if strings.HasPrefix(u.CoverImageURL, "data:image/") {
+		filename, err := SaveImageToDisk(filepath.Join(cfg.ImagesDir, cfg.Bucket.User, u.ID),
+			u.CoverImageURL, u.ID, "-cover", 300, 300)
+		if err != nil {
+			return err
+		}
+
+		u.CoverImageURL = GetImageUrl(cfg, cfg.Bucket.User, "dash", filename, false)
+	}
+
+	return nil
 }

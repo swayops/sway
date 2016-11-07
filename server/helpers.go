@@ -137,13 +137,13 @@ func getUserImage(s *Server, data, suffix string, minW, minH int, user *auth.Use
 		return data, nil
 	}
 
-	filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
+	filename, err := auth.SaveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, user.ID),
 		data, user.ID, suffix, minW, minH)
 	if err != nil {
 		return "", err
 	}
 
-	return getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false), nil
+	return auth.GetImageUrl(s.Cfg, s.Cfg.Bucket.User, "dash", filename, false), nil
 }
 
 func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *auth.User) (bool, error) {
@@ -619,31 +619,6 @@ func emailList(s *Server, cid string, override []string) {
 	)
 }
 
-// saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
-func saveUserImage(s *Server, u *auth.User) error {
-	if strings.HasPrefix(u.ImageURL, "data:image/") {
-
-		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID), u.ImageURL, u.ID, "", 300, 300)
-		if err != nil {
-			return err
-		}
-
-		u.ImageURL = getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false)
-	}
-
-	if strings.HasPrefix(u.CoverImageURL, "data:image/") {
-		filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.User, u.ID),
-			u.CoverImageURL, u.ID, "-cover", 300, 300)
-		if err != nil {
-			return err
-		}
-
-		u.CoverImageURL = getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false)
-	}
-
-	return nil
-}
-
 func saveUserHelper(s *Server, c *gin.Context, userType string) {
 	var (
 		incUser struct {
@@ -696,7 +671,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		incUser.ID = id // for saveImage
 	}
 
-	if err := saveUserImage(s, &incUser.User); err != nil {
+	if err := auth.SaveUserImage(s.Cfg, &incUser.User); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}

@@ -317,15 +317,15 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
 				return
 			}
-			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, "", 750, 389)
+			filename, err := auth.SaveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, "", 750, 389)
 			if err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
 
-			cmp.ImageURL, cmp.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
+			cmp.ImageURL, cmp.ImageData = auth.GetImageUrl(s.Cfg, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
 		} else {
-			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))], false)
+			cmp.ImageURL = auth.GetImageUrl(s.Cfg, s.Cfg.Bucket.Campaign, "dash", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))], false)
 		}
 
 		// Save the Campaign
@@ -493,13 +493,13 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id, "", 750, 389)
+			filename, err := auth.SaveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id, "", 750, 389)
 			if err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
 			}
 
-			cmp.ImageURL, upd.ImageData = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
+			cmp.ImageURL, upd.ImageData = auth.GetImageUrl(s.Cfg, s.Cfg.Bucket.Campaign, "dash", filename, false), ""
 		}
 
 		for _, g := range upd.Geos {
@@ -2575,59 +2575,6 @@ func forceEmail(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(""))
-	}
-}
-
-func uploadImage(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var upd UploadImage
-		if err := json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
-			return
-		}
-
-		id := c.Param("id")
-		if id == "" {
-			c.JSON(400, misc.StatusErr("Invalid ID"))
-			return
-		}
-
-		bucket := c.Param("bucket")
-		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, id, "", 750, 389)
-		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
-			return
-		}
-
-		var imageURL string
-		if bucket == "campaign" {
-			var (
-				cmp common.Campaign
-				b   []byte
-			)
-			// Save image URL in campaign
-			s.db.View(func(tx *bolt.Tx) error {
-				b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id))
-				return nil
-			})
-
-			if err = json.Unmarshal(b, &cmp); err != nil {
-				c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
-				return
-			}
-
-			imageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false)
-			cmp.ImageURL = imageURL
-
-			// Save the Campaign
-			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-				return saveCampaign(tx, &cmp, s)
-			}); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-		}
-		c.JSON(200, UploadImage{ImageURL: imageURL})
 	}
 }
 
