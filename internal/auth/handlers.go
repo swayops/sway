@@ -243,11 +243,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		return
 	}
 
-	if err := SaveUserImage(a.cfg, &sup.User); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return
-	}
-
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		if err := a.CreateUserTx(tx, &sup.User, sup.Password); err != nil {
 			return err

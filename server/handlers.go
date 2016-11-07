@@ -2515,6 +2515,7 @@ func userProfile(srv *Server) gin.HandlerFunc {
 			checkTalentAgency(c)
 		default:
 			misc.AbortWithErr(c, http.StatusUnauthorized, auth.ErrUnauthorized)
+			return
 		}
 		if c.IsAborted() {
 			return
@@ -2525,6 +2526,7 @@ func userProfile(srv *Server) gin.HandlerFunc {
 		}
 
 	SKIP:
+
 		cu = cu.Trim()
 
 		if cu.Advertiser == nil { // return the user if it isn't an advertiser

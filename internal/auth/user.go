@@ -259,6 +259,10 @@ func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
 	}
 
 SKIP:
+	if err = SaveUserImage(a.cfg, u); err != nil {
+		return
+	}
+
 	if err = misc.PutTxJson(tx, a.cfg.Bucket.User, u.ID, u); err != nil {
 		return
 	}
