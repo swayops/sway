@@ -5,6 +5,7 @@
 	"domain": ".swayops.fake",
 	"dashURL": "http://dash.swayops.fake:8080",
 	"infAppURL": "http://inf.swayops.fake:8080",
+	"homeURL": "http://swayops.fake:8080",
 	"apiPath": "/api/v1/",
 	"dashboardPath": "../dashboard/",
 	"infAppPath": "../influencerApp/",
@@ -23,7 +24,8 @@
 		"login": "login",
 		"token": "token",
 		"campaign": "campaign",
-		"scrap": "scrap"
+		"scrap": "scrap",
+		"url": "url"
 	},
 
 	"mandrill": {

@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
@@ -78,7 +79,9 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 	return nil
 }
 
-func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaign {
+var ErrClick = errors.New("Err shortening url")
+
+func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *bolt.Tx) *common.Campaign {
 	// Assuming each deal will be paying out max of $5
 	// Lower this if you want less deals
 
@@ -111,6 +114,14 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64) *common.Campaig
 			CampaignId:   cmp.Id,
 			AdvertiserId: cmp.AdvertiserId,
 		}
+
+		shortenedID := common.ShortenID(d, tx, s.Cfg)
+		if shortenedID == "" {
+			s.Alert("Error shortening ID", ErrClick)
+			continue
+		}
+
+		d.ShortenedLink = getClickUrl(shortenedID, s.Cfg)
 		cmp.Deals[d.Id] = d
 	}
 
@@ -179,6 +190,27 @@ func saveInfluencer(s *Server, tx *bolt.Tx, inf influencer.Influencer) error {
 
 	// Save in the DB
 	return u.StoreWithData(s.auth, tx, &auth.Influencer{Influencer: &inf})
+}
+
+func updateLastEmail(s *Server, id string) error {
+	inf, ok := s.auth.Influencers.Get(id)
+	if !ok {
+		return auth.ErrInvalidID
+	}
+
+	// Save the last email timestamp
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		inf.LastEmail = int32(time.Now().Unix())
+		// Save the influencer since we just updated it's social media data
+		if err := saveInfluencer(s, tx, inf); err != nil {
+			log.Println("Errored saving influencer", err)
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user *auth.User) error {
@@ -461,8 +493,8 @@ func getActiveAdAgencies(s *Server) map[string]bool {
 	return out
 }
 
-func getClickUrl(infId string, deal *common.Deal, cfg *config.Config) string {
-	return cfg.ClickUrl + infId + "/" + deal.CampaignId + "/" + deal.Id
+func getClickUrl(id string, cfg *config.Config) string {
+	return cfg.ClickUrl + id
 }
 
 func Float64Frombytes(bytes []byte) float64 {
@@ -554,7 +586,10 @@ func emailDeal(s *Server, cid string) (bool, error) {
 
 		err := offer.Influencer.EmailDeal(offer.Deal, s.Cfg)
 		if err != nil {
-			log.Println("Error emailing for new campaign!", cid, err, offer.Influencer.EmailAddress)
+			continue
+		}
+
+		if err = updateLastEmail(s, offer.Influencer.Id); err != nil {
 			continue
 		}
 

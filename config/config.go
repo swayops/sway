@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"os"
-	"path/filepath"
 	"reflect"
 
 	"github.com/swayops/jlog"
@@ -44,7 +43,11 @@ func New(loc string) (_ *Config, err error) {
 		return nil, err
 	}
 
-	c.ClickUrl = c.DashURL + filepath.Join(c.APIPath, "click") + "/"
+	if c.Sandbox {
+		c.ClickUrl = c.DashURL + "/cl/"
+	} else {
+		c.ClickUrl = c.HomeURL + "/cl/"
+	}
 
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
@@ -91,6 +94,7 @@ type Config struct {
 	Domain        string `json:"domain"`    // for cookies, important
 	DashURL       string `json:"dashURL"`   // this is mainly used for internal directs
 	InfAppURL     string `json:"infAppURL"` // this is mainly used for internal directs
+	HomeURL       string `json:"homeURL"`   // this is mainly used for internal directs
 	APIPath       string `json:"apiPath"`
 	DashboardPath string `json:"dashboardPath"`
 	InfAppPath    string `json:"infAppPath"`
@@ -147,6 +151,7 @@ type Config struct {
 		Token    string `json:"token"`
 		Campaign string `json:"campaign"`
 		Scrap    string `json:"scrap"`
+		URL      string `json:"url"`
 	} `json:"bucket"`
 
 	ec      *mandrill.Client

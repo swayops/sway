@@ -390,15 +390,7 @@ func emailDeals(s *Server) (int32, error) {
 
 		infEmails += 1
 		// Save the last email timestamp
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			inf.LastEmail = int32(time.Now().Unix())
-			// Save the influencer since we just updated it's social media data
-			if err := saveInfluencer(s, tx, inf); err != nil {
-				log.Println("Errored saving influencer", err)
-				return err
-			}
-			return nil
-		}); err != nil {
+		if err := updateLastEmail(s, inf.Id); err != nil {
 			log.Println("Error when saving influencer", err, inf.Id)
 		}
 	}

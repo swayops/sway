@@ -701,7 +701,10 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	return filtered
 }
 
-var ErrEmail = errors.New("Error sending email!")
+var (
+	ErrEmail   = errors.New("Error sending email!")
+	ErrTimeout = errors.New("Last email too early")
+)
 
 func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg *config.Config) (bool, error) {
 	// Depending on the emails they've gotten already..
@@ -747,6 +750,12 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 	if !cfg.Sandbox {
 		if cfg.ReplyMailClient() == nil {
 			return ErrEmail
+		}
+
+		// If we sent this influencer a deal within the last 7 days..
+		// skip!
+		if misc.WithinLast(inf.LastEmail, 24*7) {
+			return ErrTimeout
 		}
 
 		parts := strings.Split(inf.Name, " ")

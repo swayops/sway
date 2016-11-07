@@ -17,7 +17,7 @@ const infEmailTmpl = `
 			<th align="left">Campaign name:</th>
 		</tr>
 	    <tr>
-	    	<td align="left" valign="middle"><img src="{{CampaignImage}}" height="50"></td>
+	    	<td align="left" valign="middle"><img src="https://dash.swayops.com{{CampaignImage}}" height="50"></td>
 	    	<td align="left" valign="middle">{{Company}}</td>
 	    	<td align="left" valign="middle">{{CampaignName}}</td>
 	    </tr>
@@ -58,7 +58,7 @@ const infCmpEmail = `
 			<th align="left">Campaign name:</th>
 		</tr>
 	    <tr>
-	    	<td align="left" valign="middle"><img src="{{CampaignImage}}" height="50"></td>
+	    	<td align="left" valign="middle"><img src="https://dash.swayops.com{{CampaignImage}}" height="50"></td>
 	    	<td align="left" valign="middle">{{Company}}</td>
 	    	<td align="left" valign="middle">{{CampaignName}}</td>
 	    </tr>

@@ -55,10 +55,15 @@ var one = big.NewInt(1)
 
 // increments index for the specified bucket using the given R/W transaction.
 func GetNextIndex(tx *bolt.Tx, bucket string) (string, error) {
+	n, err := GetNextIndexBig(tx, bucket)
+	return n.String(), err
+}
+
+func GetNextIndexBig(tx *bolt.Tx, bucket string) (*big.Int, error) {
 	key := []byte(bucket)
 	// note that using SetBytes is pure bytes not  the string rep of the number.
 	b := GetBucket(tx, "index")
 	ov := b.Get(key)
 	n := new(big.Int).SetBytes(ov)
-	return n.String(), b.Put(key, n.Add(n, one).Bytes())
+	return n, b.Put(key, new(big.Int).Add(n, one).Bytes())
 }
