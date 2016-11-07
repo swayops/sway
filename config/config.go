@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
 
 	"github.com/swayops/jlog"
@@ -43,7 +44,7 @@ func New(loc string) (_ *Config, err error) {
 		return nil, err
 	}
 
-	c.ClickUrl = c.DashURL + "/click/"
+	c.ClickUrl = c.DashURL + filepath.Join(c.APIPath, "click") + "/"
 
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)
 	c.replyEc = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmailReply, c.Mandrill.FromNameReply)
