@@ -24,6 +24,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+var (
+	ErrAgency = errors.New("No talent agency defined! Please contact engage@swayops.com")
+)
+
 // The json struct accepted by the putInfluencer method
 type InfluencerLoad struct {
 	InstagramId string `json:"instagram,omitempty"`
@@ -144,6 +148,10 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 	agencyId := common.GetIDFromInvite(inviteCode)
 	if agencyId == "" {
 		agencyId = defAgencyID
+	}
+
+	if agencyId == "" {
+		return nil, ErrAgency
 	}
 
 	inf.AgencyId = agencyId
@@ -292,7 +300,6 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 
 		if deal.Tweet != nil {
 			if ban, err = deal.Tweet.UpdateData(cfg); err != nil {
-				log.Println("Tweet erred out", err)
 				return err
 			}
 		} else if deal.Facebook != nil {

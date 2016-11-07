@@ -24,12 +24,14 @@ var (
 	DEAL_TIMEOUT = ONE_DAY * 14
 )
 
-func explore(srv *Server) error {
+func explore(srv *Server) (int32, error) {
+	var foundDeals int32
+
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
 	activeDeals, err := common.GetAllActiveDeals(srv.db, srv.Cfg)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// The influencer has 14 days to do the deal before it's put
@@ -61,29 +63,45 @@ func explore(srv *Server) error {
 		case platform.Twitter:
 			if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
 				if err = srv.ApproveTweet(tweet, deal); err != nil {
-					log.Println("Failed to approve tweet", err)
+					msg := fmt.Sprintf("Failed to approve tweet for %s", inf.Id)
+					srv.Alert(msg, err)
+					continue
 				}
+				foundDeals += 1
+				continue
 			}
 		case platform.Facebook:
 			if post := findFacebookMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveFacebook(post, deal); err != nil {
-					log.Println("Failed to approve fb post", err)
+					msg := fmt.Sprintf("Failed to approve fb post for %s", inf.Id)
+					srv.Alert(msg, err)
+					continue
 				}
+				foundDeals += 1
+				continue
 			}
 		case platform.Instagram:
 			if post := findInstagramMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveInstagram(post, deal); err != nil {
-					log.Println("Failed to approve instagram post", err)
+					msg := fmt.Sprintf("Failed to approve insta post for %s", inf.Id)
+					srv.Alert(msg, err)
+					continue
 				}
+				foundDeals += 1
+				continue
 			}
 		case platform.YouTube:
 			if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
 				if err = srv.ApproveYouTube(post, deal); err != nil {
-					log.Println("Failed to approve instagram post", err)
+					msg := fmt.Sprintf("Failed to approve YT post for %s", inf.Id)
+					srv.Alert(msg, err)
+					continue
 				}
+				foundDeals += 1
+				continue
 			}
 		default:
-			return nil
+			continue
 		}
 
 		// If the deal has not been approved and it has gone past the
@@ -98,7 +116,7 @@ func explore(srv *Server) error {
 			} else if minTs > deal.Assigned {
 				// Ok lets time out!
 				if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
-					return err
+					return foundDeals, err
 				}
 				if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
 					"action": "timeout",
@@ -113,7 +131,7 @@ func explore(srv *Server) error {
 			}
 		}
 	}
-	return nil
+	return foundDeals, nil
 }
 
 var urlErr = errors.New("Failed to retrieve post URL")
