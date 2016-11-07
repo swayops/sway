@@ -15,10 +15,6 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const (
-	engineDelay = 4 // hours
-)
-
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
 	// This will be used by "GetAvailableDeals"
@@ -39,8 +35,19 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Run engine every 4 hours
-	runTicker := time.NewTicker(engineDelay * time.Hour)
+	// Run scrap emails every hour
+	scrapTicker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for t := range scrapTicker.C {
+			if t.UTC().Hour() == 20 {
+				// Only run at 1pm PST (8pm UTC)
+				emailScraps(srv)
+			}
+		}
+	}()
+
+	// Run engine every 6 hours
+	runTicker := time.NewTicker(6 * time.Hour)
 	go func() {
 		for range runTicker.C {
 			if err := run(srv); err != nil {
@@ -79,11 +86,15 @@ func newSwayEngine(srv *Server) error {
 }
 
 func run(srv *Server) error {
+	var (
+		err                                             error
+		updatedInf, foundDeals, sigsFound, dealsEmailed int32
+		totalDepleted                                   float64
+	)
+
 	// NOTE: This is the only function that can and should edit
 	// budget and reporting DBs
-	if !srv.Cfg.Sandbox {
-		log.Println("Initiating engine run @", time.Now().String())
-	}
+	start := time.Now()
 
 	// Lets confirm that there are budget keys
 	// for the new month before we kick this off.
@@ -97,14 +108,14 @@ func run(srv *Server) error {
 	// If anything fails to update.. just stop here
 	// This ensures that Deltas aren't accounted for twice
 	// in the case someting errors out and continues!
-	if err := updateInfluencers(srv); err != nil {
+	if updatedInf, err = updateInfluencers(srv); err != nil {
 		// Insert a file informant check
 		srv.Alert("Stats update failed!", err)
 		return err
 	}
 
 	// Explore the influencer posts to look for completed deals!
-	if err := explore(srv); err != nil {
+	if foundDeals, err = explore(srv); err != nil {
 		// Insert a file informant check
 		srv.Alert("Exploring influencer posts failed!", err)
 		return err
@@ -112,25 +123,23 @@ func run(srv *Server) error {
 
 	// Iterate over deltas for completed deals
 	// and deplete budgets
-	if err := depleteBudget(srv); err != nil {
+	if totalDepleted, err = depleteBudget(srv); err != nil {
 		// Insert a file informant check
 		srv.Alert("Error depleting budget!", err)
 		return err
 	}
 
-	if err := auditTaxes(srv); err != nil {
+	if sigsFound, err = auditTaxes(srv); err != nil {
 		srv.Alert("Error auditing taxes!", err)
 		return err
 	}
 
-	if err := emailDeals(srv); err != nil {
+	if dealsEmailed, err = emailDeals(srv); err != nil {
 		srv.Alert("Error emailing deals!", err)
 		return err
 	}
 
-	if !srv.Cfg.Sandbox {
-		log.Println("Completed engine run @", time.Now().String(), "\n")
-	}
+	srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, start)
 
 	return nil
 }
@@ -153,12 +162,13 @@ func shouldRun(s *Server) bool {
 	return false
 }
 
-func updateInfluencers(s *Server) error {
+func updateInfluencers(s *Server) (int32, error) {
 	activeCampaigns := s.Campaigns.GetStore()
 
 	var (
 		oldUpdate int32
 		err       error
+		updated   int32
 	)
 	for _, infId := range s.auth.Influencers.GetAllIDs() {
 		// Do another get incase the influencer has been updated
@@ -176,7 +186,7 @@ func updateInfluencers(s *Server) error {
 			// If the update errors.. we bail out of the
 			// whole engine so we dont accidentally deduct
 			// the likes/comments/etc deltas from the budget again!
-			return err
+			return updated, err
 		}
 
 		// Inserting a request interval so we don't hit our API
@@ -188,12 +198,12 @@ func updateInfluencers(s *Server) error {
 
 		// Update data for all completed deal posts
 		if err = inf.UpdateCompletedDeals(s.Cfg, activeCampaigns); err != nil {
-			return err
+			return updated, err
 		}
 
 		// Also saves influencers!
 		if err = saveAllCompletedDeals(s, inf); err != nil {
-			return err
+			return updated, err
 		}
 
 		if len(inf.CompletedDeals) > 0 {
@@ -201,19 +211,22 @@ func updateInfluencers(s *Server) error {
 			// Lets sleep for a bit just incase!
 			time.Sleep(1 * time.Second)
 		}
+
+		updated += 1
 	}
 
-	return nil
+	return updated, nil
 }
 
-func depleteBudget(s *Server) error {
+func depleteBudget(s *Server) (float64, error) {
 	// now that we have updated stats for completed deals
 	// go over completed deals..
 	// Iterate over all
 
 	var (
-		spentDelta float64
-		m          *budget.Metrics
+		spentDelta    float64
+		m             *budget.Metrics
+		totalDepleted float64
 	)
 
 	// Iterate over all active campaigns
@@ -243,6 +256,8 @@ func depleteBudget(s *Server) error {
 			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
+				totalDepleted += spentDelta
+
 				// DSP and Exchange fee taken away from the prinicpal
 				dspMarkup := spentDelta * dspFee
 				exchangeMarkup := spentDelta * exchangeFee
@@ -290,7 +305,7 @@ func depleteBudget(s *Server) error {
 				// Save the deal in influencers and campaigns
 				if err := saveAllCompletedDeals(s, inf); err != nil {
 					// Insert file informant notification
-					log.Println("Error saving deals!", err, inf.Id)
+					s.Alert("Failed to save completed deals", err)
 				}
 			}
 
@@ -300,16 +315,16 @@ func depleteBudget(s *Server) error {
 		if updatedStore {
 			// Save the store since it's been updated
 			if err := budget.SaveStore(s.budgetDb, s.Cfg, store, cmp.Id); err != nil {
-				log.Println("Err saving store!", err, cmp.Id)
+				s.Alert("Failed to save budget store", err)
 			}
 		}
 
 	}
 
-	return nil
+	return totalDepleted, nil
 }
 
-func auditTaxes(srv *Server) error {
+func auditTaxes(srv *Server) (int32, error) {
 	var (
 		sigsFound int32
 	)
@@ -342,22 +357,16 @@ func auditTaxes(srv *Server) error {
 					return nil
 				}); err != nil {
 					log.Println("Error when saving influencer", err)
-					return err
+					return sigsFound, err
 				}
 			}
 		}
 	}
-	if sigsFound > 0 {
-		log.Println(sigsFound, "signatures found!\n")
-	}
-	return nil
+
+	return sigsFound, nil
 }
 
-func emailDeals(s *Server) error {
-	if !s.Cfg.Sandbox {
-		log.Println("Initiating email run @", time.Now().String())
-	}
-
+func emailDeals(s *Server) (int32, error) {
 	// Email Influencers
 	var infEmails int32
 	for _, inf := range s.auth.Influencers.GetAll() {
@@ -386,10 +395,5 @@ func emailDeals(s *Server) error {
 		}
 	}
 
-	if !s.Cfg.Sandbox {
-		log.Println(infEmails, "influencers emailed")
-		log.Println("Finished email run @", time.Now().String(), "\n")
-	}
-
-	return nil
+	return infEmails, nil
 }
