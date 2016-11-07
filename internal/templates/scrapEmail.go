@@ -43,7 +43,7 @@ const scrapDealOne = `
 			<th align="left">Campaign name:</th>
 		</tr>
 	    <tr>
-	    	<td align="left" valign="middle"><img src="{{Image}}" height="50"></td>
+	    	<td align="left" valign="middle"><img src="https://dash.swayops.com{{Image}}" height="50"></td>
 	    	<td align="left" valign="middle">{{Company}}</td>
 	    	<td align="left" valign="middle">{{Campaign}}</td>
 	    </tr>
@@ -82,7 +82,7 @@ const scrapDealTwo = `
 			<th align="left">Campaign name:</th>
 		</tr>
 	    <tr>
-	    	<td align="left" valign="middle"><img src="{{Image}}" height="50"></td>
+	    	<td align="left" valign="middle"><img src="https://dash.swayops.com{{Image}}" height="50"></td>
 	    	<td align="left" valign="middle">{{Company}}</td>
 	    	<td align="left" valign="middle">{{Campaign}}</td>
 	    </tr>
