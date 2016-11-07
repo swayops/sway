@@ -2651,13 +2651,13 @@ func click(s *Server) gin.HandlerFunc {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.URL)).Get([]byte(id))
 			return nil
 		}); err != nil {
-			c.JSON(500, ErrID)
+			c.JSON(500, misc.StatusErr(ErrID.Error()))
 			return
 		}
 
 		parts := strings.Split(string(v), "::")
 		if len(parts) != 2 {
-			c.JSON(500, ErrID)
+			c.JSON(500, misc.StatusErr(ErrID.Error()))
 			return
 		}
 
@@ -2666,13 +2666,13 @@ func click(s *Server) gin.HandlerFunc {
 
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, ErrCampaign)
+			c.JSON(500, misc.StatusErr(ErrCampaign.Error()))
 			return
 		}
 
 		foundDeal, ok := cmp.Deals[dealId]
 		if !ok || foundDeal == nil || foundDeal.Link == "" {
-			c.JSON(500, ErrDealNotFound)
+			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
 		}
 
