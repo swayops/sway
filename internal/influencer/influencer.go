@@ -556,10 +556,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		store = campaigns.GetStore()
 	}
 
+	// Used purely for debugging.. may want to do something with it
+	// eventually
+	rejections := make(map[string]string)
+
 	for _, cmp := range store {
 		targetDeal := &common.Deal{}
 		dealFound := false
 		if !cmp.IsValid() {
+			rejections[cmp.Id] = "INVALID"
 			continue
 		}
 
@@ -578,6 +583,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		if !dealFound {
 			// This campaign has no active deals
+			rejections[cmp.Id] = "NO_ACTIVE_DEALS"
 			continue
 		}
 
@@ -593,6 +599,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				}
 			}
 			if !catFound {
+				rejections[cmp.Id] = "CAT_NOT_FOUND"
 				continue
 			}
 		}
@@ -615,20 +622,24 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			}
 		}
 		if dealFound {
+			rejections[cmp.Id] = "DEAL_FOUND"
 			continue
 		}
 
 		// Match Campaign Geo Targeting with Influencer Geo //
 		if !geo.IsGeoMatch(cmp.Geos, location) {
+			rejections[cmp.Id] = "GEO_MATCH"
 			continue
 		}
 
 		// Gender check
 		if cmp.Male && !inf.Male {
+			rejections[cmp.Id] = "GENDER_M"
 			continue
 		}
 
 		if cmp.Female && !inf.Female {
+			rejections[cmp.Id] = "GENDER_F"
 			continue
 		}
 
@@ -637,6 +648,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		_, ok := cmp.Blacklist[inf.Id]
 		if ok {
 			// We found this influencer in the blacklist!
+			rejections[cmp.Id] = "CMP_BLACKLIST"
 			continue
 		}
 
@@ -645,6 +657,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			_, ok = cmp.Whitelist[inf.EmailAddress]
 			if !ok {
 				// There was a whitelist and they're not in it!
+				rejections[cmp.Id] = "CMP_WHITELIST"
 				continue
 			}
 		}
@@ -688,6 +701,10 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 			infDeals = append(infDeals, targetDeal)
 		}
+	}
+
+	if cfg.Sandbox {
+		log.Println("Rejections:", rejections)
 	}
 
 	// Fill in available spendables now
