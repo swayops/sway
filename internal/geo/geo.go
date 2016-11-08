@@ -141,6 +141,8 @@ func IsValidGeo(r *GeoRecord) bool {
 		}
 		return true
 	default:
+		// Empty out state for non-US/CA country
+		r.State = ""
 		return true
 	}
 }
