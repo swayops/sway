@@ -874,6 +874,7 @@ func verifyDeal(t *testing.T, cmpId, infId, agId string, rst *resty.Client, skip
 	}
 
 	doneDeal := load.CompletedDeals[0]
+
 	checkDeal(t, doneDeal, &load, agId, cmpId)
 
 	var newStore budget.Store
@@ -1530,6 +1531,7 @@ SKIP_APPROVE_2:
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
+
 	// verify deal
 	verifyDeal(t, "4", inf.ExpID, ag.ExpID, rst, false)
 }

@@ -309,6 +309,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
 	adminGroup.POST("/setScrap", setScrap(srv))
 	adminGroup.GET("/getScraps", getScraps(srv))
+	adminGroup.GET("/unapproveDeal/:influencerId/:dealId", unapproveDeal(srv))
 
 	// AdAgency
 	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,

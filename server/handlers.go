@@ -2975,3 +2975,102 @@ func forceScrapEmail(s *Server) gin.HandlerFunc {
 		c.JSON(200, gin.H{"count": count})
 	}
 }
+
+func unapproveDeal(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		infId := c.Param("influencerId")
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		dealId := c.Param("dealId")
+		var d *common.Deal
+		for _, deal := range inf.CompletedDeals {
+			if deal.Id == dealId {
+				d = deal
+			}
+		}
+
+		if d == nil {
+			c.JSON(500, misc.StatusErr("Invalid deal!"))
+			return
+		}
+
+		// Marks the deal as INCOMPLETE, and updates the campaign and influencer buckets
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			var (
+				cmp *common.Campaign
+			)
+
+			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(d.CampaignId)), &cmp)
+			if err != nil {
+				log.Println("Error unmarshallign campaign", err)
+				return err
+			}
+
+			d.Completed = 0
+			d.PostUrl = ""
+			d.AssignedPlatform = ""
+			d.Tweet = nil
+			d.YouTube = nil
+			d.Facebook = nil
+			d.Instagram = nil
+
+			stats := d.TotalStats()
+			inf.PendingPayout = inf.PendingPayout - stats.Influencer
+			cmp.Deals[d.Id] = d
+
+			inf, ok := s.auth.Influencers.Get(d.InfluencerId)
+			if !ok {
+				log.Println("Error unmarshalling influencer")
+				return ErrUnmarshal
+			}
+
+			// Add to completed deals
+			if inf.ActiveDeals == nil || len(inf.ActiveDeals) == 0 {
+				inf.ActiveDeals = []*common.Deal{}
+			}
+			inf.ActiveDeals = append(inf.ActiveDeals, d)
+
+			// Remove from complete deals
+			complDeals := []*common.Deal{}
+			for _, deal := range inf.CompletedDeals {
+				if deal.Id != d.Id {
+					complDeals = append(complDeals, deal)
+				}
+			}
+			inf.CompletedDeals = complDeals
+
+			// Save the Influencer
+			if err := saveInfluencer(s, tx, inf); err != nil {
+				log.Println("Error saving influencer!", err)
+				return err
+			}
+
+			// Save the campaign!
+			if err := saveCampaign(tx, cmp, s); err != nil {
+				log.Println("Error saving campaign!", err)
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+		inf, _ = s.auth.Influencers.Get(infId)
+		for _, blah := range inf.CompletedDeals {
+			log.Println("COMPLETED", *blah)
+		}
+		for _, blah := range inf.ActiveDeals {
+			log.Println("Active", *blah)
+		}
+		c.JSON(200, misc.StatusOK(inf.Id))
+	}
+}

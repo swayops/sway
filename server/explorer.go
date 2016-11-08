@@ -71,21 +71,10 @@ func explore(srv *Server) (int32, error) {
 			// Iterate over all the available platforms and
 			// assign the first one that matches
 			switch mediaPlatform {
-			case platform.Twitter:
-				if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
-					if err = srv.ApproveTweet(tweet, deal); err != nil {
-						msg := fmt.Sprintf("Failed to approve tweet for %s", inf.Id)
-						srv.Alert(msg, err)
-						continue
-					}
-					foundPost = true
-					foundDeals += 1
-					break
-				}
-			case platform.Facebook:
-				if post := findFacebookMatch(inf, deal, targetLink); post != nil {
-					if err = srv.ApproveFacebook(post, deal); err != nil {
-						msg := fmt.Sprintf("Failed to approve fb post for %s", inf.Id)
+			case platform.YouTube:
+				if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
+					if err = srv.ApproveYouTube(post, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve YT post for %s", inf.Id)
 						srv.Alert(msg, err)
 						continue
 					}
@@ -104,10 +93,21 @@ func explore(srv *Server) (int32, error) {
 					foundDeals += 1
 					break
 				}
-			case platform.YouTube:
-				if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
-					if err = srv.ApproveYouTube(post, deal); err != nil {
-						msg := fmt.Sprintf("Failed to approve YT post for %s", inf.Id)
+			case platform.Twitter:
+				if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
+					if err = srv.ApproveTweet(tweet, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve tweet for %s", inf.Id)
+						srv.Alert(msg, err)
+						continue
+					}
+					foundPost = true
+					foundDeals += 1
+					break
+				}
+			case platform.Facebook:
+				if post := findFacebookMatch(inf, deal, targetLink); post != nil {
+					if err = srv.ApproveFacebook(post, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve fb post for %s", inf.Id)
 						srv.Alert(msg, err)
 						continue
 					}
