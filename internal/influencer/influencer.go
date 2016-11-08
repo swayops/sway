@@ -624,7 +624,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Gender check
-		if (inf.Male && !cmp.Male) || (inf.Female && !cmp.Female) {
+		if cmp.Male && !inf.Male {
+			continue
+		}
+
+		if cmp.Female && !inf.Female {
 			continue
 		}
 
