@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/misc"
 )
 
 type YouTube struct {
@@ -53,9 +52,9 @@ func New(name string, cfg *config.Config) (*YouTube, error) {
 
 func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 	// If we already updated in the last 21-26 hours, skip
-	if misc.WithinLast(yt.LastUpdated, misc.Random(21, 26)) {
-		return nil
-	}
+	// if misc.WithinLast(yt.LastUpdated, misc.Random(21, 26)) {
+	// 	return nil
+	// }
 
 	if views, comments, subs, err := getUserStats(yt.UserId, cfg); err == nil {
 		if yt.Subscribers > 0 {

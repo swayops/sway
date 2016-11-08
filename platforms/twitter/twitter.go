@@ -68,9 +68,9 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 
 func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
 	// If we already updated in the last 10-15 hours, skip
-	if misc.WithinLast(tw.LastUpdated, misc.Random(10, 15)) {
-		return nil
-	}
+	// if misc.WithinLast(tw.LastUpdated, misc.Random(10, 15)) {
+	// 	return nil
+	// }
 
 	var err error
 	if tw.client == nil {

@@ -6,7 +6,6 @@ import (
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/geo"
-	"github.com/swayops/sway/misc"
 )
 
 // AUTH:
@@ -58,9 +57,9 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// Used by an eventual ticker to update stats
 
 	// If we already updated in the last 21-26 hours, skip
-	if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
-		return nil
-	}
+	// if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
+	// 	return nil
+	// }
 
 	if fl, link, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {

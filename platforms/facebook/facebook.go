@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/misc"
 )
 
 var (
@@ -46,9 +45,9 @@ func New(id string, cfg *config.Config) (*Facebook, error) {
 
 func (fb *Facebook) UpdateData(cfg *config.Config, savePosts bool) error {
 	// If we already updated in the last 10-15 hours, skip
-	if misc.WithinLast(fb.LastUpdated, misc.Random(10, 15)) {
-		return nil
-	}
+	// if misc.WithinLast(fb.LastUpdated, misc.Random(10, 15)) {
+	// 	return nil
+	// }
 
 	if fb.Id != "" {
 		if likes, comments, shares, posts, err := getBasicInfo(fb.Id, cfg); err == nil {
