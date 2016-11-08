@@ -664,20 +664,27 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// Social Media Checks
 		if cmp.Twitter && inf.Twitter != nil {
-			targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
+			if !common.IsInList(targetDeal.Platforms, platform.Twitter) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
+			}
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
-			targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
+			if !common.IsInList(targetDeal.Platforms, platform.Facebook) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
+			}
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
-			targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
+			if !common.IsInList(targetDeal.Platforms, platform.Instagram) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
+			}
 		}
 
 		if cmp.YouTube && inf.YouTube != nil {
-			targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
-
+			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
+			}
 		}
 
 		// Add deal that has approved platform
