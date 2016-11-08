@@ -59,49 +59,53 @@ func explore(srv *Server) (int32, error) {
 
 		targetLink := trimURLPrefix(deal.ShortenedLink)
 
-		switch deal.AssignedPlatform {
-		case platform.Twitter:
-			if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
-				if err = srv.ApproveTweet(tweet, deal); err != nil {
-					msg := fmt.Sprintf("Failed to approve tweet for %s", inf.Id)
-					srv.Alert(msg, err)
-					continue
+		for _, mediaPlatform := range deal.Platforms {
+			// Iterate over all the available platforms and
+			// assign the first one that matches
+			switch mediaPlatform {
+			case platform.Twitter:
+				if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
+					if err = srv.ApproveTweet(tweet, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve tweet for %s", inf.Id)
+						srv.Alert(msg, err)
+						continue
+					}
+					foundDeals += 1
+					break
 				}
-				foundDeals += 1
+			case platform.Facebook:
+				if post := findFacebookMatch(inf, deal, targetLink); post != nil {
+					if err = srv.ApproveFacebook(post, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve fb post for %s", inf.Id)
+						srv.Alert(msg, err)
+						continue
+					}
+					foundDeals += 1
+					break
+				}
+			case platform.Instagram:
+				if post := findInstagramMatch(inf, deal, targetLink); post != nil {
+					if err = srv.ApproveInstagram(post, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve insta post for %s", inf.Id)
+						srv.Alert(msg, err)
+						continue
+					}
+					foundDeals += 1
+					break
+				}
+			case platform.YouTube:
+				if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
+					if err = srv.ApproveYouTube(post, deal); err != nil {
+						msg := fmt.Sprintf("Failed to approve YT post for %s", inf.Id)
+						srv.Alert(msg, err)
+						continue
+					}
+					foundDeals += 1
+					break
+				}
+			default:
 				continue
 			}
-		case platform.Facebook:
-			if post := findFacebookMatch(inf, deal, targetLink); post != nil {
-				if err = srv.ApproveFacebook(post, deal); err != nil {
-					msg := fmt.Sprintf("Failed to approve fb post for %s", inf.Id)
-					srv.Alert(msg, err)
-					continue
-				}
-				foundDeals += 1
-				continue
-			}
-		case platform.Instagram:
-			if post := findInstagramMatch(inf, deal, targetLink); post != nil {
-				if err = srv.ApproveInstagram(post, deal); err != nil {
-					msg := fmt.Sprintf("Failed to approve insta post for %s", inf.Id)
-					srv.Alert(msg, err)
-					continue
-				}
-				foundDeals += 1
-				continue
-			}
-		case platform.YouTube:
-			if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
-				if err = srv.ApproveYouTube(post, deal); err != nil {
-					msg := fmt.Sprintf("Failed to approve YT post for %s", inf.Id)
-					srv.Alert(msg, err)
-					continue
-				}
-				foundDeals += 1
-				continue
-			}
-		default:
-			continue
 		}
 
 		// If the deal has not been approved and it has gone past the
@@ -211,24 +215,28 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 func (srv *Server) ApproveTweet(tweet *twitter.Tweet, d *common.Deal) error {
 	d.Tweet = tweet
 	d.PostUrl = tweet.PostURL
+	d.AssignedPlatform = platform.Twitter
 	return srv.CompleteDeal(d)
 }
 
 func (srv *Server) ApproveFacebook(post *facebook.Post, d *common.Deal) error {
 	d.Facebook = post
 	d.PostUrl = post.PostURL
+	d.AssignedPlatform = platform.Facebook
 	return srv.CompleteDeal(d)
 }
 
 func (srv *Server) ApproveInstagram(post *instagram.Post, d *common.Deal) error {
 	d.Instagram = post
 	d.PostUrl = post.PostURL
+	d.AssignedPlatform = platform.Instagram
 	return srv.CompleteDeal(d)
 }
 
 func (srv *Server) ApproveYouTube(post *youtube.Post, d *common.Deal) error {
 	d.YouTube = post
 	d.PostUrl = post.PostURL
+	d.AssignedPlatform = platform.YouTube
 	return srv.CompleteDeal(d)
 }
 

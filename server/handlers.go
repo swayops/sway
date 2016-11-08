@@ -1264,19 +1264,10 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			foundDeal.InfluencerName = inf.Name
 			foundDeal.Assigned = int32(time.Now().Unix())
 
-			foundPlatform := false
-			for _, p := range foundDeal.Platforms {
-				if p == mediaPlatform {
-					foundPlatform = true
-					break
-				}
-			}
-
-			if !foundPlatform {
+			if len(foundDeal.Platforms) == 0 {
 				return errors.New("Unforunately, the requested deal is no longer available!")
 			}
 
-			foundDeal.AssignedPlatform = mediaPlatform
 			cmp.Deals[foundDeal.Id] = foundDeal
 
 			// Append to the influencer's active deals
@@ -2380,38 +2371,41 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 		}
 
 		var err error
-		switch found.AssignedPlatform {
-		case platform.Twitter:
-			if inf.Twitter != nil && len(inf.Twitter.LatestTweets) > 0 {
-				if err = s.ApproveTweet(inf.Twitter.LatestTweets[0], found); err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
-					return
+		for _, pf := range found.Platforms {
+			switch pf {
+			case platform.Twitter:
+				if inf.Twitter != nil && len(inf.Twitter.LatestTweets) > 0 {
+					if err = s.ApproveTweet(inf.Twitter.LatestTweets[0], found); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+					break
+				}
+			case platform.Facebook:
+				if inf.Facebook != nil && len(inf.Facebook.LatestPosts) > 0 {
+					if err = s.ApproveFacebook(inf.Facebook.LatestPosts[0], found); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+					break
+				}
+			case platform.Instagram:
+				if inf.Instagram != nil && len(inf.Instagram.LatestPosts) > 0 {
+					if err = s.ApproveInstagram(inf.Instagram.LatestPosts[0], found); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+					break
+				}
+			case platform.YouTube:
+				if inf.YouTube != nil && len(inf.YouTube.LatestPosts) > 0 {
+					if err = s.ApproveYouTube(inf.YouTube.LatestPosts[0], found); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+					break
 				}
 			}
-		case platform.Facebook:
-			if inf.Facebook != nil && len(inf.Facebook.LatestPosts) > 0 {
-				if err = s.ApproveFacebook(inf.Facebook.LatestPosts[0], found); err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
-					return
-				}
-			}
-		case platform.Instagram:
-			if inf.Instagram != nil && len(inf.Instagram.LatestPosts) > 0 {
-				if err = s.ApproveInstagram(inf.Instagram.LatestPosts[0], found); err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
-					return
-				}
-			}
-		case platform.YouTube:
-			if inf.YouTube != nil && len(inf.YouTube.LatestPosts) > 0 {
-				if err = s.ApproveYouTube(inf.YouTube.LatestPosts[0], found); err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
-					return
-				}
-			}
-		default:
-			c.JSON(500, misc.StatusErr(ErrPlatform.Error()))
-			return
 		}
 		c.JSON(200, misc.StatusOK(infId))
 
