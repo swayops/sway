@@ -252,6 +252,7 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
+
 	return true
 }
 
