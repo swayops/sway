@@ -2978,6 +2978,8 @@ func forceScrapEmail(s *Server) gin.HandlerFunc {
 
 func unapproveDeal(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// NOTE: this does not add money back to spendable
+
 		if !isSecureAdmin(c, s) {
 			return
 		}
@@ -3024,6 +3026,8 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 
 			stats := d.TotalStats()
 			inf.PendingPayout = inf.PendingPayout - stats.Influencer
+
+			d.Reporting = nil
 			cmp.Deals[d.Id] = d
 
 			inf, ok := s.auth.Influencers.Get(d.InfluencerId)
