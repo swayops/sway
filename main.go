@@ -37,10 +37,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	defer func() {
-		recover() // ignore the panic
-		closer.Defer(srv.Close)()
-	}()
+	defer closer.Defer(srv.Close)()
 
 	// Listen and Serve
 	if err = srv.Run(); err != nil {
