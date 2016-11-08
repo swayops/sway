@@ -25,7 +25,9 @@ var (
 )
 
 func explore(srv *Server) (int32, error) {
-	var foundDeals int32
+	var (
+		foundDeals int32
+	)
 
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
@@ -40,6 +42,8 @@ func explore(srv *Server) (int32, error) {
 	minTs := now - (DEAL_TIMEOUT)
 
 	for _, deal := range activeDeals {
+		var foundPost bool
+
 		// Go over all assigned deals in the platform
 		inf, ok := srv.auth.Influencers.Get(deal.InfluencerId)
 		if !ok {
@@ -60,6 +64,10 @@ func explore(srv *Server) (int32, error) {
 		targetLink := trimURLPrefix(deal.ShortenedLink)
 
 		for _, mediaPlatform := range deal.Platforms {
+			if foundPost {
+				break
+			}
+
 			// Iterate over all the available platforms and
 			// assign the first one that matches
 			switch mediaPlatform {
@@ -70,6 +78,7 @@ func explore(srv *Server) (int32, error) {
 						srv.Alert(msg, err)
 						continue
 					}
+					foundPost = true
 					foundDeals += 1
 					break
 				}
@@ -80,6 +89,7 @@ func explore(srv *Server) (int32, error) {
 						srv.Alert(msg, err)
 						continue
 					}
+					foundPost = true
 					foundDeals += 1
 					break
 				}
@@ -90,6 +100,7 @@ func explore(srv *Server) (int32, error) {
 						srv.Alert(msg, err)
 						continue
 					}
+					foundPost = true
 					foundDeals += 1
 					break
 				}
@@ -100,6 +111,7 @@ func explore(srv *Server) (int32, error) {
 						srv.Alert(msg, err)
 						continue
 					}
+					foundPost = true
 					foundDeals += 1
 					break
 				}
