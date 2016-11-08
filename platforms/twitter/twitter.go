@@ -42,6 +42,8 @@ type Twitter struct {
 	LastUpdated  int32          `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
 
 	client *http.Client `json:"client,omitempty"`
+
+	ProfilePicture string `json:"profile_picture,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (tw *Twitter, err error) {
@@ -100,6 +102,7 @@ func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
 	}
 	tw.LastTweetId = tws.LastId()
 	tw.LastLocation = tws.LatestLocation()
+	tw.ProfilePicture = tws.ProfilePicture()
 
 	tw.LastUpdated = int32(time.Now().Unix())
 	return nil

@@ -53,6 +53,14 @@ func (tws Tweets) LastId() string {
 	return ""
 }
 
+func (tws Tweets) ProfilePicture() string {
+	if len(tws) > 0 && tws[0].User != nil {
+		// Hack to get a larger picture
+		return strings.Replace(tws[0].User.ProfilePicture, "_normal", "", -1)
+	}
+	return ""
+}
+
 func (tws Tweets) LatestLocation() *geo.GeoRecord {
 	var latest *geo.GeoRecord
 	for _, t := range tws {
@@ -225,8 +233,10 @@ func (t *TwitterTime) MarshalJSON() ([]byte, error) {
 }
 
 type User struct {
-	Id        string `json:"id_str"`
-	Followers uint32 `json:"followers_count"`
+	Id             string `json:"id_str"`
+	Followers      uint32 `json:"followers_count"`
+	ProfilePicture string `json:"profile_image_url_https"`
+
 	// Friends   uint32 `json:"friends_count"`
 	// StatusesCount uint32 `json:"statuses_count"`
 }

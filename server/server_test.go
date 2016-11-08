@@ -258,6 +258,7 @@ func TestNewInfluencer(t *testing.T) {
 			Geo:         &geo.GeoRecord{},
 			TwitterId:   "justinbieber",
 			InstagramId: "kimkardashian",
+			YouTubeId:   "JennaMarbles",
 		},
 	}
 
@@ -766,7 +767,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	for _, advDeal := range advDeals {
-		if advDeal.Views == 0 || advDeal.URL == "" || advDeal.Caption == "" {
+		if advDeal.Views == 0 || advDeal.URL == "" || advDeal.Caption == "" || advDeal.SocialImage == "" {
 			t.Fatal("Messed up deal!")
 			return
 		}
@@ -1879,17 +1880,6 @@ func TestInfluencerGeo(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	// Lets try creating a campaign with a non-US country
-	// trying to do state targeting!
-	fakeGeo = []*geo.GeoRecord{
-		&geo.GeoRecord{State: "ON", Country: "GB"},
-	}
-	cmp.Geos = fakeGeo
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
-	if r.Status == 200 {
-		t.Fatal("Bad status code!")
-	}
-
 	// All correct geo.. lets try creating a proper campaign now!
 	fakeGeo = []*geo.GeoRecord{
 		&geo.GeoRecord{State: "CA", Country: "US"},
@@ -1912,13 +1902,6 @@ func TestInfluencerGeo(t *testing.T) {
 
 	if len(cmpLoad.Geos) != 3 {
 		t.Fatal("Unexpected number of geos!")
-	}
-
-	// Update campaign to have bad geo.. Should reject!
-	cmpUpdateBad := `{"geos": [{"state": "TX", "country": "GB"}], "name":"Blade V","budget":10,"status":true,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
-	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, cmpUpdateBad, nil)
-	if r.Status == 200 {
-		t.Fatal("Unexpected status code!")
 	}
 
 	// Lets see if our California influencer gets a deal with this campaign!

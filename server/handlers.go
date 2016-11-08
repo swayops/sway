@@ -2746,6 +2746,9 @@ type FeedCell struct {
 	Shares   int32 `json:"shares,omitempty"`
 
 	Viral bool `json:"viral,omitempty"`
+
+	// Links to a DP for the social media profile
+	SocialImage string `json:"socialImage,omitempty"`
 }
 
 func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
@@ -2783,24 +2786,36 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							d.Views = total.Views
 							d.Clicks = total.Clicks
 
-							if deal.Tweet != nil {
-								d.Caption = deal.Tweet.Text
-								d.Published = int32(deal.Tweet.CreatedAt.Unix())
-							} else if deal.Facebook != nil {
-								d.Caption = deal.Facebook.Caption
-								d.Published = int32(deal.Facebook.Published.Unix())
-							} else if deal.Instagram != nil {
-								d.Caption = deal.Instagram.Caption
-								d.Published = deal.Instagram.Published
-							} else if deal.YouTube != nil {
-								d.Caption = deal.YouTube.Description
-								d.Published = deal.YouTube.Published
-							}
-
 							// Check for virality
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
 							if ok {
 								d.Viral = inf.IsViral(deal, total)
+							}
+
+							if deal.Tweet != nil {
+								d.Caption = deal.Tweet.Text
+								d.Published = int32(deal.Tweet.CreatedAt.Unix())
+								if inf.Twitter != nil {
+									d.SocialImage = inf.Twitter.ProfilePicture
+								}
+							} else if deal.Facebook != nil {
+								d.Caption = deal.Facebook.Caption
+								d.Published = int32(deal.Facebook.Published.Unix())
+								if inf.Facebook != nil {
+									d.SocialImage = inf.Facebook.ProfilePicture
+								}
+							} else if deal.Instagram != nil {
+								d.Caption = deal.Instagram.Caption
+								d.Published = deal.Instagram.Published
+								if inf.Instagram != nil {
+									d.SocialImage = inf.Instagram.ProfilePicture
+								}
+							} else if deal.YouTube != nil {
+								d.Caption = deal.YouTube.Description
+								d.Published = deal.YouTube.Published
+								if inf.YouTube != nil {
+									d.SocialImage = inf.YouTube.ProfilePicture
+								}
 							}
 
 							feed = append(feed, d)
