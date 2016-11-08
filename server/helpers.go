@@ -597,8 +597,8 @@ func emailDeal(s *Server, cid string) (bool, error) {
 	}
 
 	s.Notify(
-		fmt.Sprintf("Emailed %d influencers for campaign %s", emailed, cid),
-		fmt.Sprintf("Sway has successfully emailed %d influencers for campaign %s!", emailed, cid),
+		fmt.Sprintf("Emailed %d influencers for campaign %s (%s)", emailed, cmp.Name, cid),
+		fmt.Sprintf("Sway has successfully emailed %d influencers for campaign %s (%s)!", emailed, cmp.Name, cid),
 	)
 
 	return true, nil
