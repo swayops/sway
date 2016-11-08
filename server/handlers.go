@@ -3064,13 +3064,7 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return
 		}
-		inf, _ = s.auth.Influencers.Get(infId)
-		for _, blah := range inf.CompletedDeals {
-			log.Println("COMPLETED", *blah)
-		}
-		for _, blah := range inf.ActiveDeals {
-			log.Println("Active", *blah)
-		}
+
 		c.JSON(200, misc.StatusOK(inf.Id))
 	}
 }

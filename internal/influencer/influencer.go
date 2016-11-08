@@ -666,15 +666,9 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Social Media Checks
-		if cmp.Twitter && inf.Twitter != nil {
-			if !common.IsInList(targetDeal.Platforms, platform.Twitter) {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
-			}
-		}
-
-		if cmp.Facebook && inf.Facebook != nil {
-			if !common.IsInList(targetDeal.Platforms, platform.Facebook) {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
+		if cmp.YouTube && inf.YouTube != nil {
+			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 			}
 		}
 
@@ -684,9 +678,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			}
 		}
 
-		if cmp.YouTube && inf.YouTube != nil {
-			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
+		if cmp.Twitter && inf.Twitter != nil {
+			if !common.IsInList(targetDeal.Platforms, platform.Twitter) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
+			}
+		}
+
+		if cmp.Facebook && inf.Facebook != nil {
+			if !common.IsInList(targetDeal.Platforms, platform.Facebook) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 			}
 		}
 
