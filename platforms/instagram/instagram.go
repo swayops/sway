@@ -28,6 +28,8 @@ type Instagram struct {
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
 	LinkInBio string `json:"link,omitempty"`
+
+	ProfilePicture string `json:"profile_picture,omitempty"`
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
@@ -61,13 +63,14 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// 	return nil
 	// }
 
-	if fl, link, err := getUserInfo(in.UserId, cfg); err == nil {
+	if fl, link, dp, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
 			in.FollowerDelta = (fl - in.Followers)
 		}
 		in.Followers = fl
 		in.LinkInBio = link
+		in.ProfilePicture = dp
 	} else {
 		return err
 	}

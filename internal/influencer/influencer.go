@@ -633,13 +633,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Gender check
-		if cmp.Male && !inf.Male {
+		if !cmp.Male && cmp.Female && !inf.Female {
+			// Only want females
+			rejections[cmp.Id] = "GENDER_F"
+			continue
+		} else if cmp.Male && !cmp.Female && !inf.Male {
+			// Only want males
 			rejections[cmp.Id] = "GENDER_M"
 			continue
-		}
-
-		if cmp.Female && !inf.Female {
-			rejections[cmp.Id] = "GENDER_F"
+		} else if !cmp.Male && !cmp.Female {
+			rejections[cmp.Id] = "GENDER"
 			continue
 		}
 
@@ -708,10 +711,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 			infDeals = append(infDeals, targetDeal)
 		}
-	}
-
-	if cfg.Sandbox {
-		log.Println("Rejections:", rejections)
 	}
 
 	// Fill in available spendables now

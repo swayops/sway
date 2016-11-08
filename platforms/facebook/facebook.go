@@ -24,6 +24,8 @@ type Facebook struct {
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
+
+	ProfilePicture string `json:"profile_picture,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (*Facebook, error) {
@@ -50,10 +52,11 @@ func (fb *Facebook) UpdateData(cfg *config.Config, savePosts bool) error {
 	// }
 
 	if fb.Id != "" {
-		if likes, comments, shares, posts, err := getBasicInfo(fb.Id, cfg); err == nil {
+		if likes, comments, shares, posts, dp, err := getBasicInfo(fb.Id, cfg); err == nil {
 			fb.AvgLikes = likes
 			fb.AvgComments = comments
 			fb.AvgShares = shares
+			fb.ProfilePicture = dp
 			// Latest posts are only used when there is an active deal!
 			if savePosts {
 				fb.LatestPosts = posts

@@ -19,7 +19,7 @@ type Meta struct {
 
 const (
 	searchesUrl  = "%ssearch?part=id&maxResults=1&q=%s&type=channel&key=%s"
-	dataUrl      = "%schannels?part=statistics&id=%s&key=%s"
+	dataUrl      = "%schannels?part=statistics,snippet&id=%s&key=%s"
 	playlistUrl  = "%schannels?part=contentDetails&forUsername=%s&key=%s"
 	videosUrl    = "%splaylistItems?part=snippet&playlistId=%s&key=%s&maxResults=%s"
 	postUrl      = "%svideos?id=%s&part=statistics&key=%s"
@@ -90,10 +90,23 @@ type Playlist struct {
 }
 
 type Snippet struct {
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Published   time.Time `json:"publishedAt"`
-	Resource    *Resource `json:"resourceId"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Published   time.Time  `json:"publishedAt"`
+	Resource    *Resource  `json:"resourceId"`
+	Thumbnails  *Thumbnail `json:"thumbnails"`
+}
+
+type Thumbnail struct {
+	Default struct {
+		URL string `json:"url"`
+	} `json:"default"`
+	Medium struct {
+		URL string `json:"url"`
+	} `json:"medium"`
+	High struct {
+		URL string `json:"url"`
+	} `json:"high"`
 }
 
 type Resource struct {
@@ -120,45 +133,50 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 	return "", ErrUnknown
 }
 
-func getUserStats(id string, cfg *config.Config) (float64, float64, float64, error) {
+func getUserStats(id string, cfg *config.Config) (float64, float64, float64, string, error) {
 	endpoint := fmt.Sprintf(dataUrl, cfg.YouTube.Endpoint, id, cfg.YouTube.ClientId)
 
 	var data Data
 	err := misc.Request("GET", endpoint, "", &data)
 	if err != nil || data.Error != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
 	if len(data.Items) == 0 {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
 	stats := data.Items[0].Stats
 	if stats == nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
 	videos, err := getCount(stats.VideoCount)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
 	views, err := getCount64(stats.Views)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
 	comments, err := getCount(stats.Comments)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
 	subs, err := getCount(stats.Subs)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", err
 	}
 
-	return views / float64(videos), comments / videos, subs, nil
+	var url string
+	if data.Items[0].Snippet != nil && data.Items[0].Snippet.Thumbnails != nil {
+		url = data.Items[0].Snippet.Thumbnails.Medium.URL
+	}
+
+	return views / float64(videos), comments / videos, subs, url, nil
 }
 
 func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float64, err error) {

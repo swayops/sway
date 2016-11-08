@@ -21,6 +21,8 @@ type YouTube struct {
 
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
+
+	ProfilePicture string `json:"profile_picture,omitempty"`
 }
 
 var (
@@ -56,13 +58,14 @@ func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 	// 	return nil
 	// }
 
-	if views, comments, subs, err := getUserStats(yt.UserId, cfg); err == nil {
+	if views, comments, subs, dp, err := getUserStats(yt.UserId, cfg); err == nil {
 		if yt.Subscribers > 0 {
 			yt.SubscriberDelta = (subs - yt.Subscribers)
 		}
 		yt.AvgViews = views
 		yt.AvgComments = comments
 		yt.Subscribers = subs
+		yt.ProfilePicture = dp
 	} else {
 		return err
 	}

@@ -3,6 +3,7 @@ package facebook
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -14,6 +15,7 @@ const (
 	likesUrl     = "%s%s/likes?access_token=%s|%s&summary=true"
 	commentsUrl  = "%s%s/comments?access_token=%s|%s&summary=true"
 	sharesUrl    = "%s?id=%s"
+	pictureUrl   = "%s%s/picture?access_token=%s|%s&type=normal"
 	followersUrl = "%s%s?access_token=%s|%s&fields=likes"
 )
 
@@ -45,7 +47,7 @@ type Share struct {
 
 //
 
-func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float64, fbPosts []*Post, err error) {
+func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float64, fbPosts []*Post, dp string, err error) {
 	//https://graph.facebook.com/dayoutubeguy/posts?access_token=160153604335761|d306e3e3bbf5995f18b8ff8507ff4cc0
 	// gets last 20 posts
 	endpoint := fmt.Sprintf(postUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
@@ -108,6 +110,12 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 	likes = likes / total
 	comments = comments / total
 	shares = shares / total
+
+	endpoint = fmt.Sprintf(pictureUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
+	resp, err := http.Get(endpoint)
+	if err == nil {
+		dp = resp.Request.URL.String()
+	}
 
 	return
 }
