@@ -241,13 +241,27 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	// Always allow updates if they have an active deal
 	// i.e. skip this if statement
 	if len(inf.ActiveDeals) == 0 {
-		// If you've been updated in the last 14-22 days and
+		// If you've been updated in the last 7-11 days and
 		// have no active deals.. screw you!
 		// NO SOUP FOR YOU!
 		// NOTE: The random integer is so that we don't update
 		// a large group of influencers at the same time (they become
 		// in sync due to the same len check).
-		if misc.WithinLast(inf.LastSocialUpdate, 24*misc.Random(14, 21)) {
+		if misc.WithinLast(inf.LastSocialUpdate, 24*misc.Random(7, 11)) {
+			// Clear out posts from platforms since they're of no use
+			// and are just taking up storage
+			if inf.Facebook != nil {
+				inf.Facebook.LatestPosts = nil
+			}
+			if inf.Instagram != nil {
+				inf.Instagram.LatestPosts = nil
+			}
+			if inf.Twitter != nil {
+				inf.Twitter.LatestTweets = nil
+			}
+			if inf.YouTube != nil {
+				inf.YouTube.LatestPosts = nil
+			}
 			return nil
 		}
 	}
