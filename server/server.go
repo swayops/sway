@@ -30,7 +30,7 @@ const (
 var (
 	gitBuild    string = "n/a"
 	ErrUserId          = errors.New("Unexpected user id")
-	mailingList        = []string{"shahzil@swayops.com"}
+	mailingList        = []string{"shahzil@swayops.com", "nick@swayops.com"}
 )
 
 // Server is the main server of the sway server
