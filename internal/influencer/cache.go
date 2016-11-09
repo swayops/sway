@@ -39,6 +39,16 @@ func (p *Influencers) GetAll() map[string]Influencer {
 	return store
 }
 
+func (p *Influencers) GetAllEmails() map[string]bool {
+	store := make(map[string]bool)
+	p.mux.RLock()
+	for _, inf := range p.store {
+		store[inf.EmailAddress] = true
+	}
+	p.mux.RUnlock()
+	return store
+}
+
 func (p *Influencers) GetAllIDs() []string {
 	p.mux.RLock()
 	store := make([]string, 0, len(p.store))

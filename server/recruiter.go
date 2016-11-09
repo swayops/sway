@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -29,9 +30,22 @@ func emailScraps(srv *Server) (int, error) {
 		return 0, ErrWait
 	}
 
+	// Influencers who have signed up
+	signUps := srv.auth.Influencers.GetAllEmails()
+
 	now := int32(time.Now().Unix())
 	count := 0
 	for _, sc := range scraps {
+		if count >= 50 {
+			// Only send 50 emails max per run
+			break
+		}
+
+		if _, ok := signUps[strings.ToLower(sc.EmailAddress)]; ok {
+			// This person has already signed up.. skip!
+			continue
+		}
+
 		cmp := sc.GetMatchingCampaign(cmps)
 		if cmp == nil {
 			continue
@@ -74,7 +88,7 @@ func saveScraps(s *Server, scs []*common.Scrap) error {
 		for _, sc := range scs {
 			if sc.Id == "" {
 				if sc.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Scrap); err != nil {
-					return err
+					continue
 				}
 			}
 
@@ -83,12 +97,15 @@ func saveScraps(s *Server, scs []*common.Scrap) error {
 				err error
 			)
 
+			// Sanitize the email
+			sc.EmailAddress = misc.TrimEmail(sc.EmailAddress)
+
 			if b, err = json.Marshal(sc); err != nil {
-				return err
+				continue
 			}
 
 			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id, b); err != nil {
-				return err
+				continue
 			}
 		}
 		return nil

@@ -26,12 +26,14 @@ type Scrap struct {
 
 func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 	// Get all campaigns that match the platform setting for the campaign
+	var considered []*Campaign
 	for _, cmp := range cmps {
 		if matchPlatform(sc, &cmp) {
-			return &cmp
+			considered = append(considered, &cmp)
 		}
 	}
-	return nil
+
+	return getBiggestBudget(considered)
 }
 
 func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
@@ -106,4 +108,19 @@ func matchPlatform(sc *Scrap, cmp *Campaign) bool {
 	}
 
 	return false
+}
+
+func getBiggestBudget(considered []*Campaign) *Campaign {
+	if len(considered) == 0 {
+		return nil
+	}
+
+	var highest *Campaign
+	for _, cmp := range considered {
+		if highest == nil || cmp.Budget > highest.Budget {
+			highest = cmp
+		}
+	}
+
+	return highest
 }
