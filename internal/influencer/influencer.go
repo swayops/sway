@@ -887,7 +887,32 @@ func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) err
 	}
 
 	email := templates.DealCompletionEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! Your deal for %s has been approved!", deal.Company), "shahzilabid@gmail.com", inf.Name,
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! Your deal for %s has been approved!", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	return nil
+}
+
+func (inf *Influencer) DealUpdate(deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.CampaignStatusEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s is no longer available!", deal.Company), inf.EmailAddress, inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail

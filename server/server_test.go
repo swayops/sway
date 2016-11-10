@@ -2553,6 +2553,143 @@ func TestScraps(t *testing.T) {
 	}
 }
 
+func TestInfluencerClearout(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+	// Create a campaign
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "The Day Walker",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see if our influencer gets a deal with this campaign!
+	// They should!
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	deals = getDeals(st.ID, deals)
+	if len(deals) == 0 {
+		t.Fatal("Unexpected number of deals.. should have atleast one!")
+	}
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+st.ID+"/"+deals[0].Id+"/twitter", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// lets make sure there is an assigned deal
+	var found bool
+	for _, deal := range cmpLoad.Deals {
+		if deal.IsActive() && deal.InfluencerId == inf.ExpID{
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatal("No active deals!")
+	}
+
+	// Toggle the campaign off
+	cmpUpdateGood := `{"geos": [{"state": "TX", "country": "US"}, {"country": "GB"}], "name":"Blade V","budget":150,"status":false,"tags":["mmmm"],"male":true,"female":true,"twitter":true}`
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID+"?dbg=1", cmpUpdateGood, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets make sure it has no active deals
+	var load common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if len(load.Deals) == 0 {
+		t.Fatal("No deals at all!")
+	}
+
+	found = false
+	for _, deal := range load.Deals {
+		if deal.IsActive() && len(deal.Platforms) == 0{
+			found = true
+		}
+	}
+
+	if found {
+		t.Fatal("Shouldn't have active deals!")
+	}
+
+	var infLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &infLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	found = false
+	for _, deal := range infLoad.ActiveDeals {
+		if deal.CampaignId == st.ID {
+			found = true
+		}
+	}
+
+		if found {
+		t.Fatal("Shouldn't have active deals!")
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")
