@@ -149,10 +149,34 @@ const checkTmpl = `
 </div>
 `
 
+const completionTmpl = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Congratulations {{Name}}!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Your deal for {{Company}} has just been approved! Keep an eye on your Sway Stats on the <a href="https://inf.swayops.com/login">Influencer Dashboard</a> as you receive earnings based on engagements your post receives.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Feel free to call or email me with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
 	InfluencerEmail        = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail     = MustacheMust(infCmpEmail)
 	InfluencerHeadsUpEmail = MustacheMust(headsUpEmail)
 	InfluencerTimeoutEmail = MustacheMust(timeOutEmail)
 	CheckEmail             = MustacheMust(checkTmpl)
+	DealCompletionEmail    = MustacheMust(completionTmpl)
 )

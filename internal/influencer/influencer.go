@@ -859,6 +859,28 @@ func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error 
 	return nil
 }
 
+func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) error {
+	if !cfg.Sandbox {
+		if cfg.ReplyMailClient() == nil {
+			return ErrEmail
+		}
+
+		parts := strings.Split(inf.Name, " ")
+		var firstName string
+		if len(parts) > 0 {
+			firstName = parts[0]
+		}
+
+		email := templates.DealCompletionEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! Your deal for %s has been approved!", deal.Company), "shahzilabid@gmail.com", inf.Name,
+			[]string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			return ErrEmail
+		}
+	}
+	return nil
+}
+
 func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
 	if !cfg.Sandbox {
 		if cfg.ReplyMailClient() == nil {
