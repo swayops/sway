@@ -80,6 +80,9 @@ func explore(srv *Server) (int32, error) {
 					}
 					foundPost = true
 					foundDeals += 1
+					if err = inf.DealCompletion(deal, srv.Cfg); err != nil {
+						srv.Alert("Failed to alert influencer of completion: "+inf.Id, err)
+					}
 					break
 				}
 			case platform.Instagram:
@@ -91,6 +94,9 @@ func explore(srv *Server) (int32, error) {
 					}
 					foundPost = true
 					foundDeals += 1
+					if err = inf.DealCompletion(deal, srv.Cfg); err != nil {
+						srv.Alert("Failed to alert influencer of completion: "+inf.Id, err)
+					}
 					break
 				}
 			case platform.Twitter:
@@ -102,6 +108,9 @@ func explore(srv *Server) (int32, error) {
 					}
 					foundPost = true
 					foundDeals += 1
+					if err = inf.DealCompletion(deal, srv.Cfg); err != nil {
+						srv.Alert("Failed to alert influencer of completion: "+inf.Id, err)
+					}
 					break
 				}
 			case platform.Facebook:
@@ -113,6 +122,9 @@ func explore(srv *Server) (int32, error) {
 					}
 					foundPost = true
 					foundDeals += 1
+					if err = inf.DealCompletion(deal, srv.Cfg); err != nil {
+						srv.Alert("Failed to alert influencer of completion: "+inf.Id, err)
+					}
 					break
 				}
 			default:

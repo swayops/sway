@@ -273,6 +273,42 @@ func (d *Deal) Published() int32 {
 	return 0
 }
 
+func (d *Deal) IsActive() bool {
+	return d.Assigned > 0 && d.Completed == 0 && d.InfluencerId != ""
+}
+
+func (d *Deal) IsComplete() bool {
+	return d.Assigned > 0 && d.Completed > 0 && d.InfluencerId != ""
+}
+
+func (d *Deal) ConvertToClear() *Deal {
+	// Used to switch from ACTIVE deal to CLEAR deal
+	d.InfluencerId = ""
+	d.Assigned = 0
+	d.Completed = 0
+	d.Platforms = []string{}
+	d.AssignedPlatform = ""
+	d.Reporting = nil
+	d.Perk = nil
+	d.Spendable = 0
+
+	return d
+}
+
+func (d *Deal) ConvertToActive() *Deal {
+	// Used to switch from COMPLETED deal to ACTIVE deal
+	d.Completed = 0
+	d.PostUrl = ""
+	d.AssignedPlatform = ""
+	d.Tweet = nil
+	d.YouTube = nil
+	d.Facebook = nil
+	d.Instagram = nil
+	d.Reporting = nil
+
+	return d
+}
+
 func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
 	// Retrieves all active deals in the system!
 	var err error
@@ -287,7 +323,7 @@ func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
 			}
 
 			for _, deal := range cmp.Deals {
-				if deal.Assigned > 0 && deal.Completed == 0 && deal.InfluencerId != "" {
+				if deal.IsActive() {
 					deals = append(deals, deal)
 				}
 			}

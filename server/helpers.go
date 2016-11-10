@@ -22,8 +22,10 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+var ErrDealActive = errors.New("Deal is not active")
+
 func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
-	// Unssign the deal & update the campaign and influencer buckets
+	// Unssign the active (and not complete) deal & update the campaign and influencer buckets
 	inf, ok := s.auth.Influencers.Get(influencerId)
 	if !ok {
 		return auth.ErrInvalidUserID
@@ -32,20 +34,22 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 
 		var (
-			cmp common.Campaign
+			cmp  common.Campaign
+			deal *common.Deal
+			ok   bool
 		)
 		err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 		if err != nil {
 			return err
 		}
 
-		if deal, ok := cmp.Deals[dealId]; ok {
+		if deal, ok = cmp.Deals[dealId]; ok {
+			if deal != nil && !deal.IsActive() {
+				return ErrDealActive
+			}
+
 			// Flush all attribuets for the deal
-			deal.InfluencerId = ""
-			deal.Assigned = 0
-			deal.Completed = 0
-			deal.Platforms = []string{}
-			deal.AssignedPlatform = ""
+			deal = deal.ConvertToClear()
 			cmp.Deals[dealId] = deal
 		}
 
@@ -651,6 +655,51 @@ func emailList(s *Server, cid string, override []string) {
 	s.Notify(
 		fmt.Sprintf("Emailed %d whitelisted influencers for campaign %s", len(list), cid),
 		fmt.Sprintf("Sway has successfully emailed %d whitelisted influencers for campaign %s!", len(list), cid),
+	)
+}
+
+func emailStatusUpdate(s *Server, cid string, dbg bool) {
+	// Emails status updates to the influencers with
+	// active deals for this campaign
+	cmp := common.GetCampaign(cid, s.db, s.Cfg)
+	if cmp == nil {
+		log.Println("Cannot find campaign", cid)
+		return
+	}
+
+	if cmp.Status && !dbg {
+		// The campaign was turned back on!
+		return
+	}
+
+	var count int32
+	// Go over all deals and find any active ones!
+	for _, deal := range cmp.Deals {
+		if deal.IsActive() {
+			// We need to tell the influencer for this deal
+			// that it's been set to off now!
+			inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+			if !ok {
+				continue
+			}
+
+			if err := inf.DealUpdate(deal, s.Cfg); err != nil {
+				s.Alert("Failed to give influencer a campaign update: "+inf.Id, err)
+				continue
+			}
+
+			if err := clearDeal(s, deal.Id, inf.Id, cmp.Id, false); err != nil {
+				s.Alert("Failed to clear deal for influencer: "+inf.Id, err)
+				continue
+			}
+
+			count += 1
+		}
+	}
+
+	s.Notify(
+		fmt.Sprintf("Cleared out deals for %d  influencers for campaign %s", count, cmp.Id),
+		fmt.Sprintf("Sway has successfully cleared out %d deals for campaign %s!", count, cmp.Id),
 	)
 }
 

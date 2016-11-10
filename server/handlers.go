@@ -548,6 +548,19 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if upd.Status != nil {
+			if !*upd.Status && cmp.Status != *upd.Status {
+				// If the status has been toggled to off..
+				// Lets disactivate all currently ASSIGNED deals
+				// and email the influencer to alert them
+				go func() {
+					// Wait 15 mins before emailing
+					dbg := c.Query("dbg") == "1"
+					if !dbg {
+						time.Sleep(15 * time.Minute)
+					}
+					emailStatusUpdate(s, cmp.Id, dbg)
+				}()
+			}
 			cmp.Status = *upd.Status
 		}
 		cmp.Geos = upd.Geos
@@ -1464,11 +1477,11 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 						}
 					}
 
-					if d.Assigned > 0 && d.Completed == 0 {
+					if d.IsActive() {
 						dealsAccept += 1
 					}
 
-					if d.Assigned > 0 && d.Completed > 0 {
+					if d.IsComplete() {
 						dealsComplete += 1
 					}
 				}
@@ -2905,7 +2918,7 @@ func getAllActiveDeals(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				for _, deal := range cmp.Deals {
-					if deal.Assigned > 0 && deal.Completed == 0 {
+					if deal.IsActive() {
 						deals = append(deals, deal)
 					}
 				}
@@ -3016,13 +3029,7 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 				return err
 			}
 
-			d.Completed = 0
-			d.PostUrl = ""
-			d.AssignedPlatform = ""
-			d.Tweet = nil
-			d.YouTube = nil
-			d.Facebook = nil
-			d.Instagram = nil
+			d = d.ConvertToActive()
 
 			stats := d.TotalStats()
 			inf.PendingPayout = inf.PendingPayout - stats.Influencer
