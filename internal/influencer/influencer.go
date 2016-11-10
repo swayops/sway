@@ -767,148 +767,166 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 		ordered = ordered[0:5]
 	}
 
-	if !cfg.Sandbox {
-		if cfg.ReplyMailClient() == nil {
-			return false, ErrEmail
-		}
-
-		parts := strings.Split(inf.Name, " ")
-		var firstName string
-		if len(parts) > 0 {
-			firstName = parts[0]
-		}
-
-		email := templates.InfluencerEmail.Render(map[string]interface{}{"Name": firstName, "deal": OrderedDeals(ordered)})
-		if resp, err := cfg.ReplyMailClient().SendMessage(email, "Sway Brands requesting you!", inf.EmailAddress, inf.Name,
-			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-			return false, ErrEmail
-		}
+	if cfg.Sandbox {
+		return true, nil
 	}
+
+	if cfg.ReplyMailClient() == nil {
+		return false, ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.InfluencerEmail.Render(map[string]interface{}{"Name": firstName, "deal": OrderedDeals(ordered)})
+	if resp, err := cfg.ReplyMailClient().SendMessage(email, "Sway Brands requesting you!", inf.EmailAddress, inf.Name,
+		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return false, ErrEmail
+	}
+
 	return true, nil
 }
 
 func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
-	if !cfg.Sandbox {
-		if cfg.ReplyMailClient() == nil {
-			return ErrEmail
-		}
-
-		// If we sent this influencer a deal within the last 7 days..
-		// skip!
-		if misc.WithinLast(inf.LastEmail, 24*7) {
-			return ErrTimeout
-		}
-
-		parts := strings.Split(inf.Name, " ")
-		var firstName string
-		if len(parts) > 0 {
-			firstName = parts[0]
-		}
-
-		email := templates.InfluencerCmpEmail.Render(map[string]interface{}{"Name": firstName, "deal": []*common.Deal{deal}})
-		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("%s is requesting you!", deal.Company), inf.EmailAddress, inf.Name,
-			[]string{""})
-		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-			return ErrEmail
-		}
+	if cfg.Sandbox {
+		return nil
 	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	// If we sent this influencer a deal within the last 7 days..
+	// skip!
+	if misc.WithinLast(inf.LastEmail, 24*7) {
+		return ErrTimeout
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.InfluencerCmpEmail.Render(map[string]interface{}{"Name": firstName, "deal": []*common.Deal{deal}})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("%s is requesting you!", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
 	return nil
 }
 
 func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error {
-	if !cfg.Sandbox {
-		if cfg.ReplyMailClient() == nil {
-			return ErrEmail
-		}
-
-		parts := strings.Split(inf.Name, " ")
-		var firstName string
-		if len(parts) > 0 {
-			firstName = parts[0]
-		}
-
-		email := templates.InfluencerHeadsUpEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have 4 days to complete the deal for %s!", deal.Company), inf.EmailAddress, inf.Name,
-			[]string{""})
-		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-			return ErrEmail
-		}
+	if cfg.Sandbox {
+		return nil
 	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.InfluencerHeadsUpEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have 4 days to complete the deal for %s!", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
 	return nil
 }
 
 func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error {
-	if !cfg.Sandbox {
-		if cfg.ReplyMailClient() == nil {
-			return ErrEmail
-		}
-
-		parts := strings.Split(inf.Name, " ")
-		var firstName string
-		if len(parts) > 0 {
-			firstName = parts[0]
-		}
-
-		email := templates.InfluencerTimeoutEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s has expired!", deal.Company), inf.EmailAddress, inf.Name,
-			[]string{""})
-		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-			return ErrEmail
-		}
+	if cfg.Sandbox {
+		return nil
 	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.InfluencerTimeoutEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s has expired!", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
 	return nil
 }
 
 func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) error {
-	if !cfg.Sandbox {
-		if cfg.ReplyMailClient() == nil {
-			return ErrEmail
-		}
-
-		parts := strings.Split(inf.Name, " ")
-		var firstName string
-		if len(parts) > 0 {
-			firstName = parts[0]
-		}
-
-		email := templates.DealCompletionEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! Your deal for %s has been approved!", deal.Company), "shahzilabid@gmail.com", inf.Name,
-			[]string{""})
-		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-			return ErrEmail
-		}
+	if cfg.Sandbox {
+		return nil
 	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.DealCompletionEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! Your deal for %s has been approved!", deal.Company), "shahzilabid@gmail.com", inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
 	return nil
 }
 
 func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
-	if !cfg.Sandbox {
-		if cfg.ReplyMailClient() == nil {
-			return ErrEmail
-		}
-
-		parts := strings.Split(inf.Name, " ")
-		var firstName string
-		if len(parts) > 0 {
-			firstName = parts[0]
-		}
-
-		var delivery string
-		if inf.IsAmerican() {
-			delivery = "4 - 6"
-		} else {
-			delivery = "9 - 13"
-		}
-
-		strPayout := strconv.FormatFloat(check.Payout, 'f', 2, 64)
-
-		email := templates.CheckEmail.Render(map[string]interface{}{"Name": firstName, "Delivery": delivery, "Payout": strPayout})
-		resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your check has been mailed!"), inf.EmailAddress, inf.Name,
-			[]string{""})
-		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-			return ErrEmail
-		}
+	if cfg.Sandbox {
+		return nil
 	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	var delivery string
+	if inf.IsAmerican() {
+		delivery = "4 - 6"
+	} else {
+		delivery = "9 - 13"
+	}
+
+	strPayout := strconv.FormatFloat(check.Payout, 'f', 2, 64)
+
+	email := templates.CheckEmail.Render(map[string]interface{}{"Name": firstName, "Delivery": delivery, "Payout": strPayout})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your check has been mailed!"), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
 	return nil
 }
 
