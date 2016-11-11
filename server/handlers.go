@@ -27,6 +27,7 @@ import (
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/lob"
+	"github.com/swayops/sway/platforms/swipe"
 )
 
 ///////// Talent Agencies ///////////
@@ -327,13 +328,20 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))], false)
 		}
 
+		// We need the agency user to look at their IO status later!
+		aguser := s.auth.GetUser(cmp.AgencyId)
+		if aguser == nil || aguser.AdAgency == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			return
+		}
+
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Create their budget key
 			// NOTE: Create budget key requires cmp.Id be set
 			var spendable float64
-			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false); err != nil {
-				log.Println("Error creating budget key!", err)
+			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, aguser.AdAgency.IsIO, cuser.Advertiser.Customer); err != nil {
+				s.Alert("Error initializing budget key for "+adv.Name, err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
@@ -1686,6 +1694,8 @@ func runBilling(s *Server) gin.HandlerFunc {
 		key := budget.GetLastMonthBudgetKey()
 		dbg := c.Query("dbg") == "1"
 		if dbg {
+			// For dbg scenario, we overwrite the current
+			// month's values
 			key = budget.GetCurrentBudgetKey()
 		}
 
@@ -1731,6 +1741,11 @@ func runBilling(s *Server) gin.HandlerFunc {
 			if adAgency == nil {
 				c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for ad agency, %s", cmp.AgencyId)))
 				return
+			}
+
+			if !adAgency.IsIO {
+				// HOWEVER WE NEED TO ACCOUNT FOR CHANGES MID MONTH
+				continue
 			}
 
 			if data.Spent == 0 {
@@ -1997,12 +2012,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					return err
 				}
 
-				// Transfer over budgets for anyone regardless of status
-				// because they could set to active mid-month and would
-				// not have the full month's budget they have set (since
-				// they could have started the campaign mid-month and would
-				// have only a portion of their monthly budget)
-				if cmp.Budget > 0 {
+				if cmp.IsValid() {
 					// This will carry over any left over spendable too
 					// It will also look to check if there's a pending (lowered)
 					// budget that was saved to db last month.. and that should be
@@ -2018,11 +2028,26 @@ func runBilling(s *Server) gin.HandlerFunc {
 						log.Println("Last months store not found for", cmp.Id)
 					}
 
+					var (
+						agUser, advUser *auth.User
+					)
+					if agUser = s.auth.GetUser(cmp.AgencyId); agUser == nil || agUser.AdAgency == nil {
+						log.Println("Could not find ad agency!", cmp.AgencyId)
+						return errors.New("Could not find ad agency " + cmp.AgencyId)
+					}
+
+					if advUser = s.auth.GetUser(cmp.AdvertiserId); advUser == nil || advUser.Advertiser == nil {
+						log.Println("Could not find advertiser!", cmp.AgencyId)
+						return errors.New("Could not find advertiser " + cmp.AgencyId)
+					}
+
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
 					var spendable float64
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true); err != nil {
-						log.Println("Error creating budget key!", err)
+
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, agUser.AdAgency.IsIO, advUser.Advertiser.Customer); err != nil {
+						log.Println("BUDGET KEY INIT ERROR", err)
+						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 						return err
 					}
 
@@ -2838,6 +2863,24 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, feed)
+	}
+}
+
+func getBillingHistory(s *Server) gin.HandlerFunc {
+	// Retrieves all charges for the advertiser
+	return func(c *gin.Context) {
+		cuser := s.auth.GetUser(c.Param("id"))
+		if cuser == nil || cuser.Advertiser == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
+		var history []*swipe.History
+		if cuser.Advertiser.Customer != nil {
+			history = cuser.Advertiser.Customer.GetBillingHistory()
+		}
+
+		c.JSON(200, history)
 	}
 }
 

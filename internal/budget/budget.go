@@ -10,6 +10,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/platforms/swipe"
 )
 
 // Structure of Budget DB:
@@ -26,17 +27,24 @@ import (
 var (
 	ErrUnmarshal = errors.New("Failed to unmarshal data!")
 	ErrNotFound  = errors.New("CID not found!")
+	ErrCC        = errors.New("Credit card not found!")
 )
 
 type Store struct {
-	Budget    float64 `json:"budget,omitempty"`
-	Pending   float64 `json:"pending,omitempty"`  // If the budget was lowered, this budget will be used next month
-	Leftover  float64 `json:"leftover,omitempty"` // Left over budget from last month
-	Spendable float64 `json:"spendable,omitempty"`
-	Spent     float64 `json:"spent,omitempty"`
+	Budget    float64   `json:"budget,omitempty"`
+	Pending   float64   `json:"pending,omitempty"`  // If the budget was lowered, this budget will be used next month
+	Leftover  float64   `json:"leftover,omitempty"` // Left over budget from last month
+	Spendable float64   `json:"spendable,omitempty"`
+	Spent     float64   `json:"spent,omitempty"`
+	Charges   []*Charge `json:"charges,omitempty"`
 }
 
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing bool) (float64, error) {
+type Charge struct {
+	Timestamp int32   `json:"ts,omitempty"`
+	Amount    float64 `json:"amount,omitempty"`
+}
+
+func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing, isIO bool, cust *swipe.Customer) (float64, error) {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	var spendable float64
 
@@ -83,6 +91,18 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			Spendable: spendable,
 		}
 
+		// Charge the campaign for SPENDABLE unless it's an IO campaign!
+		if !isIO {
+			// CHARGE!
+			if cust == nil {
+				return ErrCC
+			}
+
+			if err := cust.Charge(cmp.Name, cmp.Id, monthlyBudget); err != nil {
+				return err
+			}
+		}
+
 		st[cmp.Id] = store
 
 		// Log the budget!
@@ -90,6 +110,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			"action":     "insertion",
 			"campaignId": cmp.Id,
 			"store":      store,
+			"io":         isIO,
 		}); err != nil {
 			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable)
 			return err
@@ -105,7 +126,6 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 
 		return nil
 	}); err != nil {
-		log.Println("Error when creating budget key", err)
 		return 0, err
 	}
 	return spendable, nil
@@ -150,6 +170,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64
 			Leftover:  store.Leftover,
 			Spendable: store.Spendable + tbaBudget,
 			Spent:     store.Spent,
+			Charges:   store.Charges,
 		}
 
 		st[cid] = newStore
@@ -173,6 +194,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64
 			Leftover:  store.Leftover,
 			Spendable: store.Spendable,
 			Spent:     store.Spent,
+			Charges:   store.Charges,
 			Pending:   newBudget,
 		}
 

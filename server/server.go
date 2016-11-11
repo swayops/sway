@@ -13,6 +13,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/hoisie/mustache"
+	"github.com/stripe/stripe-go"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
@@ -59,6 +60,12 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		budgetDb:  budgetDb,
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
+	}
+
+	if cfg.Sandbox {
+		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
+	} else {
+		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
 	}
 
 	err := srv.initializeDBs(cfg)
@@ -118,6 +125,11 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			Email:    AdAdminEmail,
 			AdAgency: &auth.AdAgency{},
 		}
+
+		if cfg.Sandbox {
+			u.AdAgency.IsIO = true
+		}
+
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
 		}
@@ -322,6 +334,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		putAdvertiser, nil)
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
+	verifyGroup.GET("/billingHistory/:id", getBillingHistory(srv))
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)
@@ -433,11 +446,11 @@ func (srv *Server) Run() error {
 }
 
 func (srv *Server) Alert(msg string, err error) {
-	log.Println(msg, err)
-
 	if srv.Cfg.Sandbox {
 		return
 	}
+
+	log.Println(msg, err)
 
 	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
 	for _, addr := range mailingList {

@@ -20,13 +20,27 @@ import (
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/platforms/swipe"
 )
 
 type M map[string]interface{}
 
 var (
-	printResp = flag.Bool("pr", os.Getenv("PR") != "", "print responses")
-	genData   = flag.Bool("gen", os.Getenv("gen") != "", "leave the test data")
+	printResp  = flag.Bool("pr", os.Getenv("PR") != "", "print responses")
+	genData    = flag.Bool("gen", os.Getenv("gen") != "", "leave the test data")
+	creditCard = &swipe.CC{
+		FirstName:  "John",
+		LastName:   "Smith",
+		Address:    "8 Saint Elias",
+		City:       "Trabuco Canyon",
+		State:      "CA",
+		Country:    "US",
+		Zip:        "92679",
+		CardNumber: "4242424242424242",
+		CVC:        "123",
+		ExpMonth:   "06",
+		ExpYear:    "20",
+	}
 
 	cfg *config.Config
 
@@ -129,6 +143,7 @@ func getSignupUser() *signupUser {
 	counter++
 	id := strconv.Itoa(counter)
 	name := "John " + id
+
 	return &signupUser{
 		&auth.User{
 			Name:  name,

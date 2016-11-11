@@ -1,6 +1,9 @@
 package auth
 
-import "github.com/boltdb/bolt"
+import (
+	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/platforms/swipe"
+)
 
 type Advertiser struct {
 	ID       string `json:"id,omitempty"`
@@ -13,6 +16,11 @@ type Advertiser struct {
 
 	// Advertiser level influencer blacklist keyed on InfluencerID
 	Blacklist map[string]bool `json:"blacklist,omitempty"`
+
+	Customer *swipe.Customer `json:"customer,omitempty"`
+
+	// Tmp field used to pass in a new credit card
+	CCLoad *swipe.CC `json:"ccLoad,omitempty"`
 }
 
 func GetAdvertiser(u *User) *Advertiser {
@@ -36,6 +44,8 @@ func (a *Auth) GetAdvertiser(userID string) (adv *Advertiser) {
 
 func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	// Newly created/updated user is passed in
+	var err error
+
 	if adv == nil {
 		return ErrUnexpected
 	}
@@ -68,6 +78,18 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 		}
 	}
 
+	// Generate a Stripe Customer for an advertiser who passes in
+	// credit card
+	if adv.CCLoad != nil {
+		// A new credit card is being passed in
+		adv.Customer, err = swipe.CreateCustomer(u.Name, u.Email, adv.CCLoad)
+		if err != nil {
+			adv.CCLoad = nil
+			return err
+		}
+		adv.CCLoad = nil
+	}
+
 	u.Advertiser = adv
 
 	return nil
@@ -84,6 +106,12 @@ func (adv *Advertiser) Check() error {
 
 	if adv.DspFee == 0 {
 		return ErrInvalidFee
+	}
+
+	if adv.CCLoad != nil {
+		if err := adv.CCLoad.Check(); err != nil {
+			return err
+		}
 	}
 
 	return nil

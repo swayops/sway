@@ -107,9 +107,9 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 	if cmp.Perks != nil {
 		maxDeals = cmp.Perks.Count
 	} else {
-		// Budget is always monthly
-		// Keeping it low because acceptance rate is low
-		maxDeals = int(spendable / 1.5)
+		// Assume each deal will yield about $25
+		// Can optimize this later
+		maxDeals = int(spendable / 25)
 	}
 
 	for i := 0; i < maxDeals; i++ {
@@ -798,6 +798,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			}
 			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
 		}
+
 		if su == nil { // admin
 			return user.Update(&incUser.User).Store(s.auth, tx)
 		}
