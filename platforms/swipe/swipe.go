@@ -2,6 +2,7 @@ package swipe // Stripe combined with sway.. get it?
 
 import (
 	"errors"
+	"log"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -105,12 +106,47 @@ func (c *Customer) Charge(name, cid string, amount float64) error {
 	return err
 }
 
+func (c *Customer) Update(cc *CC) error {
+	updated := &stripe.CustomerParams{}
+	updated.SetSource(&stripe.CardParams{
+		Name:     cc.FirstName + " " + cc.LastName,
+		Address1: cc.Address,
+		City:     cc.City,
+		State:    cc.State,
+		Country:  cc.Country,
+		Zip:      cc.Zip,
+
+		Number: cc.CardNumber,
+		Month:  cc.ExpMonth,
+		Year:   cc.ExpYear,
+		CVC:    cc.CVC,
+	})
+
+	target, err := customer.Update(c.ID, updated)
+	if err != nil {
+		log.Println("IS THERE AN ERROR BRO", err)
+		return err
+	}
+
+	// Clear out confidential parts of the credit card on save
+	if len(cc.CardNumber) > 4 {
+		cc.CardNumber = cc.CardNumber[len(cc.CardNumber)-4:]
+		cc.CVC = ""
+		cc.ExpYear = ""
+		cc.ExpMonth = ""
+	}
+
+	*c = Customer{ID: target.ID, CreditCard: cc}
+	return nil
+}
+
 type History struct {
-	Name    string `json:"name"`
-	ID      string `json:"id"`
-	Amount  uint64 `json:"amount"`
-	Created int64  `json:"created"`
-	CustID  string `json:"custID"`
+	Name          string `json:"name"`
+	ID            string `json:"id"`
+	Amount        uint64 `json:"amount"`
+	Created       int64  `json:"created"`
+	CustID        string `json:"custID"`
+	TransactionID string `json:"transactionID"`
 }
 
 func (cust *Customer) GetBillingHistory() []*History {
@@ -124,7 +160,7 @@ func (cust *Customer) GetBillingHistory() []*History {
 		if ch := i.Charge(); ch != nil {
 			name, _ := ch.Meta["name"]
 			cid, _ := ch.Meta["cid"]
-			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, CustID: cust.ID}
+			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, TransactionID: ch.ID, CustID: cust.ID}
 			history = append(history, hist)
 		}
 	}

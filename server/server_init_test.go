@@ -17,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stripe/stripe-go"
 	"github.com/swayops/resty"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
@@ -38,6 +39,19 @@ var (
 		Zip:        "92679",
 		CardNumber: "4242424242424242",
 		CVC:        "123",
+		ExpMonth:   "06",
+		ExpYear:    "20",
+	}
+	newCreditCard = &swipe.CC{
+		FirstName:  "New",
+		LastName:   "CC",
+		Address:    "8 Saint Elias",
+		City:       "Trabuco Canyon",
+		State:      "CA",
+		Country:    "US",
+		Zip:        "92679",
+		CardNumber: "4242424242424242",
+		CVC:        "321",
 		ExpMonth:   "06",
 		ExpYear:    "20",
 	}
@@ -79,6 +93,7 @@ func TestMain(m *testing.M) {
 	cfg, err = config.New("./config/config.json")
 	panicIf(err)
 
+	stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
 	cfg.Sandbox = true // always set it to true just in case
 
 	if !*genData {

@@ -329,8 +329,8 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		// We need the agency user to look at their IO status later!
-		aguser := s.auth.GetUser(cmp.AgencyId)
-		if aguser == nil || aguser.AdAgency == nil {
+		ag := s.auth.GetAdAgency(cmp.AgencyId)
+		if ag == nil {
 			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
 			return
 		}
@@ -340,7 +340,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			// Create their budget key
 			// NOTE: Create budget key requires cmp.Id be set
 			var spendable float64
-			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, aguser.AdAgency.IsIO, cuser.Advertiser.Customer); err != nil {
+			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 				s.Alert("Error initializing budget key for "+adv.Name, err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -539,7 +539,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, *upd.Budget); err != nil {
+			var (
+				ag  *auth.AdAgency
+				adv *auth.Advertiser
+			)
+			if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+				log.Println("Could not find ad agency!", cmp.AgencyId)
+				c.JSON(400, misc.StatusErr("Could not find ad agency "+cmp.AgencyId))
+				return
+			}
+
+			if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+				log.Println("Could not find advertiser!", cmp.AgencyId)
+				c.JSON(400, misc.StatusErr("Could not find advertiser "+cmp.AgencyId))
+				return
+			}
+
+			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, cmp.Name, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -1726,6 +1742,12 @@ func runBilling(s *Server) gin.HandlerFunc {
 				return
 			}
 
+			if len(data.Charges) > 1 {
+				for _, blah := range data.Charges {
+					log.Println("CHARGE", *blah, cmp.Id, cmp.Name)
+				}
+			}
+
 			user = s.auth.GetUser(cmp.AdvertiserId)
 			if user != nil {
 				emails = user.Email
@@ -1743,12 +1765,10 @@ func runBilling(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			if !adAgency.IsIO {
-				// HOWEVER WE NEED TO ACCOUNT FOR CHANGES MID MONTH
-				continue
-			}
-
-			if data.Spent == 0 {
+			// If an advertiser spent money they weren't charged for
+			// send their asses an invoice
+			invoiceDelta := data.GetDelta()
+			if invoiceDelta == 0 {
 				continue
 			}
 
@@ -1776,7 +1796,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					emails,
 					fmt.Sprintf("%0.2f", dspFee*100)+"%",
 					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
-					misc.TruncateFloat(data.Spent, 2),
+					misc.TruncateFloat(invoiceDelta, 2),
 				)
 			} else {
 				// AGENCY INVOICE!
@@ -1814,7 +1834,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					emails,
 					fmt.Sprintf("%0.2f", dspFee*100)+"%",
 					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
-					misc.TruncateFloat(data.Spent, 2),
+					misc.TruncateFloat(invoiceDelta, 2),
 				)
 			}
 
@@ -2029,14 +2049,16 @@ func runBilling(s *Server) gin.HandlerFunc {
 					}
 
 					var (
-						agUser, advUser *auth.User
+						ag  *auth.AdAgency
+						adv *auth.Advertiser
 					)
-					if agUser = s.auth.GetUser(cmp.AgencyId); agUser == nil || agUser.AdAgency == nil {
+
+					if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
 						log.Println("Could not find ad agency!", cmp.AgencyId)
 						return errors.New("Could not find ad agency " + cmp.AgencyId)
 					}
 
-					if advUser = s.auth.GetUser(cmp.AdvertiserId); advUser == nil || advUser.Advertiser == nil {
+					if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
 						log.Println("Could not find advertiser!", cmp.AgencyId)
 						return errors.New("Could not find advertiser " + cmp.AgencyId)
 					}
@@ -2045,7 +2067,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					// NOTE: last month's leftover spendable will be carried over
 					var spendable float64
 
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, agUser.AdAgency.IsIO, advUser.Advertiser.Customer); err != nil {
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
 						log.Println("BUDGET KEY INIT ERROR", err)
 						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 						return err
@@ -2869,15 +2891,15 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 func getBillingHistory(s *Server) gin.HandlerFunc {
 	// Retrieves all charges for the advertiser
 	return func(c *gin.Context) {
-		cuser := s.auth.GetUser(c.Param("id"))
-		if cuser == nil || cuser.Advertiser == nil {
+		adv := s.auth.GetAdvertiser(c.Param("id"))
+		if adv == nil {
 			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
 		var history []*swipe.History
-		if cuser.Advertiser.Customer != nil {
-			history = cuser.Advertiser.Customer.GetBillingHistory()
+		if adv.Customer != nil {
+			history = adv.Customer.GetBillingHistory()
 		}
 
 		c.JSON(200, history)

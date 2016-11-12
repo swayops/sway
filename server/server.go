@@ -63,6 +63,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	}
 
 	if cfg.Sandbox {
+		stripe.LogLevel = 0
 		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
 	} else {
 		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"

@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"log"
+
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/platforms/swipe"
 )
@@ -81,12 +83,23 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	// Generate a Stripe Customer for an advertiser who passes in
 	// credit card
 	if adv.CCLoad != nil {
-		// A new credit card is being passed in
-		adv.Customer, err = swipe.CreateCustomer(u.Name, u.Email, adv.CCLoad)
-		if err != nil {
-			adv.CCLoad = nil
-			return err
+		log.Println("CC LOAD COMING IN", adv.CCLoad.FirstName, adv.ID)
+		if adv.Customer == nil {
+			// First time this advertiser is getting a credit card
+			adv.Customer, err = swipe.CreateCustomer(u.Name, u.Email, adv.CCLoad)
+			if err != nil {
+				adv.CCLoad = nil
+				return err
+			}
+		} else {
+			// Credit card is being updated
+			err = adv.Customer.Update(adv.CCLoad)
+			if err != nil {
+				adv.CCLoad = nil
+				return err
+			}
 		}
+
 		adv.CCLoad = nil
 	}
 

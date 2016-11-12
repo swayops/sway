@@ -398,7 +398,7 @@ func TestCampaigns(t *testing.T) {
 	cmp := common.Campaign{
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
-		Name:         "The Day Walker",
+		Name:         "American Beauty",
 		Instagram:    true,
 		Male:         true,
 		Female:       true,
@@ -475,7 +475,7 @@ func TestDeals(t *testing.T) {
 		Status:       true,
 		AdvertiserId: adv.ExpID,
 		Budget:       5000.5,
-		Name:         "The Day Walker",
+		Name:         "Get the supplies Rick",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -826,7 +826,7 @@ func TestDeals(t *testing.T) {
 		Status:       true,
 		AdvertiserId: adv.ExpID,
 		Budget:       1000,
-		Name:         "The Day Walker",
+		Name:         "Watchu Talkin About Willis",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -1147,7 +1147,7 @@ func TestPerks(t *testing.T) {
 		Status:       true,
 		AdvertiserId: adv.ExpID,
 		Budget:       150.5,
-		Name:         "The Day Walker",
+		Name:         "Warriors blew a 3-1 lead",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -1650,7 +1650,7 @@ func TestInfluencerEmail(t *testing.T) {
 			Status:       true,
 			AdvertiserId: adv.ExpID,
 			Budget:       float64(i + 150),
-			Name:         "The Day Walker " + strconv.Itoa(i),
+			Name:         "Auto Campaign " + strconv.Itoa(i),
 			Twitter:      true,
 			Male:         true,
 			Female:       true,
@@ -1877,7 +1877,7 @@ func TestInfluencerGeo(t *testing.T) {
 		Status:       true,
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
-		Name:         "The Day Walker",
+		Name:         "Geo Campaign",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -2146,7 +2146,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 		Status:       true,
 		AdvertiserId: st.ID,
 		Budget:       1000,
-		Name:         "The Day Walker",
+		Name:         "shiyeeeet",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -2464,7 +2464,7 @@ func TestScraps(t *testing.T) {
 		Status:       true,
 		AdvertiserId: st.ID,
 		Budget:       1000,
-		Name:         "The Day Walker",
+		Name:         "Sick of coming up with campaign names",
 		Instagram:    true,
 		Male:         true,
 		Female:       true,
@@ -2599,7 +2599,7 @@ func TestInfluencerClearout(t *testing.T) {
 		Status:       true,
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
-		Name:         "The Day Walker",
+		Name:         "Insert cool campaign name",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -2710,7 +2710,6 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	// Create a campaign WITHOUT Agency having IO status but a CC attached!
 	ag := getSignupUser()
 	ag.AdAgency = &auth.AdAgency{}
 	r = rst.DoTesting(t, "POST", "/signUp", ag, nil)
@@ -2718,6 +2717,60 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
+	// Lets try updating credit card information and make sure it works
+	adv1 := getSignupUser()
+	adv1.ParentID = ag.ExpID
+	adv1.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var advertiser1 auth.Advertiser
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv1.ExpID, nil, &advertiser1)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if advertiser1.Customer == nil || advertiser1.Customer.CreditCard == nil {
+		t.Fatal("No credit card assigned")
+	}
+
+	if advertiser1.Customer.CreditCard.FirstName != creditCard.FirstName {
+		t.Fatal("Wrong credit card number")
+	}
+
+	advUpd1 := &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, Customer: advertiser1.Customer, CCLoad: newCreditCard}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv1.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var updatedAdv1 auth.Advertiser
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv1.ExpID, nil, &updatedAdv1)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if updatedAdv1.Customer == nil || updatedAdv1.Customer.CreditCard == nil {
+		t.Fatal("No credit card assigned")
+	}
+
+	if updatedAdv1.Customer.CreditCard.FirstName != newCreditCard.FirstName {
+		t.Fatal("Name not updated")
+	}
+
+	// Make sure the customer id is still the same
+	log.Println(updatedAdv1.Customer.ID, advertiser1.Customer.ID)
+	if updatedAdv1.Customer.ID != advertiser1.Customer.ID {
+		t.Fatal("Customer ID wrongfully updated")
+	}
+
+	// Create a campaign WITHOUT Agency having IO status but a CC attached!
 	adv := getSignupUser()
 	adv.ParentID = ag.ExpID
 	adv.Advertiser = &auth.Advertiser{
@@ -2734,7 +2787,7 @@ func TestStripe(t *testing.T) {
 		Status:       true,
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
-		Name:         "The Day Walker",
+		Name:         "The Stripe Walker",
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
@@ -2819,7 +2872,17 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Unexpected amounts")
 	}
 
-	// customer.Del(hist[0].CustID)
+	// Lets make sure budget store has NO charges
+	var store budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(store.Charges) != 1 {
+		t.Fatal("Charge not recorded")
+	}
 
 	// Lets create an agency with NO IO STATUS and advertiser with no CC
 	// and try creating a campaign (should error)
@@ -2913,7 +2976,7 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Where'd billing history come from?! Should have none")
 	}
 
-	// Lets use an IO agency WITH a CC adv and try creating a campaign (should work but no charge)
+	// Lets use an IO agency WITH a CC adv and try creating a campaign (should work but no charge to stripe)
 	advCC := getSignupUser()
 	advCC.ParentID = agIO.ExpID
 	advCC.Advertiser = &auth.Advertiser{
@@ -2970,6 +3033,193 @@ func TestStripe(t *testing.T) {
 	}
 
 	// customer.Del(suser.Advertiser.Customer.ID)
+
+	// Lets verify charges are correct in the budget store
+	// The last campaign created was IO based so IO bool should be true
+	// r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// 	return
+	// }
+
+	// if len(store.Charges) != 1 {
+	// 	t.Fatal("Charge not recorded")
+	// }
+
+	// if !store.Charges[0].IsIO {
+	// 	t.Fatal("Should not be IO based charge")
+	// }
+
+	// if store.Charges[0].Amount == 0 {
+	// 	t.Fatal("Amount value incorrect")
+	// }
+
+	// if store.Charges[0].Timestamp == 0 {
+	// 	t.Fatal("Timestamp value incorrect")
+	// }
+
+	// Lets increase campaign's budget.. need to make sure budget updates
+	// and multiple charges appear
+	// budgetVal := float64(5000)
+	// upd := &CampaignUpdate{Budget: &budgetVal}
+	// r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, upd, nil)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// 	return
+	// }
+
+	// r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// 	return
+	// }
+
+	// if len(store.Charges) != 2 {
+	// 	t.Fatal("Bad len on charges")
+	// }
+
+	// var foundCC bool
+	// for _, ch := range store.Charges {
+	// 	if !ch.IsIO {
+	// 		foundCC = true
+	// 	}
+	// }
+
+	// if foundCC {
+	// 	t.Fatal("Should all be IO based charges!")
+	// }
+
+	// Lets create a non-io agency and campaign
+	// Then switch the agency to non IO, and create a campaign
+	agIOSwitch := getSignupUser()
+	agIOSwitch.AdAgency = &auth.AdAgency{
+		IsIO: false,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", agIOSwitch, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	advIOSwitch := getSignupUser()
+	advIOSwitch.ParentID = agIOSwitch.ExpID
+	advIOSwitch.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", advIOSwitch, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cmpIOSwitch := common.Campaign{
+		Status:       true,
+		AdvertiserId: advIOSwitch.ExpID,
+		Budget:       150,
+		Name:         "IO Switch",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var newSt Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmpIOSwitch, &newSt)
+	if r.Status != 200 {
+		t.Fatal("Unexpected status code!")
+	}
+
+	// Lets verify that we have 1  charge
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+newSt.ID, nil, &store)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(store.Charges) != 1 {
+		t.Fatal("Charge not recorded")
+	}
+
+	if store.Charges[0].Amount == 0 {
+		t.Fatal("Amount value incorrect")
+	}
+
+	if store.Charges[0].Timestamp == 0 {
+		t.Fatal("Timestamp value incorrect")
+	}
+
+	// Lets switch the agency to IO now and create a campaign
+	agUpd := &auth.User{AdAgency: &auth.AdAgency{
+		ID:     agIOSwitch.ExpID,
+		IsIO:   true,
+		Name:   "Post update",
+		Status: true,
+	}}
+
+	r = rst.DoTesting(t, "PUT", "/adAgency/"+agIOSwitch.ExpID, agUpd, nil)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets make sure its been switched
+	var newAg *auth.AdAgency
+	r = rst.DoTesting(t, "GET", "/adAgency/"+agIOSwitch.ExpID, nil, &newAg)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !newAg.IsIO {
+		t.Fatal("WTF WE JUST SWITCHED IT ON")
+	}
+
+	// Time to create a campaign with no CC
+	advCCSwitch := getSignupUser()
+	advCCSwitch.ParentID = agIOSwitch.ExpID
+	advCCSwitch.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", advCCSwitch, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cmpCCSwitch := common.Campaign{
+		Status:       true,
+		AdvertiserId: advCCSwitch.ExpID,
+		Budget:       150,
+		Name:         "CC Switch Campaign",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var switchSt Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmpCCSwitch, &switchSt)
+	if r.Status != 200 {
+		t.Fatal("Unexpected status code!")
+	}
+
+	// OK whew.. lets check charge now!
+	var lastStore budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+switchSt.ID, nil, &lastStore)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(lastStore.Charges) != 0 {
+		t.Fatal("Bad len on charges")
+	}
+
 	return
 }
 
@@ -3056,8 +3306,9 @@ func TestBilling(t *testing.T) {
 
 			// For the second last campaign lets increase the budget!
 			trueVal := true
-			budgetVal := float64(5000)
+
 			name := "The day wlker"
+			budgetVal := float64(5000)
 			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
 			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
 			if r.Status != 200 {

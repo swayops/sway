@@ -36,12 +36,40 @@ type Store struct {
 	Leftover  float64   `json:"leftover,omitempty"` // Left over budget from last month
 	Spendable float64   `json:"spendable,omitempty"`
 	Spent     float64   `json:"spent,omitempty"`
-	Charges   []*Charge `json:"charges,omitempty"`
+	Charges   []*Charge `json:"charges,omitempty"` // Used for billing
 }
 
 type Charge struct {
 	Timestamp int32   `json:"ts,omitempty"`
 	Amount    float64 `json:"amount,omitempty"`
+}
+
+func (st *Store) AddCharge(amount float64) {
+	charge := &Charge{
+		Amount:    amount,
+		Timestamp: int32(time.Now().Unix()),
+	}
+	if st.Charges == nil {
+		st.Charges = []*Charge{charge}
+	} else {
+		st.Charges = append(st.Charges, charge)
+	}
+}
+
+func (st *Store) GetDelta() float64 {
+	// Goes over spend values for the month and compares them with the charges.
+	// Returns the dollar value for the amount that was SPENT but not CHARGED
+	var charged float64
+	for _, charge := range st.Charges {
+		charged += charge.Amount
+	}
+
+	delta := st.Spent - charged
+	if delta < 0 {
+		return 0
+	}
+
+	return delta
 }
 
 func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing, isIO bool, cust *swipe.Customer) (float64, error) {
@@ -91,7 +119,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			Spendable: spendable,
 		}
 
-		// Charge the campaign for SPENDABLE unless it's an IO campaign!
+		// Charge the campaign for budget unless it's an IO campaign!
 		if !isIO {
 			// CHARGE!
 			if cust == nil {
@@ -101,6 +129,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			if err := cust.Charge(cmp.Name, cmp.Id, monthlyBudget); err != nil {
 				return err
 			}
+			store.AddCharge(monthlyBudget)
 		}
 
 		st[cmp.Id] = store
@@ -131,7 +160,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 	return spendable, nil
 }
 
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64) (float64, error) {
+func AdjustBudget(db *bolt.DB, cfg *config.Config, cid, name string, newBudget float64, isIO bool, cust *swipe.Customer) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
 		return 0, err
@@ -171,6 +200,18 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid string, newBudget float64
 			Spendable: store.Spendable + tbaBudget,
 			Spent:     store.Spent,
 			Charges:   store.Charges,
+		}
+
+		if !isIO {
+			// CHARGE!
+			if cust == nil {
+				return 0, ErrCC
+			}
+
+			if err := cust.Charge(name, cid, tbaBudget); err != nil {
+				return 0, err
+			}
+			newStore.AddCharge(tbaBudget)
 		}
 
 		st[cid] = newStore

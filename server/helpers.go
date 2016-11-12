@@ -107,9 +107,9 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 	if cmp.Perks != nil {
 		maxDeals = cmp.Perks.Count
 	} else {
-		// Assume each deal will yield about $25
+		// Assume each deal will yield about $15
 		// Can optimize this later
-		maxDeals = int(spendable / 25)
+		maxDeals = int(spendable / 15)
 	}
 
 	for i := 0; i < maxDeals; i++ {
@@ -809,4 +809,28 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 	}
 
 	c.JSON(200, misc.StatusOK(id))
+}
+
+func getAllCampaigns(db *bolt.DB, cfg *config.Config) []*common.Campaign {
+	// Returns a list of ALL campaigns in the system
+	campaignList := []*common.Campaign{}
+
+	if err := db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+			cmp := &common.Campaign{}
+			if err := json.Unmarshal(v, cmp); err != nil {
+				log.Printf("error when unmarshalling campaign %s: %v", v, err)
+				return nil
+			}
+
+			campaignList = append(campaignList, cmp)
+
+			return
+		})
+		return nil
+	}); err != nil {
+		log.Println("Err getting all active campaigns", err)
+	}
+
+	return campaignList
 }
