@@ -93,7 +93,7 @@ func initializeDirs(cfg *config.Config) {
 
 func (srv *Server) initializeDBs(cfg *config.Config) error {
 	if err := srv.db.Update(func(tx *bolt.Tx) error {
-		for _, val := range cfg.AllBuckets() {
+		for _, val := range cfg.AllBuckets(cfg.Bucket) {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
@@ -161,11 +161,14 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 	}
 
 	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.BudgetBucket)); err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
-			return err
+		for _, val := range cfg.AllBuckets(cfg.BudgetBuckets) {
+			log.Println("Initializing budget bucket", val)
+			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
+				return fmt.Errorf("create bucket: %s", err)
+			}
+			if err := misc.InitIndex(tx, val, 1); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {

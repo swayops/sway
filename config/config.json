@@ -13,7 +13,10 @@
 	"sandbox": true,
 
 	"budgetDbName": "budget",
-	"budgetBucket": "budget",
+	"budgetBuckets": {
+		"budget": "budget",
+		"balance": "balance"
+	},
 
 	"authDbName": "auth",
 

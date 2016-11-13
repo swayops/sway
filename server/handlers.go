@@ -2069,7 +2069,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 						// Don't return because an agency that switched from IO to CC that has
 						// advertisers with no CC will always error here.. just alert!
-						continue
+						return nil
 					}
 
 					// Add fresh deals for this month

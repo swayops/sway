@@ -85,11 +85,15 @@ type Config struct {
 		Key  string `json:"keyFile"`
 	} `json:"tls"`
 
-	DBPath       string `json:"dbPath"`
-	DBName       string `json:"dbName"`
-	BudgetDBName string `json:"budgetDbName"`
-	BudgetBucket string `json:"budgetBucket"`
-	AuthDBName   string `json:"authDbName"`
+	DBPath        string `json:"dbPath"`
+	DBName        string `json:"dbName"`
+	BudgetDBName  string `json:"budgetDbName"`
+	BudgetBuckets struct {
+		Budget  string `json:"budget"`
+		Balance string `json:"balance"`
+	} `json:"budgetBuckets"`
+
+	AuthDBName string `json:"authDbName"`
 
 	Domain        string `json:"domain"`    // for cookies, important
 	DashURL       string `json:"dashURL"`   // this is mainly used for internal directs
@@ -168,8 +172,8 @@ type Config struct {
 	ClickUrl string `json:"clickUrl"`
 }
 
-func (c *Config) AllBuckets() []string {
-	rv := reflect.ValueOf(c.Bucket)
+func (c *Config) AllBuckets(bk interface{}) []string {
+	rv := reflect.ValueOf(bk)
 	out := make([]string, 0, rv.NumField())
 	for i := 0; i < cap(out); i++ {
 		if v := rv.Field(i).String(); v != "" {

@@ -13,7 +13,7 @@ import (
 	"github.com/swayops/sway/platforms/swipe"
 )
 
-// Structure of Budget DB:
+// Structure of Budget DB (Budget DB):
 // {
 // 	"01-2016": {
 // 		"CID": {
@@ -22,6 +22,12 @@ import (
 // 			"spendable": 10,
 // 		}
 // 	}
+// }
+
+// Structure of Budget DB (Balance DB):
+// Value is balance available
+// {
+// 	"ADVERTISER ID": 234.234
 // }
 
 var (
@@ -78,7 +84,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
 		key := getBudgetKey()
-		b := tx.Bucket([]byte(cfg.BudgetBucket)).Get([]byte(key))
+		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
 
 		var st map[string]*Store
 		if len(b) == 0 {
@@ -149,7 +155,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			return err
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBucket, key, b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
 			return err
 		}
 
@@ -258,7 +264,7 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid, name string, newBudget f
 			return
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBucket, getBudgetKey(), b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
 			return
 		}
 		return
@@ -291,7 +297,7 @@ func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*St
 			key = getBudgetKey()
 		}
 
-		b := tx.Bucket([]byte(cfg.BudgetBucket)).Get([]byte(key))
+		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
 		if err = json.Unmarshal(b, &st); err != nil {
 			return ErrUnmarshal
 		}
@@ -408,7 +414,7 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
 		key := getBudgetKey()
-		b := tx.Bucket([]byte(cfg.BudgetBucket)).Get([]byte(key))
+		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
 
 		var st map[string]*Store
 		if len(b) == 0 {
@@ -425,7 +431,7 @@ func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error 
 			return
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBucket, key, b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
 			return
 		}
 
