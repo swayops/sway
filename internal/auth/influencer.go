@@ -105,6 +105,7 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		return err
 	}
 
+	u.ParentID = rinf.AgencyId
 	u.InfluencerLoad = nil
 	u.Influencer = &Influencer{rinf}
 

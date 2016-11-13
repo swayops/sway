@@ -54,30 +54,22 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 	type userWithCounts struct {
 		*auth.User
-		SubCount int `json:"subCount"`
+		SubCount int64 `json:"subCount"`
 	}
 	return func(c *gin.Context) {
 		var (
 			all    []*userWithCounts
-			counts map[string]int
-			uids   []string
 		)
 
 		s.db.View(func(tx *bolt.Tx) error {
 			s.auth.GetUsersByTypeTx(tx, auth.TalentAgencyScope, func(u *auth.User) error {
 				if u.TalentAgency != nil {
-					all = append(all, &userWithCounts{u.Trim(), 0})
-					uids = append(uids, u.ID)
+					all = append(all, &userWithCounts{u.Trim(), s.auth.Influencers.GetCount(u.ID)})
 				}
 				return nil
 			})
-			counts = s.auth.GetChildCountsTx(tx, uids...)
 			return nil
 		})
-
-		for _, u := range all {
-			u.SubCount = counts[u.ID]
-		}
 		c.JSON(200, all)
 	}
 }
@@ -780,6 +772,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
+
+		user.ParentID = inf.AgencyId
 
 		if err := s.db.Update(func(tx *bolt.Tx) error {
 			changed, err := savePassword(s, tx, upd.OldPass, upd.Pass, upd.Pass2, user)
