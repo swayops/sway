@@ -25,7 +25,8 @@ import (
 )
 
 var (
-	ErrAgency = errors.New("No talent agency defined! Please contact engage@swayops.com")
+	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
+	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
 )
 
 // The json struct accepted by the putInfluencer method
@@ -145,13 +146,16 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		inf.Address = addr
 	}
 
-	agencyId := common.GetIDFromInvite(inviteCode)
-	if agencyId == "" {
+	var agencyId string
+	if inviteCode == "" {
+		// No invite code passed in
 		agencyId = defAgencyID
-	}
-
-	if agencyId == "" {
-		return nil, ErrAgency
+	} else {
+		// There was an invite code passed in
+		agencyId = common.GetIDFromInvite(inviteCode)
+		if agencyId == "" {
+			return nil, ErrInviteCode
+		}
 	}
 
 	inf.AgencyId = agencyId
