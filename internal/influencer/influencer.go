@@ -563,6 +563,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		return infDeals
 	}
 
+	if !inf.Audited() && !cfg.Sandbox {
+		// If the user has no categories or gender.. this means
+		// the assign game hasn't gotten to them yet
+		// NOTE: Allowing sandbox because tests don't do the
+		// assign game
+		return infDeals
+	}
+
 	if location == nil {
 		location = inf.GetLatestGeo()
 	}
@@ -957,6 +965,10 @@ func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+func (inf *Influencer) Audited() bool {
+	return len(inf.Categories) > 0 && (inf.Male || inf.Female)
 }
 
 func (inf *Influencer) IsViral(deal *common.Deal, stats *common.Stats) bool {

@@ -604,7 +604,6 @@ type InfluencerUpdate struct {
 	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
 	YouTubeId   string          `json:"youtube,omitempty"`           // Required to send
 	DealPing    *bool           `json:"dealPing" binding:"required"` // Required to send
-	Gender      string          `json:"gender,omitempty"`            // Required to send
 	Address     lob.AddressLoad `json:"address,omitempty"`           // Required to send
 
 	InviteCode string `json:"inviteCode,omitempty"` // Optional
@@ -699,16 +698,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 				agencyId = auth.SwayOpsTalentAgencyID
 			}
 			inf.AgencyId = agencyId
-		}
-
-		// Update Gender
-		switch upd.Gender {
-		case "mf", "fm", "unicorn":
-			inf.Male, inf.Female = true, true
-		case "m":
-			inf.Male, inf.Female = true, false
-		case "f":
-			inf.Male, inf.Female = false, true
 		}
 
 		// Update DealPing
