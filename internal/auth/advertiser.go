@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"log"
-
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/platforms/swipe"
 )
@@ -19,7 +17,7 @@ type Advertiser struct {
 	// Advertiser level influencer blacklist keyed on InfluencerID
 	Blacklist map[string]bool `json:"blacklist,omitempty"`
 
-	Customer *swipe.Customer `json:"customer,omitempty"`
+	Customer string `json:"customer,omitempty"` // Stripe ID
 
 	// Tmp field used to pass in a new credit card
 	CCLoad *swipe.CC `json:"ccLoad,omitempty"`
@@ -83,8 +81,7 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	// Generate a Stripe Customer for an advertiser who passes in
 	// credit card
 	if adv.CCLoad != nil {
-		log.Println("CC LOAD COMING IN", adv.CCLoad.FirstName, adv.ID)
-		if adv.Customer == nil {
+		if adv.Customer == "" {
 			// First time this advertiser is getting a credit card
 			adv.Customer, err = swipe.CreateCustomer(u.Name, u.Email, adv.CCLoad)
 			if err != nil {
@@ -93,7 +90,7 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 			}
 		} else {
 			// Credit card is being updated
-			err = adv.Customer.Update(adv.CCLoad)
+			err = swipe.Update(adv.Customer, adv.CCLoad)
 			if err != nil {
 				adv.CCLoad = nil
 				return err

@@ -2736,12 +2736,17 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	if advertiser1.Customer == nil || advertiser1.Customer.CreditCard == nil {
+	var adv1BillingInfo BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv1.ExpID, nil, &adv1BillingInfo)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+	if adv1BillingInfo.CreditCard == nil {
 		t.Fatal("No credit card assigned")
 	}
 
-	if advertiser1.Customer.CreditCard.FirstName != creditCard.FirstName {
-		t.Fatal("Wrong credit card number")
+	if adv1BillingInfo.CreditCard.FirstName != creditCard.FirstName {
+		t.Fatal("Wrong name")
 	}
 
 	advUpd1 := &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, Customer: advertiser1.Customer, CCLoad: newCreditCard}}
@@ -2750,23 +2755,22 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	var updatedAdv1 auth.Advertiser
-	r = rst.DoTesting(t, "GET", "/advertiser/"+adv1.ExpID, nil, &updatedAdv1)
+	var upd1BillingInfo BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv1.ExpID, nil, &upd1BillingInfo)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-	if updatedAdv1.Customer == nil || updatedAdv1.Customer.CreditCard == nil {
+	if upd1BillingInfo.CreditCard == nil {
 		t.Fatal("No credit card assigned")
 	}
 
-	if updatedAdv1.Customer.CreditCard.FirstName != newCreditCard.FirstName {
+	if upd1BillingInfo.CreditCard.FirstName != newCreditCard.FirstName {
 		t.Fatal("Name not updated")
 	}
 
 	// Make sure the customer id is still the same
-	log.Println(updatedAdv1.Customer.ID, advertiser1.Customer.ID)
-	if updatedAdv1.Customer.ID != advertiser1.Customer.ID {
+	if upd1BillingInfo.ID != adv1BillingInfo.ID {
 		t.Fatal("Customer ID wrongfully updated")
 	}
 
@@ -2803,12 +2807,13 @@ func TestStripe(t *testing.T) {
 	}
 
 	// This should have charged the stripe card for the above campaign!
-	var hist []*swipe.History
-	r = rst.DoTesting(t, "GET", "/billingHistory/"+adv.ExpID, nil, &hist)
+	var bHist BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv.ExpID, nil, &bHist)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
+	hist := bHist.History
 	if len(hist) != 1 {
 		t.Fatal("Missing billing history")
 	}
@@ -2843,11 +2848,13 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	r = rst.DoTesting(t, "GET", "/billingHistory/"+adv.ExpID, nil, &hist)
+	var newHist BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv.ExpID, nil, &newHist)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
+	hist = newHist.History
 	if len(hist) != 2 {
 		t.Fatal("Missing billing history")
 	}
@@ -2967,11 +2974,13 @@ func TestStripe(t *testing.T) {
 	}
 
 	// Make sure theres nothing in billing history!
-	r = rst.DoTesting(t, "GET", "/billingHistory/"+advIO.ExpID, nil, &hist)
+	var ioHist BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+advIO.ExpID, nil, &ioHist)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
+	hist = ioHist.History
 	if len(hist) != 0 {
 		t.Fatal("Where'd billing history come from?! Should have none")
 	}
@@ -3008,11 +3017,13 @@ func TestStripe(t *testing.T) {
 	}
 
 	// Make sure theres nothing in billing history!
-	r = rst.DoTesting(t, "GET", "/billingHistory/"+advCC.ExpID, nil, &hist)
+	var ccHist BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+advCC.ExpID, nil, &ccHist)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
+	hist = ccHist.History
 	if len(hist) != 0 {
 		t.Fatal("Where'd billing history come from?! Should have none")
 	}
@@ -3024,70 +3035,9 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	if suser.Advertiser == nil || suser.Advertiser.Customer == nil {
+	if suser.Advertiser == nil || suser.Advertiser.Customer == "" {
 		t.Fatal("Missing stripe customer")
 	}
-
-	if suser.Advertiser.Customer.CreditCard == nil || len(suser.Advertiser.Customer.CreditCard.CardNumber) != 4 || suser.Advertiser.Customer.CreditCard.CVC != "" {
-		t.Fatal("CC not stored correctly")
-	}
-
-	// customer.Del(suser.Advertiser.Customer.ID)
-
-	// Lets verify charges are correct in the budget store
-	// The last campaign created was IO based so IO bool should be true
-	// r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store)
-	// if r.Status != 200 {
-	// 	t.Fatal("Bad status code!")
-	// 	return
-	// }
-
-	// if len(store.Charges) != 1 {
-	// 	t.Fatal("Charge not recorded")
-	// }
-
-	// if !store.Charges[0].IsIO {
-	// 	t.Fatal("Should not be IO based charge")
-	// }
-
-	// if store.Charges[0].Amount == 0 {
-	// 	t.Fatal("Amount value incorrect")
-	// }
-
-	// if store.Charges[0].Timestamp == 0 {
-	// 	t.Fatal("Timestamp value incorrect")
-	// }
-
-	// Lets increase campaign's budget.. need to make sure budget updates
-	// and multiple charges appear
-	// budgetVal := float64(5000)
-	// upd := &CampaignUpdate{Budget: &budgetVal}
-	// r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, upd, nil)
-	// if r.Status != 200 {
-	// 	t.Fatal("Bad status code!")
-	// 	return
-	// }
-
-	// r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store)
-	// if r.Status != 200 {
-	// 	t.Fatal("Bad status code!")
-	// 	return
-	// }
-
-	// if len(store.Charges) != 2 {
-	// 	t.Fatal("Bad len on charges")
-	// }
-
-	// var foundCC bool
-	// for _, ch := range store.Charges {
-	// 	if !ch.IsIO {
-	// 		foundCC = true
-	// 	}
-	// }
-
-	// if foundCC {
-	// 	t.Fatal("Should all be IO based charges!")
-	// }
 
 	// Lets create a non-io agency and campaign
 	// Then switch the agency to non IO, and create a campaign
@@ -3148,6 +3098,25 @@ func TestStripe(t *testing.T) {
 
 	if store.Charges[0].Timestamp == 0 {
 		t.Fatal("Timestamp value incorrect")
+	}
+
+	// Lets increase the budget and make sure TWO charges show up
+	budgetVal := float64(5000)
+	upd := &CampaignUpdate{Budget: &budgetVal}
+	r = rst.DoTesting(t, "PUT", "/campaign/"+newSt.ID, upd, nil)
+	if r.Status != 200 {
+	    t.Fatal("Bad status code!")
+	    return
+	}
+
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+newSt.ID, nil, &store)
+	if r.Status != 200 {
+	    t.Fatal("Bad status code!")
+	    return
+	}
+
+	if len(store.Charges) != 2 {
+	    t.Fatal("Bad len on charges")
 	}
 
 	// Lets switch the agency to IO now and create a campaign

@@ -72,7 +72,7 @@ func (st *Store) GetDelta() float64 {
 	return delta
 }
 
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing, isIO bool, cust *swipe.Customer) (float64, error) {
+func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing, isIO bool, cust string) (float64, error) {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	var spendable float64
 
@@ -122,11 +122,11 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		// Charge the campaign for budget unless it's an IO campaign!
 		if !isIO {
 			// CHARGE!
-			if cust == nil {
+			if cust == "" {
 				return ErrCC
 			}
 
-			if err := cust.Charge(cmp.Name, cmp.Id, monthlyBudget); err != nil {
+			if err := swipe.Charge(cust, cmp.Name, cmp.Id, monthlyBudget); err != nil {
 				return err
 			}
 			store.AddCharge(monthlyBudget)
@@ -160,7 +160,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 	return spendable, nil
 }
 
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cid, name string, newBudget float64, isIO bool, cust *swipe.Customer) (float64, error) {
+func AdjustBudget(db *bolt.DB, cfg *config.Config, cid, name string, newBudget float64, isIO bool, cust string) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
 		return 0, err
@@ -204,11 +204,11 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid, name string, newBudget f
 
 		if !isIO {
 			// CHARGE!
-			if cust == nil {
+			if cust == "" {
 				return 0, ErrCC
 			}
 
-			if err := cust.Charge(name, cid, tbaBudget); err != nil {
+			if err := swipe.Charge(cust, name, cid, tbaBudget); err != nil {
 				return 0, err
 			}
 			newStore.AddCharge(tbaBudget)

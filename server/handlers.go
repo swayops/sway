@@ -1742,12 +1742,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			if len(data.Charges) > 1 {
-				for _, blah := range data.Charges {
-					log.Println("CHARGE", *blah, cmp.Id, cmp.Name)
-				}
-			}
-
 			user = s.auth.GetUser(cmp.AdvertiserId)
 			if user != nil {
 				emails = user.Email
@@ -2032,8 +2026,11 @@ func runBilling(s *Server) gin.HandlerFunc {
 					return err
 				}
 
-				if cmp.IsValid() {
-					// This will carry over any left over spendable too
+				if _, active := s.Campaigns.Get(cmp.Id); active {
+					// Checking campaigns cache because campaigns cache has only
+					// campaigns which have valid campaigns with active advertisers and agencies
+
+					// This functionality carry over any left over spendable too
 					// It will also look to check if there's a pending (lowered)
 					// budget that was saved to db last month.. and that should be
 					// used now
@@ -2888,8 +2885,14 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 	}
 }
 
-func getBillingHistory(s *Server) gin.HandlerFunc {
-	// Retrieves all charges for the advertiser
+type BillingInfo struct {
+	ID         string           `json:"id,omitempty"`
+	CreditCard *swipe.CC        `json:"cc,omitempty"`
+	History    []*swipe.History `json:"history,omitempty"`
+}
+
+func getBillingInfo(s *Server) gin.HandlerFunc {
+	// Retrieves all billing info for the advertiser
 	return func(c *gin.Context) {
 		adv := s.auth.GetAdvertiser(c.Param("id"))
 		if adv == nil {
@@ -2897,12 +2900,29 @@ func getBillingHistory(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var history []*swipe.History
-		if adv.Customer != nil {
-			history = adv.Customer.GetBillingHistory()
+		var (
+			info BillingInfo
+			err  error
+		)
+
+		if adv.Customer == "" {
+			c.JSON(200, info)
+			return
 		}
 
-		c.JSON(200, history)
+		var history []*swipe.History
+		if adv.Customer != "" {
+			history = swipe.GetBillingHistory(adv.Customer)
+		}
+
+		info.ID = adv.Customer
+		info.CreditCard, err = swipe.GetCleanCreditCard(adv.Customer)
+		if err != nil {
+			c.JSON(200, misc.StatusErr(err.Error()))
+			return
+		}
+		info.History = history
+		c.JSON(200, info)
 	}
 }
 

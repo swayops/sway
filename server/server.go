@@ -335,7 +335,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		putAdvertiser, nil)
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
-	verifyGroup.GET("/billingHistory/:id", getBillingHistory(srv))
+	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)

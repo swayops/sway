@@ -2,7 +2,9 @@ package swipe // Stripe combined with sway.. get it?
 
 import (
 	"errors"
-	"log"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -27,12 +29,7 @@ var (
 	ErrInvalidExpYear    = errors.New("invalid expiration year, must be two digit representation")
 )
 
-type Customer struct {
-	ID         string `json:"id"` // Stripe Customer ID.. SET INTERNALLY!
-	CreditCard *CC    `json:"credit_card"`
-}
-
-func CreateCustomer(name, email string, cc *CC) (*Customer, error) {
+func CreateCustomer(name, email string, cc *CC) (string, error) {
 	customerParams := &stripe.CustomerParams{
 		Desc:  name,
 		Email: email,
@@ -54,32 +51,23 @@ func CreateCustomer(name, email string, cc *CC) (*Customer, error) {
 
 	target, err := customer.New(customerParams)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	// Clear out confidential parts of the credit card on save
-	if len(cc.CardNumber) > 4 {
-		cc.CardNumber = cc.CardNumber[len(cc.CardNumber)-4:]
-		cc.CVC = ""
-		cc.ExpYear = ""
-		cc.ExpMonth = ""
-	}
-
-	cust := &Customer{ID: target.ID, CreditCard: cc}
-	return cust, nil
+	return target.ID, nil
 }
 
-func (c *Customer) Charge(name, cid string, amount float64) error {
+func Charge(id, name, cid string, amount float64) error {
 	if amount == 0 {
 		return ErrAmount
 	}
 
 	// Expects a value in dollars
-	if c.ID == "" {
+	if id == "" {
 		return ErrCreditCard
 	}
 
-	cust, err := customer.Get(c.ID, nil)
+	cust, err := customer.Get(id, nil)
 	if err != nil {
 		return ErrCustomer
 	}
@@ -106,7 +94,11 @@ func (c *Customer) Charge(name, cid string, amount float64) error {
 	return err
 }
 
-func (c *Customer) Update(cc *CC) error {
+func Update(id string, cc *CC) error {
+	if cc == nil {
+		return ErrCreditCard
+	}
+
 	updated := &stripe.CustomerParams{}
 	updated.SetSource(&stripe.CardParams{
 		Name:     cc.FirstName + " " + cc.LastName,
@@ -122,21 +114,11 @@ func (c *Customer) Update(cc *CC) error {
 		CVC:    cc.CVC,
 	})
 
-	target, err := customer.Update(c.ID, updated)
+	_, err := customer.Update(id, updated)
 	if err != nil {
-		log.Println("IS THERE AN ERROR BRO", err)
 		return err
 	}
 
-	// Clear out confidential parts of the credit card on save
-	if len(cc.CardNumber) > 4 {
-		cc.CardNumber = cc.CardNumber[len(cc.CardNumber)-4:]
-		cc.CVC = ""
-		cc.ExpYear = ""
-		cc.ExpMonth = ""
-	}
-
-	*c = Customer{ID: target.ID, CreditCard: cc}
 	return nil
 }
 
@@ -149,9 +131,9 @@ type History struct {
 	TransactionID string `json:"transactionID"`
 }
 
-func (cust *Customer) GetBillingHistory() []*History {
+func GetBillingHistory(id string) []*History {
 	params := &stripe.ChargeListParams{}
-	params.Filters.AddFilter("customer", "", cust.ID)
+	params.Filters.AddFilter("customer", "", id)
 
 	var history []*History
 
@@ -160,7 +142,8 @@ func (cust *Customer) GetBillingHistory() []*History {
 		if ch := i.Charge(); ch != nil {
 			name, _ := ch.Meta["name"]
 			cid, _ := ch.Meta["cid"]
-			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, TransactionID: ch.ID, CustID: cust.ID}
+
+			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, TransactionID: ch.ID, CustID: id}
 			history = append(history, hist)
 		}
 	}
@@ -230,4 +213,41 @@ func (c *CC) Check() error {
 	}
 
 	return nil
+}
+
+func GetCleanCreditCard(id string) (*CC, error) {
+	cc := &CC{}
+
+	cust, err := customer.Get(id, nil)
+	if err != nil {
+		return cc, ErrCustomer
+	}
+
+	if cust.Sources != nil && len(cust.Sources.Values) > 0 && cust.Sources.Values[0].Card != nil {
+		card := cust.Sources.Values[0].Card
+		parts := strings.Split(card.Name, " ")
+		var firstName, lastName string
+		if len(parts) > 1 {
+			firstName = parts[0]
+			lastName = parts[1]
+		}
+
+		cc = &CC{
+			FirstName: firstName,
+			LastName:  lastName,
+
+			Address: card.Address1,
+			City:    card.City,
+			State:   card.State,
+			Country: card.Country,
+			Zip:     card.Zip,
+
+			CardNumber: card.LastFour,
+			CVC:        "",
+			ExpMonth:   time.Month(card.Month).String(),
+			ExpYear:    strconv.Itoa(int(card.Year)),
+		}
+	}
+
+	return cc, nil
 }

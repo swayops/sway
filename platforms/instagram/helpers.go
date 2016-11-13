@@ -3,6 +3,7 @@ package instagram
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -108,6 +109,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 
 	var media UserPost
 	err := misc.Request("GET", endpoint, "", &media)
+	log.Println("POST INFO", endpoint)
 	if err != nil {
 		return 0, 0, posts, latestGeo, err
 	}
