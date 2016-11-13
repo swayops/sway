@@ -1030,6 +1030,10 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []*IncompleteInfluencer
 		for _, inf := range s.auth.Influencers.GetAll() {
+			if inf.Banned {
+				continue
+			}
+
 			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
 				incInf := &IncompleteInfluencer{inf, "", "", "", ""}
 				if inf.Twitter != nil {
