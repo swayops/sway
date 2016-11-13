@@ -3388,7 +3388,6 @@ func TestBilling(t *testing.T) {
 		}
 
 		if newStore.Spent > 0 {
-			log.Println("NOT TRANSFERRING WTF", cid)
 			t.Fatal("Bad new store values!")
 		}
 

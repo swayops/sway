@@ -2037,6 +2037,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 					var (
 						leftover, pending float64
 					)
+
 					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
 					if err == nil && store != nil {
 						leftover = store.Spendable
@@ -2065,9 +2066,10 @@ func runBilling(s *Server) gin.HandlerFunc {
 					var spendable float64
 
 					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
-						log.Println("BUDGET KEY INIT ERROR", err)
 						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
-						return err
+						// Don't return because an agency that switched from IO to CC that has
+						// advertisers with no CC will always error here.. just alert!
+						continue
 					}
 
 					// Add fresh deals for this month
