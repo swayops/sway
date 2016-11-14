@@ -25,7 +25,8 @@ import (
 )
 
 var (
-	ErrAgency = errors.New("No talent agency defined! Please contact engage@swayops.com")
+	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
+	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
 )
 
 // The json struct accepted by the putInfluencer method
@@ -145,13 +146,16 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		inf.Address = addr
 	}
 
-	agencyId := common.GetIDFromInvite(inviteCode)
-	if agencyId == "" {
+	var agencyId string
+	if inviteCode == "" {
+		// No invite code passed in
 		agencyId = defAgencyID
-	}
-
-	if agencyId == "" {
-		return nil, ErrAgency
+	} else {
+		// There was an invite code passed in
+		agencyId = common.GetIDFromInvite(inviteCode)
+		if agencyId == "" {
+			return nil, ErrInviteCode
+		}
 	}
 
 	inf.AgencyId = agencyId
@@ -559,6 +563,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		return infDeals
 	}
 
+	if !inf.Audited() && !cfg.Sandbox {
+		// If the user has no categories or gender.. this means
+		// the assign game hasn't gotten to them yet
+		// NOTE: Allowing sandbox because tests don't do the
+		// assign game
+		return infDeals
+	}
+
 	if location == nil {
 		location = inf.GetLatestGeo()
 	}
@@ -953,6 +965,10 @@ func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
 	}
 
 	return nil
+}
+
+func (inf *Influencer) Audited() bool {
+	return len(inf.Categories) > 0 && (inf.Male || inf.Female)
 }
 
 func (inf *Influencer) IsViral(deal *common.Deal, stats *common.Stats) bool {

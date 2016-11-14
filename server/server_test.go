@@ -181,6 +181,11 @@ func TestTalentAgencyChain(t *testing.T) {
 
 		// update the influencer and check if the update worked
 		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian"}, 200, nil},
+		// auditing as influencer should yield err
+		{"PUT", "/setAudit/" + inf.ExpID, nil, 401, nil},
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+
 		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
 			"agencyId":   ag.ExpID,
@@ -282,6 +287,8 @@ func TestNewInfluencer(t *testing.T) {
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
 		// update
+		// sign in as admin
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 		{"PUT", "/setAudit/" + inf.ExpID, M{"categories": []string{"business"}}, 200, nil},
 		{"PUT", "/influencer/" + inf.ExpID, M{"twitter": "kimkardashian"}, 200, nil},
 		{"GET", "/influencer/" + inf.ExpID, nil, 200, M{
@@ -1593,7 +1600,7 @@ func TestInfluencerEmail(t *testing.T) {
 
 	// Lets set this influencer to NOT receive emails now!
 	offPing := false
-	updLoad := &InfluencerUpdate{DealPing: &offPing, TwitterId: "cnn", Gender: "m"}
+	updLoad := &InfluencerUpdate{DealPing: &offPing, TwitterId: "cnn"}
 	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -1619,7 +1626,7 @@ func TestInfluencerEmail(t *testing.T) {
 
 	// Lets set this influencer to receive emails now!
 	onPing := true
-	updLoad = &InfluencerUpdate{DealPing: &onPing, TwitterId: "cnn", Gender: "m"}
+	updLoad = &InfluencerUpdate{DealPing: &onPing, TwitterId: "cnn"}
 	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")

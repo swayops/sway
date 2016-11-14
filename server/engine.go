@@ -180,22 +180,26 @@ func updateInfluencers(s *Server) (int32, error) {
 		// Influencer not updated if they have been updated
 		// within the last 12 hours
 		if err = inf.UpdateAll(s.Cfg); err != nil {
-			// If the update errors.. we bail out of the
-			// whole engine so we dont accidentally deduct
-			// the likes/comments/etc deltas from the budget again!
-			return updated, err
+			// If the update errors.. we continue and alert
+			// admin about the error. Do not return because
+			// we clear out engagement deltas anyway
+			// whenever we deplete budgets so don't want to stop
+			// the whole engine because of one influencer erroring
+			s.Alert("Failed to update influencer "+infId, err)
+			continue
 		}
 
 		// Inserting a request interval so we don't hit our API
 		// limits with platforms!
 		if inf.LastSocialUpdate != oldUpdate {
 			// Only sleep if the influencer was actually updated!
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 
 		// Update data for all completed deal posts
 		if err = inf.UpdateCompletedDeals(s.Cfg, activeCampaigns); err != nil {
-			return updated, err
+			s.Alert("Failed to update complete deals for "+infId, err)
+			continue
 		}
 
 		// Also saves influencers!

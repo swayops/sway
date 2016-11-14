@@ -3,29 +3,36 @@ package influencer
 import "sync"
 
 type Influencers struct {
-	mux   sync.RWMutex
-	store map[string]Influencer
+	mux    sync.RWMutex
+	store  map[string]Influencer
+	counts map[string]int64
 }
 
 func NewInfluencers() *Influencers {
 	return &Influencers{
 		store: make(map[string]Influencer),
+		// Stores counts for talent agency ID to influencer count
+		counts: make(map[string]int64),
 	}
 }
 
 func (p *Influencers) Set(infs []Influencer) {
 	store := make(map[string]Influencer)
+	counts := make(map[string]int64)
 	for _, inf := range infs {
 		store[inf.Id] = inf
+		counts[inf.AgencyId] += 1
 	}
 	p.mux.Lock()
 	p.store = store
+	p.counts = counts
 	p.mux.Unlock()
 }
 
 func (p *Influencers) SetInfluencer(id string, inf Influencer) {
 	p.mux.Lock()
 	p.store[id] = inf
+	p.counts[inf.AgencyId] += 1
 	p.mux.Unlock()
 }
 
@@ -64,6 +71,13 @@ func (p *Influencers) Get(id string) (Influencer, bool) {
 	val, ok := p.store[id]
 	p.mux.RUnlock()
 	return val, ok
+}
+
+func (p *Influencers) GetCount(id string) int64 {
+	p.mux.RLock()
+	val, _ := p.counts[id]
+	p.mux.RUnlock()
+	return val
 }
 
 func (p *Influencers) Len() int {

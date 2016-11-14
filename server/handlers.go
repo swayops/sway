@@ -55,30 +55,22 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 	type userWithCounts struct {
 		*auth.User
-		SubCount int `json:"subCount"`
+		SubCount int64 `json:"subCount"`
 	}
 	return func(c *gin.Context) {
 		var (
 			all    []*userWithCounts
-			counts map[string]int
-			uids   []string
 		)
 
 		s.db.View(func(tx *bolt.Tx) error {
 			s.auth.GetUsersByTypeTx(tx, auth.TalentAgencyScope, func(u *auth.User) error {
 				if u.TalentAgency != nil {
-					all = append(all, &userWithCounts{u.Trim(), 0})
-					uids = append(uids, u.ID)
+					all = append(all, &userWithCounts{u.Trim(), s.auth.Influencers.GetCount(u.ID)})
 				}
 				return nil
 			})
-			counts = s.auth.GetChildCountsTx(tx, uids...)
 			return nil
 		})
-
-		for _, u := range all {
-			u.SubCount = counts[u.ID]
-		}
 		c.JSON(200, all)
 	}
 }
@@ -636,7 +628,6 @@ type InfluencerUpdate struct {
 	TwitterId   string          `json:"twitter,omitempty"`           // Required to send
 	YouTubeId   string          `json:"youtube,omitempty"`           // Required to send
 	DealPing    *bool           `json:"dealPing" binding:"required"` // Required to send
-	Gender      string          `json:"gender,omitempty"`            // Required to send
 	Address     lob.AddressLoad `json:"address,omitempty"`           // Required to send
 
 	InviteCode string `json:"inviteCode,omitempty"` // Optional
@@ -733,16 +724,6 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			inf.AgencyId = agencyId
 		}
 
-		// Update Gender
-		switch upd.Gender {
-		case "mf", "fm", "unicorn":
-			inf.Male, inf.Female = true, true
-		case "m":
-			inf.Male, inf.Female = true, false
-		case "f":
-			inf.Male, inf.Female = false, true
-		}
-
 		// Update DealPing
 		if upd.DealPing != nil {
 			// Set to a pointer so we don't default to
@@ -804,6 +785,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
+
+		user.ParentID = inf.AgencyId
 
 		if err := s.db.Update(func(tx *bolt.Tx) error {
 			changed, err := savePassword(s, tx, upd.OldPass, upd.Pass, upd.Pass2, user)
@@ -1059,6 +1042,39 @@ func setBan(s *Server) gin.HandlerFunc {
 	}
 }
 
+func setAgency(s *Server) gin.HandlerFunc {
+	// Helper handler for setting the agency for the influencer id
+	return func(c *gin.Context) {
+		var (
+			infId = c.Param("influencerId")
+			agId = c.Param("agencyId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		talentAgency := s.auth.GetTalentAgency(agId)
+		if talentAgency == nil {
+			c.JSON(500, misc.StatusErr(fmt.Sprintf("Could not find talent agency %s", inf.AgencyId)))
+			return
+		}
+
+		inf.AgencyId = agId
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 type IncompleteInfluencer struct {
 	influencer.Influencer
 	FacebookURL  string `json:"facebookUrl,omitempty"`
@@ -1071,6 +1087,10 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []*IncompleteInfluencer
 		for _, inf := range s.auth.Influencers.GetAll() {
+			if inf.Banned {
+				continue
+			}
+
 			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
 				incInf := &IncompleteInfluencer{inf, "", "", "", ""}
 				if inf.Twitter != nil {
