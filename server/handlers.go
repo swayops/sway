@@ -1018,6 +1018,39 @@ func setBan(s *Server) gin.HandlerFunc {
 	}
 }
 
+func setAgency(s *Server) gin.HandlerFunc {
+	// Helper handler for setting the agency for the influencer id
+	return func(c *gin.Context) {
+		var (
+			infId = c.Param("influencerId")
+			agId = c.Param("agencyId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		talentAgency := s.auth.GetTalentAgency(agId)
+		if talentAgency == nil {
+			c.JSON(500, misc.StatusErr(fmt.Sprintf("Could not find talent agency %s", inf.AgencyId)))
+			return
+		}
+
+		inf.AgencyId = agId
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 type IncompleteInfluencer struct {
 	influencer.Influencer
 	FacebookURL  string `json:"facebookUrl,omitempty"`
