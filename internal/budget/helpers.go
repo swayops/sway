@@ -47,3 +47,11 @@ func daysInMonth(year int, month time.Month) int {
 	}
 	return 30
 }
+
+func GetProratedBudget(budget float64) float64 {
+	now := time.Now().UTC()
+	days := daysInMonth(now.Year(), now.Month())
+	daysUntilEnd := days - now.Day() + 1
+
+	return (budget / float64(days)) * float64(daysUntilEnd)
+}

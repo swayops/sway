@@ -2625,6 +2625,17 @@ func forceEmail(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getProratedBudget(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+	    value, err := strconv.ParseFloat(c.Param("budget"), 64)
+	    if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return    
+		}
+		c.JSON(200, budget.GetProratedBudget(value))
+	}
+}
+
 func uploadImage(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var upd UploadImage

@@ -102,11 +102,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// This function could be run could be mid-month.. (new campaign)
 			// so we need to calculate what the given
 			// (monthly) budget would be for the days left.
-			now := time.Now().UTC()
-			days := daysInMonth(now.Year(), now.Month())
-			daysUntilEnd := days - now.Day() + 1
-
-			monthlyBudget = (cmp.Budget / float64(days)) * float64(daysUntilEnd)
+			monthlyBudget = GetProratedBudget(cmp.Budget)
 		} else {
 			// TODAY IS BILLING DAY! (first of the month)
 			// Is there a newBudget (pending) value (i.e. a lower budget)?
@@ -184,18 +180,11 @@ func AdjustBudget(db *bolt.DB, cfg *config.Config, cid, name string, newBudget f
 		// If the budget has been INCREASED... increase spendable and fees
 		diffBudget := newBudget - oldBudget
 
-		// This function could be run could be mid-month..
-		// so we need to calculate what the given
-		// (monthly) budget would be for the days left.
-		now := time.Now().UTC()
-		days := daysInMonth(now.Year(), now.Month())
-		daysUntilEnd := days - now.Day() + 1
-
 		// The "to be added" value is based on the delta
 		// between old and new budget and how many days are left
 		// So if increase is $30 and the month has 10 days left..
 		// $10 will be added to the budget
-		tbaBudget = (diffBudget / float64(days)) * float64(daysUntilEnd)
+		tbaBudget = GetProratedBudget(diffBudget)
 
 		// Take out margins from spendable
 		// NOTE: Leftover is not added to spendable because it already
