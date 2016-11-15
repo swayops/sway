@@ -2874,6 +2874,8 @@ func TestStripe(t *testing.T) {
 		}
 	}
 
+	log.Println("stripe user:", adv.ExpID)
+
 	if hFound == nil {
 		t.Fatal("Missing charge for campaign")
 	}
@@ -3112,18 +3114,18 @@ func TestStripe(t *testing.T) {
 	upd := &CampaignUpdate{Budget: &budgetVal}
 	r = rst.DoTesting(t, "PUT", "/campaign/"+newSt.ID, upd, nil)
 	if r.Status != 200 {
-	    t.Fatal("Bad status code!")
-	    return
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+newSt.ID, nil, &store)
 	if r.Status != 200 {
-	    t.Fatal("Bad status code!")
-	    return
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(store.Charges) != 2 {
-	    t.Fatal("Bad len on charges")
+		t.Fatal("Bad len on charges")
 	}
 
 	// Lets switch the agency to IO now and create a campaign
