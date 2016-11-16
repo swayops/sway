@@ -2669,7 +2669,7 @@ func getProratedBudget(s *Server) gin.HandlerFunc {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return
 		}
-		c.JSON(200, budget.GetProratedBudget(value))
+		c.JSON(200, gin.H{"budget": budget.GetProratedBudget(value)})
 	}
 }
 
@@ -2936,11 +2936,11 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 }
 
 type BillingInfo struct {
-	ID         string           `json:"id,omitempty"`
-	ActiveBalance    float64          `json:"activeBalance,omitempty"`
-	InactiveBalance    float64          `json:"inactiveBalance,omitempty"`
-	CreditCard *swipe.CC        `json:"cc,omitempty"`
-	History    []*swipe.History `json:"history,omitempty"`
+	ID              string           `json:"id,omitempty"`
+	ActiveBalance   float64          `json:"activeBalance,omitempty"`
+	InactiveBalance float64          `json:"inactiveBalance,omitempty"`
+	CreditCard      *swipe.CC        `json:"cc,omitempty"`
+	History         []*swipe.History `json:"history,omitempty"`
 }
 
 func getBillingInfo(s *Server) gin.HandlerFunc {
