@@ -247,7 +247,7 @@ func GetCleanCreditCard(id string) (*CC, error) {
 			CardNumber: card.LastFour,
 			CVC:        "",
 			ExpMonth:   strconv.Itoa(int(card.Month)),
-			ExpYear:    strconv.Itoa(int(card.Year)),
+			ExpYear:    strconv.Itoa(int(card.Year) - 2000),
 		}
 	}
 
