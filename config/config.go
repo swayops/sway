@@ -89,8 +89,8 @@ type Config struct {
 	DBName        string `json:"dbName"`
 	BudgetDBName  string `json:"budgetDbName"`
 	BudgetBuckets struct {
-		Budget  string `json:"budget"`
-		Balance string `json:"balance"`
+		Budget   string `json:"budget"`
+		Balances string `json:"balance"`
 	} `json:"budgetBuckets"`
 
 	AuthDBName string `json:"authDbName"`

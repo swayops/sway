@@ -27,6 +27,7 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	// Keep a live struct for all influencers in the platform
 	srv.auth.Influencers.Set(getAllInfluencers(srv))
 	infTicker := time.NewTicker(5 * time.Minute)
 	go func() {
@@ -235,7 +236,7 @@ func depleteBudget(s *Server) (float64, error) {
 		// Get this month's store for this campaign
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
 		if err != nil {
-			log.Println("Could not find store!", cmp.Id)
+			s.Alert("Could not find store for "+cmp.Id, errors.New("Could not find store"))
 			continue
 		}
 		updatedStore := false

@@ -2570,6 +2570,397 @@ func TestScraps(t *testing.T) {
 	}
 }
 
+func TestBalances(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create a campaign with non IO agency
+	ag := getSignupUser()
+	ag.AdAgency = &auth.AdAgency{}
+	r = rst.DoTesting(t, "POST", "/signUp", ag, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	adv := getSignupUser()
+	adv.ParentID = ag.ExpID
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cmp := common.Campaign{
+		Status:       false,
+		AdvertiserId: adv.ExpID,
+		Budget:       230,
+		Name:         "Insert cool campaign name",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Since we just spawned a campaign with off status.. it should have nothing
+	// in spendable and no budget store
+	var store budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store)
+	if r.Status != 500 {
+		// Expecting a failed hit because it should have no budget
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Make sure it DOESNT have deals
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmp)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmp.Deals) != 0 {
+		t.Fatal("Should NOT have deals now")
+		return
+	}
+
+	// Toggle the campaign ON
+	updStatus := true
+	cmpUpdate := CampaignUpdate{
+		Geos:       cmp.Geos,
+		Categories: cmp.Categories,
+		Status:     &updStatus,
+		Budget:     &cmp.Budget,
+		Male:       &cmp.Male,
+		Female:     &cmp.Female,
+		Name:       &cmp.Name,
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID+"?dbg=1", &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check if it has a budget key now.. it should
+	var store1 budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &store1)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if store1.Spendable == 0 {
+		t.Fatal("Should have spendable")
+		return
+	}
+
+	if len(store1.Charges) != 1 {
+		t.Fatal("Missing charges")
+		return
+	}
+
+	// Toggle the campaign OFF again
+	updStatus = false
+	cmpUpdate = CampaignUpdate{
+		Geos:       cmp.Geos,
+		Categories: cmp.Categories,
+		Status:     &updStatus,
+		Budget:     &cmp.Budget,
+		Male:       &cmp.Male,
+		Female:     &cmp.Female,
+		Name:       &cmp.Name,
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID+"?dbg=1", &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check if it has a budget key now.. it should NOT
+	var storeToggle budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+st.ID, nil, &storeToggle)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if storeToggle.Spendable != 0 {
+		t.Fatal("Should NOT have spendable")
+		return
+	}
+
+	if len(store1.Charges) != 1 {
+		t.Fatal("Missing charges")
+		return
+	}
+
+	// Make sure it has deals
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmp)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmp.Deals) == 0 {
+		t.Fatal("Should have deals now")
+		return
+	}
+
+	// Lets start a campaign as ON and make sure it has data
+	cmpOn := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       15000,
+		Name:         "Insert cool campaign name that is on",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var stOn Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmpOn, &stOn)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Make sure it has deals
+	r = rst.DoTesting(t, "GET", "/campaign/"+stOn.ID+"?deals=true", nil, &cmpOn)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmpOn.Deals) == 0 {
+		t.Fatal("Should have deals now")
+		return
+	}
+
+	// Lets make sure it has budget info
+	var storeOn budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+stOn.ID, nil, &storeOn)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if storeOn.Spendable == 0 {
+		t.Fatal("Should have spendable")
+		return
+	}
+
+	// Lets switch the campaign to off.. it's spendable should disappear
+	updStatus = false
+	cmpUpdate = CampaignUpdate{
+		Geos:       cmpOn.Geos,
+		Categories: cmpOn.Categories,
+		Status:     &updStatus,
+		Budget:     &cmpOn.Budget,
+		Male:       &cmpOn.Male,
+		Female:     &cmpOn.Female,
+		Name:       &cmpOn.Name,
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+stOn.ID+"?dbg=1", &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check if it has a budget key now.. it should have NO spendable
+	var storeEmpty budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+stOn.ID, nil, &storeEmpty)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if storeEmpty.Spendable != 0 {
+		t.Fatal("Spendable should have been emptied out")
+		return
+	}
+
+	if storeEmpty.Budget == 0 {
+		t.Fatal("Should have carried over budget value")
+		return
+	}
+
+	if len(storeEmpty.Charges) == 0 {
+		t.Fatal("Should have charges")
+		return
+	}
+
+	// Lets make sure that spendable was moved to balances
+	var advBillingInfo BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv.ExpID, nil, &advBillingInfo)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if advBillingInfo.InactiveBalance == 0 {
+		t.Fatal("Bad balance")
+		return
+	}
+
+	if advBillingInfo.InactiveBalance != storeOn.Spendable {
+		t.Fatal("Spendable did not transfer to balance")
+		return
+	}
+
+	// Start a campaign with a small budget.. we should use
+	// the balance for it
+	cmpSmall := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       300,
+		Name:         "Insert cool campaign name that is small",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var stSmall Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmpSmall, &stSmall)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var storeSmall budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+stSmall.ID, nil, &storeSmall)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	var usedBillingInfo BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv.ExpID, nil, &usedBillingInfo)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if usedBillingInfo.InactiveBalance == 0 {
+		t.Fatal("Bad balance")
+		return
+	}
+
+	if usedBillingInfo.InactiveBalance != (advBillingInfo.InactiveBalance - storeSmall.Spendable) {
+		t.Fatal("Did not deduct from balance correctly")
+		return
+	}
+
+	if usedBillingInfo.ActiveBalance == 0 {
+		t.Fatal("No active balance")
+		return
+	}
+
+	if usedBillingInfo.ActiveBalance != (storeSmall.Spendable + storeSmall.Spent) {
+		t.Fatal("Active balance should be combined sum")
+		return
+	}
+
+	// Lets a crazy high amount via campaign creation.. a part of it should
+	// be used from balance and the rest via charging the CC
+	cmpBig := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       30000,
+		Name:         "Insert cool campaign name that is massive",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var stBig Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmpBig, &stBig)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var storeBig budget.Store
+	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+stBig.ID, nil, &storeBig)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(storeBig.Charges) == 0 {
+		t.Fatal("Should have charges")
+		return
+	}
+
+	if storeBig.Spendable == 0 {
+		t.Fatal("Should have spendable")
+		return
+	}
+
+	if (storeBig.Charges[0].FromBalance + storeBig.Charges[0].Amount) != storeBig.Spendable {
+		t.Fatal("Spendable calculation incorrect")
+		return
+	}
+
+
+	// Balance should be 0
+	var bigBillingInfo BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv.ExpID, nil, &bigBillingInfo)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if bigBillingInfo.InactiveBalance != 0 {
+		t.Fatal("Bad balance")
+		return
+	}
+
+	if len(bigBillingInfo.History) == 0 {
+		t.Fatal("No billing history")
+		return
+	}
+
+	if bigBillingInfo.ActiveBalance != (storeBig.Spendable + storeSmall.Spendable) {
+		t.Fatal("Active balance doesn't add up")
+		return
+	}
+
+	var foundBalance bool
+	for _, ch := range bigBillingInfo.History {
+		if ch.FromBalance != "0.00" {
+			foundBalance = true
+		}
+	}
+
+	if !foundBalance {
+		t.Fatal("Could not find from balance on swipe")
+		return
+	}
+}
+
 func TestInfluencerClearout(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
@@ -3112,18 +3503,18 @@ func TestStripe(t *testing.T) {
 	upd := &CampaignUpdate{Budget: &budgetVal}
 	r = rst.DoTesting(t, "PUT", "/campaign/"+newSt.ID, upd, nil)
 	if r.Status != 200 {
-	    t.Fatal("Bad status code!")
-	    return
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+newSt.ID, nil, &store)
 	if r.Status != 200 {
-	    t.Fatal("Bad status code!")
-	    return
+		t.Fatal("Bad status code!")
+		return
 	}
 
 	if len(store.Charges) != 2 {
-	    t.Fatal("Bad len on charges")
+		t.Fatal("Bad len on charges")
 	}
 
 	// Lets switch the agency to IO now and create a campaign
