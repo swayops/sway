@@ -320,7 +320,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		if cmp.ImageData != "" {
 			if !strings.HasPrefix(cmp.ImageData, "data:image/") {
-				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				misc.AbortWithErr(c, 400, errors.New("Please provide a valid campaign image"))
 				return
 			}
 			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, "", 750, 389)
@@ -337,7 +337,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// We need the agency user to look at their IO status later!
 		ag := s.auth.GetAdAgency(cmp.AgencyId)
 		if ag == nil {
-			c.JSON(400, misc.StatusErr("Please provide a valid agency ID"))
+			misc.AbortWithErr(c, 400, errors.New("Please provide a valid agency ID"))
 			return
 		}
 
@@ -349,7 +349,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				var spendable float64
 				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
-					c.JSON(500, misc.StatusErr(err.Error()))
+					misc.AbortWithErr(c, 500, err)
 					return
 				}
 
@@ -357,7 +357,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			}
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.AbortWithErr(c, 500, err)
 			return
 		}
 
@@ -550,13 +550,11 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			adv *auth.Advertiser
 		)
 		if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
-			log.Println("Could not find ad agency!", cmp.AgencyId)
 			c.JSON(400, misc.StatusErr("Could not find ad agency "+cmp.AgencyId))
 			return
 		}
 
 		if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
-			log.Println("Could not find advertiser!", cmp.AgencyId)
 			c.JSON(400, misc.StatusErr("Could not find advertiser "+cmp.AgencyId))
 			return
 		}
@@ -600,58 +598,59 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		var turnedOff bool
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			if upd.Status != nil {
-				if *upd.Status && cmp.Status != *upd.Status {
-					// If the campaign has been toggled to on..
-					store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-					if store == nil {
-						// This means the campaign has no store.. cmp was craeted with a status of
-						// off so a budget key was NOT created.. so we have to create it now!
-						// NOTE: Create budget key requires cmp.Id be set
+			if upd.Status == nil {
+				return nil
+			}
 
-						var spendable float64
-						if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
-							s.Alert("Error initializing budget key for "+adv.Name, err)
-							c.JSON(500, misc.StatusErr(err.Error()))
-							return
-						}
+			if *upd.Status && cmp.Status != *upd.Status {
+				// If the campaign has been toggled to on..
+				store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+				if store == nil {
+					// This means the campaign has no store.. cmp was craeted with a status of
+					// off so a budget key was NOT created.. so we have to create it now!
+					// NOTE: Create budget key requires cmp.Id be set
 
-						addDealsToCampaign(&cmp, spendable, s, tx)
-
-					} else {
-						// This campaign does have a store.. so it was active sometime this month.
-						// Lets just give it the spendable we must have taken from it when it turned
-						// off
-						err = budget.ReplenishSpendable(s.budgetDb, s.Cfg, &cmp, ag.IsIO, adv.Customer)
-						if err != nil {
-							c.JSON(500, misc.StatusErr(err.Error()))
-							return
-						}
-					}
-				} else if !*upd.Status && cmp.Status != *upd.Status {
-					// If the status has been toggled to off..
-					// Clear out the spendable from the DB and add that value to the balance
 					var spendable float64
-					spendable, err = budget.ClearSpendable(s.budgetDb, s.Cfg, &cmp)
-					if err != nil {
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error initializing budget key for "+adv.Name, err)
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}
 
-					// If we cleared out some spendable.. lets increment the balance with it
-					if spendable > 0 {
-						if err = s.budgetDb.Update(func(tx *bolt.Tx) (err error) {
-							return budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg)
-						}); err != nil {
-							c.JSON(500, misc.StatusErr(err.Error()))
-							return
-						}
-					}
-					turnedOff = true
-				}
-				cmp.Status = *upd.Status
-			}
+					addDealsToCampaign(&cmp, spendable, s, tx)
 
+				} else {
+					// This campaign does have a store.. so it was active sometime this month.
+					// Lets just give it the spendable we must have taken from it when it turned
+					// off
+					err = budget.ReplenishSpendable(s.budgetDb, s.Cfg, &cmp, ag.IsIO, adv.Customer)
+					if err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			} else if !*upd.Status && cmp.Status != *upd.Status {
+				// If the status has been toggled to off..
+				// Clear out the spendable from the DB and add that value to the balance
+				var spendable float64
+				spendable, err = budget.ClearSpendable(s.budgetDb, s.Cfg, &cmp)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+
+				// If we cleared out some spendable.. lets increment the balance with it
+				if spendable > 0 {
+					if err = s.budgetDb.Update(func(tx *bolt.Tx) (err error) {
+						return budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg)
+					}); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+				turnedOff = true
+			}
+			cmp.Status = *upd.Status
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
@@ -2976,13 +2975,11 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 		}
 		info.History = history
 
-		if err := s.budgetDb.View(func(tx *bolt.Tx) (err error) {
+
+		s.budgetDb.View(func(tx *bolt.Tx) error {
 			info.InactiveBalance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
 			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
+		})
 
 		// Get all campaigns for this advertiser
 		var campaigns []string
