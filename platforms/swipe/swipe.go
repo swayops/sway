@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -247,7 +246,7 @@ func GetCleanCreditCard(id string) (*CC, error) {
 
 			CardNumber: card.LastFour,
 			CVC:        "",
-			ExpMonth:   time.Month(card.Month).String(),
+			ExpMonth:   strconv.Itoa(int(card.Month)),
 			ExpYear:    strconv.Itoa(int(card.Year)),
 		}
 	}
