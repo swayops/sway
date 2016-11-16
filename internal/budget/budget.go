@@ -123,6 +123,15 @@ func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *comm
 		}
 	}
 
+	// Log the charge!
+	if err := cfg.Loggers.Log("charge", map[string]interface{}{
+		"campaignId":       cmp.Id,
+		"charge":           pendingCharge,
+		"balanceDeduction": balanceDeduction,
+	}); err != nil {
+		log.Println("Failed to log charge!", cmp.Id, pendingCharge, balanceDeduction)
+	}
+
 	st.AddCharge(pendingCharge, balanceDeduction)
 	return nil
 }
