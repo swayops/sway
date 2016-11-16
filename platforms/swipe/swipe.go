@@ -57,7 +57,7 @@ func CreateCustomer(name, email string, cc *CC) (string, error) {
 	return target.ID, nil
 }
 
-func Charge(id, name, cid string, amount float64) error {
+func Charge(id, name, cid string, amount, fromBalance float64) error {
 	if amount == 0 {
 		return ErrAmount
 	}
@@ -78,8 +78,9 @@ func Charge(id, name, cid string, amount float64) error {
 		Customer: cust.ID,
 		Params: stripe.Params{
 			Meta: map[string]string{
-				"name": name,
-				"cid":  cid,
+				"name":        name,
+				"cid":         cid,
+				"fromBalance": strconv.FormatFloat(fromBalance, 'f', 2, 64),
 			},
 		},
 	}
@@ -129,6 +130,7 @@ type History struct {
 	Created       int64  `json:"created"`
 	CustID        string `json:"custID"`
 	TransactionID string `json:"transactionID"`
+	FromBalance   string `json:"fromBalance"` // Amount used from balance
 }
 
 func GetBillingHistory(id string) []*History {
@@ -142,8 +144,9 @@ func GetBillingHistory(id string) []*History {
 		if ch := i.Charge(); ch != nil {
 			name, _ := ch.Meta["name"]
 			cid, _ := ch.Meta["cid"]
+			fromBalance, _ := ch.Meta["fromBalance"]
 
-			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, TransactionID: ch.ID, CustID: id}
+			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, TransactionID: ch.ID, CustID: id, FromBalance: fromBalance}
 			history = append(history, hist)
 		}
 	}

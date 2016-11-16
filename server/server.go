@@ -339,6 +339,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
+	adminGroup.GET("/balance/:id", getBalance(srv))
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)
@@ -351,7 +352,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		getCampaignsByAdvertiser, nil, nil, nil)
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
-	verifyGroup.GET("/getProratedBudget/:budget", getDealsForCampaign(srv))
+	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	r.Static("images", srv.Cfg.ImagesDir)
 
 	// Deal
