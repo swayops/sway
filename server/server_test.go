@@ -3265,6 +3265,8 @@ func TestStripe(t *testing.T) {
 		}
 	}
 
+	log.Println("stripe user:", adv.ExpID)
+
 	if hFound == nil {
 		t.Fatal("Missing charge for campaign")
 	}
