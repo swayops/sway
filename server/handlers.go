@@ -349,7 +349,6 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				var spendable float64
 				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
-					misc.AbortWithErr(c, 500, err)
 					return
 				}
 
@@ -2974,7 +2973,6 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 			return
 		}
 		info.History = history
-
 
 		s.budgetDb.View(func(tx *bolt.Tx) error {
 			info.InactiveBalance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
