@@ -46,6 +46,7 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 func (a *Auth) CheckScopes(sm ScopeMap) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if u := GetCtxUser(c); u != nil && sm.HasAccess(u.Type(), c.Request.Method) {
+			log.Println(u)
 			return
 		}
 		misc.AbortWithErr(c, 401, ErrUnauthorized)
@@ -73,19 +74,28 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 		if utype == InvalidScope {
 			goto EXIT
 		}
+		log.Println(itemType)
 		switch itemType {
 		case AdAgencyItem:
-			ok = u.ID == itemID
+			if ok = u.ID == itemID; !ok {
+				adv := a.GetAdvertiser(itemID)
+				ok = adv != nil && adv.AgencyID == u.ID
+			}
 
 		case TalentAgencyItem:
-			ok = u.ID == itemID
+			if ok = u.ID == itemID; !ok {
+				inf := a.GetUser(itemID)
+				ok = inf != nil && inf.Influencer != nil && inf.ParentID == u.ID
+			}
 
 		case AdvertiserItem:
+			log.Println(utype)
 			switch utype {
 			case AdvertiserScope:
 				ok = u.ID == itemID
 			case AdAgencyScope:
 				adv := a.GetAdvertiser(itemID)
+				log.Println(adv)
 				ok = adv != nil && adv.AgencyID == u.ID
 			}
 
