@@ -66,7 +66,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		stripe.LogLevel = 0
 		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
 	} else {
-		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
+		stripe.Key = "sk_live_v1MxQNZbe64fgS4rU6q5aHHT"
 	}
 
 	err := srv.initializeDBs(cfg)
