@@ -27,6 +27,7 @@ import (
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/lob"
+	"github.com/swayops/sway/platforms/swipe"
 )
 
 ///////// Talent Agencies ///////////
@@ -58,7 +59,7 @@ func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		var (
-			all    []*userWithCounts
+			all []*userWithCounts
 		)
 
 		s.db.View(func(tx *bolt.Tx) error {
@@ -150,6 +151,20 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, adv)
+	}
+}
+
+func getBalance(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var balance float64
+		if err := s.budgetDb.View(func(tx *bolt.Tx) (err error) {
+			balance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, balance)
 	}
 }
 
@@ -305,7 +320,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		if cmp.ImageData != "" {
 			if !strings.HasPrefix(cmp.ImageData, "data:image/") {
-				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				misc.AbortWithErr(c, 400, errors.New("Please provide a valid campaign image"))
 				return
 			}
 			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, "", 750, 389)
@@ -319,21 +334,29 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.ImageURL = getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", DEFAULT_IMAGES[rand.Intn(len(DEFAULT_IMAGES))], false)
 		}
 
+		// We need the agency user to look at their IO status later!
+		ag := s.auth.GetAdAgency(cmp.AgencyId)
+		if ag == nil {
+			misc.AbortWithErr(c, 400, errors.New("Please provide a valid agency ID"))
+			return
+		}
+
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Create their budget key
-			// NOTE: Create budget key requires cmp.Id be set
-			var spendable float64
-			if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false); err != nil {
-				log.Println("Error creating budget key!", err)
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
+			if cmp.Status {
+				// Create their budget key IF the campaign is on
+				// NOTE: Create budget key requires cmp.Id be set
+				var spendable float64
+				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
+					s.Alert("Error initializing budget key for "+adv.Name, err)
+					return
+				}
 
-			addDealsToCampaign(&cmp, spendable, s, tx)
+				addDealsToCampaign(&cmp, spendable, s, tx)
+			}
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.AbortWithErr(c, 500, err)
 			return
 		}
 
@@ -521,9 +544,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.Name = *upd.Name
 		}
 
+		var (
+			ag  *auth.AdAgency
+			adv *auth.Advertiser
+		)
+		if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+			c.JSON(400, misc.StatusErr("Could not find ad agency "+cmp.AgencyId))
+			return
+		}
+
+		if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+			c.JSON(400, misc.StatusErr("Could not find advertiser "+cmp.AgencyId))
+			return
+		}
+
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, cmp.Id, *upd.Budget); err != nil {
+			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
@@ -539,22 +576,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.Budget = *upd.Budget
 		}
 
-		if upd.Status != nil {
-			if !*upd.Status && cmp.Status != *upd.Status {
-				// If the status has been toggled to off..
-				// Lets disactivate all currently ASSIGNED deals
-				// and email the influencer to alert them
-				go func() {
-					// Wait 15 mins before emailing
-					dbg := c.Query("dbg") == "1"
-					if !dbg {
-						time.Sleep(15 * time.Minute)
-					}
-					emailStatusUpdate(s, cmp.Id, dbg)
-				}()
-			}
-			cmp.Status = *upd.Status
-		}
 		cmp.Geos = upd.Geos
 		cmp.Categories = common.LowerSlice(upd.Categories)
 
@@ -574,11 +595,80 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		// Save the Campaign
+		var turnedOff bool
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveCampaign(tx, &cmp, s)
+			if upd.Status == nil {
+				goto END
+			}
+
+			if *upd.Status && cmp.Status != *upd.Status {
+				// If the campaign has been toggled to on..
+				store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+				if store == nil {
+					// This means the campaign has no store.. cmp was craeted with a status of
+					// off so a budget key was NOT created.. so we have to create it now!
+					// NOTE: Create budget key requires cmp.Id be set
+
+					var spendable float64
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error initializing budget key for "+adv.Name, err)
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+
+					addDealsToCampaign(&cmp, spendable, s, tx)
+
+				} else {
+					// This campaign does have a store.. so it was active sometime this month.
+					// Lets just give it the spendable we must have taken from it when it turned
+					// off
+					err = budget.ReplenishSpendable(s.budgetDb, s.Cfg, &cmp, ag.IsIO, adv.Customer)
+					if err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			} else if !*upd.Status && cmp.Status != *upd.Status {
+				// If the status has been toggled to off..
+				// Clear out the spendable from the DB and add that value to the balance
+				var spendable float64
+				spendable, err = budget.ClearSpendable(s.budgetDb, s.Cfg, &cmp)
+				if err != nil {
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
+				}
+
+				// If we cleared out some spendable.. lets increment the balance with it
+				if spendable > 0 {
+					if err = s.budgetDb.Update(func(tx *bolt.Tx) (err error) {
+						return budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg)
+					}); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+				turnedOff = true
+			}
+			cmp.Status = *upd.Status
+
+			END:
+				return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
+		}
+
+		if turnedOff {
+			// Lets disactivate all currently ASSIGNED deals
+			// and email the influencer to alert them if the campaign was turned off
+			go func() {
+				// Wait 15 mins before emailing
+				dbg := c.Query("dbg") == "1"
+				if !dbg {
+					time.Sleep(15 * time.Minute)
+				}
+				emailStatusUpdate(s, cmp.Id, dbg)
+			}()
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
@@ -1023,7 +1113,7 @@ func setAgency(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
 			infId = c.Param("influencerId")
-			agId = c.Param("agencyId")
+			agId  = c.Param("agencyId")
 		)
 
 		inf, ok := s.auth.Influencers.Get(infId)
@@ -1706,6 +1796,8 @@ func runBilling(s *Server) gin.HandlerFunc {
 		key := budget.GetLastMonthBudgetKey()
 		dbg := c.Query("dbg") == "1"
 		if dbg {
+			// For dbg scenario, we overwrite the current
+			// month's values
 			key = budget.GetCurrentBudgetKey()
 		}
 
@@ -1716,9 +1808,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(ErrEmptyStore))
 			return
 		}
-
-		advertiserXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
-		advertiserSheets := make(map[string]*misc.Sheet)
 
 		agencyXf := misc.NewXLSXFile(s.Cfg.JsonXlsxPath)
 		agencySheets := make(map[string]*misc.Sheet)
@@ -1753,75 +1842,56 @@ func runBilling(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			if data.Spent == 0 {
+			if adAgency.ID == auth.SwayOpsAdAgencyID {
+				// Don't need any reports for SwayOps.. we pocket it all
+				// because it's IO
 				continue
 			}
 
-			if adAgency.ID == auth.SwayOpsAdAgencyID {
-				// ADVERTISER INVOICE!
-				sheet, ok := advertiserSheets[cmp.AdvertiserId]
-				if !ok {
-					sheet = advertiserXf.AddSheet(fmt.Sprintf("%s (%s)", advertiser.Name, advertiser.ID))
-					sheet.AddHeader(
-						"ID",
-						"Name",
-						"Email",
-						"DSP Fee",
-						"Exchange Fee",
-						"Total Spent ($)",
-					)
-					advertiserSheets[cmp.AdvertiserId] = sheet
-				}
-
-				// Be wary of fees changing mid-month
-				dspFee, exchangeFee := getAdvertiserFees(s.auth, advertiser.ID)
-				sheet.AddRow(
-					cmp.Id,
-					cmp.Name,
-					emails,
-					fmt.Sprintf("%0.2f", dspFee*100)+"%",
-					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
-					misc.TruncateFloat(data.Spent, 2),
-				)
-			} else {
-				// AGENCY INVOICE!
-				// Don't add email for sway ad agency
-				user = s.auth.GetUser(adAgency.ID)
-				if user != nil {
-					if emails == "" {
-						emails = user.Email
-					} else {
-						emails += ", " + user.Email
-					}
-				}
-
-				sheet, ok := agencySheets[adAgency.ID]
-				if !ok {
-					sheet = agencyXf.AddSheet(fmt.Sprintf("%s (%s)", adAgency.Name, adAgency.ID))
-					sheet.AddHeader(
-						"Advertiser ID",
-						"Advertiser Name",
-						"Campaign ID",
-						"Campaign Name",
-						"Emails",
-						"DSP Fee",
-						"Exchange Fee",
-						"Total Spent ($)",
-					)
-					agencySheets[adAgency.ID] = sheet
-				}
-				dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
-				sheet.AddRow(
-					cmp.AdvertiserId,
-					advertiser.Name,
-					cmp.Id,
-					cmp.Name,
-					emails,
-					fmt.Sprintf("%0.2f", dspFee*100)+"%",
-					fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
-					misc.TruncateFloat(data.Spent, 2),
-				)
+			// If an advertiser spent money they weren't charged for
+			// send their asses an invoice
+			invoiceDelta := data.GetDelta()
+			if invoiceDelta == 0 {
+				continue
 			}
+
+			// AGENCY INVOICE!
+			// Don't add email for sway ad agency
+			user = s.auth.GetUser(adAgency.ID)
+			if user != nil {
+				if emails == "" {
+					emails = user.Email
+				} else {
+					emails += ", " + user.Email
+				}
+			}
+
+			sheet, ok := agencySheets[adAgency.ID]
+			if !ok {
+				sheet = agencyXf.AddSheet(fmt.Sprintf("%s (%s)", adAgency.Name, adAgency.ID))
+				sheet.AddHeader(
+					"Advertiser ID",
+					"Advertiser Name",
+					"Campaign ID",
+					"Campaign Name",
+					"Emails",
+					"DSP Fee",
+					"Exchange Fee",
+					"Total Spent ($)",
+				)
+				agencySheets[adAgency.ID] = sheet
+			}
+			dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
+			sheet.AddRow(
+				cmp.AdvertiserId,
+				advertiser.Name,
+				cmp.Id,
+				cmp.Name,
+				emails,
+				fmt.Sprintf("%0.2f", dspFee*100)+"%",
+				fmt.Sprintf("%0.2f", exchangeFee*100)+"%",
+				misc.TruncateFloat(invoiceDelta, 2),
+			)
 
 		}
 
@@ -1842,29 +1912,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 			}
 
 			if err := fo.Close(); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			files = append(files, fName)
-		}
-
-		if len(advertiserSheets) > 0 {
-			fName := fmt.Sprintf("%s-advertiser.xlsx", key)
-			location := filepath.Join(s.Cfg.LogsPath, "invoices", fName)
-
-			advo, err := os.Create(location)
-			if err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			if _, err := advertiserXf.WriteTo(advo); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			if err := advo.Close(); err != nil {
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
@@ -2017,19 +2064,18 @@ func runBilling(s *Server) gin.HandlerFunc {
 					return err
 				}
 
-				// Transfer over budgets for anyone regardless of status
-				// because they could set to active mid-month and would
-				// not have the full month's budget they have set (since
-				// they could have started the campaign mid-month and would
-				// have only a portion of their monthly budget)
-				if cmp.Budget > 0 {
-					// This will carry over any left over spendable too
+				if _, active := s.Campaigns.Get(cmp.Id); active {
+					// Checking campaigns cache because campaigns cache has only
+					// campaigns which have valid campaigns with active advertisers and agencies
+
+					// This functionality carry over any left over spendable too
 					// It will also look to check if there's a pending (lowered)
 					// budget that was saved to db last month.. and that should be
 					// used now
 					var (
 						leftover, pending float64
 					)
+
 					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
 					if err == nil && store != nil {
 						leftover = store.Spendable
@@ -2038,12 +2084,30 @@ func runBilling(s *Server) gin.HandlerFunc {
 						log.Println("Last months store not found for", cmp.Id)
 					}
 
+					var (
+						ag  *auth.AdAgency
+						adv *auth.Advertiser
+					)
+
+					if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+						log.Println("Could not find ad agency!", cmp.AgencyId)
+						return errors.New("Could not find ad agency " + cmp.AgencyId)
+					}
+
+					if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+						log.Println("Could not find advertiser!", cmp.AgencyId)
+						return errors.New("Could not find advertiser " + cmp.AgencyId)
+					}
+
 					// Create their budget key for this month in the DB
 					// NOTE: last month's leftover spendable will be carried over
 					var spendable float64
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true); err != nil {
-						log.Println("Error creating budget key!", err)
-						return err
+
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
+						// Don't return because an agency that switched from IO to CC that has
+						// advertisers with no CC will always error here.. just alert!
+						return nil
 					}
 
 					// Add fresh deals for this month
@@ -2599,6 +2663,17 @@ func forceEmail(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getProratedBudget(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		value, err := strconv.ParseFloat(c.Param("budget"), 64)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+		c.JSON(200, gin.H{"budget": budget.GetProratedBudget(value)})
+	}
+}
+
 func uploadImage(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var upd UploadImage
@@ -2858,6 +2933,88 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, feed)
+	}
+}
+
+type BillingInfo struct {
+	ID              string           `json:"id,omitempty"`
+	ActiveBalance   float64          `json:"activeBalance,omitempty"`
+	InactiveBalance float64          `json:"inactiveBalance,omitempty"`
+	CreditCard      *swipe.CC        `json:"cc,omitempty"`
+	History         []*swipe.History `json:"history,omitempty"`
+}
+
+func getBillingInfo(s *Server) gin.HandlerFunc {
+	// Retrieves all billing info for the advertiser
+	return func(c *gin.Context) {
+		adv := s.auth.GetAdvertiser(c.Param("id"))
+		if adv == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
+		var (
+			info BillingInfo
+			err  error
+		)
+
+		if adv.Customer == "" {
+			c.JSON(200, info)
+			return
+		}
+
+		var history []*swipe.History
+		if adv.Customer != "" {
+			history = swipe.GetBillingHistory(adv.Customer)
+		}
+
+		info.ID = adv.Customer
+		info.CreditCard, err = swipe.GetCleanCreditCard(adv.Customer)
+		if err != nil {
+			c.JSON(200, misc.StatusErr(err.Error()))
+			return
+		}
+		info.History = history
+
+		s.budgetDb.View(func(tx *bolt.Tx) error {
+			info.InactiveBalance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
+			return nil
+		})
+
+		// Get all campaigns for this advertiser
+		var campaigns []string
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if cmp.AdvertiserId == adv.ID {
+					// No need to display massive deal set
+					campaigns = append(campaigns, cmp.Id)
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		// Add up all spent and spendable values for the advertiser to
+		// determine active budget
+		for _, cmp := range campaigns {
+			budg, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp, "")
+			if err != nil {
+				log.Println("Err retrieving budget", cmp)
+				continue
+			}
+
+			info.ActiveBalance += budg.Spendable + budg.Spent
+		}
+
+		c.JSON(200, info)
 	}
 }
 

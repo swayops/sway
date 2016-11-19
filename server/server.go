@@ -13,6 +13,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/hoisie/mustache"
+	"github.com/stripe/stripe-go"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
@@ -61,6 +62,13 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		Campaigns: common.NewCampaigns(),
 	}
 
+	if cfg.Sandbox {
+		stripe.LogLevel = 0
+		stripe.Key = "sk_test_t6NYedi21SglECi1HwEvSMb8"
+	} else {
+		stripe.Key = "sk_live_v1MxQNZbe64fgS4rU6q5aHHT"
+	}
+
 	err := srv.initializeDBs(cfg)
 	if err != nil {
 		return nil, err
@@ -85,7 +93,7 @@ func initializeDirs(cfg *config.Config) {
 
 func (srv *Server) initializeDBs(cfg *config.Config) error {
 	if err := srv.db.Update(func(tx *bolt.Tx) error {
-		for _, val := range cfg.AllBuckets() {
+		for _, val := range cfg.AllBuckets(cfg.Bucket) {
 			log.Println("Initializing bucket", val)
 			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
 				return fmt.Errorf("create bucket: %s", err)
@@ -118,6 +126,11 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 			Email:    AdAdminEmail,
 			AdAgency: &auth.AdAgency{},
 		}
+
+		if cfg.Sandbox {
+			u.AdAgency.IsIO = true
+		}
+
 		if err := srv.auth.CreateUserTx(tx, u, adminPass); err != nil {
 			return err
 		}
@@ -148,11 +161,14 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 	}
 
 	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(cfg.BudgetBucket)); err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		if err := misc.InitIndex(tx, cfg.BudgetBucket, 1); err != nil {
-			return err
+		for _, val := range cfg.AllBuckets(cfg.BudgetBuckets) {
+			log.Println("Initializing budget bucket", val)
+			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
+				return fmt.Errorf("create bucket: %s", err)
+			}
+			if err := misc.InitIndex(tx, val, 1); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
@@ -322,6 +338,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		putAdvertiser, nil)
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
+	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
+	adminGroup.GET("/balance/:id", getBalance(srv))
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)
@@ -334,6 +352,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		getCampaignsByAdvertiser, nil, nil, nil)
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
+	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	r.Static("images", srv.Cfg.ImagesDir)
 
 	// Deal
@@ -434,11 +453,11 @@ func (srv *Server) Run() error {
 }
 
 func (srv *Server) Alert(msg string, err error) {
-	log.Println(msg, err)
-
 	if srv.Cfg.Sandbox {
 		return
 	}
+
+	log.Println(msg, err)
 
 	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
 	for _, addr := range mailingList {

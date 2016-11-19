@@ -73,12 +73,19 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 		if utype == InvalidScope {
 			goto EXIT
 		}
+
 		switch itemType {
 		case AdAgencyItem:
-			ok = u.ID == itemID
+			if ok = u.ID == itemID; !ok {
+				adv := a.GetAdvertiser(itemID)
+				ok = adv != nil && adv.AgencyID == u.ID
+			}
 
 		case TalentAgencyItem:
-			ok = u.ID == itemID
+			if ok = u.ID == itemID; !ok {
+				inf := a.GetUser(itemID)
+				ok = inf != nil && inf.Influencer != nil && inf.ParentID == u.ID
+			}
 
 		case AdvertiserItem:
 			switch utype {
