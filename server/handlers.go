@@ -598,7 +598,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		var turnedOff bool
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if upd.Status == nil {
-				return nil
+				goto END
 			}
 
 			if *upd.Status && cmp.Status != *upd.Status {
@@ -650,7 +650,9 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				turnedOff = true
 			}
 			cmp.Status = *upd.Status
-			return saveCampaign(tx, &cmp, s)
+
+			END:
+				return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
