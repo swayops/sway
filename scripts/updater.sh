@@ -27,7 +27,8 @@ function update-sway() {
 	echo "updating sway"
 	pushd $GOPATH/src/github.com/swayops/sway > /dev/null
 	rm $GOPATH/bin/sway &>/dev/null
-	go get -v -u -ldflags "-X github.com/swayops/sway/server.gitBuild=$(git describe --always --abbrev=16)" || die
+	git pull || die
+	go get -v -ldflags "-X github.com/swayops/sway/server.gitBuild=$(git describe --always --abbrev=16)" || die
 	popd > /dev/null
 }
 
@@ -69,5 +70,5 @@ case "$1" in
 
 	st|status) sudo -i /bin/bash -c 'systemctl status -l sway';;
 
-	*) echo "$0 [ dash | inf | sway | all | restart | start | stop | status]" ;;
+	*) echo "$0 [ dash | inf | sway | all | restart | start | stop | status ]" ;;
 esac
