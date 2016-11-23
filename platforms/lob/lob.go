@@ -26,7 +26,7 @@ const (
 
 var (
 	ErrAddr    = errors.New("Missing address!")
-	ErrBadAddr = errors.New("Address doesn't seem to be found. Please email engage@swayops.com with your login email / username and the address your trying to use")
+	ErrBadAddr = errors.New("Mailing address inputted is not valid. Please email engage@swayops.com with your login email / username and the address your trying to use")
 )
 
 type AddressLoad struct {
