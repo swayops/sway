@@ -25,7 +25,7 @@ func main() {
 	}
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(ginLogger("/static", "/favicon.ico"))
+	r.Use(ginLogger("/static", "/favicon.ico", "/api/v1/getIncompleteInfluencers"))
 
 	// Ping test
 	r.GET("/ping", func(c *gin.Context) {
