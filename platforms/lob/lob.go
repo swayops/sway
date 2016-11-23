@@ -118,6 +118,11 @@ func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 		return nil, ErrAddr
 	}
 
+	if strings.ToLower(addr.Country) == "un" {
+		// Accounting for Chrome auto-fill putting United States as Un
+		addr.Country = "US"
+	}
+
 	form := url.Values{}
 	form.Add("address_line1", addr.AddressOne)
 	form.Add("address_line2", addr.AddressTwo)
