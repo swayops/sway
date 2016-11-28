@@ -9,6 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/sharpspring"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
@@ -259,6 +260,13 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
+
+	qs := c.Request.URL.RawQuery
+	go func() {
+		err := sharpspring.CreateLead(a.cfg, sup.ID, sup.ParentID, sup.Name, sup.Email, qs)
+		log.Printf("error creating lead: %v", err)
+	}()
+
 	return true
 }
 
