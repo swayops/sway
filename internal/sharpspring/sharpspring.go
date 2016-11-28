@@ -8,14 +8,20 @@ import (
 
 	"encoding/json"
 
+	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
 )
 
-const apiURL = "https://api.sharpspring.com/pubapi/v1/"
+const (
+	apiURL = "https://api.sharpspring.com/pubapi/v1/"
+
+	AdvList = "440804355"
+	InfList = "440805379"
+)
 
 func Post(cfg *config.Config, req interface{}) error {
 	j, err := json.Marshal(req)
-	if err != nil {
+	if err != nil && req != nil {
 		return err
 	}
 	qs := "?accountID=" + cfg.SharpSpring.AccountID + "&secretKey=" + cfg.SharpSpring.APIKey
@@ -31,11 +37,19 @@ func Post(cfg *config.Config, req interface{}) error {
 	return parseResponse(resp.Body)
 }
 
-func CreateLead(cfg *config.Config, aid, oid, name, email, desc string) error {
+func CreateLead(cfg *config.Config, typ, aid, oid, name, email, desc string) error {
 	ll := NewLeads(aid, "createLeads", []*Lead{
 		NewLead(aid, oid, name, email, desc),
 	})
-	return Post(cfg, ll)
+	if err := Post(cfg, ll); err != nil {
+		return err
+	}
+
+	return Post(cfg, gin.H{
+		"id":     "addToList:" + typ + ":" + aid,
+		"method": "addListMemberEmailAddress",
+		"params": List{ID: typ, Email: email},
+	})
 }
 
 // not working
@@ -47,7 +61,7 @@ func CreateLead(cfg *config.Config, aid, oid, name, email, desc string) error {
 type Lead struct {
 	ID      string `json:"id,omitempty"`
 	OwnerID string `json:"ownerID,omitempty"`
-	Name    string `json:"companyName,omitempty"`
+	Name    string `json:"firstName,omitempty"`
 	Email   string `json:"emailAddress,omitempty"`
 	Status  string `json:"leadStatus,omitempty"`
 	Desc    string `json:"description,omitempty"`
@@ -81,4 +95,9 @@ func NewLeads(id, method string, obj interface{}) *Leads {
 	}
 	l.Params.Objects = obj
 	return l
+}
+
+type List struct {
+	ID    string `json:"listID"`
+	Email string `json:"emailAddress"`
 }

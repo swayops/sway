@@ -261,10 +261,17 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		return
 	}
 
+	var ssType string
 	if sup.Advertiser != nil {
+		ssType = sharpspring.AdvList
+	} else if sup.Influencer != nil {
+		ssType = sharpspring.InfList
+	}
+
+	if ssType != "" {
 		qs := c.Request.URL.RawQuery
 		go func() {
-			err := sharpspring.CreateLead(a.cfg, sup.ID, sup.ParentID, sup.Name, sup.Email, qs)
+			err := sharpspring.CreateLead(a.cfg, ssType, sup.ID, sup.ParentID, sup.Name, sup.Email, qs)
 			log.Printf("error creating lead: %v", err)
 		}()
 	}
