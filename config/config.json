@@ -71,10 +71,12 @@
 		"accessToken": "bs6HXJRhj4253EJCJNIpz013iA4TxmvIYzeLWszoEYoIZYB8b2",
 		"accessSecret": "wFZkVcPmMrL7yWrguxbkRIBrGkOiGa4nJbYGNbKMmbma0ZVP6A"
 	},
+
 	"sharpSpring": {
 		"id": "3_7DF6D4EB282653A5BF4147C8B45E9E04",
-		"key": "CBBCDCDDCF7374AA49C3CE5B0A5A577B",
+		"key": "CBBCDCDDCF7374AA49C3CE5B0A5A577B"
 	},
+
 	"jsonXlsxPath": "./config/json2xlsx.py",
 	"imagesDir": "./images/",
 	"imageUrlPath": "images/",

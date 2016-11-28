@@ -268,20 +268,11 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 		ssType = sharpspring.InfList
 	}
 
-	if ssType != "" {
-		qs := c.Request.URL.RawQuery
-		if a.cfg.Sandbox {
+	if ssType != "" && !a.cfg.Sandbox {
+		go func(qs string) {
 			err := sharpspring.CreateLead(a.cfg, ssType, sup.ID, sup.ParentID, sup.Name, sup.Email, qs)
-			if err != nil {
-				misc.AbortWithErr(c, http.StatusInternalServerError, err)
-				return false
-			}
-		} else {
-			go func() {
-				err := sharpspring.CreateLead(a.cfg, ssType, sup.ID, sup.ParentID, sup.Name, sup.Email, qs)
-				log.Printf("error creating lead: %v", err)
-			}()
-		}
+			log.Printf("error creating lead: %v", err)
+		}(c.Request.URL.RawQuery)
 	}
 
 	return true
