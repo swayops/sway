@@ -483,6 +483,26 @@ func findInstagramMatch(inf influencer.Influencer, deal *common.Deal, link strin
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !deal.SkipFraud {
+				// Before returning the post.. lets check for some fraud
+
+				// Does it have any fraud hashtags?
+				for _, tg := range hashBlacklist {
+					for _, hashtag := range post.Hashtags {
+						if strings.EqualFold(hashtag, tg) {
+							// SEND EMAIL
+							return nil
+						}
+					}
+					if containsFold(post.Caption, tg) {
+						// SEND EMAIL
+						return nil
+					}
+				}
+
+				// What's the likes to comments ratio?
+			}
+
 			return post
 		}
 	}

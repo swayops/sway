@@ -3,6 +3,7 @@ package instagram
 import (
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -105,7 +106,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 
 	posts := []*Post{}
 	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, getToken(cfg.Instagram.AccessTokens))
-
+	log.Println("ENDPOINT", endpoint)
 	var media UserPost
 	err := misc.Request("GET", endpoint, "", &media)
 	if err != nil {
@@ -137,7 +138,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 		p := &Post{
 			Id:          post.Id,
 			Published:   published,
-			Hashtags:    post.Tags,
+			Hashtags:    misc.SanitizeHashes(post.Tags),
 			PostURL:     post.URL,
 			LastUpdated: int32(time.Now().Unix()),
 		}

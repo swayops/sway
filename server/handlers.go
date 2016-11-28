@@ -288,7 +288,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		for i, ht := range cmp.Tags {
-			cmp.Tags[i] = sanitizeHash(ht)
+			cmp.Tags[i] = misc.SanitizeHash(ht)
 		}
 
 		cmp.Link = sanitizeURL(cmp.Link)
@@ -1100,6 +1100,48 @@ func setBan(s *Server) gin.HandlerFunc {
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func setFraud(s *Server) gin.HandlerFunc {
+	// Sets the fraud check value for a deal
+	return func(c *gin.Context) {
+		fraud, err := strconv.ParseBool(c.Params.ByName("state"))
+		if err != nil {
+			c.JSON(400, misc.StatusErr("Please submit a valid fraud state"))
+			return
+		}
+
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		cid := c.Param("campaignId")
+		if cid == "" {
+			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		for _, d := range inf.ActiveDeals {
+			if d.CampaignId == cid {
+				d.SkipFraud = fraud
+			}
+		}
+
+		if err := saveAllActiveDeals(s, inf); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}

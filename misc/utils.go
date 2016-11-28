@@ -162,3 +162,24 @@ func TruncateFloat(num float64, precision int) float64 {
 func Random(min, max int) int32 {
 	return int32(rand.Intn(max-min) + min)
 }
+
+func SanitizeHashes(str []string) []string {
+	// Removes # from string
+	out := make([]string, 0, len(str))
+	for _, s := range str {
+		out = append(out, SanitizeHash(s))
+	}
+	return out
+}
+
+func SanitizeHash(str string) string {
+	// Removes #
+	raw := strings.Map(func(r rune) rune {
+		if strings.IndexRune("#", r) < 0 {
+			return r
+		}
+		return -1
+	}, str)
+
+	return strings.ToLower(raw)
+}

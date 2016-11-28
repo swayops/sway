@@ -370,18 +370,6 @@ func saveAllActiveDeals(s *Server, inf influencer.Influencer) error {
 	return nil
 }
 
-func sanitizeHash(str string) string {
-	// Removes #
-	raw := strings.Map(func(r rune) rune {
-		if strings.IndexRune("#", r) < 0 {
-			return r
-		}
-		return -1
-	}, str)
-
-	return strings.ToLower(raw)
-}
-
 func sanitizeMention(str string) string {
 	// Removes @
 	raw := strings.Map(func(r rune) rune {
