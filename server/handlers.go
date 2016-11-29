@@ -301,8 +301,24 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Blacklist = adv.Blacklist
 		}
 
-		// If there are perks.. campaign is in pending until admin approval
-		if cmp.Perks != nil {
+		if cmp.Perks != nil && cmp.Perks.Type != 1 && cmp.Perks.Type != 2 {
+			c.JSON(400, misc.StatusErr("Invalid perk type. Must be 1 (Product) or 2 (Coupon)"))
+			return
+		}
+
+		if cmp.Perks != nil && cmp.Perks.IsCoupon() {
+			if len(cmp.Perks.Codes) == 0 {
+				c.JSON(400, misc.StatusErr("Please provide coupon codes"))
+				return
+			}
+
+			// Set count internally depending on number of coupon codes passed
+			cmp.Perks.Count = len(cmp.Perks.Codes)
+		}
+
+		// If there are perks AND its a product perk..
+		// campaign is put in pending until admin approval
+		if cmp.Perks != nil && cmp.Perks.IsProduct() {
 			cmp.Approved = 0
 		} else {
 			cmp.Approved = int32(time.Now().Unix())
@@ -651,8 +667,8 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}
 			cmp.Status = *upd.Status
 
-			END:
-				return saveCampaign(tx, &cmp, s)
+		END:
+			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -1415,13 +1431,30 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 				cmp.Perks.Count -= 1
 				foundDeal.Perk = &common.Perk{
-					Name:     cmp.Perks.Name,
-					Category: cmp.Perks.Category,
-					Count:    1,
-					InfId:    inf.Id,
-					InfName:  inf.Name,
-					Address:  inf.Address,
-					Status:   false,
+					Name:         cmp.Perks.Name,
+					Instructions: cmp.Perks.Instructions,
+					Category:     cmp.Perks.GetType(),
+					Count:        1,
+					InfId:        inf.Id,
+					InfName:      inf.Name,
+					Address:      inf.Address,
+					Status:       false,
+				}
+
+				// If it's a coupon code.. we do not need admin approval
+				// so lets set the status to true
+				if cmp.Perks.IsCoupon() {
+					if len(cmp.Perks.Codes) == 0 {
+						return errors.New("Deal is no longer available!")
+					}
+
+					foundDeal.Perk.Status = true
+					// Give it last element of the slice
+					idx := len(cmp.Perks.Codes) - 1
+					foundDeal.Perk.Code = cmp.Perks.Codes[idx]
+
+					// Lets also delete the coupon code
+					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
 				}
 			}
 

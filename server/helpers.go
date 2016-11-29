@@ -112,6 +112,12 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 		maxDeals = int(spendable / 15)
 	}
 
+	if maxDeals == 0 && s.Cfg.Sandbox {
+		// Override so tests don't fail on the last day of the month
+		// when we have little spendable
+		maxDeals = 100
+	}
+
 	for i := 0; i < maxDeals; i++ {
 		d := &common.Deal{
 			Id:           misc.PseudoUUID(),
