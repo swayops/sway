@@ -158,6 +158,11 @@ type Config struct {
 		URL      string `json:"url"`
 	} `json:"bucket"`
 
+	SharpSpring struct {
+		AccountID string `json:"id"`
+		APIKey    string `json:"key"`
+	} `json:"sharpSpring"`
+
 	ec      *mandrill.Client
 	replyEc *mandrill.Client
 
