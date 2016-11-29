@@ -1160,7 +1160,7 @@ func TestPerks(t *testing.T) {
 		Female:       true,
 		Link:         "blade.org",
 		Tags:         []string{"#mmmm"},
-		Perks:        &common.Perk{Name: "Nike Air Shoes", Category: "product", Count: 5},
+		Perks:        &common.Perk{Name: "Nike Air Shoes", Type: 1, Count: 5},
 	}
 
 	for _, tr := range [...]*resty.TestRequest{
@@ -1551,6 +1551,202 @@ SKIP_APPROVE_2:
 
 	// verify deal
 	verifyDeal(t, "4", inf.ExpID, ag.ExpID, rst, false)
+
+	// Create a campaign with coupon perks
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150.5,
+		Name:         "A coupon code campaign",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "blade.org",
+		Tags:         []string{"#mmmm"},
+		Perks:        &common.Perk{Name: "Nike Air Shoes Coupons", Count: 5}, // No type so should error!
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status == 200 {
+		// Should reject!
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(string(r.Value), "Invalid perk type") {
+		t.Fatal("Bad err msg")
+		return
+	}
+
+	cmp.Perks.Type = 2 // Set coupon type
+
+	// Should now reject because we didn't pass any coupon codes!
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	if r.Status == 200 {
+		// Should reject!
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(string(r.Value), "Please provide coupon codes") {
+		t.Fatal("Bad err msg")
+		return
+	}
+
+	cmp.Perks.Codes = []string{"123COUPON", "321COUPON", "LASTCOUPON"}
+	cmp.Perks.Instructions = "Go to nike.com and use the coupon at check out!"
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Make sure it's approved and has other expected values
+	var couponCmp common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &couponCmp)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	if couponCmp.Approved == 0 {
+		t.Fatal("Coupon campaign should be approved!")
+		return
+	}
+
+	if couponCmp.Perks.Count != len(cmp.Perks.Codes) {
+		t.Fatal("Bad coupon count!")
+		return
+	}
+
+	if len(couponCmp.Deals) != couponCmp.Perks.Count {
+		t.Fatal("Bad deal count!")
+		return
+	}
+
+	// Make sure it doesnt show up in admin approval
+	var couponCmps []*common.Campaign
+	r = rst.DoTesting(t, "GET", "/getPendingCampaigns", nil, &couponCmps)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	for _, cmp := range couponCmps {
+		if cmp.Id == st.ID {
+			t.Fatal("WTF COUPON CAMPAIGN SHOULDNT BE IN ADMIN APPROVAL LIST")
+			return
+		}
+	}
+
+	// Get the deal and make sure it has the right category
+	var couponDeals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &couponDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	deals = getDeals(st.ID, couponDeals)
+	if len(deals) == 0 {
+		t.Fatal("Unexpected number of deals!")
+		return
+	}
+
+	deal := deals[0]
+	if deal.Perk == nil {
+		t.Fatal("No perk!")
+		return
+	}
+
+	if deal.Perk.Instructions != cmp.Perks.Instructions {
+		t.Fatal("Bad instructions")
+		return
+	}
+
+	if len(deal.Perk.Codes) > 0 {
+		t.Fatal("No coupon codes should be visible!")
+		return
+	}
+
+	if deal.Perk.Count != 1 {
+		t.Fatal("Bad perk count")
+		return
+	}
+
+	if deal.Perk.Category != "Coupon" {
+		t.Fatal("Bad category")
+		return
+	}
+
+	if deal.Perk.InfId != "" || deal.Perk.Status {
+		t.Fatal("Incorrect perk values set!")
+		return
+	}
+
+	// Assign yourself the deal and make sure you have a coupon code
+	var doneDeal common.Deal
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+st.ID+"/"+deal.Id+"/twitter?dbg=1", nil, &doneDeal)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if doneDeal.Perk.Instructions != cmp.Perks.Instructions {
+		t.Fatal("No instructions")
+		return
+	}
+
+	if doneDeal.Perk.Code != "LASTCOUPON" {
+		t.Fatal("Bad coupon code")
+		return
+	}
+
+	var updCampaign *common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &updCampaign)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	var fnd *common.Deal
+	for _, deal := range updCampaign.Deals {
+		if deal.Id == doneDeal.Id {
+			fnd = deal
+			break
+		}
+	}
+
+	if fnd == nil {
+		t.Fatal("Deal not found")
+		return
+	}
+
+	if fnd.Assigned == 0 {
+		t.Fatal("WTF it should be assigned to the influencer")
+		return
+	}
+
+	if !fnd.Perk.Status {
+		t.Fatal("Perk status should be true")
+	}
+
+	if couponCmp.Perks.Count != (updCampaign.Perks.Count + 1) {
+		t.Fatal("Count did not decrease by one")
+		return
+	}
+
+	for _, code := range updCampaign.Perks.Codes {
+		if code == "LASTCOUPON" {
+			t.Fatal("Coupon code did not delete")
+			return
+		}
+	}
 }
 
 func getDeals(cid string, deals []*common.Deal) []*common.Deal {
@@ -2923,7 +3119,6 @@ func TestBalances(t *testing.T) {
 		t.Fatal("Spendable calculation incorrect")
 		return
 	}
-
 
 	// Balance should be 0
 	var bigBillingInfo BillingInfo
