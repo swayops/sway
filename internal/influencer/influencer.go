@@ -724,9 +724,10 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			targetDeal.Task = cmp.Task
 			if cmp.Perks != nil {
 				targetDeal.Perk = &common.Perk{
-					Name:     cmp.Perks.Name,
-					Category: cmp.Perks.Category,
-					Count:    1}
+					Name:         cmp.Perks.Name,
+					Instructions: cmp.Perks.Instructions,
+					Category:     cmp.Perks.GetType(),
+					Count:        1}
 			}
 
 			// Add some display attributes..
