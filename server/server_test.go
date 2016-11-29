@@ -1569,8 +1569,7 @@ SKIP_APPROVE_2:
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status == 200 {
 		// Should reject!
-		log.Println(string(r.Value))
-		t.Fatalf("Bad status code: %+v", r)
+		t.Fatalf("Bad status code: %s", string(r.Value))
 		return
 	}
 
@@ -1585,8 +1584,7 @@ SKIP_APPROVE_2:
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
 	if r.Status == 200 {
 		// Should reject!
-		log.Println(string(r.Value))
-		t.Fatalf("Bad status code: %+v", r)
+		t.Fatalf("Bad status code: %s", string(r.Value))
 		return
 	}
 
