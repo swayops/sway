@@ -1780,7 +1780,7 @@ func TestInfluencerEmail(t *testing.T) {
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatalf("Bad status code! %s", r.Value)
 	}
 
 	// Lets check default email value
