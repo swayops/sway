@@ -484,6 +484,23 @@ func (srv *Server) Notify(subject, msg string) {
 	}
 }
 
+func (srv *Server) Fraud(cid, infId, url, reason string) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	msg := fmt.Sprintf("Please check the post at %s as there was fraud detected with the following reason: %s for the campaign id %s and influencer id %s", reason, cid, infId)
+
+	email := templates.FraudEmail.Render(map[string]interface{}{"msg": msg})
+
+	for _, addr := range mailingList {
+		if resp, err := srv.Cfg.MailClient().SendMessage(email, fmt.Sprintf("Fraud detected for campaign %s and influencer id %s", cid, infId), addr, "Important Person",
+			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			log.Println("Error sending fraud email!")
+		}
+	}
+}
+
 func (srv *Server) Digest(updatedInf, foundDeals int32, totalDepleted float64, sigsFound, dealsEmailed int32, start time.Time) {
 	if srv.Cfg.Sandbox {
 		return

@@ -105,6 +105,14 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 	// at the # of available perks
 
 	if cmp.Perks != nil {
+		if len(cmp.Deals) > 0 {
+			// If a perk campaign already has deals, that means
+			// we've already created max amount of deals for them,
+			// so now regardless of whether or not their budget is increased,
+			// or billing is ran, we need to maintain the same number of deals
+			// SO LETS RETURN EARLY
+			return cmp
+		}
 		maxDeals = cmp.Perks.Count
 	} else {
 		// Assume each deal will yield about $15

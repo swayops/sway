@@ -11,6 +11,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
@@ -19,9 +20,10 @@ import (
 )
 
 var (
-	requiredHash = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement"}
-	ONE_DAY      = int32(60 * 60 * 24)
-	DEAL_TIMEOUT = ONE_DAY * 14
+	requiredHash   = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement"}
+	ONE_DAY        = int32(60 * 60 * 24)
+	DEAL_TIMEOUT   = ONE_DAY * 14
+	WAITING_PERIOD = 3 // Wait 3 hours before we accept a deal
 )
 
 func explore(srv *Server) (int32, error) {
@@ -42,6 +44,7 @@ func explore(srv *Server) (int32, error) {
 	minTs := now - (DEAL_TIMEOUT)
 
 	for _, deal := range activeDeals {
+		log.Println("DOES IT RUN LOL")
 		var foundPost bool
 
 		// Go over all assigned deals in the platform
@@ -72,7 +75,7 @@ func explore(srv *Server) (int32, error) {
 			// assign the first one that matches
 			switch mediaPlatform {
 			case platform.YouTube:
-				if post := findYouTubeMatch(inf, deal, targetLink); post != nil {
+				if post := findYouTubeMatch(srv, inf, deal, targetLink); post != nil {
 					if err = srv.ApproveYouTube(post, deal); err != nil {
 						msg := fmt.Sprintf("Failed to approve YT post for %s", inf.Id)
 						srv.Alert(msg, err)
@@ -86,7 +89,7 @@ func explore(srv *Server) (int32, error) {
 					break
 				}
 			case platform.Instagram:
-				if post := findInstagramMatch(inf, deal, targetLink); post != nil {
+				if post := findInstagramMatch(srv, inf, deal, targetLink); post != nil {
 					if err = srv.ApproveInstagram(post, deal); err != nil {
 						msg := fmt.Sprintf("Failed to approve insta post for %s", inf.Id)
 						srv.Alert(msg, err)
@@ -100,7 +103,7 @@ func explore(srv *Server) (int32, error) {
 					break
 				}
 			case platform.Twitter:
-				if tweet := findTwitterMatch(inf, deal, targetLink); tweet != nil {
+				if tweet := findTwitterMatch(srv, inf, deal, targetLink); tweet != nil {
 					if err = srv.ApproveTweet(tweet, deal); err != nil {
 						msg := fmt.Sprintf("Failed to approve tweet for %s", inf.Id)
 						srv.Alert(msg, err)
@@ -114,7 +117,7 @@ func explore(srv *Server) (int32, error) {
 					break
 				}
 			case platform.Facebook:
-				if post := findFacebookMatch(inf, deal, targetLink); post != nil {
+				if post := findFacebookMatch(srv, inf, deal, targetLink); post != nil {
 					if err = srv.ApproveFacebook(post, deal); err != nil {
 						msg := fmt.Sprintf("Failed to approve fb post for %s", inf.Id)
 						srv.Alert(msg, err)
@@ -284,13 +287,13 @@ func hasReqHash(text string, hashtags []string) bool {
 	return false
 }
 
-func findTwitterMatch(inf influencer.Influencer, deal *common.Deal, link string) *twitter.Tweet {
+func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal, link string) *twitter.Tweet {
 	if inf.Twitter == nil {
 		return nil
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
-		if int32(tw.CreatedAt.Unix()) < deal.Assigned {
+		if int32(tw.CreatedAt.Unix()) < deal.Assigned || misc.WithinLast(int32(tw.CreatedAt.Unix()), WAITING_PERIOD) {
 			continue
 		}
 
@@ -351,6 +354,24 @@ func findTwitterMatch(inf influencer.Influencer, deal *common.Deal, link string)
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !deal.SkipFraud {
+				// Before returning the post.. lets check for some fraud
+
+				// Does it have any fraud hashtags?
+				for _, tg := range hashBlacklist {
+					for _, hashtag := range postTags {
+						if strings.EqualFold(hashtag, tg) {
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag")
+							return nil
+						}
+					}
+					if containsFold(tw.Text, tg) {
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag")
+						return nil
+					}
+				}
+			}
+
 			return tw
 		}
 	}
@@ -358,13 +379,13 @@ func findTwitterMatch(inf influencer.Influencer, deal *common.Deal, link string)
 	return nil
 }
 
-func findFacebookMatch(inf influencer.Influencer, deal *common.Deal, link string) *facebook.Post {
+func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal, link string) *facebook.Post {
 	if inf.Facebook == nil {
 		return nil
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
-		if int32(post.Published.Unix()) < deal.Assigned {
+		if int32(post.Published.Unix()) < deal.Assigned || misc.WithinLast(int32(post.Published.Unix()), WAITING_PERIOD) {
 			continue
 		}
 
@@ -417,6 +438,30 @@ func findFacebookMatch(inf influencer.Influencer, deal *common.Deal, link string
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !deal.SkipFraud {
+				// Before returning the post.. lets check for some fraud
+
+				// Does it have any fraud hashtags?
+				for _, tg := range hashBlacklist {
+					for _, hashtag := range postTags {
+						if strings.EqualFold(hashtag, tg) {
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							return nil
+						}
+					}
+					if containsFold(post.Caption, tg) {
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						return nil
+					}
+				}
+
+				// What's the likes to comments ratio?
+				if post.Comments/post.Likes > 0.04 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
+					return nil
+				}
+			}
+
 			return post
 		}
 	}
@@ -424,13 +469,13 @@ func findFacebookMatch(inf influencer.Influencer, deal *common.Deal, link string
 	return nil
 }
 
-func findInstagramMatch(inf influencer.Influencer, deal *common.Deal, link string) *instagram.Post {
+func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Deal, link string) *instagram.Post {
 	if inf.Instagram == nil {
 		return nil
 	}
 
 	for _, post := range inf.Instagram.LatestPosts {
-		if post.Published < deal.Assigned {
+		if post.Published < deal.Assigned || misc.WithinLast(int32(post.Published), WAITING_PERIOD) {
 			continue
 		}
 
@@ -490,17 +535,21 @@ func findInstagramMatch(inf influencer.Influencer, deal *common.Deal, link strin
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range post.Hashtags {
 						if strings.EqualFold(hashtag, tg) {
-							// SEND EMAIL
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
 							return nil
 						}
 					}
 					if containsFold(post.Caption, tg) {
-						// SEND EMAIL
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
 						return nil
 					}
 				}
 
 				// What's the likes to comments ratio?
+				if post.Comments/post.Likes > 0.04 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
+					return nil
+				}
 			}
 
 			return post
@@ -510,13 +559,13 @@ func findInstagramMatch(inf influencer.Influencer, deal *common.Deal, link strin
 	return nil
 }
 
-func findYouTubeMatch(inf influencer.Influencer, deal *common.Deal, link string) *youtube.Post {
+func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal, link string) *youtube.Post {
 	if inf.YouTube == nil {
 		return nil
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
-		if post.Published < deal.Assigned {
+		if post.Published < deal.Assigned || misc.WithinLast(post.Published, WAITING_PERIOD) {
 			continue
 		}
 
@@ -570,6 +619,30 @@ func findYouTubeMatch(inf influencer.Influencer, deal *common.Deal, link string)
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !deal.SkipFraud {
+				// Before returning the post.. lets check for some fraud
+
+				// Does it have any fraud hashtags?
+				for _, tg := range hashBlacklist {
+					for _, hashtag := range postTags {
+						if strings.EqualFold(hashtag, tg) {
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							return nil
+						}
+					}
+					if containsFold(post.Description, tg) {
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						return nil
+					}
+				}
+
+				// What's the likes to comments ratio?
+				if post.Comments/post.Likes > 0.04 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
+					return nil
+				}
+			}
+
 			return post
 		}
 	}
