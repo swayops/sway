@@ -1408,11 +1408,11 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 					foundDeal.Perk.Status = true
 					// Give it last element of the slice
-					length := len(cmp.Perks.Codes)
-					foundDeal.Perk.Code = cmp.Perks.Codes[length-1]
+					idx := len(cmp.Perks.Codes) - 1
+					foundDeal.Perk.Code = cmp.Perks.Codes[idx]
 
 					// Lets also delete the coupon code
-					cmp.Perks.Codes = cmp.Perks.Codes[:length-1]
+					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
 				}
 			}
 
