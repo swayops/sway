@@ -723,10 +723,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			targetDeal.Link = cmp.Link
 			targetDeal.Task = cmp.Task
 			if cmp.Perks != nil {
+				var code string
+				if targetDeal.Perk != nil {
+					code = targetDeal.Perk.Code
+				}
 				targetDeal.Perk = &common.Perk{
 					Name:         cmp.Perks.Name,
 					Instructions: cmp.Perks.Instructions,
 					Category:     cmp.Perks.GetType(),
+					Code:         code,
 					Count:        1}
 			}
 
