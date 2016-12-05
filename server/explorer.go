@@ -44,7 +44,6 @@ func explore(srv *Server) (int32, error) {
 	minTs := now - (DEAL_TIMEOUT)
 
 	for _, deal := range activeDeals {
-		log.Println("DOES IT RUN LOL")
 		var foundPost bool
 
 		// Go over all assigned deals in the platform
