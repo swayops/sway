@@ -329,7 +329,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Approved = int32(time.Now().Unix())
 		}
 
-		if cmp.Perks.Count == 0 {
+		if cmp.Perks != nil && cmp.Perks.Count == 0 {
 			c.JSON(400, misc.StatusErr("Please provide greater than 0 perks"))
 			return
 		}
