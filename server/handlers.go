@@ -1177,29 +1177,53 @@ type IncompleteInfluencer struct {
 
 func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var influencers []*IncompleteInfluencer
+		var (
+			influencers []*IncompleteInfluencer
+			incPosts, _ = strconv.ParseBool(c.Query("incPosts"))
+		)
 		for _, inf := range s.auth.Influencers.GetAll() {
 			if inf.Banned {
 				continue
 			}
 
 			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
-				incInf := &IncompleteInfluencer{inf, "", "", "", ""}
+				var (
+					incInf IncompleteInfluencer
+					found  bool
+				)
+
 				if inf.Twitter != nil {
-					incInf.TwitterURL = "https://twitter.com/" + inf.Twitter.Id
+					incInf.TwitterURL, found = "https://twitter.com/"+inf.Twitter.Id, true
+					if !incPosts {
+						inf.Twitter = nil
+					}
 				}
+
 				if inf.Facebook != nil {
-					incInf.FacebookURL = "https://www.facebook.com/" + inf.Facebook.Id
+					incInf.FacebookURL, found = "https://www.facebook.com/"+inf.Facebook.Id, true
+					if !incPosts {
+						inf.Facebook = nil
+					}
 				}
 
 				if inf.Instagram != nil {
-					incInf.InstagramURL = "https://www.instagram.com/" + inf.Instagram.UserName
+					incInf.InstagramURL, found = "https://www.instagram.com/"+inf.Instagram.UserName, true
+					if !incPosts {
+						inf.Instagram = nil
+					}
 				}
 
 				if inf.YouTube != nil {
-					incInf.YouTubeURL = "https://www.youtube.com/channel/" + inf.YouTube.UserId
+					incInf.YouTubeURL, found = "https://www.youtube.com/channel/"+inf.YouTube.UserId, true
+					if !incPosts {
+						inf.YouTube = nil
+					}
 				}
-				influencers = append(influencers, incInf)
+
+				if found {
+					incInf.Influencer = inf
+					influencers = append(influencers, &incInf)
+				}
 			}
 		}
 		c.JSON(200, influencers)
