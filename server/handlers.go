@@ -312,6 +312,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				return
 			}
 
+			if cmp.Perks.Instructions == "" {
+				c.JSON(400, misc.StatusErr("Please provide coupon instructions"))
+				return
+			}
+
 			// Set count internally depending on number of coupon codes passed
 			cmp.Perks.Count = len(cmp.Perks.Codes)
 		}
@@ -322,6 +327,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Approved = 0
 		} else {
 			cmp.Approved = int32(time.Now().Unix())
+		}
+
+		if cmp.Perks.Count == 0 {
+			c.JSON(400, misc.StatusErr("Please provide greater than 0 perks"))
+			return
 		}
 
 		cmp.CreatedAt = time.Now().Unix()
