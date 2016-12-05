@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	requiredHash   = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement"}
+	requiredHash   = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement", "endorsed", "advertisement", "ads"}
 	ONE_DAY        = int32(60 * 60 * 24)
 	DEAL_TIMEOUT   = ONE_DAY * 14
 	WAITING_PERIOD = 3 // Wait 3 hours before we accept a deal
