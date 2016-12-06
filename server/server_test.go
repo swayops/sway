@@ -536,6 +536,23 @@ func TestDeals(t *testing.T) {
 
 	verifyDeal(t, "2", inf.ExpID, ag.ExpID, rst, false)
 
+	// Lets have a look at the forecast!
+	var forecast struct {
+		Influencers int64 `json:"influencers"`
+		Reach    int64 `json:"reach"`
+	}
+	r := rst.DoTesting(t, "GET", "/getForecast", &cmp, &forecast)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!", string(r.Value))
+		return
+	}
+
+	if forecast.Influencers == 0 || forecast.Reach == 0 {
+		t.Fatal("Bad forecast values!")
+		return
+	}
+
+
 	// Sign up as a second influencer and do a deal! Need to see
 	// cumulative stats
 	newInf := getSignupUser()
@@ -581,7 +598,7 @@ func TestDeals(t *testing.T) {
 	// The first user was incomplete ("no categories")
 	// They should be returned in get incomplete influencers
 	var pendingInf []IncompleteInfluencer
-	r := rst.DoTesting(t, "GET", "/getIncompleteInfluencers", nil, &pendingInf)
+	r = rst.DoTesting(t, "GET", "/getIncompleteInfluencers", nil, &pendingInf)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return

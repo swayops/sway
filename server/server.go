@@ -353,6 +353,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
+	verifyGroup.GET("/getForecast", getForecast(srv))
 	r.Static("images", srv.Cfg.ImagesDir)
 
 	// Deal

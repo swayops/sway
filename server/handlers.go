@@ -2741,6 +2741,32 @@ func getProratedBudget(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getForecast(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Gets influencer count and reach for an incoming campaign struct
+		// NOTE: Ignores budget values
+
+		var (
+			cmp common.Campaign
+			err error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		// value, err := strconv.ParseFloat(c.Param("budget"), 64)
+		// if err != nil {
+		// 	c.JSON(400, misc.StatusErr(err.Error()))
+		// 	return
+		// }
+		influencers, reach := getForecastForCmp(s, cmp)
+		c.JSON(200, gin.H{"influencers": influencers, "reach": reach})
+	}
+}
+
 func uploadImage(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var upd UploadImage

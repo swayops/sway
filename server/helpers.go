@@ -18,6 +18,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 )
@@ -561,6 +562,82 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 	}
 
 	return influencerPool
+}
+
+func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64) {
+	// Lite version of the original GetAVailableDeals just for forecasting
+
+	for _, inf := range s.auth.Influencers.GetAll() {
+		if inf.Banned {
+			continue
+		}
+
+		if len(cmp.Categories) > 0 {
+			catFound := false
+			for _, cat := range cmp.Categories {
+				for _, infCat := range inf.Categories {
+					if infCat == cat {
+						catFound = true
+						break
+					}
+				}
+			}
+			if !catFound {
+				continue
+			}
+		}
+
+		if !geo.IsGeoMatch(cmp.Geos, inf.GetLatestGeo()) {
+			continue
+		}
+
+		// Gender check
+		if !cmp.Male && cmp.Female && !inf.Female {
+			// Only want females
+			continue
+		} else if cmp.Male && !cmp.Female && !inf.Male {
+			// Only want males
+			continue
+		} else if !cmp.Male && !cmp.Female {
+			continue
+		}
+
+		// Whitelist check!
+		if len(cmp.Whitelist) > 0 {
+			_, ok := cmp.Whitelist[inf.EmailAddress]
+			if !ok {
+				// There was a whitelist and they're not in it!
+				continue
+			}
+		}
+
+		// Social Media Checks
+		socialMediaFound := false
+		if cmp.YouTube && inf.YouTube != nil {
+			socialMediaFound = true
+		}
+
+		if cmp.Instagram && inf.Instagram != nil {
+			socialMediaFound = true
+		}
+
+		if cmp.Twitter && inf.Twitter != nil {
+			socialMediaFound = true
+		}
+
+		if cmp.Facebook && inf.Facebook != nil {
+			socialMediaFound = true
+		}
+
+		if !socialMediaFound {
+			continue
+		}
+
+		influencers += 1
+		reach += inf.GetFollowers()
+	}
+
+	return
 }
 
 var ErrWhitelist = errors.New("This campaign has a whitelist!")
