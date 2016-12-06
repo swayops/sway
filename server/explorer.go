@@ -20,11 +20,11 @@ import (
 )
 
 var (
-	requiredHash   = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement", "endorsed", "advertisement", "ads"}
-	ONE_DAY        = int32(60 * 60 * 24)
-	DEAL_TIMEOUT   = ONE_DAY * 14
-	WAITING_PERIOD = int32(3) // Wait 3 hours before we accept a deal
-	MIN_RATIO      = 0.04     // Minimum comments to like ratio as a percentage
+	requiredHash  = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement", "endorsed", "advertisement", "ads"}
+	oneDay        = int32(60 * 60 * 24)
+	dealTimeout   = oneDay * 14
+	waitingPeriod = int32(3) // Wait 3 hours before we accept a deal
+	minRatio      = 0.04     // Minimum comments to like ratio as a percentage
 )
 
 func explore(srv *Server) (int32, error) {
@@ -42,7 +42,7 @@ func explore(srv *Server) (int32, error) {
 	// The influencer has 14 days to do the deal before it's put
 	// back into the pool
 	now := int32(time.Now().Unix())
-	minTs := now - (DEAL_TIMEOUT)
+	minTs := now - (dealTimeout)
 
 	for _, deal := range activeDeals {
 		var foundPost bool
@@ -293,7 +293,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
-		if int32(tw.CreatedAt.Unix()) < deal.Assigned || misc.WithinLast(int32(tw.CreatedAt.Unix()), WAITING_PERIOD) {
+		if int32(tw.CreatedAt.Unix()) < deal.Assigned || misc.WithinLast(int32(tw.CreatedAt.Unix()), waitingPeriod) {
 			continue
 		}
 
@@ -385,7 +385,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
-		if int32(post.Published.Unix()) < deal.Assigned || misc.WithinLast(int32(post.Published.Unix()), WAITING_PERIOD) {
+		if int32(post.Published.Unix()) < deal.Assigned || misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
 			continue
 		}
 
@@ -456,7 +456,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > MIN_RATIO {
+				if post.Comments/post.Likes > minRatio {
 					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
 					return nil
 				}
@@ -475,7 +475,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 	}
 
 	for _, post := range inf.Instagram.LatestPosts {
-		if post.Published < deal.Assigned || misc.WithinLast(int32(post.Published), WAITING_PERIOD) {
+		if post.Published < deal.Assigned || misc.WithinLast(int32(post.Published), waitingPeriod) {
 			continue
 		}
 
@@ -546,7 +546,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > MIN_RATIO {
+				if post.Comments/post.Likes > minRatio {
 					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
 					return nil
 				}
@@ -565,7 +565,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
-		if post.Published < deal.Assigned || misc.WithinLast(post.Published, WAITING_PERIOD) {
+		if post.Published < deal.Assigned || misc.WithinLast(post.Published, waitingPeriod) {
 			continue
 		}
 
@@ -637,7 +637,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > MIN_RATIO {
+				if post.Comments/post.Likes > minRatio {
 					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
 					return nil
 				}

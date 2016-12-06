@@ -174,7 +174,6 @@ func SanitizeHashes(str []string) []string {
 
 func SanitizeHash(str string) string {
 	// Removes starting #
-	orig := str
 	if strings.HasPrefix(str, "#") {
 		str = str[1:]
 	}
