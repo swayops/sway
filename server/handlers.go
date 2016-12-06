@@ -2799,11 +2799,6 @@ func getForecast(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// value, err := strconv.ParseFloat(c.Param("budget"), 64)
-		// if err != nil {
-		// 	c.JSON(400, misc.StatusErr(err.Error()))
-		// 	return
-		// }
 		influencers, reach := getForecastForCmp(s, cmp)
 		c.JSON(200, gin.H{"influencers": influencers, "reach": reach})
 	}
