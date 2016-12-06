@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
@@ -173,13 +174,11 @@ func SanitizeHashes(str []string) []string {
 }
 
 func SanitizeHash(str string) string {
-	// Removes #
-	raw := strings.Map(func(r rune) rune {
-		if strings.IndexRune("#", r) < 0 {
-			return r
-		}
-		return -1
-	}, str)
-
-	return strings.ToLower(raw)
+	// Removes starting #
+	orig := str
+	if strings.HasPrefix(str, "#") {
+		str = str[1:]
+	}
+	log.Println("RETURNING!", orig, str)
+	return strings.ToLower(str)
 }

@@ -23,7 +23,8 @@ var (
 	requiredHash   = []string{"ad", "promotion", "sponsored", "sponsoredPost", "paidPost", "endorsement", "endorsed", "advertisement", "ads"}
 	ONE_DAY        = int32(60 * 60 * 24)
 	DEAL_TIMEOUT   = ONE_DAY * 14
-	WAITING_PERIOD = 3 // Wait 3 hours before we accept a deal
+	WAITING_PERIOD = int32(3) // Wait 3 hours before we accept a deal
+	MIN_RATIO      = 0.04     // Minimum comments to like ratio as a percentage
 )
 
 func explore(srv *Server) (int32, error) {
@@ -455,7 +456,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > 0.04 {
+				if post.Comments/post.Likes > MIN_RATIO {
 					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
 					return nil
 				}
@@ -545,7 +546,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > 0.04 {
+				if post.Comments/post.Likes > MIN_RATIO {
 					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
 					return nil
 				}
@@ -636,7 +637,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > 0.04 {
+				if post.Comments/post.Likes > MIN_RATIO {
 					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
 					return nil
 				}
