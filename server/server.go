@@ -323,6 +323,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 	adminGroup.POST("/setBan/:influencerId/:state", setBan(srv))
 	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
+	adminGroup.GET("/setFraud/:campaignId/:influencerId/:state", setFraud(srv))
 	adminGroup.POST("/setScrap", setScrap(srv))
 	adminGroup.GET("/getScraps", getScraps(srv))
 	adminGroup.GET("/unapproveDeal/:influencerId/:dealId", unapproveDeal(srv))
@@ -479,6 +480,23 @@ func (srv *Server) Notify(subject, msg string) {
 		if resp, err := srv.Cfg.MailClient().SendMessage(email, subject, addr, "Important Person",
 			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			log.Println("Error sending notify email!")
+		}
+	}
+}
+
+func (srv *Server) Fraud(cid, infId, url, reason string) {
+	if srv.Cfg.Sandbox {
+		return
+	}
+
+	msg := fmt.Sprintf("Please check the post at %s as there was fraud detected with the following reason: %s for the campaign id %s and influencer id %s", reason, cid, infId)
+
+	email := templates.FraudEmail.Render(map[string]interface{}{"msg": msg})
+
+	for _, addr := range mailingList {
+		if resp, err := srv.Cfg.MailClient().SendMessage(email, fmt.Sprintf("Fraud detected for campaign %s and influencer id %s", cid, infId), addr, "Important Person",
+			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			log.Println("Error sending fraud email!")
 		}
 	}
 }

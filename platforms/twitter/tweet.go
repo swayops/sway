@@ -10,6 +10,7 @@ import (
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/geo"
+	"github.com/swayops/sway/misc"
 
 	"time"
 )
@@ -130,6 +131,8 @@ func (t *Tweet) Hashtags() (out []string) {
 	for _, ht := range t.Entities.Hashtags {
 		out = append(out, strings.ToLower(ht.Tag))
 	}
+
+	out = misc.SanitizeHashes(out)
 	return
 }
 
