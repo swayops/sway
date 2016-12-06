@@ -137,7 +137,7 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 		p := &Post{
 			Id:          post.Id,
 			Published:   published,
-			Hashtags:    post.Tags,
+			Hashtags:    misc.SanitizeHashes(post.Tags),
 			PostURL:     post.URL,
 			LastUpdated: int32(time.Now().Unix()),
 		}

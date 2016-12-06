@@ -33,6 +33,8 @@ type Deal struct {
 	// This is also saved/reset in the un/assign handlers
 	Platforms []string `json:"platforms,omitempty"`
 
+	// Determines whether there will be fraud checking
+	SkipFraud bool `json:"skipFraud,omitempty"`
 	// Timestamp for when the deal was picked up by an influencer
 	Assigned int32 `json:"assigned,omitempty"`
 	// Timestamp for when the deal was completed by an influencer
