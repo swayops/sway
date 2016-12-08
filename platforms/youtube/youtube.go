@@ -22,6 +22,8 @@ type YouTube struct {
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
+	Images []string `json:"images,omitempty"` // List of extracted image urls from last UpdateData run
+
 	ProfilePicture string `json:"profile_picture,omitempty"`
 }
 
@@ -70,7 +72,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 		return err
 	}
 
-	p, lk, dlk, err := getPosts(yt.UserName, 5, cfg)
+	p, lk, dlk, images, err := getPosts(yt.UserName, 5, cfg)
 	if err != nil {
 		return err
 	}
@@ -80,6 +82,8 @@ func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 	} else {
 		yt.LatestPosts = nil
 	}
+
+	yt.Images = images
 	yt.AvgLikes = lk
 	yt.AvgDislikes = dlk
 

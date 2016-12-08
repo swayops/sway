@@ -107,6 +107,9 @@ type Thumbnail struct {
 	High struct {
 		URL string `json:"url"`
 	} `json:"high"`
+	MaxRes struct {
+		URL string `json:"url"`
+	} `json:"maxres"`
 }
 
 type Resource struct {
@@ -179,7 +182,7 @@ func getUserStats(id string, cfg *config.Config) (float64, float64, float64, str
 	return views / float64(videos), comments / videos, subs, url, nil
 }
 
-func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float64, err error) {
+func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float64, images []string, err error) {
 	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
 
 	var list Data
@@ -239,6 +242,14 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)
 			if err != nil {
 				return
+			}
+
+			if v.Snippet.Thumbnails != nil {
+				if v.Snippet.Thumbnails.MaxRes.URL != "" {
+					images = append(images, v.Snippet.Thumbnails.MaxRes.URL)
+				} else if v.Snippet.Thumbnails.High.URL != "" {
+					images = append(images, v.Snippet.Thumbnails.High.URL)
+				}
 			}
 
 			p.LikesDelta = p.Likes

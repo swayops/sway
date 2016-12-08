@@ -56,13 +56,16 @@ func emailScraps(srv *Server) (int, error) {
 		}
 		count += 1
 		sc.SentEmails = append(sc.SentEmails, now)
+		if err := saveScrap(srv, sc); err != nil {
+			srv.Alert("Error saving scrap", err)
+		}
 	}
 
 	if count > 0 {
 		srv.Notify("Scraps Emailed", fmt.Sprintf("%d scraps emailed in last recruiter run!", count))
 	}
 
-	return count, saveScraps(srv, scraps)
+	return count, nil
 }
 
 func getAllScraps(s *Server) (scraps []*common.Scrap, err error) {
@@ -81,6 +84,36 @@ func getAllScraps(s *Server) (scraps []*common.Scrap, err error) {
 		return
 	}
 	return
+}
+
+func saveScrap(s *Server, sc *common.Scrap) error {
+	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+		if sc.Id == "" {
+			if sc.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Scrap); err != nil {
+				return err
+			}
+		}
+
+		var (
+			b []byte
+		)
+
+		// Sanitize the email
+		sc.EmailAddress = misc.TrimEmail(sc.EmailAddress)
+
+		if b, err = json.Marshal(sc); err != nil {
+			return err
+		}
+
+		if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id, b); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		s.Alert("Failed to save scraps!", err)
+		return err
+	}
+	return nil
 }
 
 func saveScraps(s *Server, scs []*common.Scrap) error {

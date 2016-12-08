@@ -56,7 +56,7 @@ func newSwayEngine(srv *Server) error {
 
 	// Check social media keys every hour!
 	addr := &lob.AddressLoad{"917 HARTFORD WAY", "", "BEVERLY HILLS", "CA", "US", "90210"}
-	alertTicker := time.NewTicker(30 * time.Minute)
+	alertTicker := time.NewTicker(60 * time.Minute)
 	go func() {
 		for range alertTicker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
@@ -80,6 +80,17 @@ func newSwayEngine(srv *Server) error {
 			}
 		}
 	}()
+
+	// Add keywords to scraps/influencers every 4 hours
+	attrTicker := time.NewTicker(4 * time.Hour)
+	go func() {
+		for range attrTicker.C {
+			if _, err := attributer(srv, false); err != nil {
+				log.Println("Err running scrap completer", err)
+			}
+		}
+	}()
+
 	return nil
 }
 

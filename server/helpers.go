@@ -583,6 +583,21 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 			}
 		}
 
+		if len(cmp.Keywords) > 0 {
+			kwFound := false
+			for _, kw := range cmp.Keywords {
+				for _, infKw := range inf.Keywords {
+					if kw == infKw {
+						kwFound = true
+						break
+					}
+				}
+			}
+			if !kwFound {
+				continue
+			}
+		}
+
 		if !geo.IsGeoMatch(cmp.Geos, inf.GetLatestGeo()) {
 			continue
 		}
@@ -631,6 +646,19 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 
 		influencers += 1
 		reach += inf.GetFollowers()
+	}
+
+	// Lets go over scraps now!
+	scraps, err := getAllScraps(s)
+	if err != nil {
+		return
+	}
+
+	for _, sc := range scraps {
+		if sc.Match(cmp) {
+			influencers += 1
+			reach += sc.Followers
+		}
 	}
 
 	return
