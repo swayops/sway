@@ -3881,7 +3881,7 @@ func TestAttributer(t *testing.T) {
 				t.Fatal("Followers not set!")
 				return
 			}
-			log.Println(sc.Keywords)
+
 			if len(sc.Keywords) == 0 {
 				t.Fatal("No keywords set")
 				return
