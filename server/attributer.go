@@ -110,6 +110,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 		}
 	}
 
+	srv.Notify("Attribution ran!", "Attributed users: "+updated)
+
 	return updated, nil
 }
 
