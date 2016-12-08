@@ -119,7 +119,6 @@ func updateKeywords(s *Server, id string, keywords []string) error {
 		return auth.ErrInvalidID
 	}
 
-	// Save the last email timestamp
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		inf.Keywords = append(inf.Keywords, keywords...)
 		// Save the influencer since we just updated it's keywords
