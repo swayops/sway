@@ -3803,6 +3803,10 @@ func TestStripe(t *testing.T) {
 	return
 }
 
+type KeywordCount struct {
+	Keywords []string `json:"keywords"`
+}
+
 func TestAttributer(t *testing.T) {
 	rst := getClient()
 	defer putClient(rst)
@@ -3865,7 +3869,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	if (len(updatedScraps)-len(getScraps)) != 3 {
+	if (len(updatedScraps) - len(getScraps)) != 3 {
 		t.Fatal("No new scraps!")
 		return
 	}
@@ -3887,6 +3891,18 @@ func TestAttributer(t *testing.T) {
 				return
 			}
 		}
+	}
+
+	var kwCount KeywordCount
+	r = rst.DoTesting(t, "GET", "/getKeywords", nil, &kwCount)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(kwCount.Keywords) != 1 && kwCount.Keywords[0] != "sandbox" {
+		t.Fatal("Bad keywords!")
+		return
 	}
 }
 

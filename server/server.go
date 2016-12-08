@@ -355,6 +355,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
+	verifyGroup.GET("/getKeywords", getKeywords(srv))
 
 	r.Static("images", srv.Cfg.ImagesDir)
 

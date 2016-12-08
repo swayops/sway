@@ -2775,6 +2775,13 @@ func forceEmail(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getKeywords(s *Server) gin.HandlerFunc {
+	// Get all keywords in the system
+	return func(c *gin.Context) {
+		c.JSON(200, gin.H{"keywords": getAllKeywords(s)})
+	}
+}
+
 func getProratedBudget(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		value, err := strconv.ParseFloat(c.Param("budget"), 64)

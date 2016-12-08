@@ -2,10 +2,12 @@ package server
 
 import (
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/imagga"
 	"github.com/swayops/sway/platforms/instagram"
@@ -110,7 +112,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 		}
 	}
 
-	srv.Notify("Attribution ran!", "Attributed users: "+updated)
+	srv.Notify("Attribution ran!", "Attributed users: "+strconv.Itoa(int(updated)))
 
 	return updated, nil
 }
@@ -133,4 +135,25 @@ func updateKeywords(s *Server, id string, keywords []string) error {
 		return err
 	}
 	return nil
+}
+
+func getAllKeywords(s *Server) (keywords []string) {
+	for _, inf := range srv.auth.Influencers.GetAll() {
+		for _, kw := range inf.Keywords {
+			if !common.IsInList(keywords, kw) {
+				keywords = append(keywords, kw)
+			}
+		}
+	}
+
+	scraps, _ := getAllScraps(srv)
+	for _, sc := range scraps {
+		for _, kw := range sc.Keywords {
+			if !common.IsInList(keywords, kw) {
+				keywords = append(keywords, kw)
+			}
+		}
+	}
+
+	return
 }
