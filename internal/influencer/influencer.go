@@ -638,14 +638,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		// Filter Checks
 		if len(cmp.Categories) > 0 {
 			catFound := false
+		L1:
 			for _, cat := range cmp.Categories {
 				for _, infCat := range inf.Categories {
 					if infCat == cat {
 						catFound = true
-						break
+						break L1
 					}
 				}
 			}
+
 			if !catFound {
 				rejections[cmp.Id] = "CAT_NOT_FOUND"
 				continue
@@ -654,12 +656,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		if len(cmp.Keywords) > 0 {
 			kwFound := false
-		L1:
+		L2:
 			for _, infKw := range inf.Keywords {
 				for _, kw := range cmp.Keywords {
 					if kw == infKw {
 						kwFound = true
-						break L1
+						break L2
 					}
 				}
 			}

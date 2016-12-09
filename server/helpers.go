@@ -570,11 +570,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 
 		if len(cmp.Categories) > 0 {
 			catFound := false
+		L1:
 			for _, cat := range cmp.Categories {
 				for _, infCat := range inf.Categories {
 					if infCat == cat {
 						catFound = true
-						break
+						break L1
 					}
 				}
 			}
@@ -585,11 +586,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 
 		if len(cmp.Keywords) > 0 {
 			kwFound := false
+		L2:
 			for _, kw := range cmp.Keywords {
 				for _, infKw := range inf.Keywords {
 					if kw == infKw {
 						kwFound = true
-						break
+						break L2
 					}
 				}
 			}
