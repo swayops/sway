@@ -69,6 +69,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 
 			images = insta.Images
 			sc.Followers += int64(insta.Followers)
+			sc.Geo = insta.LastLocation
 		} else if sc.YouTube && sc.Name != "" {
 			// This scrap is from YT!
 			yt, err := youtube.New(sc.Name, srv.Cfg)
