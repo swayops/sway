@@ -25,7 +25,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 			continue
 		}
 
-		if images := inf.GetImages(); len(images) > 0 {
+		if images := inf.GetImages(srv.Cfg); len(images) > 0 {
 			keywords, err := imagga.GetKeywords(images, srv.Cfg.Sandbox)
 			if err != nil {
 				srv.Alert("Imagga error", err)

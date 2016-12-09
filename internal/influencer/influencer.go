@@ -188,7 +188,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 	}
 
 	// Assign automated keywords
-	keywords, err := imagga.GetKeywords(inf.GetImages(), cfg.Sandbox)
+	keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
 	if err == nil {
 		inf.Keywords = keywords
 	}
@@ -390,14 +390,35 @@ func (inf *Influencer) GetFollowers() int64 {
 	return fw
 }
 
-func (inf *Influencer) GetImages() []string {
+func (inf *Influencer) GetImages(cfg *config.Config) []string {
 	var urls []string
 	if inf.Instagram != nil {
-		urls = append(urls, inf.Instagram.Images...)
+		if len(inf.Instagram.Images) > 0 {
+			// This user has saved images
+			urls = append(urls, inf.Instagram.Images...)
+		} else {
+			// This person has an insta but no images.. that
+			// means they probably have not had their social media
+			// info updated since we started storing images
+			// LETS ACCOUNT FOR THAT!
+			savePosts := len(inf.ActiveDeals) > 0
+			inf.Instagram.UpdateData(cfg, savePosts)
+			urls = append(urls, inf.Instagram.Images...)
+		}
 	}
 
 	if inf.YouTube != nil {
-		urls = append(urls, inf.YouTube.Images...)
+		if len(inf.YouTube.Images) > 0 {
+			urls = append(urls, inf.YouTube.Images...)
+		} else {
+			// This person has an insta but no images.. that
+			// means they probably have not had their social media
+			// info updated since we started storing images
+			// LETS ACCOUNT FOR THAT!
+			savePosts := len(inf.ActiveDeals) > 0
+			inf.YouTube.UpdateData(cfg, savePosts)
+			urls = append(urls, inf.YouTube.Images...)
+		}
 	}
 
 	return urls
