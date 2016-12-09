@@ -539,7 +539,7 @@ func TestDeals(t *testing.T) {
 	// Lets have a look at the forecast!
 	var forecast struct {
 		Influencers int64 `json:"influencers"`
-		Reach    int64 `json:"reach"`
+		Reach       int64 `json:"reach"`
 	}
 	r := rst.DoTesting(t, "POST", "/getForecast", &cmp, &forecast)
 	if r.Status != 200 {
@@ -551,7 +551,6 @@ func TestDeals(t *testing.T) {
 		t.Fatal("Bad forecast values!")
 		return
 	}
-
 
 	// Sign up as a second influencer and do a deal! Need to see
 	// cumulative stats
@@ -3802,6 +3801,109 @@ func TestStripe(t *testing.T) {
 	}
 
 	return
+}
+
+type KeywordCount struct {
+	Keywords []string `json:"keywords"`
+}
+
+func TestAttributer(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var getScraps []*common.Scrap
+	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create some scraps
+	scraps := []common.Scrap{}
+	scraps = append(scraps, common.Scrap{
+		Name:         "nba",
+		YouTube:      true,
+		EmailAddress: "nba@a.b",
+	})
+
+	scraps = append(scraps, common.Scrap{
+		Name:         "jennamarbles",
+		YouTube:      true,
+		EmailAddress: "jenna@a.b",
+	})
+
+	scraps = append(scraps, common.Scrap{
+		Name:         "instagram",
+		Instagram:    true,
+		EmailAddress: "insta@a.b",
+	})
+
+	r = rst.DoTesting(t, "POST", "/setScrap", &scraps, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// force attributer
+	var count Count
+	r = rst.DoTesting(t, "GET", "/forceAttributer", nil, &count)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if count.Count != 3 {
+		t.Fatal("Not enough scraps updated!")
+		return
+	}
+
+	var updatedScraps []*common.Scrap
+	r = rst.DoTesting(t, "GET", "/getScraps", nil, &updatedScraps)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if (len(updatedScraps) - len(getScraps)) != 3 {
+		t.Fatal("No new scraps!")
+		return
+	}
+
+	for _, sc := range getScraps {
+		if sc.EmailAddress == "nba@a.b" || sc.EmailAddress == "insta@a.b" || sc.EmailAddress == "jenna@a.b" {
+			if !sc.Attributed {
+				t.Fatal("Scrap should be attributed!")
+				return
+			}
+
+			if sc.Followers == 0 {
+				t.Fatal("Followers not set!")
+				return
+			}
+
+			if len(sc.Keywords) == 0 {
+				t.Fatal("No keywords set")
+				return
+			}
+		}
+	}
+
+	var kwCount KeywordCount
+	r = rst.DoTesting(t, "GET", "/getKeywords", nil, &kwCount)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(kwCount.Keywords) != 1 && kwCount.Keywords[0] != "sandbox" {
+		t.Fatal("Bad keywords!")
+		return
+	}
 }
 
 func TestBilling(t *testing.T) {

@@ -355,6 +355,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
+	verifyGroup.GET("/getKeywords", getKeywords(srv))
+
 	r.Static("images", srv.Cfg.ImagesDir)
 
 	// Deal
@@ -413,6 +415,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 	adminGroup.GET("/forceEngine", forceEngine(srv))
 	adminGroup.GET("/forceScrapEmail", forceScrapEmail(srv))
+	adminGroup.GET("/forceAttributer", forceAttributer(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))

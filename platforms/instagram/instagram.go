@@ -27,6 +27,8 @@ type Instagram struct {
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // Epoch timestamp in seconds
 	LatestPosts []*Post `json:"posts,omitempty"`       // Posts since last update.. will later check these for deal satisfaction
 
+	Images []string `json:"images,omitempty"` // List of extracted image urls from last UpdateData run
+
 	LinkInBio string `json:"link,omitempty"`
 
 	ProfilePicture string `json:"profile_picture,omitempty"`
@@ -75,19 +77,20 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 		return err
 	}
 
-	if likes, cm, posts, geo, err := getPostInfo(in.UserId, cfg); err == nil {
-		in.AvgLikes = likes
-		in.AvgComments = cm
+	if pInfo, err := getPostInfo(in.UserId, cfg); err == nil {
+		in.AvgLikes = pInfo.Likes
+		in.AvgComments = pInfo.Comments
+		in.Images = pInfo.Images
 
 		// Latest posts are only used when there is an active deal!
 		if savePosts {
-			in.LatestPosts = posts
+			in.LatestPosts = pInfo.Posts
 		} else {
 			in.LatestPosts = nil
 		}
 
-		if geo != nil {
-			in.LastLocation = geo
+		if pInfo.Geo != nil {
+			in.LastLocation = pInfo.Geo
 		}
 	} else {
 		return err

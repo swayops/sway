@@ -18,6 +18,7 @@ import (
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
+	"github.com/swayops/sway/platforms/imagga"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/lob"
 	"github.com/swayops/sway/platforms/twitter"
@@ -90,6 +91,8 @@ type Influencer struct {
 
 	// Influencer inputted category they belong to
 	Categories []string `json:"categories,omitempty"`
+	// Extracted from Imagga
+	Keywords []string `json:"keywords,omitempty"`
 
 	// Active accepted deals by the influencer that have not yet been completed
 	ActiveDeals []*common.Deal `json:"activeDeals,omitempty"`
@@ -182,6 +185,12 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 
 	if ip != "" {
 		inf.Geo = geo.GetGeoFromIP(cfg.GeoDB, ip)
+	}
+
+	// Assign automated keywords
+	keywords, err := imagga.GetKeywords(inf.GetImages(), cfg.Sandbox)
+	if err == nil {
+		inf.Keywords = keywords
 	}
 
 	inf.setSwayRep()
@@ -379,6 +388,19 @@ func (inf *Influencer) GetFollowers() int64 {
 		fw += int64(inf.YouTube.Subscribers)
 	}
 	return fw
+}
+
+func (inf *Influencer) GetImages() []string {
+	var urls []string
+	if inf.Instagram != nil {
+		urls = append(urls, inf.Instagram.Images...)
+	}
+
+	if inf.YouTube != nil {
+		urls = append(urls, inf.YouTube.Images...)
+	}
+
+	return urls
 }
 
 func (inf *Influencer) GetNetworks() []string {
@@ -616,16 +638,35 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		// Filter Checks
 		if len(cmp.Categories) > 0 {
 			catFound := false
+		L1:
 			for _, cat := range cmp.Categories {
 				for _, infCat := range inf.Categories {
 					if infCat == cat {
 						catFound = true
-						break
+						break L1
 					}
 				}
 			}
+
 			if !catFound {
 				rejections[cmp.Id] = "CAT_NOT_FOUND"
+				continue
+			}
+		}
+
+		if len(cmp.Keywords) > 0 {
+			kwFound := false
+		L2:
+			for _, infKw := range inf.Keywords {
+				for _, kw := range cmp.Keywords {
+					if kw == infKw {
+						kwFound = true
+						break L2
+					}
+				}
+			}
+			if !kwFound {
+				rejections[cmp.Id] = "KW_NOT_FOUND"
 				continue
 			}
 		}

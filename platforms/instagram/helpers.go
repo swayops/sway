@@ -78,6 +78,16 @@ type PostData struct {
 	Likes    *Likes    `json:"likes"`
 	Location *Location `json:"location"`
 	Caption  *Caption  `json:"caption"`
+
+	Images *Images `json:"images"`
+}
+
+type Images struct {
+	Resolution *Image `json:"standard_resolution"`
+}
+
+type Image struct {
+	URL string `json:"url"`
 }
 
 type Location struct {
@@ -98,39 +108,48 @@ type Caption struct {
 	Msg string `json:"text"`
 }
 
-func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo.GeoRecord, error) {
+type PostInfo struct {
+	Likes, Comments float64
+	Posts           []*Post
+	Geo             *geo.GeoRecord
+	Images          []string
+}
+
+func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 	// Info for last 10 posts
 	// https://api.instagram.com/v1/users/15930549/media/recent/?client_id=5941ed0c28874764a5d86fb47984aceb&count=10
-	var latestGeo *geo.GeoRecord
-
 	posts := []*Post{}
 	endpoint := fmt.Sprintf(postUrl, cfg.Instagram.Endpoint, id, getToken(cfg.Instagram.AccessTokens))
 
 	var media UserPost
-	err := misc.Request("GET", endpoint, "", &media)
+	err = misc.Request("GET", endpoint, "", &media)
 	if err != nil {
-		return 0, 0, posts, latestGeo, err
+		return
 	}
 
 	if media.Meta.Code != 200 {
-		return 0, 0, posts, latestGeo, ErrUnknown
+		err = ErrUnknown
+		return
 	}
 
 	if media.Data == nil || len(media.Data) == 0 {
-		return 0, 0, posts, latestGeo, ErrUnknown
+		err = ErrUnknown
+		return
 	}
 
 	var (
 		likes, comments float64
 		published       int32
 		raw             int64
+		latestGeo       *geo.GeoRecord
+		images          []string
 	)
 
 	// Last 10 posts
 	for _, post := range media.Data {
 		raw, err = strconv.ParseInt(post.Published, 10, 64)
 		if err != nil {
-			return 0, 0, posts, latestGeo, err
+			return
 		}
 		published = int32(raw)
 
@@ -166,10 +185,19 @@ func getPostInfo(id string, cfg *config.Config) (float64, float64, []*Post, *geo
 			p.Caption = post.Caption.Msg
 		}
 
+		if post.Images != nil && post.Images.Resolution != nil {
+			images = append(images, post.Images.Resolution.URL)
+		}
+
 		posts = append(posts, p)
 	}
 
-	return likes / postCount, comments / postCount, posts, latestGeo, nil
+	postInfo.Likes = likes / postCount
+	postInfo.Comments = comments / postCount
+	postInfo.Posts = posts
+	postInfo.Geo = latestGeo
+	postInfo.Images = images
+	return
 }
 
 type BasicUser struct {

@@ -294,6 +294,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Link = sanitizeURL(cmp.Link)
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = common.LowerSlice(cmp.Categories)
+		cmp.Keywords = common.LowerSlice(cmp.Keywords)
 		cmp.Whitelist = common.TrimEmails(cmp.Whitelist)
 
 		if len(adv.Blacklist) > 0 {
@@ -484,6 +485,7 @@ func delCampaign(s *Server) gin.HandlerFunc {
 type CampaignUpdate struct {
 	Geos       []*geo.GeoRecord `json:"geos,omitempty"`
 	Categories []string         `json:"categories,omitempty"`
+	Keywords   []string         `json:"keywords,omitempty"`
 	Status     *bool            `json:"status,omitempty"`
 	Budget     *float64         `json:"budget,omitempty"`
 	Male       *bool            `json:"male,omitempty"`
@@ -604,6 +606,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.Geos = upd.Geos
 		cmp.Categories = common.LowerSlice(upd.Categories)
+		cmp.Keywords = common.LowerSlice(upd.Keywords)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)
 		additions := []string{}
@@ -2772,6 +2775,13 @@ func forceEmail(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getKeywords(s *Server) gin.HandlerFunc {
+	// Get all keywords in the system
+	return func(c *gin.Context) {
+		c.JSON(200, gin.H{"keywords": getAllKeywords(s)})
+	}
+}
+
 func getProratedBudget(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		value, err := strconv.ParseFloat(c.Param("budget"), 64)
@@ -3287,6 +3297,22 @@ func forceScrapEmail(s *Server) gin.HandlerFunc {
 		}
 
 		count, err := emailScraps(s)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, gin.H{"count": count})
+	}
+}
+
+func forceAttributer(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		count, err := attributer(s, true)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))
 			return
