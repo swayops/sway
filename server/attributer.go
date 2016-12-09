@@ -48,10 +48,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 	}
 
 	// Lets do batches of 500 so we don't max out API limits
-	if len(scraps) > 500 {
-		scraps = scraps[:500]
-	}
-
+	var scrapsTouched int64
 	// Set keywords, geo, and followers for scraps!
 	for _, sc := range scraps {
 		if sc.Attributed {
@@ -119,6 +116,11 @@ func attributer(srv *Server, force bool) (int64, error) {
 		}
 
 		updated += 1
+		scrapsTouched += 1
+
+		if scrapsTouched >= 500 {
+			break
+		}
 
 		if !force {
 			time.Sleep(1 * time.Second)
