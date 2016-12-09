@@ -137,7 +137,7 @@ func updateKeywords(s *Server, id string, keywords []string) error {
 	return nil
 }
 
-func getAllKeywords(s *Server) (keywords []string) {
+func getAllKeywords(srv *Server) (keywords []string) {
 	for _, inf := range srv.auth.Influencers.GetAll() {
 		for _, kw := range inf.Keywords {
 			if !common.IsInList(keywords, kw) {

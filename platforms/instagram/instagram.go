@@ -77,20 +77,20 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 		return err
 	}
 
-	if likes, cm, posts, geo, images, err := getPostInfo(in.UserId, cfg); err == nil {
-		in.AvgLikes = likes
-		in.AvgComments = cm
-		in.Images = images
+	if pInfo, err := getPostInfo(in.UserId, cfg); err == nil {
+		in.AvgLikes = pInfo.Likes
+		in.AvgComments = pInfo.Comments
+		in.Images = pInfo.Images
 
 		// Latest posts are only used when there is an active deal!
 		if savePosts {
-			in.LatestPosts = posts
+			in.LatestPosts = pInfo.Posts
 		} else {
 			in.LatestPosts = nil
 		}
 
-		if geo != nil {
-			in.LastLocation = geo
+		if pInfo.Geo != nil {
+			in.LastLocation = pInfo.Geo
 		}
 	} else {
 		return err

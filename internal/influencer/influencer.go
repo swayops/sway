@@ -654,11 +654,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		if len(cmp.Keywords) > 0 {
 			kwFound := false
-			for _, kw := range cmp.Keywords {
-				for _, infKw := range inf.Keywords {
+		L1:
+			for _, infKw := range inf.Keywords {
+				for _, kw := range cmp.Keywords {
 					if kw == infKw {
 						kwFound = true
-						break
+						break L1
 					}
 				}
 			}

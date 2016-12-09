@@ -78,11 +78,12 @@ func (sc *Scrap) Match(cmp Campaign) bool {
 
 	if len(cmp.Keywords) > 0 {
 		kwFound := false
-		for _, kw := range cmp.Keywords {
-			for _, scKw := range sc.Keywords {
+	L1:
+		for _, scKw := range sc.Keywords {
+			for _, kw := range cmp.Keywords {
 				if kw == scKw {
 					kwFound = true
-					break
+					break L1
 				}
 			}
 		}
