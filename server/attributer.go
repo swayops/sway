@@ -7,7 +7,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
-	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/imagga"
 	"github.com/swayops/sway/platforms/instagram"
@@ -142,21 +141,22 @@ func updateKeywords(s *Server, id string, keywords []string) error {
 }
 
 func getAllKeywords(srv *Server) (keywords []string) {
+	set := make(map[string]struct{})
 	for _, inf := range srv.auth.Influencers.GetAll() {
 		for _, kw := range inf.Keywords {
-			if !common.IsInList(keywords, kw) {
-				keywords = append(keywords, kw)
-			}
+			set[kw] = struct{}{}
 		}
 	}
 
 	scraps, _ := getAllScraps(srv)
 	for _, sc := range scraps {
 		for _, kw := range sc.Keywords {
-			if !common.IsInList(keywords, kw) {
-				keywords = append(keywords, kw)
-			}
+			set[kw] = struct{}{}
 		}
+	}
+
+	for kw, _ := range set {
+		keywords = append(keywords, kw)
 	}
 
 	return
