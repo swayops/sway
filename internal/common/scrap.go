@@ -17,9 +17,6 @@ type Scrap struct {
 	EmailAddress string `json:"email,omitempty"`
 	Followers    int64  `json:"followers,omitempty"`
 
-	// List of YT and Insta image urls
-	Images []string `json:"images,omitempty"`
-
 	Geo *geo.GeoRecord `json:"geo,omitempty"`
 
 	Facebook  bool `json:"facebook,omitempty"`

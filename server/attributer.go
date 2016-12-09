@@ -59,6 +59,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 			continue
 		}
 
+		var images []string
 		if sc.Instagram && sc.Name != "" {
 			// This scrap is from instagram!
 			insta, err := instagram.New(sc.Name, srv.Cfg)
@@ -66,7 +67,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 				continue
 			}
 
-			sc.Images = insta.Images
+			images = insta.Images
 			sc.Followers += int64(insta.Followers)
 		} else if sc.YouTube && sc.Name != "" {
 			// This scrap is from YT!
@@ -75,7 +76,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 				continue
 			}
 
-			sc.Images = yt.Images
+			images = yt.Images
 			sc.Followers += int64(yt.Subscribers)
 		} else if sc.Twitter && sc.Name != "" {
 			tw, err := twitter.New(sc.Name, srv.Cfg)
@@ -92,7 +93,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 			sc.Followers += int64(fb.Followers)
 		}
 
-		keywords, err := imagga.GetKeywords(sc.Images, srv.Cfg.Sandbox)
+		keywords, err := imagga.GetKeywords(images, srv.Cfg.Sandbox)
 		if err != nil {
 			srv.Alert("Imagga error", err)
 			continue
