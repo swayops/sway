@@ -56,6 +56,14 @@ func attributer(srv *Server, force bool) (int64, error) {
 	for _, sc := range scraps {
 		if sc.Attributed {
 			// This scrap already has attrs set
+			if sc.Geo == nil {
+				// Add in geo for all attributed users
+				insta, err := instagram.New(sc.Name, srv.Cfg)
+				if err != nil || insta == nil || insta.LastLocation == nil {
+					continue
+				}
+				sc.Geo = insta.LastLocation
+			}
 			continue
 		}
 
