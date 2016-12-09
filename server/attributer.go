@@ -63,6 +63,9 @@ func attributer(srv *Server, force bool) (int64, error) {
 					continue
 				}
 				sc.Geo = insta.LastLocation
+				if err := saveScrap(srv, sc); err != nil {
+					srv.Alert("Error saving scrap", err)
+				}
 			}
 			continue
 		}
