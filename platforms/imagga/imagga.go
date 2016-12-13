@@ -35,7 +35,7 @@ type Load struct {
 
 func GetKeywords(images []string, sandbox bool) (keywords []string, err error) {
 	if sandbox {
-		keywords = []string{"sandbox"}
+		keywords = []string{"god"}
 		return
 	}
 
