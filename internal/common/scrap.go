@@ -145,6 +145,15 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 			log.Println("Error emailing scrap!", err)
 			return false
 		}
+
+		if err := cfg.Loggers.Log("email", map[string]interface{}{
+			"tag":  "first scrap email",
+			"id":   sc.Id,
+			"cids": []string{cmp.Id},
+		}); err != nil {
+			log.Println("Failed to log scrap email!", sc.Id, cmp.Id)
+		}
+
 		return true
 	} else if len(sc.SentEmails) == 1 {
 		// Send second email if it's been more than 48 hours
@@ -159,6 +168,15 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 				log.Println("Error emailing scrap!", err)
 				return false
 			}
+
+			if err := cfg.Loggers.Log("email", map[string]interface{}{
+				"tag":  "second scrap email",
+				"id":   sc.Id,
+				"cids": []string{cmp.Id},
+			}); err != nil {
+				log.Println("Failed to log second scrap email!", sc.Id, cmp.Id)
+			}
+
 			return true
 		}
 	} else if len(sc.SentEmails) == 2 {
@@ -174,6 +192,15 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 				log.Println("Error emailing scrap!", err)
 				return false
 			}
+
+			if err := cfg.Loggers.Log("email", map[string]interface{}{
+				"tag":  "third scrap email",
+				"id":   sc.Id,
+				"cids": []string{cmp.Id},
+			}); err != nil {
+				log.Println("Failed to log third scrap email!", sc.Id, cmp.Id)
+			}
+
 			return true
 		}
 	}

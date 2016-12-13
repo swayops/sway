@@ -867,6 +867,19 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 		return false, ErrEmail
 	}
 
+	var cids []string
+	for _, d := range deals {
+		cids = append(cids, d.CampaignId)
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal newsletter",
+		"id":   inf.Id,
+		"cids": cids,
+	}); err != nil {
+		log.Println("Failed to log newsletter!", inf.Id, cids)
+	}
+
 	return true, nil
 }
 
@@ -898,6 +911,14 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 		return ErrEmail
 	}
 
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal email",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log email!", inf.Id, deal.CampaignId)
+	}
+
 	return nil
 }
 
@@ -921,6 +942,14 @@ func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error 
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal heads up",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log deal heads up!", inf.Id, deal.CampaignId)
 	}
 
 	return nil
@@ -948,6 +977,14 @@ func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error 
 		return ErrEmail
 	}
 
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal timeout",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log deal timeout!", inf.Id, deal.CampaignId)
+	}
+
 	return nil
 }
 
@@ -973,6 +1010,14 @@ func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) err
 		return ErrEmail
 	}
 
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal completion",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log deal heads up!", inf.Id, deal.CampaignId)
+	}
+
 	return nil
 }
 
@@ -996,6 +1041,14 @@ func (inf *Influencer) DealUpdate(deal *common.Deal, cfg *config.Config) error {
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal update",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log deal udpate!", inf.Id, deal.CampaignId)
 	}
 
 	return nil
@@ -1030,6 +1083,13 @@ func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "check",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log check email!", inf.Id)
 	}
 
 	return nil
