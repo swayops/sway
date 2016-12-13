@@ -7,7 +7,9 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/platforms/facebook"
+	"github.com/swayops/sway/platforms/genderize"
 	"github.com/swayops/sway/platforms/imagga"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/twitter"
@@ -48,24 +50,42 @@ func attributer(srv *Server, force bool) (int64, error) {
 
 	// Lets do batches of 500 so we don't max out API limits
 	var scrapsTouched int64
-	// Set keywords, geo, and followers for scraps!
+	// Set keywords, geo, gender, and followers for scraps!
 	for _, sc := range scraps {
 		if sc.Attributed {
 			// This scrap already has attrs set
 			continue
 		}
 
-		var images []string
+		var (
+			images []string
+		)
+
 		if sc.Instagram && sc.Name != "" {
+			// We only extract location, gender, name, and followers from
+			// insta!
+
 			// This scrap is from instagram!
 			insta, err := instagram.New(sc.Name, srv.Cfg)
 			if err != nil {
 				continue
 			}
 
+			if insta.Followers > 0 {
+				sc.Followers = int64(insta.Followers)
+			}
+
 			images = insta.Images
-			sc.Followers += int64(insta.Followers)
-			sc.Geo = insta.LastLocation
+
+			if insta.LastLocation != nil {
+				sc.Geo = insta.LastLocation
+			}
+
+			if insta.FullName != "" && sc.FullName == "" {
+				// If we found a name and their gender has NOT been set
+				// yet..
+				sc.FullName = insta.FullName
+			}
 		} else if sc.YouTube && sc.Name != "" {
 			// This scrap is from YT!
 			yt, err := youtube.New(sc.Name, srv.Cfg)
@@ -73,30 +93,63 @@ func attributer(srv *Server, force bool) (int64, error) {
 				continue
 			}
 
+			if yt.Subscribers > 0 {
+				sc.Followers = int64(yt.Subscribers)
+			}
+
 			images = yt.Images
-			sc.Followers += int64(yt.Subscribers)
 		} else if sc.Twitter && sc.Name != "" {
 			tw, err := twitter.New(sc.Name, srv.Cfg)
 			if err != nil {
 				continue
 			}
-			sc.Geo = tw.LastLocation
-			sc.Followers += int64(tw.Followers)
+
+			if tw.Followers > 0 {
+				sc.Followers = int64(tw.Followers)
+			}
+
+			if tw.LastLocation != nil {
+				sc.Geo = tw.LastLocation
+			}
+
+			if tw.FullName != "" && sc.FullName == "" {
+				sc.FullName = tw.FullName
+			}
 		} else if sc.Facebook && sc.Name != "" {
 			fb, err := facebook.New(sc.Name, srv.Cfg)
 			if err != nil {
 				continue
 			}
-			sc.Followers += int64(fb.Followers)
+
+			if fb.Followers > 0 {
+				sc.Followers = int64(fb.Followers)
+			}
 		}
 
-		keywords, err := imagga.GetKeywords(images, srv.Cfg.Sandbox)
-		if err != nil {
-			srv.Alert("Imagga error", err)
-			continue
+		// Set keywords based on images!
+		if len(sc.Keywords) == 0 {
+			// Only hit imagga if keywords have not already been set
+			keywords, err := imagga.GetKeywords(images, srv.Cfg.Sandbox)
+			if err != nil {
+				srv.Alert("Imagga error", err)
+				continue
+			}
+			sc.Keywords = keywords
 		}
 
-		sc.Keywords = keywords
+		// Set categories based on keywords!
+		if len(images) > 0 && len(sc.Keywords) > 0 {
+			// If keywords are now set.. lets map them to categories
+			sc.Categories = common.KwToCategories(sc.Keywords)
+		}
+
+		// Set gender based on name!
+		if !sc.Male && !sc.Female && sc.FullName != "" {
+			// If gender has not been set and we have a full name..
+			firstName := genderize.GetFirstName(sc.FullName)
+			sc.Male, sc.Female = genderize.GetGender(firstName)
+		}
+
 		sc.Attributed = true
 
 		if err := saveScrap(srv, sc); err != nil {
@@ -106,7 +159,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 		updated += 1
 		scrapsTouched += 1
 
-		if scrapsTouched >= 500 {
+		// Do batches of 2500
+		if scrapsTouched >= 2500 {
 			break
 		}
 
@@ -127,7 +181,12 @@ func updateKeywords(s *Server, id string, keywords []string) error {
 	}
 
 	if err := s.db.Update(func(tx *bolt.Tx) error {
-		inf.Keywords = append(inf.Keywords, keywords...)
+		for _, kw := range keywords {
+			if !common.IsInList(inf.Keywords, kw) {
+				inf.Keywords = append(inf.Keywords, kw)
+			}
+		}
+
 		// Save the influencer since we just updated it's keywords
 		if err := saveInfluencer(s, tx, inf); err != nil {
 			log.Println("Errored saving influencer", err)

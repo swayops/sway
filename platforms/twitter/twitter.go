@@ -44,6 +44,7 @@ type Twitter struct {
 	client *http.Client `json:"client,omitempty"`
 
 	ProfilePicture string `json:"profile_picture,omitempty"`
+	FullName       string `json:"full_name,omitempty"`
 }
 
 func New(id string, cfg *config.Config) (tw *Twitter, err error) {
@@ -103,6 +104,9 @@ func (tw *Twitter) UpdateData(cfg *config.Config, savePosts bool) error {
 	tw.LastTweetId = tws.LastId()
 	tw.LastLocation = tws.LatestLocation()
 	tw.ProfilePicture = tws.ProfilePicture()
+	if tws.Name() != "" {
+		tw.FullName = tws.Name()
+	}
 
 	tw.LastUpdated = int32(time.Now().Unix())
 	return nil

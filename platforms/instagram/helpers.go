@@ -80,6 +80,12 @@ type PostData struct {
 	Caption  *Caption  `json:"caption"`
 
 	Images *Images `json:"images"`
+
+	User *User `json:"user"`
+}
+
+type User struct {
+	Name string `json:"full_name"`
 }
 
 type Images struct {
@@ -113,6 +119,7 @@ type PostInfo struct {
 	Posts           []*Post
 	Geo             *geo.GeoRecord
 	Images          []string
+	Name            string
 }
 
 func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
@@ -190,6 +197,10 @@ func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 		}
 
 		posts = append(posts, p)
+
+		if post.User != nil && post.User.Name != "" {
+			postInfo.Name = post.User.Name
+		}
 	}
 
 	postInfo.Likes = likes / postCount

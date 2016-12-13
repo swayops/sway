@@ -13,7 +13,9 @@ import (
 var ErrEmail = errors.New("Error sending email!")
 
 type Scrap struct {
-	Name         string `json:"name,omitempty"`
+	FullName string `json:"fullName,omitempty"` // Full name
+
+	Name         string `json:"name,omitempty"` // Social media handle
 	EmailAddress string `json:"email,omitempty"`
 	Followers    int64  `json:"followers,omitempty"`
 
@@ -31,7 +33,7 @@ type Scrap struct {
 	Keywords   []string `json:"keywords,omitempty"`
 
 	// Have all attrs been set already?
-	Attributed bool `json:"attributed,omitempty"`
+	Attributed bool `json:"attr,omitempty"`
 
 	// Set internally
 	Id         string  `json:"id,omitempty"`
@@ -91,6 +93,35 @@ func (sc *Scrap) Match(cmp Campaign) bool {
 
 	if !geo.IsGeoMatch(cmp.Geos, sc.Geo) {
 		return false
+	}
+
+	// Gender check
+	if !cmp.Male && cmp.Female && !sc.Female {
+		// Only want females
+		return false
+	} else if cmp.Male && !cmp.Female && !sc.Male {
+		// Only want males
+		return false
+	} else if !cmp.Male && !cmp.Female {
+		return false
+	}
+
+	// Category Checks
+	if len(cmp.Categories) > 0 {
+		catFound := false
+	L2:
+		for _, cat := range cmp.Categories {
+			for _, scCat := range sc.Categories {
+				if cat == scCat {
+					catFound = true
+					break L2
+				}
+			}
+		}
+
+		if !catFound {
+			return false
+		}
 	}
 
 	return true

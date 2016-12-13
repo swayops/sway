@@ -3833,13 +3833,19 @@ func TestAttributer(t *testing.T) {
 	})
 
 	scraps = append(scraps, common.Scrap{
-		Name:         "jennamarbles",
-		YouTube:      true,
-		EmailAddress: "jenna@a.b",
+		Name:         "justinbieber",
+		Twitter:      true,
+		EmailAddress: "jb@a.b",
 	})
 
 	scraps = append(scraps, common.Scrap{
-		Name:         "instagram",
+		Name:         "jennamarbles",
+		YouTube:      true,
+		EmailAddress: "jb@a.b",
+	})
+
+	scraps = append(scraps, common.Scrap{
+		Name:         "angelicaalcalaherrera",
 		Instagram:    true,
 		EmailAddress: "insta@a.b",
 	})
@@ -3857,7 +3863,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	if count.Count != 3 {
+	if count.Count != 4 {
 		t.Fatal("Not enough scraps updated!")
 		return
 	}
@@ -3869,13 +3875,13 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	if (len(updatedScraps) - len(getScraps)) != 3 {
+	if (len(updatedScraps) - len(getScraps)) != 4 {
 		t.Fatal("No new scraps!")
 		return
 	}
 
 	for _, sc := range getScraps {
-		if sc.EmailAddress == "nba@a.b" || sc.EmailAddress == "insta@a.b" || sc.EmailAddress == "jenna@a.b" {
+		if sc.EmailAddress == "nba@a.b" || sc.EmailAddress == "insta@a.b" || sc.EmailAddress == "jb@a.b" {
 			if !sc.Attributed {
 				t.Fatal("Scrap should be attributed!")
 				return
@@ -3890,6 +3896,24 @@ func TestAttributer(t *testing.T) {
 				t.Fatal("No keywords set")
 				return
 			}
+
+			// Sandbox always returns "computer" for keywords
+			if sc.Keywords[0] != "god" {
+				t.Fatal("Bad keywords set")
+				return
+			}
+
+			if len(sc.Categories) != 1 {
+				t.Fatal("Bad categories set")
+				return
+			}
+
+			if sc.Categories[0] != "spirituality" {
+				t.Fatal("Bad category set")
+				return
+			}
+
+
 		}
 	}
 
@@ -3900,7 +3924,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	if len(kwCount.Keywords) != 1 && kwCount.Keywords[0] != "sandbox" {
+	if len(kwCount.Keywords) != 1 && kwCount.Keywords[0] != "god" {
 		t.Fatal("Bad keywords!")
 		return
 	}

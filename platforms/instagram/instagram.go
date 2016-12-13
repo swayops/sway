@@ -15,8 +15,11 @@ var (
 )
 
 type Instagram struct {
-	UserName      string  `json:"userName"`
-	UserId        string  `json:"userId"`
+	UserName string `json:"userName"`
+	UserId   string `json:"userId"`
+
+	FullName string `json:"fullName"`
+
 	AvgLikes      float64 `json:"avgLikes,omitempty"`    // Per post
 	AvgComments   float64 `json:"avgComments,omitempty"` // Per post
 	Followers     float64 `json:"followers,omitempty"`
@@ -91,6 +94,10 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 
 		if pInfo.Geo != nil {
 			in.LastLocation = pInfo.Geo
+		}
+
+		if pInfo.Name != "" {
+			in.FullName = pInfo.Name
 		}
 	} else {
 		return err

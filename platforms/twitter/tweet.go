@@ -62,6 +62,13 @@ func (tws Tweets) ProfilePicture() string {
 	return ""
 }
 
+func (tws Tweets) Name() string {
+	if len(tws) > 0 && tws[0].User != nil {
+		return tws[0].User.Name
+	}
+	return ""
+}
+
 func (tws Tweets) LatestLocation() *geo.GeoRecord {
 	var latest *geo.GeoRecord
 	for _, t := range tws {
@@ -239,6 +246,7 @@ type User struct {
 	Id             string `json:"id_str"`
 	Followers      uint32 `json:"followers_count"`
 	ProfilePicture string `json:"profile_image_url_https"`
+	Name           string `json:"name"`
 
 	// Friends   uint32 `json:"friends_count"`
 	// StatusesCount uint32 `json:"statuses_count"`
