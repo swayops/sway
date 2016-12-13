@@ -3322,6 +3322,54 @@ func forceAttributer(s *Server) gin.HandlerFunc {
 	}
 }
 
+func scrapStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		scraps, err := getAllScraps(s)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		type ScrapStats struct {
+			HasKeywords   int64 `json:"hasKeywords"`
+			HasGeo        int64 `json:"hasGeo"`
+			HasGender     int64 `json:"hasGender"`
+			HasCategories int64 `json:"hasCategories"`
+			Attributed    int64 `json:"attributed"`
+			Total         int   `json:"total"`
+		}
+
+		stats := ScrapStats{Total: len(scraps)}
+		for _, sc := range scraps {
+			if sc.Attributed {
+				stats.Attributed += 1
+			}
+
+			if len(sc.Keywords) > 0 {
+				stats.HasKeywords += 1
+			}
+
+			if len(sc.Categories) > 0 {
+				stats.HasCategories += 1
+			}
+
+			if sc.Geo != nil {
+				stats.HasGeo += 1
+			}
+
+			if sc.Male || sc.Female {
+				stats.HasGender += 1
+			}
+		}
+
+		c.JSON(200, stats)
+	}
+}
+
 func unapproveDeal(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// NOTE: this does not add money back to spendable
