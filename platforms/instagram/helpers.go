@@ -134,6 +134,11 @@ func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 		return
 	}
 
+	if media.Meta == nil {
+		err = ErrUnknown
+		return
+	}
+
 	if media.Meta.Code != 200 {
 		err = ErrUnknown
 		return
@@ -237,7 +242,13 @@ func getUserInfo(id string, cfg *config.Config) (flw float64, url, dp string, er
 		return
 	}
 
+	if user.Meta == nil {
+		err = ErrUnknown
+		return
+	}
+
 	if user.Meta.Code != 200 {
+		err = ErrUnknown
 		return
 	}
 
@@ -247,6 +258,9 @@ func getUserInfo(id string, cfg *config.Config) (flw float64, url, dp string, er
 		if user.Data.Counts != nil {
 			flw = float64(user.Data.Counts.Followers)
 		}
+	} else {
+		err = ErrUnknown
+		return
 	}
 
 	return
