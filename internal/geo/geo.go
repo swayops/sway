@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	GOOGLE_GEO = "http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s"
+	GOOGLE_GEO = "http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&key=AIzaSyD4NwxB_AUVr3eHJt2aRxbm778DypmSwHE"
 )
 
 type GeoRecord struct {
@@ -45,7 +45,7 @@ func GetGeoFromCoords(lat, long float64, ts int32) *GeoRecord {
 	var output GoogleRequest
 	fLat := strconv.FormatFloat(lat, 'f', 6, 64)
 	fLong := strconv.FormatFloat(long, 'f', 6, 64)
-	if err := misc.Request("GET", fmt.Sprintf(GOOGLE_GEO, fLat, fLong), "", &output); err == nil {
+	if err := misc.Request("GET", fmt.Sprintf(GOOGLE_GEO, fLat, fLong), "", &output); err == nil || len(output.Results) == 0 {
 		for _, result := range output.Results {
 			for _, val := range result.AddressComponents {
 				for _, cat := range val.Types {
