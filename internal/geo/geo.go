@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	GOOGLE_GEO = "http://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&key=AIzaSyD4NwxB_AUVr3eHJt2aRxbm778DypmSwHE"
+	GOOGLE_GEO = "https://maps.googleapis.com/maps/api/geocode/json?latlng=%s,%s&key=AIzaSyD4NwxB_AUVr3eHJt2aRxbm778DypmSwHE"
 )
 
 type GeoRecord struct {
