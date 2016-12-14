@@ -48,6 +48,10 @@ func getUserIdFromName(name string, cfg *config.Config) (string, error) {
 		return "", err
 	}
 
+	if search.Meta == nil {
+		return "", ErrUnknown
+	}
+
 	if search.Meta.Code != 200 {
 		return "", ErrUnknown
 	}
