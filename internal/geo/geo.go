@@ -45,7 +45,8 @@ func GetGeoFromCoords(lat, long float64, ts int32) *GeoRecord {
 	var output GoogleRequest
 	fLat := strconv.FormatFloat(lat, 'f', 6, 64)
 	fLong := strconv.FormatFloat(long, 'f', 6, 64)
-	if err := misc.Request("GET", fmt.Sprintf(GOOGLE_GEO, fLat, fLong), "", &output); err == nil || len(output.Results) == 0 {
+	err := misc.Request("GET", fmt.Sprintf(GOOGLE_GEO, fLat, fLong), "", &output)
+	if err == nil && len(output.Results) != 0 {
 		for _, result := range output.Results {
 			for _, val := range result.AddressComponents {
 				for _, cat := range val.Types {
@@ -62,7 +63,7 @@ func GetGeoFromCoords(lat, long float64, ts int32) *GeoRecord {
 			}
 		}
 	} else {
-		log.Println("Error extracting geo", err)
+		log.Println("Error extracting geo", fmt.Sprintf(GOOGLE_GEO, fLat, fLong))
 	}
 
 	if geo.State == "" && geo.Country == "" {

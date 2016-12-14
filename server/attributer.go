@@ -238,3 +238,36 @@ func getAllKeywords(srv *Server) (keywords []string) {
 
 	return
 }
+
+func assignGeo(srv *Server) (err error) {
+	// Iterate over all scraps and add geo for insta users!
+	scraps, err := getAllScraps(srv)
+	if err != nil {
+		return err
+	}
+
+	for _, sc := range scraps {
+		if sc.Geo != nil || sc.Attempts > 3 {
+			continue
+		}
+
+		if sc.Instagram && sc.Name != "" {
+			insta, err := instagram.New(sc.Name, srv.Cfg)
+			if err != nil {
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			if insta.LastLocation != nil {
+				sc.Geo = insta.LastLocation
+			}
+
+			if err := saveScrap(srv, sc); err != nil {
+				srv.Alert("Error saving scrap", err)
+			}
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+	return nil
+}

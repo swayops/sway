@@ -7,6 +7,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/budget"
+	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/instagram"
@@ -77,6 +78,10 @@ func newSwayEngine(srv *Server) error {
 
 			if _, err := lob.VerifyAddress(addr, false); err != nil {
 				srv.Alert("Error hitting LOB!", err)
+			}
+
+			if testGeo := geo.GetGeoFromCoords(34.1341, -118.3215, int32(time.Now().Unix())); testGeo == nil || testGeo.State != "CA" {
+				srv.Alert("Error hitting Google geo!", nil)
 			}
 		}
 	}()
