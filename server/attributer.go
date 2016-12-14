@@ -74,6 +74,9 @@ func attributer(srv *Server, force bool) (int64, error) {
 			// This scrap is from instagram!
 			insta, err := instagram.New(sc.Name, srv.Cfg)
 			if err != nil {
+				if !force {
+					time.Sleep(1 * time.Second)
+				}
 				continue
 			}
 
@@ -96,6 +99,9 @@ func attributer(srv *Server, force bool) (int64, error) {
 			// This scrap is from YT!
 			yt, err := youtube.New(sc.Name, srv.Cfg)
 			if err != nil {
+				if !force {
+					time.Sleep(1 * time.Second)
+				}
 				continue
 			}
 
@@ -107,6 +113,9 @@ func attributer(srv *Server, force bool) (int64, error) {
 		} else if sc.Twitter && sc.Name != "" {
 			tw, err := twitter.New(sc.Name, srv.Cfg)
 			if err != nil {
+				if !force {
+					time.Sleep(1 * time.Second)
+				}
 				continue
 			}
 
@@ -124,6 +133,9 @@ func attributer(srv *Server, force bool) (int64, error) {
 		} else if sc.Facebook && sc.Name != "" {
 			fb, err := facebook.New(sc.Name, srv.Cfg)
 			if err != nil {
+				if !force {
+					time.Sleep(1 * time.Second)
+				}
 				continue
 			}
 
