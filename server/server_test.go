@@ -3913,6 +3913,10 @@ func TestAttributer(t *testing.T) {
 				return
 			}
 
+			if sc.Attempts != 1 {
+				t.Fatal("Incorrect attempts")
+				return
+			}
 
 		}
 	}

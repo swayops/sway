@@ -52,9 +52,15 @@ func attributer(srv *Server, force bool) (int64, error) {
 	var scrapsTouched int64
 	// Set keywords, geo, gender, and followers for scraps!
 	for _, sc := range scraps {
-		if sc.Attributed {
+		if sc.Attributed || sc.Attempts > 3 {
 			// This scrap already has attrs set
 			continue
+		}
+
+		// Lets save the attempt right off the bat
+		sc.Attempts += 1
+		if err := saveScrap(srv, sc); err != nil {
+			srv.Alert("Error saving scrap", err)
 		}
 
 		var (

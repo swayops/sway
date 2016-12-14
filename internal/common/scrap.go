@@ -34,6 +34,8 @@ type Scrap struct {
 
 	// Have all attrs been set already?
 	Attributed bool `json:"attr,omitempty"`
+	// How many times have we tried getting data on this user?
+	Attempts int32 `json:"attempts,omitempty"`
 
 	// Set internally
 	Id         string  `json:"id,omitempty"`

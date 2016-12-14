@@ -84,9 +84,6 @@ func newSwayEngine(srv *Server) error {
 	// Add keywords to scraps/influencers every 4 hours
 	attrTicker := time.NewTicker(4 * time.Hour)
 	go func() {
-		if _, err := attributer(srv, false); err != nil {
-			srv.Alert("Err running scrap attributer", err)
-		}
 		for range attrTicker.C {
 			if _, err := attributer(srv, false); err != nil {
 				srv.Alert("Err running scrap attributer", err)
