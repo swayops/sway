@@ -2701,7 +2701,14 @@ func forceEngine(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		go run(s)
+		if s.Cfg.Sandbox {
+			if err := run(s); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
+		} else {
+			go run(s)
+		}
 
 		c.JSON(200, misc.StatusOK(""))
 	}

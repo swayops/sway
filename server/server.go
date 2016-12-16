@@ -495,7 +495,7 @@ func (srv *Server) Fraud(cid, infId, url, reason string) {
 		return
 	}
 
-	msg := fmt.Sprintf("Please check the post at %s as there was fraud detected with the following reason: %s for the campaign id %s and influencer id %s", reason, cid, infId)
+	msg := fmt.Sprintf("Please check the post at %s as there was fraud detected with the following reason: %s for the campaign id %s and influencer id %s", url, reason, cid, infId)
 
 	email := templates.FraudEmail.Render(map[string]interface{}{"msg": msg})
 
