@@ -100,6 +100,8 @@ func newSwayEngine(srv *Server) error {
 }
 
 func run(srv *Server) error {
+	log.Println("Beginning engine run!")
+
 	var (
 		err                                             error
 		updatedInf, foundDeals, sigsFound, dealsEmailed int32
