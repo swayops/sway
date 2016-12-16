@@ -1325,6 +1325,65 @@ func getDealsForCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+type Match struct {
+	Id       string `json:"id,omitempty"`
+	Type     string `json:"type,omitempty"`
+	Insta    string `json:"insta,omitempty"`
+	Facebook string `json:"facebook,omitempty"`
+	YouTube  string `json:"youtube,omitempty"`
+	Twitter  string `json:"twitter,omitempty"`
+}
+
+func getMatchesForKeyword(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		kw := c.Param("kw")
+		matches := []*Match{}
+		for _, inf := range s.auth.Influencers.GetAll() {
+			if common.IsInList(inf.Keywords, kw) {
+				inf = *inf.Clean()
+				matches = append(matches, &Match{
+					Id:       inf.Id,
+					Type:     "influencer",
+					Insta:    inf.InstaUsername,
+					Facebook: inf.FbUsername,
+					YouTube:  inf.YTUsername,
+					Twitter:  inf.TwitterUsername,
+				})
+			}
+		}
+
+		scraps, _ := getAllScraps(s)
+		for _, sc := range scraps {
+			if common.IsInList(sc.Keywords, kw) {
+				m := &Match{
+					Id:   sc.Id,
+					Type: "scrap",
+				}
+
+				if sc.Instagram {
+					m.Insta = sc.Name
+				}
+				if sc.Twitter {
+					m.Twitter = sc.Name
+				}
+
+				if sc.Facebook {
+					m.Facebook = sc.Name
+				}
+
+				if sc.Twitter {
+					m.Twitter = sc.Name
+				}
+
+				matches = append(matches, m)
+
+			}
+		}
+
+		c.JSON(200, matches)
+	}
+}
+
 func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
