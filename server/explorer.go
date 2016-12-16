@@ -341,7 +341,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 		if link != "" {
 			for _, l := range tw.Urls() {
-				if containsFold(l, link) {
+				if containsFold(l, link) || containsFold(link, l) {
 					foundLink = true
 				}
 			}
@@ -519,7 +519,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		}
 
 		if link != "" {
-			if containsFold(inf.Instagram.LinkInBio, link) || strings.Contains(post.Caption, link) {
+			if containsFold(inf.Instagram.LinkInBio, link) || containsFold(link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, link) {
 				foundLink = true
 			}
 
