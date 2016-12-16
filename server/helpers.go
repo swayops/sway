@@ -741,6 +741,7 @@ func emailList(s *Server, cid string, override []string) {
 			CampaignName:  cmp.Name,
 			CampaignImage: cmp.ImageURL,
 			Company:       cmp.Company,
+			CampaignId:    cmp.Id, // Added for logging purposes
 		}
 
 		for _, email := range list {
@@ -748,6 +749,9 @@ func emailList(s *Server, cid string, override []string) {
 			inf := &influencer.Influencer{
 				EmailAddress: misc.TrimEmail(email),
 			}
+
+			inf.Id = inf.EmailAddress // For logging purposes
+
 			err := inf.EmailDeal(genericDeal, s.Cfg)
 			if err != nil {
 				log.Println("Error emailing for new campaign WL!", cid, err, inf.EmailAddress)
