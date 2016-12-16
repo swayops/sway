@@ -782,7 +782,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		if len(targetDeal.Platforms) > 0 {
 			targetDeal.Tags = cmp.Tags
 			targetDeal.Mention = cmp.Mention
-			targetDeal.Link = cmp.Link
 			targetDeal.Task = cmp.Task
 			if cmp.Perks != nil {
 				var code string
@@ -795,6 +794,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 					Category:     cmp.Perks.GetType(),
 					Code:         code,
 					Count:        1}
+			}
+
+			if targetDeal.Link == "" {
+				// getDeal queries for an active deal so it already has
+				// a link set!
+				targetDeal.Link = cmp.Link
 			}
 
 			// Add some display attributes..
