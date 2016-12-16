@@ -55,6 +55,10 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 }
 
 func (sc *Scrap) Match(cmp Campaign) bool {
+	if len(cmp.Whitelist) > 0 {
+		return false
+	}
+
 	// Social Media Checks
 	socialMediaFound := false
 	if cmp.YouTube && sc.YouTube {
