@@ -45,8 +45,8 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Run engine every 6 hours
-	runTicker := time.NewTicker(6 * time.Hour)
+	// Run engine every 2 hours
+	runTicker := time.NewTicker(2 * time.Hour)
 	go func() {
 		for range runTicker.C {
 			if err := run(srv); err != nil {
