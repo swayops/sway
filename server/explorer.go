@@ -459,10 +459,10 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > minRatio {
-					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
-					return nil
-				}
+				// if post.Comments/post.Likes > minRatio {
+				// 	srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
+				// 	return nil
+				// }
 			}
 
 			return post
@@ -556,10 +556,10 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > minRatio {
-					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
-					return nil
-				}
+				// if post.Comments/post.Likes > minRatio {
+				// 	srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
+				// 	return nil
+				// }
 			}
 
 			return post
