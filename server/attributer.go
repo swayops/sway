@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"log"
 	"strconv"
 	"time"
@@ -43,7 +44,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 	}
 
 	// Iterate over all scraps and add keywords for them (if they don't have any)
-	scraps, err := getAllScraps(srv)
+	scraps, err := getAllNewScraps(srv)
 	if err != nil {
 		return updated, err
 	}
@@ -270,4 +271,25 @@ func assignGeo(srv *Server) (err error) {
 		time.Sleep(1 * time.Second)
 	}
 	return nil
+}
+
+func getAllNewScraps(s *Server) (scraps []*common.Scrap, err error) {
+	// Gets all scraps that have not been attribuetd
+	if err = s.db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
+			var sc common.Scrap
+			if err := json.Unmarshal(v, &sc); err != nil {
+				log.Println("error when unmarshalling scrap", string(v))
+				return nil
+			}
+			if !sc.Attributed {
+				scraps = append(scraps, &sc)
+			}
+			return
+		})
+		return nil
+	}); err != nil {
+		return
+	}
+	return
 }
