@@ -296,7 +296,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
-		if int32(tw.CreatedAt.Unix()) < deal.Assigned || misc.WithinLast(int32(tw.CreatedAt.Unix()), waitingPeriod) {
+		if misc.WithinLast(int32(tw.CreatedAt.Unix()), waitingPeriod) {
 			continue
 		}
 
@@ -388,7 +388,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
-		if int32(post.Published.Unix()) < deal.Assigned || misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
+		if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
 			continue
 		}
 
@@ -477,12 +477,16 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		return nil
 	}
 
+	rejections := make(map[string]string)
+
 	for _, post := range inf.Instagram.LatestPosts {
-		if post.Published < deal.Assigned || misc.WithinLast(int32(post.Published), waitingPeriod) {
+		if misc.WithinLast(int32(post.Published), waitingPeriod) {
+			rejections[post.Caption] = "WAITING_PERIOD"
 			continue
 		}
 
 		if !hasReqHash(post.Caption, post.Hashtags) {
+			rejections[post.Caption] = "REQ_HASH"
 			continue
 		}
 
@@ -500,6 +504,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			}
 
 			if !foundHash {
+				rejections[post.Caption] = "NO_HASH"
 				continue
 			}
 		} else {
@@ -512,6 +517,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			}
 
 			if !foundMention {
+				rejections[post.Caption] = "NO_MENTION"
 				continue
 			}
 		} else {
@@ -524,6 +530,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			}
 
 			if !foundLink {
+				rejections[post.Caption] = "NO_LINK"
 				continue
 			}
 		} else {
@@ -568,7 +575,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
-		if post.Published < deal.Assigned || misc.WithinLast(post.Published, waitingPeriod) {
+		if misc.WithinLast(post.Published, waitingPeriod) {
 			continue
 		}
 
