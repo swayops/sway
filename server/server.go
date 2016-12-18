@@ -507,7 +507,7 @@ func (srv *Server) Fraud(cid, infId, url, reason string) {
 	}
 }
 
-func (srv *Server) Digest(updatedInf, foundDeals int32, totalDepleted float64, sigsFound, dealsEmailed int32, start time.Time) {
+func (srv *Server) Digest(updatedInf, foundDeals int32, totalDepleted float64, sigsFound, dealsEmailed, scrapsEmailed int32, start time.Time) {
 	if srv.Cfg.Sandbox {
 		return
 	}
@@ -521,6 +521,7 @@ func (srv *Server) Digest(updatedInf, foundDeals int32, totalDepleted float64, s
 		"totalDepleted": totalDepleted,
 		"sigsFound":     sigsFound,
 		"dealsEmailed":  dealsEmailed,
+		"scrapsEmailed": scrapsEmailed,
 		"endTime":       now.String(),
 		"runtime":       now.Unix() - start.Unix(),
 	}

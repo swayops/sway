@@ -37,16 +37,8 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Run scrap emails every hour
-	scrapTicker := time.NewTicker(1 * time.Hour)
-	go func() {
-		for range scrapTicker.C {
-			emailScraps(srv)
-		}
-	}()
-
-	// Run engine every 2 hours
-	runTicker := time.NewTicker(2 * time.Hour)
+	// Run engine every 3 hours
+	runTicker := time.NewTicker(3 * time.Hour)
 	go func() {
 		for range runTicker.C {
 			if err := run(srv); err != nil {
@@ -103,9 +95,9 @@ func run(srv *Server) error {
 	log.Println("Beginning engine run!")
 
 	var (
-		err                                             error
-		updatedInf, foundDeals, sigsFound, dealsEmailed int32
-		totalDepleted                                   float64
+		err                                                            error
+		updatedInf, foundDeals, sigsFound, dealsEmailed, scrapsEmailed int32
+		totalDepleted                                                  float64
 	)
 
 	// NOTE: This is the only function that can and should edit
@@ -155,7 +147,12 @@ func run(srv *Server) error {
 		return err
 	}
 
-	srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, start)
+	if scrapsEmailed, err = emailScraps(srv); err != nil {
+		srv.Alert("Error emailing scraps!", err)
+		return err
+	}
+
+	srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, scrapsEmailed, start)
 
 	return nil
 }

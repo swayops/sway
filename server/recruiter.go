@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -15,7 +14,7 @@ import (
 
 var ErrWait = errors.New("Waiting for the right moment")
 
-func emailScraps(srv *Server) (int, error) {
+func emailScraps(srv *Server) (int32, error) {
 	// This should trigger X amount of emails daily
 	// with varying templates and should ONLY begin
 	// emailing once a campaign is live
@@ -34,7 +33,7 @@ func emailScraps(srv *Server) (int, error) {
 	signUps := srv.auth.Influencers.GetAllEmails()
 
 	now := int32(time.Now().Unix())
-	count := 0
+	var count int32
 	for _, sc := range scraps {
 		if count >= 50 {
 			// Only send 50 emails max per run
@@ -59,10 +58,6 @@ func emailScraps(srv *Server) (int, error) {
 		if err := saveScrap(srv, sc); err != nil {
 			srv.Alert("Error saving scrap", err)
 		}
-	}
-
-	if count > 0 {
-		srv.Notify("Scraps Emailed", fmt.Sprintf("%d scraps emailed in last recruiter run!", count))
 	}
 
 	return count, nil
