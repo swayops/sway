@@ -201,7 +201,7 @@ func updateInfluencers(s *Server) (int32, error) {
 			// we clear out engagement deltas anyway
 			// whenever we deplete budgets so don't want to stop
 			// the whole engine because of one influencer erroring
-			s.Alert("Failed to update influencer "+infId, err)
+			log.Println("Failed to update influencer "+infId, err)
 			continue
 		}
 
@@ -251,7 +251,7 @@ func depleteBudget(s *Server) (float64, error) {
 		// Get this month's store for this campaign
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
 		if err != nil {
-			s.Alert("Could not find store for "+cmp.Id, errors.New("Could not find store"))
+			log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
 			continue
 		}
 		updatedStore := false
