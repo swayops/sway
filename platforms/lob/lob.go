@@ -15,13 +15,16 @@ import (
 )
 
 const (
-	lobEndpoint = "https://api.lob.com/v1/checks"
-	lobTestAuth = "test_08d860361c920163e4fba655f2de5131cfb"
-	lobProdAuth = "test_08d860361c920163e4fba655f2de5131cfb"
-	bankAcct    = "bank_15a6b397e90cd9b"
-	fromAddr    = "adr_7261cc34ecda09af"
-
+	lobEndpoint     = "https://api.lob.com/v1/checks"
 	lobAddrEndpoint = "https://api.lob.com/v1/verify"
+
+	lobTestAuth  = "test_08d860361c920163e4fba655f2de5131cfb"
+	testBankAcct = "bank_15a6b397e90cd9b"
+	testFromAddr = "adr_7261cc34ecda09af"
+
+	lobProdAuth = "live_520283b8a87facd50d06da245f0ec29e247"
+	bankAcct    = "bank_2f526b5be9acd14"
+	fromAddr    = "adr_10ddb1de2895b320"
 )
 
 var (
@@ -66,9 +69,14 @@ func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config
 	form.Add("to[address_zip]", addr.Zip)
 	form.Add("to[address_country]", addr.Country)
 
-	form.Add("from", fromAddr)
+	if cfg.Sandbox {
+		form.Add("from", testFromAddr)
+		form.Add("bank_account", testBankAcct)
+	} else {
+		form.Add("from", fromAddr)
+		form.Add("bank_account", bankAcct)
+	}
 
-	form.Add("bank_account", bankAcct)
 	form.Add("amount", strconv.FormatFloat(payout, 'f', 6, 64))
 
 	if !cfg.Sandbox {
