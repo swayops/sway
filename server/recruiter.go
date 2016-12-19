@@ -50,6 +50,15 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
+		// SANITY CHECKS!
+		if _, alive := srv.Campaigns.Get(cmp.Id); !alive {
+			continue
+		}
+
+		if len(cmp.Whitelist) > 0 {
+			continue
+		}
+
 		if sent := sc.Email(cmp, srv.Cfg); !sent {
 			continue
 		}
