@@ -127,6 +127,10 @@ type Influencer struct {
 	// Set only in getInfluencersByAgency to save us a stats endpoint hit
 	AgencySpend     float64 `json:"agSpend,omitempty"`
 	InfluencerSpend float64 `json:"infSpend,omitempty"`
+
+	// Stores whether the influencer has already been notified once about
+	// their profile going from public to private
+	PrivateNotify int32 `json:"private,omitempty"`
 }
 
 func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
@@ -195,6 +199,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 
 	inf.setSwayRep()
 	inf.LastSocialUpdate = int32(time.Now().Unix())
+
 	return inf, nil
 }
 
@@ -242,9 +247,9 @@ func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
 	return nil
 }
 
-func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
+func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 	if inf.Banned {
-		return nil
+		return false, nil
 	}
 
 	inf.setSwayRep()
@@ -253,7 +258,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 
 	// Always allow updates if they have an active deal
 	// i.e. skip this if statement
-	if len(inf.ActiveDeals) == 0 {
+	if len(inf.ActiveDeals) == 0 && 1 == 2 {
 		// If you've been updated in the last 7-11 days and
 		// have no active deals.. screw you!
 		// NO SOUP FOR YOU!
@@ -275,7 +280,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 			if inf.YouTube != nil {
 				inf.YouTube.LatestPosts = nil
 			}
-			return nil
+			return false, nil
 		}
 	}
 
@@ -287,28 +292,42 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (err error) {
 	savePosts := len(inf.ActiveDeals) > 0
 	if inf.Facebook != nil {
 		if err = inf.Facebook.UpdateData(cfg, savePosts); err != nil {
-			return err
+			return private, err
 		}
 	}
 	if inf.Instagram != nil {
 		if err = inf.Instagram.UpdateData(cfg, savePosts); err != nil {
-			return err
+			if inf.Instagram.Followers > 0 && instagram.Status(cfg) {
+				// This means we've gotten data on this user before.. but can't
+				// now!
+				// NOTE: Also checking if key is active so we don't email
+				// influencers just because our key is down
+				private = true
+			}
+			return private, err
 		}
 	}
 	if inf.Twitter != nil {
 		if err = inf.Twitter.UpdateData(cfg, savePosts); err != nil {
-			return err
+			if inf.Twitter.Followers > 0 && twitter.Status(cfg) {
+				// This means we've gotten data on this user before.. but can't
+				// now!
+				// NOTE: Also checking if key is active so we don't email
+				// influencers just because our key is down
+				private = true
+			}
+			return private, err
 		}
 	}
 	if inf.YouTube != nil {
 		if err = inf.YouTube.UpdateData(cfg, savePosts); err != nil {
-			return err
+			return private, err
 		}
 	}
 
 	inf.LastSocialUpdate = int32(time.Now().Unix())
 
-	return nil
+	return private, nil
 }
 
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]common.Campaign) (err error) {
@@ -841,6 +860,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 	if misc.WithinLast(inf.LastEmail, 24*7) {
 		return false, nil
 	}
+
 	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, false, cfg)
 	if len(deals) == 0 {
 		return false, nil
@@ -1054,6 +1074,78 @@ func (inf *Influencer) DealUpdate(deal *common.Deal, cfg *config.Config) error {
 		"cids": []string{deal.CampaignId},
 	}); err != nil {
 		log.Println("Failed to log deal udpate!", inf.Id, deal.CampaignId)
+	}
+
+	return nil
+}
+
+func (inf *Influencer) DealRejection(reason, postURL string, deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox || reason == "" {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.DealRejectionEmail.Render(map[string]interface{}{"Name": firstName, "reason": reason, "url": postURL})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your post for %s is missing a required item!", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":    "deal rejection",
+		"id":     inf.Id,
+		"cids":   []string{deal.CampaignId},
+		"reason": reason,
+		"url":    postURL,
+	}); err != nil {
+		log.Println("Failed to log deal rejection!", inf.Id, deal.CampaignId)
+	}
+
+	return nil
+}
+
+func (inf *Influencer) PrivateEmail(cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if inf.PrivateNotify > 0 {
+		// They've already been told about this!
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.PrivateEmail.Render(map[string]interface{}{"Name": firstName})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your profile has become inaccessible!"), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "private email",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log private email!", inf.Id)
 	}
 
 	return nil

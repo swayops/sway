@@ -306,8 +306,13 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			continue
 		}
 
-		var foundHash, foundMention, foundLink bool
+		var (
+			foundHash, foundMention, foundLink bool
+			approvedFacets, consideredFacets   float64
+		)
+
 		if len(deal.Tags) > 0 {
+			consideredFacets += 1
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
 					if strings.EqualFold(hashtag, tg) {
@@ -320,12 +325,15 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			}
 			if !foundHash {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundHash = true
 		}
 
 		if deal.Mention != "" {
+			consideredFacets += 1
 			for _, mt := range tw.Mentions() {
 				if strings.EqualFold(mt, deal.Mention) {
 					foundMention = true
@@ -334,12 +342,15 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			if !foundMention {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundMention = true
 		}
 
 		if link != "" {
+			consideredFacets += 1
 			for _, l := range tw.Urls() {
 				if containsFold(l, link) || containsFold(link, l) {
 					foundLink = true
@@ -351,6 +362,8 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			if !foundLink {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundLink = true
@@ -376,6 +389,22 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			}
 
 			return tw
+		} else {
+			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
+				// If we got more than 50% of the facets approved but didn't pass..
+				// lets notify the influencer!
+				var reason string
+				if !foundHash {
+					reason = "hashtags"
+				} else if !foundLink {
+					reason = "required link"
+				} else if !foundMention {
+					reason = "required mention"
+				}
+				if err := inf.DealRejection(reason, tw.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+			}
 		}
 	}
 
@@ -397,8 +426,13 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 			continue
 		}
 
-		var foundHash, foundMention, foundLink bool
+		var (
+			foundHash, foundMention, foundLink bool
+			approvedFacets, consideredFacets   float64
+		)
+
 		if len(deal.Tags) > 0 {
+			consideredFacets += 1
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
 					if strings.EqualFold(hashtag, tg) {
@@ -411,30 +445,38 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 			}
 			if !foundHash {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundHash = true
 		}
 
 		if deal.Mention != "" {
+			consideredFacets += 1
 			if containsFold(post.Caption, deal.Mention) {
 				foundMention = true
 			}
 
 			if !foundMention {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundMention = true
 		}
 
 		if link != "" {
+			consideredFacets += 1
 			if containsFold(post.Caption, link) {
 				foundLink = true
 			}
 
 			if !foundLink {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundLink = true
@@ -466,6 +508,22 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 			}
 
 			return post
+		} else {
+			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
+				// If we got more than 50% of the facets approved but didn't pass..
+				// lets notify the influencer!
+				var reason string
+				if !foundHash {
+					reason = "hashtags"
+				} else if !foundLink {
+					reason = "link"
+				} else if !foundMention {
+					reason = "mention"
+				}
+				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+			}
 		}
 	}
 
@@ -490,8 +548,13 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			continue
 		}
 
-		var foundHash, foundMention, foundLink bool
+		var (
+			foundHash, foundMention, foundLink bool
+			approvedFacets, consideredFacets   float64
+		)
+
 		if len(deal.Tags) > 0 {
+			consideredFacets += 1
 			for _, tg := range deal.Tags {
 				for _, hashtag := range post.Hashtags {
 					if strings.EqualFold(hashtag, tg) {
@@ -506,12 +569,15 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			if !foundHash {
 				rejections[post.Caption] = "NO_HASH"
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundHash = true
 		}
 
 		if deal.Mention != "" {
+			consideredFacets += 1
 			if containsFold(post.Caption, deal.Mention) {
 				foundMention = true
 			}
@@ -519,12 +585,15 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			if !foundMention {
 				rejections[post.Caption] = "NO_MENTION"
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundMention = true
 		}
 
 		if link != "" {
+			consideredFacets += 1
 			if containsFold(inf.Instagram.LinkInBio, link) || containsFold(link, inf.Instagram.LinkInBio) || strings.Contains(post.Caption, link) {
 				foundLink = true
 			}
@@ -532,6 +601,8 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			if !foundLink {
 				rejections[post.Caption] = "NO_LINK"
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundLink = true
@@ -563,6 +634,22 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			}
 
 			return post
+		} else {
+			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
+				// If we got more than 50% of the facets approved but didn't pass..
+				// lets notify the influencer!
+				var reason string
+				if !foundHash {
+					reason = "hashtags"
+				} else if !foundLink {
+					reason = "link"
+				} else if !foundMention {
+					reason = "mention"
+				}
+				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+			}
 		}
 	}
 
@@ -584,8 +671,12 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			continue
 		}
 
-		var foundHash, foundMention, foundLink bool
+		var (
+			foundHash, foundMention, foundLink bool
+			approvedFacets, consideredFacets   float64
+		)
 		if len(deal.Tags) > 0 {
+			consideredFacets += 1
 			for _, tg := range deal.Tags {
 				for _, hashtag := range postTags {
 					if containsFold(strings.ToLower(hashtag), tg) {
@@ -599,30 +690,38 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			}
 			if !foundHash {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundHash = true
 		}
 
 		if deal.Mention != "" {
+			consideredFacets += 1
 			if containsFold(post.Description, deal.Mention) {
 				foundMention = true
 			}
 
 			if !foundMention {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundMention = true
 		}
 
 		if link != "" {
+			consideredFacets += 1
 			if containsFold(post.Description, link) {
 				foundLink = true
 			}
 
 			if !foundLink {
 				continue
+			} else {
+				approvedFacets += 1
 			}
 		} else {
 			foundLink = true
@@ -654,6 +753,22 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			}
 
 			return post
+		} else {
+			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
+				// If we got more than 50% of the facets approved but didn't pass..
+				// lets notify the influencer!
+				var reason string
+				if !foundHash {
+					reason = "hashtags"
+				} else if !foundLink {
+					reason = "link"
+				} else if !foundMention {
+					reason = "mention"
+				}
+				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+			}
 		}
 	}
 

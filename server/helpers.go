@@ -232,6 +232,27 @@ func updateLastEmail(s *Server, id string) error {
 	return nil
 }
 
+func updatePrivateEmailNotification(s *Server, id string) error {
+	inf, ok := s.auth.Influencers.Get(id)
+	if !ok {
+		return auth.ErrInvalidID
+	}
+
+	// Save the last email timestamp
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		inf.PrivateNotify = int32(time.Now().Unix())
+		// Save the influencer since we just updated it's social media data
+		if err := saveInfluencer(s, tx, inf); err != nil {
+			log.Println("Errored saving influencer", err)
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user *auth.User) error {
 	if inf.Id == "" {
 		return auth.ErrInvalidID

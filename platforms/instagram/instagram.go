@@ -67,7 +67,6 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
 	// 	return nil
 	// }
-
 	if fl, link, dp, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run

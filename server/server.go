@@ -291,6 +291,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Public endpoint
 	r.GET("/cl/:id", click(srv))
+	r.GET("/optout/:email", optoutScrap(srv))
 
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
