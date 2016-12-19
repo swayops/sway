@@ -6,16 +6,19 @@ const scrapFirstEmail = `
 		Hey {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		My company makes software that connects social media influencers with brands.
+		Our company makes software that connects social media influencers with brands.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		I thought I would ping you because we have a few big advertisers coming through in the next 45 days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
+		I thought I would ping you because we have a few big advertisers coming through in the next 30 days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		We generally make modeling agencies or independent influencers double the revenue they would normally bring in through your avg social post. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, 1099's, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
+		We generally make influencers double the revenue they would normally bring in through your avg social post. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, 1099's, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If this sounds like something that would interest you please let us know. Hope to work together soon,<br/>
+		If this sounds like something that would interest you please let us know. You can see more info about how our app works at: http://SwayOps.com/influencer/ <br/>
+		and if I don't hear from you I will ping you over email when the next brand requests you :)
+
+		Hope to work together soon,<br/>
 		~ Karlie M<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
@@ -51,7 +54,7 @@ const scrapDealOne = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access these you simply need to sign up in our influencer app <a href="https://inf.swayops.com/signup">https://inf.swayops.com/signup</a> and hit the "Accept Endorsement" button. Feel free to call or email me with any questions.
+		In order to access these you simply need to sign up in our influencer app <a href="https://inf.swayops.com/signup">https://inf.swayops.com/signup</a> and hit the "Accept Endorsement" button. Feel free to call or email me with any questions, we also have a full wiki on our website as well.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Very excited to work with you,<br/>
