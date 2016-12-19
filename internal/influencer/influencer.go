@@ -258,7 +258,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 
 	// Always allow updates if they have an active deal
 	// i.e. skip this if statement
-	if len(inf.ActiveDeals) == 0 && 1 == 2 {
+	if len(inf.ActiveDeals) == 0 {
 		// If you've been updated in the last 7-11 days and
 		// have no active deals.. screw you!
 		// NO SOUP FOR YOU!

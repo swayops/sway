@@ -117,7 +117,7 @@ const (
 )
 
 func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
-	endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id+"23")
+	endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id)
 	err = misc.HttpGetJson(tw.client, endpoint, &tws)
 	now := int32(time.Now().Unix())
 	for _, t := range tws {

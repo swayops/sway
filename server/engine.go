@@ -37,7 +37,6 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	emailScraps(srv)
 	// Run engine every 3 hours
 	runTicker := time.NewTicker(3 * time.Hour)
 	go func() {
@@ -204,7 +203,7 @@ func updateInfluencers(s *Server) (int32, error) {
 			// whenever we deplete budgets so don't want to stop
 			// the whole engine because of one influencer erroring
 			log.Println("Failed to update influencer "+infId, err)
-			log.Println("IS IT PRIVATE LOL", inf.Id, private)
+
 			if private {
 				// We noticed that this influencer now has a private profile..
 				// lets let them know!
