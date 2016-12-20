@@ -308,9 +308,13 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 		return err
 	}
 
-	// Update the campaign store as well so things don't mess up
-	// until the next cache update!
-	s.Campaigns.SetCampaign(cmp.Id, *cmp)
+	if !s.Cfg.Sandbox {
+		// Update the campaign store as well so things don't mess up
+		// until the next cache update!
+		s.Campaigns.SetActiveCampaign(cmp.Id, *cmp)
+	} else {
+		s.Campaigns.SetCampaign(cmp.Id, *cmp)
+	}
 
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }

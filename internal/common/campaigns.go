@@ -65,8 +65,10 @@ func (cmp *Campaign) IsValid() bool {
 }
 
 type Campaigns struct {
-	mux   sync.RWMutex
-	store map[string]Campaign
+	mux       sync.RWMutex
+	store     map[string]Campaign
+	activeAdv map[string]bool
+	activeAg  map[string]bool
 }
 
 func NewCampaigns() *Campaigns {
@@ -79,6 +81,21 @@ func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool
 	cmps := getAllActiveCampaigns(db, cfg, adv, ag)
 	p.mux.Lock()
 	p.store = cmps
+	p.activeAdv = adv
+	p.activeAg = ag
+	p.mux.Unlock()
+}
+
+func (p *Campaigns) SetActiveCampaign(id string, cmp Campaign) {
+	// Verifies whether the campaign is active
+	p.mux.Lock()
+
+	activeAdv := p.activeAdv[cmp.AdvertiserId]
+	activeAg := p.activeAg[cmp.AgencyId]
+	if cmp.IsValid() && activeAdv && activeAg {
+		p.store[id] = cmp
+	}
+
 	p.mux.Unlock()
 }
 
