@@ -1,7 +1,6 @@
 package youtube
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -20,15 +19,28 @@ type Meta struct {
 const (
 	searchesUrl  = "%ssearch?part=id&maxResults=1&q=%s&type=channel&key=%s"
 	dataUrl      = "%schannels?part=statistics,snippet&id=%s&key=%s"
-	playlistUrl  = "%schannels?part=contentDetails&forUsername=%s&key=%s"
-	videosUrl    = "%splaylistItems?part=snippet&playlistId=%s&key=%s&maxResults=%s"
-	postUrl      = "%svideos?id=%s&part=statistics&key=%s"
+	videosUrl    = "%ssearch?channelId=%s&key=%s&part=snippet,id&order=date&maxResults=20"
+	postUrl      = "%svideos?id=%s&part=statistics,snippet&key=%s"
 	postTemplate = "https://www.youtube.com/watch?v=%s"
 )
 
 var (
-	ErrUnknown = errors.New(`YouTube username not found!`)
+	ErrUnknown = errors.New(`Error adding YouTube channel. Please see this article to find your proper youtube channel ID: http://swayops.com/blog/2016/12/how-to-find-your-true-youtube-id `)
 )
+
+type UserData struct {
+	Items []*UserItem `json:"items"`
+	Error *Error      `json:"error"`
+}
+
+type UserItem struct {
+	Id      string   `json:"id"`
+	Stats   *Stats   `json:"statistics"`
+	Content *Content `json:"contentDetails"`
+	Snippet *Snippet `json:"snippet"`
+}
+
+////
 
 type Data struct {
 	Items []*Item `json:"items"`
@@ -46,27 +58,9 @@ type Item struct {
 	Snippet *Snippet `json:"snippet"`
 }
 
-type Id string
-
-func (id Id) String() string {
-	return string(id)
-}
-
-func (id *Id) UnmarshalJSON(p []byte) (err error) {
-	if len(p) == 0 {
-		return // or an error
-	}
-	if ln := len(p) - 1; p[0] == '"' && p[ln] == '"' {
-		*id = Id(p[1:ln])
-		return nil
-	}
-	var tmp struct {
-		ChannelId string `json:"channelId"`
-	}
-	if err = json.Unmarshal(p, &tmp); err == nil {
-		*id = Id(tmp.ChannelId)
-	}
-	return
+type Id struct {
+	VideoId   string `json:"videoId"`
+	ChannelId string `json:"channelId"`
 }
 
 type Stats struct {
@@ -90,7 +84,6 @@ type Snippet struct {
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	Published   time.Time  `json:"publishedAt"`
-	Resource    *Resource  `json:"resourceId"`
 	Thumbnails  *Thumbnail `json:"thumbnails"`
 }
 
@@ -109,34 +102,10 @@ type Thumbnail struct {
 	} `json:"maxres"`
 }
 
-type Resource struct {
-	VideoId string `json:"videoId"`
-}
-
-func getUserIdFromName(name string, cfg *config.Config) (string, error) {
-	endpoint := fmt.Sprintf(searchesUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
-
-	var search Data
-	err := misc.Request("GET", endpoint, "", &search)
-	if err != nil || search.Error != nil {
-		return "", err
-	}
-
-	if len(search.Items) > 0 {
-		for _, data := range search.Items {
-			if data.Id != "" {
-				return data.Id.String(), nil
-			}
-		}
-	}
-
-	return "", ErrUnknown
-}
-
 func getUserStats(id string, cfg *config.Config) (float64, float64, float64, string, error) {
 	endpoint := fmt.Sprintf(dataUrl, cfg.YouTube.Endpoint, id, cfg.YouTube.ClientId)
 
-	var data Data
+	var data UserData
 	err := misc.Request("GET", endpoint, "", &data)
 	if err != nil || data.Error != nil {
 		return 0, 0, 0, "", err
@@ -180,32 +149,8 @@ func getUserStats(id string, cfg *config.Config) (float64, float64, float64, str
 }
 
 func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float64, images []string, err error) {
-	endpoint := fmt.Sprintf(playlistUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
+	endpoint := fmt.Sprintf(videosUrl, cfg.YouTube.Endpoint, name, cfg.YouTube.ClientId)
 
-	var list Data
-	err = misc.Request("GET", endpoint, "", &list)
-	if err != nil {
-		log.Println("Unable to hit", endpoint)
-		return
-	}
-
-	if list.Error != nil {
-		err = fmt.Errorf("%s: error code: %v", endpoint, list.Error.Code)
-		return
-	}
-
-	if len(list.Items) == 0 {
-		err = ErrUnknown
-		return
-	}
-
-	val := list.Items[0].Content
-	if val == nil || val.Playlists == nil {
-		err = ErrUnknown
-		return
-	}
-
-	endpoint = fmt.Sprintf(videosUrl, cfg.YouTube.Endpoint, val.Playlists.UploadKey, cfg.YouTube.ClientId, strconv.Itoa(count))
 	var vid Data
 	err = misc.Request("GET", endpoint, "", &vid)
 	if err != nil {
@@ -224,19 +169,18 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	}
 
 	for _, v := range vid.Items {
-		if v.Snippet != nil && v.Snippet.Resource != nil {
+		if v.Snippet != nil && v.Id.VideoId != "" {
 			pub := int32(v.Snippet.Published.Unix())
 
 			p := &Post{
-				Id:          v.Snippet.Resource.VideoId,
+				Id:          v.Id.VideoId,
 				Title:       v.Snippet.Title,
-				Description: strings.Replace(v.Snippet.Description, "\n", " ", -1),
 				Published:   pub,
 				LastUpdated: int32(time.Now().Unix()),
-				PostURL:     fmt.Sprintf(postTemplate, v.Snippet.Resource.VideoId),
+				PostURL:     fmt.Sprintf(postTemplate, v.Id.VideoId),
 			}
 
-			p.Views, p.Likes, p.Dislikes, p.Comments, err = getVideoStats(v.Snippet.Resource.VideoId, cfg)
+			p.Views, p.Likes, p.Dislikes, p.Comments, p.Description, err = getVideoStats(v.Id.VideoId, cfg)
 			if err != nil {
 				return
 			}
@@ -268,10 +212,10 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	return
 }
 
-func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float64, err error) {
+func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float64, desc string, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
 
-	var vData Data
+	var vData UserData
 	err = misc.Request("GET", endpoint, "", &vData)
 	if err != nil || vData.Error != nil || len(vData.Items) == 0 {
 		log.Println("Error extracting video data", endpoint, err)
@@ -312,6 +256,10 @@ func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, di
 		log.Println("Error extracting comments data", endpoint, err)
 		err = ErrUnknown
 		return
+	}
+
+	if i.Snippet != nil && i.Snippet.Description != "" {
+		desc = strings.Replace(i.Snippet.Description, "\n", " ", -1)
 	}
 
 	return

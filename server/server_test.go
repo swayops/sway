@@ -271,7 +271,7 @@ func TestNewInfluencer(t *testing.T) {
 			Geo:         &geo.GeoRecord{},
 			TwitterId:   "justinbieber",
 			InstagramId: "kimkardashian",
-			YouTubeId:   "JennaMarbles",
+			YouTubeId:   "UCWJ2lWNubArHWmf3FIHbfcQ",
 		},
 	}
 
@@ -3827,7 +3827,7 @@ func TestAttributer(t *testing.T) {
 	// Create some scraps
 	scraps := []common.Scrap{}
 	scraps = append(scraps, common.Scrap{
-		Name:         "nba",
+		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "nba@a.b",
 	})
@@ -3839,7 +3839,7 @@ func TestAttributer(t *testing.T) {
 	})
 
 	scraps = append(scraps, common.Scrap{
-		Name:         "jennamarbles",
+		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "jb@a.b",
 	})

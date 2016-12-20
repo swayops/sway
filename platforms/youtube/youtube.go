@@ -31,18 +31,13 @@ var (
 	ErrEligible = errors.New("Youtube account is not eligible")
 )
 
-func New(name string, cfg *config.Config) (*YouTube, error) {
-	userId, err := getUserIdFromName(name, cfg)
-	if err != nil {
-		return nil, err
-	}
-
+func New(userId string, cfg *config.Config) (*YouTube, error) {
 	yt := &YouTube{
-		UserName: name,
+		UserName: userId,
 		UserId:   userId,
 	}
 
-	err = yt.UpdateData(cfg, cfg.Sandbox)
+	err := yt.UpdateData(cfg, cfg.Sandbox)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +67,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 		return err
 	}
 
-	p, lk, dlk, images, err := getPosts(yt.UserName, 5, cfg)
+	p, lk, dlk, images, err := getPosts(yt.UserId, 5, cfg)
 	if err != nil {
 		return err
 	}

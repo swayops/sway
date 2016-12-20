@@ -9,26 +9,26 @@ import (
 
 type Post struct {
 	Id          string `json:"id"`
-	Title       string `json:"title,omitempty"`
-	Description string `json:"desc,omitempty"`
-	Published   int32  `json:"published,omitempty"` // Epoch ts
+	Title       string `json:"title"`
+	Description string `json:"desc"`
+	Published   int32  `json:"published"` // Epoch ts
 
-	PostURL string `json:"url,omitempty"` // Link to the post
+	PostURL string `json:"url"` // Link to the post
 
 	// Stats
-	Views      float64 `json:"views,omitempty"`
-	ViewsDelta float64 `json:"vDelta,omitempty"`
+	Views      float64 `json:"views"`
+	ViewsDelta float64 `json:"vDelta"`
 
-	Likes      float64 `json:"likes,omitempty"`
-	LikesDelta float64 `json:"lDelta,omitempty"`
+	Likes      float64 `json:"likes"`
+	LikesDelta float64 `json:"lDelta"`
 
-	Dislikes      float64 `json:"dislikes,omitempty"`
-	DislikesDelta float64 `json:"dlDelta,omitempty"`
+	Dislikes      float64 `json:"dislikes"`
+	DislikesDelta float64 `json:"dlDelta"`
 
-	Comments      float64 `json:"comments,omitempty"`
-	CommentsDelta float64 `json:"cDelta,omitempty"`
+	Comments      float64 `json:"comments"`
+	CommentsDelta float64 `json:"cDelta"`
 
-	LastUpdated int32 `json:"lastUpdated,omitempty"`
+	LastUpdated int32 `json:"lastUpdated"`
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) error {
@@ -44,10 +44,11 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	// 	return nil
 	// }
 
-	views, likes, dislikes, comments, err := getVideoStats(pt.Id, cfg)
+	views, likes, dislikes, comments, desc, err := getVideoStats(pt.Id, cfg)
 	if err != nil {
 		return err
 	}
+	pt.Description = desc
 
 	pt.LikesDelta = likes - pt.Likes
 	pt.Likes = likes
