@@ -266,6 +266,10 @@ func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, di
 }
 
 func getCount64(val string) (float64, error) {
+	if val == "" {
+		return 0, nil
+	}
+
 	v, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return 0, err
@@ -275,6 +279,10 @@ func getCount64(val string) (float64, error) {
 }
 
 func getCount(val string) (float64, error) {
+	if val == "" {
+		return 0, nil
+	}
+
 	v, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		return 0, err

@@ -64,7 +64,7 @@ func newSwayEngine(srv *Server) error {
 				srv.Alert("Error running Twitter init!", twitter.ErrEligible)
 			}
 
-			if _, err := youtube.New("google", srv.Cfg); err != nil {
+			if _, err := youtube.New("UCK8sQmJBp8GCxrOtXWBpyEA", srv.Cfg); err != nil {
 				srv.Alert("Error running YouTube init!", err)
 			}
 
