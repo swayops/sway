@@ -221,6 +221,12 @@ func (inf *Influencer) NewInsta(id string, cfg *config.Config) error {
 			return err
 		}
 		inf.Instagram = insta
+
+		keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
+		if err == nil {
+			inf.Keywords = keywords
+		}
+
 	}
 	return nil
 }
@@ -243,6 +249,12 @@ func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
 			return err
 		}
 		inf.YouTube = yt
+
+		keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
+		if err == nil {
+			inf.Keywords = keywords
+		}
+
 	}
 	return nil
 }
