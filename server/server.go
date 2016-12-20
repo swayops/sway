@@ -43,6 +43,7 @@ type Server struct {
 	auth     *auth.Auth
 
 	Campaigns *common.Campaigns
+	Keywords  []string // List of available keywords
 }
 
 // New returns a new Server or an error
@@ -68,6 +69,8 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	} else {
 		stripe.Key = "sk_live_v1MxQNZbe64fgS4rU6q5aHHT"
 	}
+
+	srv.Keywords = getAllKeywords(srv)
 
 	err := srv.initializeDBs(cfg)
 	if err != nil {

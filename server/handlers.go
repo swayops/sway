@@ -2842,7 +2842,7 @@ func forceEmail(s *Server) gin.HandlerFunc {
 func getKeywords(s *Server) gin.HandlerFunc {
 	// Get all keywords in the system
 	return func(c *gin.Context) {
-		c.JSON(200, gin.H{"keywords": getAllKeywords(s)})
+		c.JSON(200, gin.H{"keywords": s.Keywords})
 	}
 }
 
