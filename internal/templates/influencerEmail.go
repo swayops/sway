@@ -195,6 +195,43 @@ const campaignStatusEmail = `
 </div>
 `
 
+const dealRejectionEmail = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}},
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Your most recent deal post ( {{url}} ) is missing a required item. Unfortunately our engine can't pickup your completed deal because of this. Please double check that you included the required <b>{{reason}}</b> in your post and the system will automatically authorize your post.	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
+const privateEmail = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}},
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Our engine detected that one or more of your social media profiles is now private. Until your profile is made public, we cannot track your stats or detect when you complete deals. Let us know if you have any questions. Happy to help 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
 	InfluencerEmail        = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail     = MustacheMust(infCmpEmail)
@@ -203,4 +240,6 @@ var (
 	CheckEmail             = MustacheMust(checkTmpl)
 	DealCompletionEmail    = MustacheMust(completionTmpl)
 	CampaignStatusEmail    = MustacheMust(campaignStatusEmail)
+	DealRejectionEmail     = MustacheMust(dealRejectionEmail)
+	PrivateEmail           = MustacheMust(privateEmail)
 )

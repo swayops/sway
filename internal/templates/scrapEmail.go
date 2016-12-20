@@ -20,7 +20,11 @@ const scrapFirstEmail = `
 
 		Hope to work together soon,<br/>
 		~ Karlie M<br/>
+		<br>
+		Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
 	</p>
+
+
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
@@ -59,6 +63,9 @@ const scrapDealOne = `
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Very excited to work with you,<br/>
 		~ Karlie M<br/>
+		<br>
+		Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
+
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
@@ -97,6 +104,9 @@ const scrapDealTwo = `
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
 		~ Karlie M<br/>
+		<br>
+		Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
+
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />

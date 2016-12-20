@@ -56,12 +56,12 @@ func newSwayEngine(srv *Server) error {
 				srv.Alert("Error running Facebook init!", err)
 			}
 
-			if _, err := instagram.New("instagram", srv.Cfg); err != nil {
-				srv.Alert("Error running Instagram init!", err)
+			if !instagram.Status(srv.Cfg) {
+				srv.Alert("Error running Instagram init!", instagram.ErrUnknown)
 			}
 
-			if _, err := twitter.New("twitter", srv.Cfg); err != nil {
-				srv.Alert("Error running Twitter init!", err)
+			if !twitter.Status(srv.Cfg) {
+				srv.Alert("Error running Twitter init!", twitter.ErrEligible)
 			}
 
 			if _, err := youtube.New("google", srv.Cfg); err != nil {
@@ -182,6 +182,7 @@ func updateInfluencers(s *Server) (int32, error) {
 		oldUpdate int32
 		err       error
 		updated   int32
+		private   bool
 	)
 	for _, infId := range s.auth.Influencers.GetAllIDs() {
 		// Do another get incase the influencer has been updated
@@ -195,13 +196,26 @@ func updateInfluencers(s *Server) (int32, error) {
 
 		// Influencer not updated if they have been updated
 		// within the last 12 hours
-		if err = inf.UpdateAll(s.Cfg); err != nil {
+		if private, err = inf.UpdateAll(s.Cfg); err != nil {
 			// If the update errors.. we continue and alert
 			// admin about the error. Do not return because
 			// we clear out engagement deltas anyway
 			// whenever we deplete budgets so don't want to stop
 			// the whole engine because of one influencer erroring
 			log.Println("Failed to update influencer "+infId, err)
+
+			if private {
+				// We noticed that this influencer now has a private profile..
+				// lets let them know!
+				if err = inf.PrivateEmail(s.Cfg); err != nil {
+					s.Alert("Private email failed", err)
+					continue
+				}
+
+				if err = updatePrivateEmailNotification(s, inf.Id); err != nil {
+					log.Println("Saving private email notificationf ailed")
+				}
+			}
 			continue
 		}
 

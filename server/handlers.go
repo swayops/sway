@@ -3338,12 +3338,24 @@ func setScrap(s *Server) gin.HandlerFunc {
 	}
 }
 
-func getScraps(s *Server) gin.HandlerFunc {
+func optoutScrap(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !isSecureAdmin(c, s) {
-			return
+		email := c.Param("email")
+		scraps, _ := getAllScraps(s)
+		for _, sc := range scraps {
+			if sc.EmailAddress == email {
+				sc.Ignore = true
+				saveScrap(s, sc)
+			}
 		}
 
+		c.String(200, "You have successfully been opted out. You may now close this window.")
+
+	}
+}
+
+func getScraps(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
 		scraps, err := getAllScraps(s)
 		if err != nil {
 			c.JSON(400, misc.StatusErr(err.Error()))

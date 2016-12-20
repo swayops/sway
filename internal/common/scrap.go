@@ -40,6 +40,9 @@ type Scrap struct {
 	// Set internally
 	Id         string  `json:"id,omitempty"`
 	SentEmails []int32 `json:"sent,omitempty"` // Email TS
+
+	// Set when the scrap has unsubscribed
+	Ignore bool `json:"ignore,omitempty"`
 }
 
 func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
@@ -134,7 +137,7 @@ func (sc *Scrap) Match(cmp Campaign) bool {
 }
 
 func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
-	if cfg.ReplyMailClient() == nil {
+	if cfg.ReplyMailClient() == nil || sc.Ignore {
 		return false
 	}
 
@@ -145,7 +148,7 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 			return true
 		}
 
-		email := templates.ScrapFirstEmail.Render(map[string]interface{}{"Name": sc.Name})
+		email := templates.ScrapFirstEmail.Render(map[string]interface{}{"Name": sc.Name, "email": sc.EmailAddress})
 		if resp, err := cfg.ReplyMailClient().SendMessage(email, "Hey", sc.EmailAddress, sc.Name,
 			[]string{""}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			log.Println("Error emailing scrap!", err)
@@ -168,7 +171,7 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 				return true
 			}
 
-			email := templates.ScrapDealOne.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name})
+			email := templates.ScrapDealOne.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress})
 			if resp, err := cfg.ReplyMailClient().SendMessage(email, "A few brands currently requesting you", sc.EmailAddress, sc.Name,
 				[]string{""}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 				log.Println("Error emailing scrap!", err)
@@ -192,7 +195,7 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 				return true
 			}
 
-			email := templates.ScrapDealTwo.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name})
+			email := templates.ScrapDealTwo.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress})
 			if resp, err := cfg.ReplyMailClient().SendMessage(email, "Influencer booking", sc.EmailAddress, sc.Name,
 				[]string{""}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 				log.Println("Error emailing scrap!", err)

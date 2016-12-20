@@ -232,6 +232,27 @@ func updateLastEmail(s *Server, id string) error {
 	return nil
 }
 
+func updatePrivateEmailNotification(s *Server, id string) error {
+	inf, ok := s.auth.Influencers.Get(id)
+	if !ok {
+		return auth.ErrInvalidID
+	}
+
+	// Save the last email timestamp
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		inf.PrivateNotify = int32(time.Now().Unix())
+		// Save the influencer since we just updated it's social media data
+		if err := saveInfluencer(s, tx, inf); err != nil {
+			log.Println("Errored saving influencer", err)
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func saveInfluencerWithUser(s *Server, tx *bolt.Tx, inf influencer.Influencer, user *auth.User) error {
 	if inf.Id == "" {
 		return auth.ErrInvalidID
@@ -287,9 +308,13 @@ func saveCampaign(tx *bolt.Tx, cmp *common.Campaign, s *Server) error {
 		return err
 	}
 
-	// Update the campaign store as well so things don't mess up
-	// until the next cache update!
-	s.Campaigns.SetCampaign(cmp.Id, *cmp)
+	if !s.Cfg.Sandbox {
+		// Update the campaign store as well so things don't mess up
+		// until the next cache update!
+		s.Campaigns.SetActiveCampaign(cmp.Id, *cmp)
+	} else {
+		s.Campaigns.SetCampaign(cmp.Id, *cmp)
+	}
 
 	return misc.PutBucketBytes(tx, s.Cfg.Bucket.Campaign, cmp.Id, b)
 }
