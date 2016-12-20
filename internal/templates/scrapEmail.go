@@ -15,13 +15,10 @@ const scrapFirstEmail = `
 		We generally make influencers double the revenue they would normally bring in through your avg social post. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, 1099's, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If this sounds like something that would interest you please let us know. You can see more info about how our app works at: http://SwayOps.com/influencer/ <br/>
-		and if I don't hear from you I will ping you over email when the next brand requests you :)
+		If this sounds like something that would interest you please let us know. You can see more info about how our app works at http://SwayOps.com/influencer/ , and if I don't hear from you I will ping you over email when the next brand requests you :)
 
 		Hope to work together soon,<br/>
 		~ Karlie M<br/>
-		<br>
-		Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
 	</p>
 
 
@@ -29,8 +26,9 @@ const scrapFirstEmail = `
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
 		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	<br><br>
+	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
 	</p>
-
 </div>
 `
 
@@ -63,14 +61,13 @@ const scrapDealOne = `
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Very excited to work with you,<br/>
 		~ Karlie M<br/>
-		<br>
-		Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
-
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
 		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	<br><br>
+	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
 	</p>
 
 </div>
@@ -104,15 +101,15 @@ const scrapDealTwo = `
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
 		~ Karlie M<br/>
-		<br>
-		Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
-
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
 		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	<br><br>
+	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
 	</p>
+
 </div>
 `
 
