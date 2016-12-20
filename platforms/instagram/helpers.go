@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	ErrUnknown = errors.New(`Instagram data not found`)
+	ErrUnknown = errors.New(`Instagram username not found`)
 )
 
 type UserSearch struct {

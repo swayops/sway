@@ -27,10 +27,7 @@ const (
 )
 
 var (
-	ErrUnknown = errors.New(`YouTube data not found!`)
-	ErrEmpty   = errors.New("Empty post items!")
-	ErrStats   = errors.New("Unable to retrieve video stats")
-	ErrContent = errors.New("Empty content items")
+	ErrUnknown = errors.New(`YouTube username not found!`)
 )
 
 type Data struct {
@@ -198,13 +195,13 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	}
 
 	if len(list.Items) == 0 {
-		err = ErrEmpty
+		err = ErrUnknown
 		return
 	}
 
 	val := list.Items[0].Content
 	if val == nil || val.Playlists == nil {
-		err = ErrContent
+		err = ErrUnknown
 		return
 	}
 
@@ -222,7 +219,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	}
 
 	if len(vid.Items) == 0 {
-		err = ErrEmpty
+		err = ErrUnknown
 		return
 	}
 
@@ -278,42 +275,42 @@ func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, di
 	err = misc.Request("GET", endpoint, "", &vData)
 	if err != nil || vData.Error != nil || len(vData.Items) == 0 {
 		log.Println("Error extracting video data", endpoint, err)
-		err = ErrStats
+		err = ErrUnknown
 		return
 	}
 
 	i := vData.Items[0]
 	if i.Stats == nil {
 		log.Println("Error extracting stats data", endpoint, err)
-		err = ErrStats
+		err = ErrUnknown
 		return
 	}
 
 	views, err = getCount64(i.Stats.Views)
 	if err != nil {
 		log.Println("Error extracting views data", endpoint)
-		err = ErrStats
+		err = ErrUnknown
 		return
 	}
 
 	likes, err = getCount(i.Stats.Likes)
 	if err != nil {
 		log.Println("Error extracting likes data", endpoint, err)
-		err = ErrStats
+		err = ErrUnknown
 		return
 	}
 
 	dislikes, err = getCount(i.Stats.Dislikes)
 	if err != nil {
 		log.Println("Error extracting dislikes data", endpoint, err)
-		err = ErrStats
+		err = ErrUnknown
 		return
 	}
 
 	comments, err = getCount(i.Stats.Comments)
 	if err != nil {
 		log.Println("Error extracting comments data", endpoint, err)
-		err = ErrStats
+		err = ErrUnknown
 		return
 	}
 
