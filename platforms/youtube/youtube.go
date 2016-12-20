@@ -39,7 +39,7 @@ func New(userId string, cfg *config.Config) (*YouTube, error) {
 
 	err := yt.UpdateData(cfg, cfg.Sandbox)
 	if err != nil {
-		return nil, err
+		return nil, ErrUnknown
 	}
 
 	if yt.Subscribers < 10 {
@@ -64,12 +64,12 @@ func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 		yt.Subscribers = subs
 		yt.ProfilePicture = dp
 	} else {
-		return err
+		return ErrUnknown
 	}
 
 	p, lk, dlk, images, err := getPosts(yt.UserId, 5, cfg)
 	if err != nil {
-		return err
+		return ErrUnknown
 	}
 	// Latest posts are only used when there is an active deal!
 	if savePosts {
