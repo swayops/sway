@@ -271,7 +271,7 @@ func TestNewInfluencer(t *testing.T) {
 			Geo:         &geo.GeoRecord{},
 			TwitterId:   "justinbieber",
 			InstagramId: "kimkardashian",
-			YouTubeId:   "UCWJ2lWNubArHWmf3FIHbfcQ",
+			YouTubeId:   "jennamarbles",
 		},
 	}
 

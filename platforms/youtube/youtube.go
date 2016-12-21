@@ -32,9 +32,18 @@ var (
 )
 
 func New(userId string, cfg *config.Config) (*YouTube, error) {
+	// Lets start off by assuming the channel id was passed in..
 	yt := &YouTube{
 		UserName: userId,
 		UserId:   userId,
+	}
+
+	// Lets check if this id is a username..
+	extractedUserId := getIdFromUsername(userId, cfg)
+	if extractedUserId != "" {
+		// It was a username that was passed in and we were able to get its id!
+		yt.UserName = userId
+		yt.UserId = extractedUserId
 	}
 
 	err := yt.UpdateData(cfg, cfg.Sandbox)

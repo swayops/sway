@@ -22,6 +22,7 @@ const (
 	videosUrl    = "%ssearch?channelId=%s&key=%s&part=snippet,id&order=date&maxResults=20"
 	postUrl      = "%svideos?id=%s&part=statistics,snippet&key=%s"
 	postTemplate = "https://www.youtube.com/watch?v=%s"
+	userUrl      = "%schannels?key=%s&forUsername=%s&part=id"
 )
 
 var (
@@ -100,6 +101,22 @@ type Thumbnail struct {
 	MaxRes struct {
 		URL string `json:"url"`
 	} `json:"maxres"`
+}
+
+func getIdFromUsername(username string, cfg *config.Config) string {
+	endpoint := fmt.Sprintf(userUrl, cfg.YouTube.Endpoint, cfg.YouTube.ClientId, username)
+
+	var data UserData
+	err := misc.Request("GET", endpoint, "", &data)
+	if err != nil || data.Error != nil {
+		return ""
+	}
+
+	if len(data.Items) > 0 {
+		return data.Items[0].Id
+	}
+
+	return ""
 }
 
 func getUserStats(id string, cfg *config.Config) (float64, float64, float64, string, error) {
