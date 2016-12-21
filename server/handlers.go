@@ -25,9 +25,13 @@ import (
 	"github.com/swayops/sway/internal/reporting"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
+	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
+	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/lob"
 	"github.com/swayops/sway/platforms/swipe"
+	"github.com/swayops/sway/platforms/twitter"
+	"github.com/swayops/sway/platforms/youtube"
 )
 
 ///////// Talent Agencies ///////////
@@ -3618,5 +3622,68 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(inf.Id))
+	}
+}
+
+func influencerValue(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		handle := c.Param("handle")
+		if handle == "" {
+			c.String(400, "Invalid social media handle")
+			return
+		}
+
+		pf := c.Param("platform")
+
+		log.Println("Influencer value hit!", handle, pf, c.ClientIP())
+
+		var value float64
+		switch pf {
+		case platform.Twitter:
+			tw, err := twitter.New(handle, s.Cfg)
+			if err != nil {
+				c.String(400, err.Error())
+				return
+			}
+			value += tw.AvgLikes * budget.TW_FAVORITE
+			value += tw.AvgRetweets * budget.TW_RETWEET
+		case platform.Instagram:
+			insta, err := instagram.New(handle, s.Cfg)
+			if err != nil {
+				c.String(400, err.Error())
+				return
+			}
+			value += insta.AvgLikes * budget.INSTA_LIKE
+			value += insta.AvgComments * budget.INSTA_COMMENT
+		case platform.YouTube:
+			yt, err := youtube.New(handle, s.Cfg)
+			if err != nil {
+				c.String(400, err.Error())
+				return
+			}
+			value += yt.AvgViews * budget.YT_VIEW
+			value += yt.AvgComments * budget.YT_COMMENT
+			value += yt.AvgLikes * budget.YT_LIKE
+			value += yt.AvgDislikes * budget.YT_DISLIKE
+		case platform.Facebook:
+			fb, err := facebook.New(handle, s.Cfg)
+			if err != nil {
+				c.String(400, err.Error())
+				return
+			}
+			value += fb.AvgLikes * budget.FB_LIKE
+			value += fb.AvgComments * budget.FB_COMMENT
+			value += fb.AvgShares * budget.FB_SHARE
+		default:
+			c.String(400, "Invalid platform")
+			return
+		}
+
+		c.String(200, strconv.FormatFloat(value, 'f', 6, 64))
+		return
 	}
 }
