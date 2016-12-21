@@ -3319,31 +3319,83 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 	}
 }
 
+type SimpleActive struct {
+	CampaignId   string `json:"campaignId"`
+	InfluencerId string `json:"influencerId,omitempty"`
+
+	Platforms []string `json:"platforms,omitempty"`
+
+	Facebook  string `json:"fbUsername,omitempty"`
+	Instagram string `json:"instaUsername,omitempty"`
+	Twitter   string `json:"twitterUsername,omitempty"`
+	YouTube   string `json:"youtubeUsername,omitempty"`
+}
+
 func getAllActiveDeals(s *Server) gin.HandlerFunc {
 	// Retrieves all active deals in the system
 	return func(c *gin.Context) {
-		var deals []*common.Deal
-		if err := s.db.View(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-				var cmp common.Campaign
-				if err := json.Unmarshal(v, &cmp); err != nil {
-					log.Println("error when unmarshalling campaign", string(v))
-					return nil
-				}
-				for _, deal := range cmp.Deals {
-					if deal.IsActive() {
-						deals = append(deals, deal)
+		if c.Query("simple") != "" {
+			var deals []*SimpleActive
+			if err := s.db.View(func(tx *bolt.Tx) error {
+				tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+					var cmp common.Campaign
+					if err := json.Unmarshal(v, &cmp); err != nil {
+						log.Println("error when unmarshalling campaign", string(v))
+						return nil
 					}
-				}
-				return
-			})
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
-			return
-		}
+					for _, deal := range cmp.Deals {
+						if deal.IsActive() {
+							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+							if !ok {
+								continue
+							}
 
-		c.JSON(200, deals)
+							infClean := inf.Clean()
+
+							deals = append(deals, &SimpleActive{
+								CampaignId:   cmp.Id,
+								InfluencerId: deal.InfluencerId,
+								Platforms:    deal.Platforms,
+								Facebook:     infClean.FbUsername,
+								Instagram:    infClean.InstaUsername,
+								Twitter:      infClean.TwitterUsername,
+								YouTube:      infClean.YTUsername,
+							})
+						}
+					}
+					return
+				})
+				return nil
+			}); err != nil {
+				c.JSON(500, misc.StatusErr("Internal error"))
+				return
+			}
+
+			c.JSON(200, deals)
+		} else {
+			var deals []*common.Deal
+			if err := s.db.View(func(tx *bolt.Tx) error {
+				tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+					var cmp common.Campaign
+					if err := json.Unmarshal(v, &cmp); err != nil {
+						log.Println("error when unmarshalling campaign", string(v))
+						return nil
+					}
+					for _, deal := range cmp.Deals {
+						if deal.IsActive() {
+							deals = append(deals, deal)
+						}
+					}
+					return
+				})
+				return nil
+			}); err != nil {
+				c.JSON(500, misc.StatusErr("Internal error"))
+				return
+			}
+
+			c.JSON(200, deals)
+		}
 	}
 }
 
