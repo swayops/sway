@@ -70,12 +70,12 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		stripe.Key = "sk_live_v1MxQNZbe64fgS4rU6q5aHHT"
 	}
 
-	srv.Keywords = getAllKeywords(srv)
-
 	err := srv.initializeDBs(cfg)
 	if err != nil {
 		return nil, err
 	}
+
+	srv.Keywords = getAllKeywords(srv)
 
 	go srv.auth.PurgeInvalidTokens()
 

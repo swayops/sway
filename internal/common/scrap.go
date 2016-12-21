@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"log"
+	"math"
 
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/geo"
@@ -136,9 +137,17 @@ func (sc *Scrap) Match(cmp Campaign) bool {
 	return true
 }
 
-func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
+func (sc *Scrap) Email(cmp *Campaign, spendable float64, cfg *config.Config) bool {
 	if cfg.ReplyMailClient() == nil || sc.Ignore {
 		return false
+	}
+
+	// Truncate
+	spendable = roundUp(spendable, 2)
+
+	perks := "N/A"
+	if cmp.Perks != nil {
+		perks = cmp.Perks.Name
 	}
 
 	// Emailing based on number of times a scrap has been
@@ -171,7 +180,7 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 				return true
 			}
 
-			email := templates.ScrapDealOne.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress})
+			email := templates.ScrapDealOne.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress, "Payout": spendable, "Perks": perks, "Task": cmp.Task})
 			if resp, err := cfg.ReplyMailClient().SendMessage(email, "A few brands currently requesting you", sc.EmailAddress, sc.Name,
 				[]string{""}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 				log.Println("Error emailing scrap!", err)
@@ -195,7 +204,7 @@ func (sc *Scrap) Email(cmp *Campaign, cfg *config.Config) bool {
 				return true
 			}
 
-			email := templates.ScrapDealTwo.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress})
+			email := templates.ScrapDealTwo.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress, "Payout": spendable, "Perks": perks, "Task": cmp.Task})
 			if resp, err := cfg.ReplyMailClient().SendMessage(email, "Influencer booking", sc.EmailAddress, sc.Name,
 				[]string{""}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 				log.Println("Error emailing scrap!", err)
@@ -230,4 +239,13 @@ func getBiggestBudget(considered []*Campaign) *Campaign {
 	}
 
 	return highest
+}
+
+func roundUp(input float64, places int) (newVal float64) {
+	var round float64
+	pow := math.Pow(10, float64(places))
+	digit := pow * input
+	round = math.Ceil(digit)
+	newVal = round / pow
+	return
 }

@@ -1578,6 +1578,7 @@ SKIP_APPROVE_2:
 		Male:         true,
 		Female:       true,
 		Link:         "blade.org",
+		Task:         "Post pictures with your new Nike shoes!",
 		Tags:         []string{"#mmmm"},
 		Perks:        &common.Perk{Name: "Nike Air Shoes Coupons", Count: 5}, // No type so should error!
 	}
@@ -2643,13 +2644,13 @@ func TestScraps(t *testing.T) {
 	// Create some scraps
 	scraps := []common.Scrap{}
 	scraps = append(scraps, common.Scrap{
-		Name:         "Vanilla Ice",
+		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "john23@a.b",
 	})
 
 	scraps = append(scraps, common.Scrap{
-		Name:         "Rick Astley",
+		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "john24@a.b",
 	})
@@ -3863,7 +3864,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	if count.Count != 4 {
+	if count.Count < 5 {
 		t.Fatal("Not enough scraps updated!")
 		return
 	}
@@ -3919,18 +3920,6 @@ func TestAttributer(t *testing.T) {
 			}
 
 		}
-	}
-
-	var kwCount KeywordCount
-	r = rst.DoTesting(t, "GET", "/getKeywords", nil, &kwCount)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-		return
-	}
-
-	if len(kwCount.Keywords) != 1 && kwCount.Keywords[0] != "god" {
-		t.Fatal("Bad keywords!")
-		return
 	}
 }
 

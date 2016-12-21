@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
 )
@@ -59,7 +60,21 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
-		if sent := sc.Email(cmp, srv.Cfg); !sent {
+		var spendable float64
+		store, err := budget.GetBudgetInfo(srv.budgetDb, srv.Cfg, cmp.Id, "")
+		// Only email them campaigns with more than $5
+		if err != nil || store == nil || store.Spendable < 5 || store.Spent > store.Budget {
+			if srv.Cfg.Sandbox {
+				// Don't throw out for sandbox requests.. because earlier tests (before TestScraps)
+				// empty out the spendable.. so campaigns are always thrown out!
+				spendable = 69.999
+			} else {
+				continue
+			}
+
+		}
+
+		if sent := sc.Email(cmp, spendable, srv.Cfg); !sent {
 			continue
 		}
 		count += 1

@@ -139,7 +139,6 @@ func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *comm
 func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing, isIO bool, cust string) (float64, error) {
 	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
 	var spendable float64
-
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
 		key := getBudgetKey()
 		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
