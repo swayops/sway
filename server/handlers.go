@@ -1137,6 +1137,38 @@ func setBan(s *Server) gin.HandlerFunc {
 	}
 }
 
+func addKeyword(s *Server) gin.HandlerFunc {
+	// Manually add kw
+	return func(c *gin.Context) {
+		kw := c.Param("kw")
+		if kw == "" {
+			c.JSON(400, misc.StatusErr("Please submit a valid keyword"))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		inf.Keywords = append(inf.Keywords, kw)
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 func setFraud(s *Server) gin.HandlerFunc {
 	// Sets the fraud check value for a deal
 	return func(c *gin.Context) {

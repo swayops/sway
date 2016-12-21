@@ -328,6 +328,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.POST("/setBan/:influencerId/:state", setBan(srv))
 	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
 	adminGroup.GET("/setFraud/:campaignId/:influencerId/:state", setFraud(srv))
+	adminGroup.GET("/setKeyword/:influencerId/:kw", addKeyword(srv))
+
 	adminGroup.POST("/setScrap", setScrap(srv))
 	adminGroup.GET("/getScraps", getScraps(srv))
 	adminGroup.GET("/getScrapStats", scrapStats(srv))
