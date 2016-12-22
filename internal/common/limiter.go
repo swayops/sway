@@ -1,7 +1,6 @@
 package common
 
 import (
-	"log"
 	"sync"
 	"time"
 
@@ -21,7 +20,6 @@ func NewLimitSet() *LimitSet {
 func (ls *LimitSet) Set(ip string) {
 	ls.l.Lock()
 	ls.m[ip] = append(ls.m[ip], int32(time.Now().Unix()))
-	log.Println(ls.m)
 	ls.l.Unlock()
 }
 
