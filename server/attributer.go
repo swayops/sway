@@ -188,7 +188,9 @@ func attributer(srv *Server, force bool) (int64, error) {
 		}
 	}
 
-	srv.Notify("Attribution ran!", "Attributed users: "+strconv.Itoa(int(updated)))
+	if updated > 0 {
+		srv.Notify("Attribution ran!", "Attributed users: "+strconv.Itoa(int(updated)))
+	}
 
 	return updated, nil
 }
