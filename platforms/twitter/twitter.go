@@ -54,12 +54,12 @@ func New(id string, cfg *config.Config) (tw *Twitter, err error) {
 
 	tw = &Twitter{Id: id}
 	if tw.client, err = getClient(cfg); err != nil {
-		return nil, err
+		return nil, ErrEligible
 	}
 
 	err = tw.UpdateData(cfg, cfg.Sandbox)
 	if err != nil {
-		return nil, err
+		return nil, ErrEligible
 	}
 
 	if tw.Followers < 10 {
