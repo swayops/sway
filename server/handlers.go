@@ -3631,18 +3631,27 @@ func influencerValue(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		ip := c.Query("ip")
+		if ip == "" {
+			c.String(400, "Invalid request")
+			return
+		}
+
+		if waitingPeriod, ok := s.LimitSet.IsAllowed(ip); !ok {
+			c.String(400, "Too many requests! Please wait "+waitingPeriod+" before trying again.")
+			return
+		}
+
 		handle := c.Param("handle")
 		if handle == "" {
 			c.String(400, "Invalid social media handle")
 			return
 		}
 
-		pf := c.Param("platform")
-
-		log.Println("Influencer value hit!", handle, pf, c.ClientIP())
+		s.LimitSet.Set(ip)
 
 		var value float64
-		switch pf {
+		switch c.Param("platform") {
 		case platform.Twitter:
 			tw, err := twitter.New(handle, s.Cfg)
 			if err != nil {

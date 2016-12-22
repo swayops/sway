@@ -44,6 +44,8 @@ type Server struct {
 
 	Campaigns *common.Campaigns
 	Keywords  []string // List of available keywords
+
+	LimitSet *common.LimitSet
 }
 
 // New returns a new Server or an error
@@ -61,6 +63,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		budgetDb:  budgetDb,
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
+		LimitSet:  common.NewLimitSet(),
 	}
 
 	if cfg.Sandbox {
