@@ -71,7 +71,12 @@ func emailScraps(srv *Server) (int32, error) {
 			} else {
 				continue
 			}
+		} else {
+			spendable = store.Spendable
+		}
 
+		if spendable == 0 {
+			continue
 		}
 
 		if sent := sc.Email(cmp, spendable, srv.Cfg); !sent {
