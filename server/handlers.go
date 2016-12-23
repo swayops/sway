@@ -762,7 +762,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		if upd.InstagramId != "" {
 			if inf.Instagram == nil || (inf.Instagram != nil && upd.InstagramId != inf.Instagram.UserName) {
 				// Make sure that the instagram id has actually been updated
-				err = inf.NewInsta(upd.InstagramId, s.Cfg)
+				keywords := getScrapKeywords(s, inf.EmailAddress, upd.InstagramId)
+				err = inf.NewInsta(upd.InstagramId, keywords, s.Cfg)
 				if err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
 					return
@@ -802,8 +803,9 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 		if upd.YouTubeId != "" {
 			if inf.YouTube == nil || (inf.YouTube != nil && upd.YouTubeId != inf.YouTube.UserName) {
+				keywords := getScrapKeywords(s, inf.EmailAddress, upd.YouTubeId)
 				// Make sure that the id has actually been updated
-				err = inf.NewYouTube(upd.YouTubeId, s.Cfg)
+				err = inf.NewYouTube(upd.YouTubeId, keywords, s.Cfg)
 				if err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
 					return

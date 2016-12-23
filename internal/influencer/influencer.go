@@ -167,7 +167,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 
 	inf.AgencyId = agencyId
 
-	err := inf.NewInsta(instaId, cfg)
+	err := inf.NewInsta(instaId, []string{}, cfg)
 	if err != nil {
 		return inf, err
 	}
@@ -182,7 +182,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		return inf, err
 	}
 
-	err = inf.NewYouTube(ytId, cfg)
+	err = inf.NewYouTube(ytId, []string{}, cfg)
 	if err != nil {
 		return inf, err
 	}
@@ -214,7 +214,7 @@ func (inf *Influencer) NewFb(id string, cfg *config.Config) error {
 	return nil
 }
 
-func (inf *Influencer) NewInsta(id string, cfg *config.Config) error {
+func (inf *Influencer) NewInsta(id string, keywords []string, cfg *config.Config) error {
 	if len(id) > 0 {
 		insta, err := instagram.New(id, cfg)
 		if err != nil {
@@ -222,11 +222,15 @@ func (inf *Influencer) NewInsta(id string, cfg *config.Config) error {
 		}
 		inf.Instagram = insta
 
-		keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
-		if err == nil {
+		if len(keywords) > 0 {
+			// Transferred from scrap
 			inf.Keywords = keywords
+		} else {
+			keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
+			if err == nil {
+				inf.Keywords = keywords
+			}
 		}
-
 	}
 	return nil
 }
@@ -242,7 +246,7 @@ func (inf *Influencer) NewTwitter(id string, cfg *config.Config) error {
 	return nil
 }
 
-func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
+func (inf *Influencer) NewYouTube(id string, keywords []string, cfg *config.Config) error {
 	if len(id) > 0 {
 		yt, err := youtube.New(id, cfg)
 		if err != nil {
@@ -250,11 +254,16 @@ func (inf *Influencer) NewYouTube(id string, cfg *config.Config) error {
 		}
 		inf.YouTube = yt
 
-		keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
-		if err == nil {
+		if len(keywords) > 0 {
+			// Transferred from scrap
 			inf.Keywords = keywords
-		}
+		} else {
+			keywords, err := imagga.GetKeywords(inf.GetImages(cfg), cfg.Sandbox)
+			if err == nil {
+				inf.Keywords = keywords
+			}
 
+		}
 	}
 	return nil
 }

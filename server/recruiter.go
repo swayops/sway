@@ -172,3 +172,27 @@ func saveScraps(s *Server, scs []*common.Scrap) error {
 	}
 	return nil
 }
+
+// Used for retrieving keywords when a scrap signs up
+func getScrapKeywords(s *Server, email, id string) (keywords []string) {
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
+			var sc common.Scrap
+			if err := json.Unmarshal(v, &sc); err != nil {
+				log.Println("error when unmarshalling scrap", string(v))
+				return nil
+			}
+
+			if sc.EmailAddress == email && sc.Name == id && len(sc.Keywords) > 0 {
+				keywords = sc.Keywords
+				return errors.New("Done!")
+			}
+
+			return nil
+		})
+		return nil
+	}); err != nil {
+		return keywords
+	}
+	return keywords
+}
