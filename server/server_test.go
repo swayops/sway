@@ -2656,7 +2656,7 @@ func TestScraps(t *testing.T) {
 	})
 
 	scraps = append(scraps, common.Scrap{
-		Name:         "Tig Bitties",
+		Name:         "nba",
 		Instagram:    true,
 		EmailAddress: "john25@a.b",
 	})
@@ -2727,7 +2727,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	for _, sc := range getScraps {
-		if sc.Name == "Tig Bitties" {
+		if sc.Name == "nba" {
 			if len(sc.SentEmails) != 1 {
 				t.Fatal("Low number of sent emails")
 				return
@@ -2769,7 +2769,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	for _, sc := range lastScraps {
-		if sc.Name == "Tig Bitties" {
+		if sc.Name == "nba" {
 			if len(sc.SentEmails) != 1 {
 				t.Fatal("Low number of sent emails")
 				return
@@ -2780,6 +2780,48 @@ func TestScraps(t *testing.T) {
 				return
 			}
 		}
+	}
+
+	r = rst.DoTesting(t, "GET", "/forceAttributer", nil, &count)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets create a new influencer with that email and handle..
+	// they should get the same keywords! 
+	// Create an influencer with same credential as scrap
+	inf := getSignupUserWithEmail("john25@a.b")
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:      true,
+			Geo:       &geo.GeoRecord{},
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code! %s", r.Value)
+	}
+
+	updLoad := &InfluencerUpdate{InstagramId: "nba"}
+	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if len(load.Keywords) == 0 {
+		t.Fatal("Bad keywords")
+	}
+
+	if !strings.Contains(load.Keywords[0], "old") {
+		t.Fatal("Bad keyword!")
 	}
 }
 

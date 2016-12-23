@@ -183,8 +183,13 @@ func getScrapKeywords(s *Server, email, id string) (keywords []string) {
 				return nil
 			}
 
-			if sc.EmailAddress == email && sc.Name == id && len(sc.Keywords) > 0 {
+			if strings.EqualFold(sc.EmailAddress, email) && strings.EqualFold(sc.Name, id) && len(sc.Keywords) > 0 {
 				keywords = sc.Keywords
+				if s.Cfg.Sandbox {
+					// Lets prepend everything with a prefix so we know where the kw is coming
+					// from in tests
+					keywords = prepend(sc.Keywords)
+				}
 				return errors.New("Done!")
 			}
 
@@ -195,4 +200,12 @@ func getScrapKeywords(s *Server, email, id string) (keywords []string) {
 		return keywords
 	}
 	return keywords
+}
+
+func prepend(keywords []string) []string {
+	out := []string{}
+	for _, kw := range keywords {
+		out = append(out, "old-"+kw)
+	}
+	return out
 }
