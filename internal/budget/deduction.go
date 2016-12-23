@@ -2,7 +2,7 @@ package budget
 
 const (
 	// YouTube
-	YT_LIKE    = 0.35
+	YT_LIKE    = 0.3
 	YT_DISLIKE = 0.01
 	YT_VIEW    = 0.003 // $3 CPM
 	YT_COMMENT = 0.35
