@@ -86,7 +86,7 @@ const headsUpEmail = `
 		Hey {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Just wanted to reach out and let you know that you only have 4 days left to complete the deal for {{Company}}. After the 4 days, we will unfortunately be forced to retract the deal from you!
+		Just wanted to reach out and let you know that you only have 7 days left to complete the deal for {{Company}}. After the 7 days, we will unfortunately be forced to retract the deal from you!
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		If you would like to access the deal requirements, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> <br/> Feel free to call or email me with any questions.

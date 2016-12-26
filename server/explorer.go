@@ -141,9 +141,11 @@ func explore(srv *Server) (int32, error) {
 		// If the deal has not been approved and it has gone past the
 		// dealTimeout.. put it back in the pool!
 		if deal.Completed == 0 {
-			daysSinceAssigned := (now - deal.Assigned) / 86400
-			if daysSinceAssigned > 4 && daysSinceAssigned <= 5 {
-				// Lets warn the influencer that they have 4 days left!
+			hoursSinceAssigned := (now - deal.Assigned) / 3600
+			if hoursSinceAssigned > 24*7 && hoursSinceAssigned <= (24*7)+engineRunTime {
+				// Lets warn the influencer that they have 7 days left!
+				// NOTE.. the engine run time offset is so that it only runs once per engine
+				// run
 				if err := inf.DealHeadsUp(deal, srv.Cfg); err != nil {
 					srv.Alert(fmt.Sprintf("Error emailing deal heads up to %s for deal %s", inf.Id, deal.Id), err)
 				}

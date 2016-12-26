@@ -984,7 +984,7 @@ func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error 
 	}
 
 	email := templates.InfluencerHeadsUpEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have 4 days to complete the deal for %s!", deal.Company), inf.EmailAddress, inf.Name,
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have 7 days to complete the deal for %s!", deal.Company), inf.EmailAddress, inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
