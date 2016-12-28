@@ -2646,19 +2646,19 @@ func TestScraps(t *testing.T) {
 	scraps = append(scraps, common.Scrap{
 		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
-		EmailAddress: "john23@a.b",
+		EmailAddress: "blah23@a.b",
 	})
 
 	scraps = append(scraps, common.Scrap{
 		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
-		EmailAddress: "john24@a.b",
+		EmailAddress: "blah24@a.b",
 	})
 
 	scraps = append(scraps, common.Scrap{
 		Name:         "nba",
 		Instagram:    true,
-		EmailAddress: "john25@a.b",
+		EmailAddress: "blah25@a.b",
 	})
 
 	r = rst.DoTesting(t, "POST", "/setScrap", &scraps, nil)
@@ -2791,7 +2791,7 @@ func TestScraps(t *testing.T) {
 	// Lets create a new influencer with that email and handle..
 	// they should get the same keywords! 
 	// Create an influencer with same credential as scrap
-	inf := getSignupUserWithEmail("john25@a.b")
+	inf := getSignupUserWithEmail("blah25@a.b")
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
 			Male:      true,
@@ -3906,8 +3906,8 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	if count.Count < 5 {
-		t.Fatal("Not enough scraps updated!")
+	if count.Count < 4 {
+		t.Fatal("Not enough scraps updated!", count.Count)
 		return
 	}
 
