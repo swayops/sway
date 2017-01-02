@@ -2297,7 +2297,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 				if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
 					log.Println("Could not find ad agency!", cmp.AgencyId)
-					return errors.New("Could not find ad agency " + cmp.AgencyId)
+					return nil
 				}
 
 				if !ag.Status {
@@ -2307,7 +2307,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 				if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
 					log.Println("Could not find advertiser!", cmp.AgencyId)
-					return errors.New("Could not find advertiser " + cmp.AgencyId)
+					return nil
 				}
 
 				if !adv.Status {
