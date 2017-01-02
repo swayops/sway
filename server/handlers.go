@@ -2273,60 +2273,83 @@ func runBilling(s *Server) gin.HandlerFunc {
 					return err
 				}
 
-				if _, active := s.Campaigns.Get(cmp.Id); active {
-					// Checking campaigns cache because campaigns cache has only
-					// campaigns which have valid campaigns with active advertisers and agencies
-
-					// This functionality carry over any left over spendable too
-					// It will also look to check if there's a pending (lowered)
-					// budget that was saved to db last month.. and that should be
-					// used now
-					var (
-						leftover, pending float64
-					)
-
-					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
-					if err == nil && store != nil {
-						leftover = store.Spendable
-						pending = store.Pending
-					} else {
-						log.Println("Last months store not found for", cmp.Id)
-					}
-
-					var (
-						ag  *auth.AdAgency
-						adv *auth.Advertiser
-					)
-
-					if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
-						log.Println("Could not find ad agency!", cmp.AgencyId)
-						return errors.New("Could not find ad agency " + cmp.AgencyId)
-					}
-
-					if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
-						log.Println("Could not find advertiser!", cmp.AgencyId)
-						return errors.New("Could not find advertiser " + cmp.AgencyId)
-					}
-
-					// Create their budget key for this month in the DB
-					// NOTE: last month's leftover spendable will be carried over
-					var spendable float64
-
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
-						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
-						// Don't return because an agency that switched from IO to CC that has
-						// advertisers with no CC will always error here.. just alert!
-						return nil
-					}
-
-					// Add fresh deals for this month
-					addDealsToCampaign(cmp, spendable, s, tx)
-
-					if err = saveCampaign(tx, cmp, s); err != nil {
-						log.Println("Error saving campaign for billing", err)
-						return err
-					}
+				// Lets make sure this campaign has an active advertiser, active agency,
+				// is set to on, is approved and has a budget!
+				if !cmp.Status {
+					log.Println("Campaign is off", cmp.Id)
+					return nil
 				}
+
+				if cmp.Approved == 0 {
+					log.Println("Campaign is not approved", cmp.Id)
+					return nil
+				}
+
+				if cmp.Budget == 0 {
+					log.Println("Campaign has no budget", cmp.Budget)
+					return nil
+				}
+
+				var (
+					ag  *auth.AdAgency
+					adv *auth.Advertiser
+				)
+
+				if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+					log.Println("Could not find ad agency!", cmp.AgencyId)
+					return errors.New("Could not find ad agency " + cmp.AgencyId)
+				}
+
+				if !ag.Status {
+					log.Println("Agency is off!", cmp.AgencyId)
+					return nil
+				}
+
+				if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+					log.Println("Could not find advertiser!", cmp.AgencyId)
+					return errors.New("Could not find advertiser " + cmp.AgencyId)
+				}
+
+				if !adv.Status {
+					log.Println("Advertiser is off!", cmp.AdvertiserId)
+					return nil
+				}
+
+				// This functionality carry over any left over spendable too
+				// It will also look to check if there's a pending (lowered)
+				// budget that was saved to db last month.. and that should be
+				// used now
+				var (
+					leftover, pending float64
+				)
+
+				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
+				if err == nil && store != nil {
+					leftover = store.Spendable
+					pending = store.Pending
+				} else {
+					log.Println("Last months store not found for", cmp.Id)
+				}
+
+				// Create their budget key for this month in the DB
+				// NOTE: last month's leftover spendable will be carried over
+				var spendable float64
+
+				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
+					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
+					// Don't return because an agency that switched from IO to CC that has
+					// advertisers with no CC will always error here.. just alert!
+					return nil
+				}
+
+				// Add fresh deals for this month
+				addDealsToCampaign(cmp, spendable, s, tx)
+
+				if err = saveCampaign(tx, cmp, s); err != nil {
+					log.Println("Error saving campaign for billing", err)
+					return err
+				}
+
 				return
 			})
 			return nil
