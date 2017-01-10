@@ -140,7 +140,7 @@ func GetBillingHistory(id string) []*History {
 
 	i := charge.List(params)
 	for i.Next() {
-		if ch := i.Charge(); ch != nil && ch.Paid {
+		if ch := i.Charge(); ch != nil && ch.Status == "succeeded" {
 			name, _ := ch.Meta["name"]
 			cid, _ := ch.Meta["cid"]
 			fromBalance, _ := ch.Meta["fromBalance"]
