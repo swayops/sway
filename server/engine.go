@@ -124,12 +124,16 @@ func run(srv *Server) error {
 		return err
 	}
 
+	log.Println("Completed influencer update. Updated:", updatedInf)
+
 	// Explore the influencer posts to look for completed deals!
 	if foundDeals, err = explore(srv); err != nil {
 		// Insert a file informant check
 		srv.Alert("Exploring influencer posts failed!", err)
 		return err
 	}
+
+	log.Println("Completed deal exploration. Found:", foundDeals)
 
 	// Iterate over deltas for completed deals
 	// and deplete budgets
@@ -139,20 +143,28 @@ func run(srv *Server) error {
 		return err
 	}
 
+	log.Println("Budgets depleted. Depleted:", totalDepleted)
+
 	if sigsFound, err = auditTaxes(srv); err != nil {
 		srv.Alert("Error auditing taxes!", err)
 		return err
 	}
+
+	log.Println("Taxes audited. Found:", sigsFound)
 
 	if dealsEmailed, err = emailDeals(srv); err != nil {
 		srv.Alert("Error emailing deals!", err)
 		return err
 	}
 
+	log.Println("Deals emailed. Sent:", dealsEmailed)
+
 	if scrapsEmailed, err = emailScraps(srv); err != nil {
 		srv.Alert("Error emailing scraps!", err)
 		return err
 	}
+
+	log.Println("Scraps emailed. Sent:", scrapsEmailed)
 
 	srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, scrapsEmailed, start)
 
