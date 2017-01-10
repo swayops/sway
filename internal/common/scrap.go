@@ -59,6 +59,10 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 }
 
 func (sc *Scrap) Match(cmp Campaign) bool {
+	if cmp.Budget < 1000 && sc.Followers > 50000 {
+		return false
+	}
+
 	if len(cmp.Whitelist) > 0 {
 		return false
 	}
