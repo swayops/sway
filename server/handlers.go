@@ -3212,7 +3212,13 @@ type BillingInfo struct {
 func getBillingInfo(s *Server) gin.HandlerFunc {
 	// Retrieves all billing info for the advertiser
 	return func(c *gin.Context) {
-		adv := s.auth.GetAdvertiser(c.Param("id"))
+		user := s.auth.GetUser(c.Param("id"))
+		if user == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
+		adv := user.Advertiser
 		if adv == nil {
 			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
@@ -3230,7 +3236,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 
 		var history []*swipe.History
 		if adv.Customer != "" {
-			history = swipe.GetBillingHistory(adv.Customer)
+			history = swipe.GetBillingHistory(adv.Customer, user.Email, s.Cfg.Sandbox)
 		}
 
 		info.ID = adv.Customer

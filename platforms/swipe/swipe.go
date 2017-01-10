@@ -132,12 +132,32 @@ type History struct {
 	FromBalance   string `json:"fromBalance"` // Amount used from balance
 }
 
-func GetBillingHistory(id string) []*History {
-	params := &stripe.ChargeListParams{}
-	params.Filters.AddFilter("customer", "", id)
-
+func GetBillingHistory(id, email string, sandbox bool) []*History {
 	var history []*History
 
+	if sandbox {
+		// For sandbox users just get the given ID
+		return getChargesFromID(id)
+	}
+
+	custList := customer.List(nil)
+	for custList.Next() {
+		if cust := custList.Customer(); cust != nil {
+			if strings.EqualFold(cust.Email, email) {
+				// Get customers by email
+				history = append(history, getChargesFromID(cust.ID)...)
+			}
+		}
+	}
+
+	return history
+}
+
+func getChargesFromID(id string) []*History {
+	var history []*History
+
+	params := &stripe.ChargeListParams{}
+	params.Filters.AddFilter("customer", "", id)
 	i := charge.List(params)
 	for i.Next() {
 		if ch := i.Charge(); ch != nil && ch.Status == "succeeded" {

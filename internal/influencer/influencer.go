@@ -677,9 +677,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			continue
 		}
 
-		if cmp.Budget < 1000 && inf.GetFollowers() > 50000 {
-			rejections[cmp.Id] = "SAVING_BIG DEALS"
-			continue
+		if !cfg.Sandbox {
+			if cmp.Budget < 1000 && inf.GetFollowers() > 50000 {
+				rejections[cmp.Id] = "SAVING_BIG DEALS"
+				continue
+			}
 		}
 
 		for _, deal := range cmp.Deals {
