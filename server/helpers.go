@@ -23,6 +23,8 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+const DEAL_YIELD = 5
+
 var ErrDealActive = errors.New("Deal is not active")
 
 func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
@@ -116,9 +118,9 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 		}
 		maxDeals = cmp.Perks.Count
 	} else {
-		// Assume each deal will yield about $15
+		// Assume each deal will yield about $5
 		// Can optimize this later
-		maxDeals = int(spendable / 15)
+		maxDeals = int(spendable / DEAL_YIELD)
 	}
 
 	if maxDeals == 0 && s.Cfg.Sandbox {

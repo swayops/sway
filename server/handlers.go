@@ -1180,6 +1180,48 @@ func addKeyword(s *Server) gin.HandlerFunc {
 	}
 }
 
+func addDeals(s *Server) gin.HandlerFunc {
+	// Manually add a certain number of deals
+	return func(c *gin.Context) {
+		count, err := strconv.Atoi(c.Param("count"))
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var (
+			cmp common.Campaign
+			b   []byte
+		)
+
+		s.db.View(func(tx *bolt.Tx) error {
+			b = tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(c.Param("campaignId")))
+			return nil
+		})
+
+		if err = json.Unmarshal(b, &cmp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			return
+		}
+
+		if cmp.Perks != nil {
+			c.JSON(400, misc.StatusErr("Cannot add deals to perk campaign"))
+			return
+		}
+
+		// Save the Campaign
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			addDealsToCampaign(&cmp, float64(count)*DEAL_YIELD, s, tx)
+			return saveCampaign(tx, &cmp, s)
+		}); err != nil {
+			misc.AbortWithErr(c, 500, err)
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
 func setFraud(s *Server) gin.HandlerFunc {
 	// Sets the fraud check value for a deal
 	return func(c *gin.Context) {
