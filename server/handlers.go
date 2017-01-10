@@ -497,6 +497,7 @@ type CampaignUpdate struct {
 	Name       *string          `json:"name,omitempty"`
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
 	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
+	Task       *string          `json:"task,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -553,6 +554,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				c.JSON(400, misc.StatusErr("Please provide valid geo targets!"))
 				return
 			}
+		}
+
+		if upd.Task != nil && *upd.Task != "" {
+			cmp.Task = *upd.Task
 		}
 
 		if upd.Male != nil {
