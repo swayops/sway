@@ -124,9 +124,10 @@ type Influencer struct {
 	DealPing  bool  `json:"dealPing,omitempty"`
 	LastEmail int32 `json:"lastEmail,omitempty"`
 
-	// Set only in getInfluencersByAgency to save us a stats endpoint hit
+	// Set only in getInfluencersByAgency to save us a stats endpoint hit (tmp fields)
 	AgencySpend     float64 `json:"agSpend,omitempty"`
 	InfluencerSpend float64 `json:"infSpend,omitempty"`
+	Followers       int64   `json:"followers,omitempty"`
 
 	// Stores whether the influencer has already been notified once about
 	// their profile going from public to private

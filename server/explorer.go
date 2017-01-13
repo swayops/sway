@@ -24,10 +24,10 @@ var (
 )
 
 const (
-	oneDay        = int32(60 * 60 * 24)
-	dealTimeout   = oneDay * 14
-	waitingPeriod = int32(3) // Wait 3 hours before we accept a deal
-	minRatio      = 0.04     // Minimum comments to like ratio as a percentage
+	timeoutDays    = 25
+	timeoutSeconds = int32(60*60*24) * timeoutDays
+	waitingPeriod  = int32(3) // Wait 3 hours before we accept a deal
+	minRatio       = 0.04     // Minimum comments to like ratio as a percentage
 )
 
 func explore(srv *Server) (int32, error) {
@@ -45,7 +45,7 @@ func explore(srv *Server) (int32, error) {
 	// The influencer has 14 days to do the deal before it's put
 	// back into the pool
 	now := int32(time.Now().Unix())
-	minTs := now - (dealTimeout)
+	minTs := now - (timeoutSeconds)
 
 	for _, deal := range activeDeals {
 		var foundPost bool
@@ -142,7 +142,7 @@ func explore(srv *Server) (int32, error) {
 		// dealTimeout.. put it back in the pool!
 		if deal.Completed == 0 {
 			hoursSinceAssigned := (now - deal.Assigned) / 3600
-			if hoursSinceAssigned > 24*7 && hoursSinceAssigned <= (24*7)+engineRunTime {
+			if hoursSinceAssigned > 24*(timeoutDays-7) && hoursSinceAssigned <= (24*(timeoutDays-7))+engineRunTime {
 				// Lets warn the influencer that they have 7 days left!
 				// NOTE.. the engine run time offset is so that it only runs once per engine
 				// run

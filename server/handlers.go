@@ -1102,6 +1102,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 		targetAg := c.Param("id")
 		for _, inf := range s.auth.Influencers.GetAll() {
 			if inf.AgencyId == targetAg {
+				inf.Followers = inf.GetFollowers()
 				inf.Clean()
 				if len(inf.CompletedDeals) != 0 {
 					st := reporting.GetInfluencerBreakdown(inf, s.Cfg, -1, inf.Rep, inf.CurrentRep, "", inf.AgencyId)
