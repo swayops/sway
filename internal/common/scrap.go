@@ -50,7 +50,7 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []*Campaign
 	for _, cmp := range cmps {
-		if sc.Match(cmp) {
+		if sc.Match(cmp, false) {
 			considered = append(considered, &cmp)
 		}
 	}
@@ -58,9 +58,11 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 	return getBiggestBudget(considered)
 }
 
-func (sc *Scrap) Match(cmp Campaign) bool {
-	if cmp.Budget < 1000 && sc.Followers > 50000 {
-		return false
+func (sc *Scrap) Match(cmp Campaign, forecast bool) bool {
+	if !forecast {
+		if cmp.Budget < 1000 && sc.Followers > 50000 {
+			return false
+		}
 	}
 
 	if len(cmp.Whitelist) > 0 {
