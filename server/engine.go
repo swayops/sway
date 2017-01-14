@@ -16,7 +16,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const engineRunTime = 3
+const engineRunTime = 1
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns

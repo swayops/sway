@@ -2873,6 +2873,11 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if inf.SignatureId != "" {
+			c.JSON(500, misc.StatusErr("already have tax documents out"))
+			return
+		}
+
 		if inf.Address == nil {
 			c.JSON(500, misc.StatusErr(ErrAddress.Error()))
 			return
