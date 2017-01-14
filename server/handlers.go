@@ -2874,7 +2874,7 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 		}
 
 		if inf.SignatureId != "" {
-			c.JSON(500, misc.StatusErr("already have tax documents out"))
+			c.JSON(500, misc.StatusErr("Tax documents have already been sent! Please fill those out and allow us 4-8 hours to approve your information. Thank-you!"))
 			return
 		}
 
