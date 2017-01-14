@@ -334,6 +334,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/setFraud/:campaignId/:influencerId/:state", setFraud(srv))
 	adminGroup.GET("/setKeyword/:influencerId/:kw", addKeyword(srv))
 	adminGroup.GET("/addDeals/:campaignId/:count", addDeals(srv))
+	adminGroup.GET("/setSignature/:influencerId/:sigId", setSignature(srv))
 
 	adminGroup.POST("/setScrap", setScrap(srv))
 	adminGroup.GET("/getScraps", getScraps(srv))

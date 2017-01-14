@@ -1183,6 +1183,39 @@ func addKeyword(s *Server) gin.HandlerFunc {
 	}
 }
 
+func setSignature(s *Server) gin.HandlerFunc {
+	// Manually set sig id
+	return func(c *gin.Context) {
+		sigId := c.Param("sigId")
+		if sigId == "" {
+			c.JSON(400, misc.StatusErr("Please submit a valid sigId"))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		inf.SignatureId = sigId
+		inf.RequestedCheck = int32(time.Now().Unix())
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 func addDeals(s *Server) gin.HandlerFunc {
 	// Manually add a certain number of deals
 	return func(c *gin.Context) {
