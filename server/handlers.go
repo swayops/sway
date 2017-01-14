@@ -2791,6 +2791,176 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 	}
 }
 
+type ForceApproval struct {
+	URL          string `json:"url,omitempty"`
+	Platform     string `json:"platform,omitempty"`
+	InfluencerID string `json:"infId,omitempty"`
+	CampaignID   string `json:"campaignId,omitempty"`
+}
+
+func forceApprovePost(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// /platform/influencerId/campaignId/URL
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		var fApp ForceApproval
+
+		defer c.Request.Body.Close()
+		if err := json.NewDecoder(c.Request.Body).Decode(&fApp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		postUrl := fApp.URL
+		if postUrl == "" {
+			c.JSON(400, misc.StatusErr("invalid post url"))
+			return
+		}
+
+		infId := fApp.InfluencerID
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		campaignId := fApp.CampaignID
+		cmp, ok := s.Campaigns.Get(campaignId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			return
+		}
+
+		if !cmp.IsValid() {
+			c.JSON(500, misc.StatusErr("invalid campaign"))
+			return
+		}
+
+		var foundDeal *common.Deal
+		for _, deal := range cmp.Deals {
+			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+				foundDeal = deal
+				break
+			}
+		}
+
+		if foundDeal == nil {
+			c.JSON(500, misc.StatusErr("no available deals left for this campaign"))
+			return
+		}
+
+		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, campaignId, "")
+		if err != nil || store == nil && store.Spendable == 0 && store.Spent > store.Budget {
+			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
+			return
+		}
+
+		// Fill in some display properties for the deal
+		// (Set in influencer.GetAvailableDeals otherwise)
+		foundDeal.CampaignName = cmp.Name
+		foundDeal.CampaignImage = cmp.ImageURL
+		foundDeal.Company = cmp.Company
+		foundDeal.InfluencerId = infId
+		foundDeal.InfluencerName = inf.Name
+		foundDeal.Assigned = int32(time.Now().Unix())
+
+		// NOTE: Not touching the campaigns perks! Look into this
+
+		// Update the influencer
+		switch fApp.Platform {
+		case platform.Twitter:
+			if inf.Twitter == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.Twitter.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.Twitter.LatestTweets {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveTweet(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		case platform.Instagram:
+			if inf.Instagram == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.Instagram.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.Instagram.LatestPosts {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveInstagram(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		case platform.YouTube:
+			if inf.YouTube == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.YouTube.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.YouTube.LatestPosts {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveYouTube(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		case platform.Facebook:
+			if inf.Facebook == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.Facebook.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.Facebook.LatestPosts {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveFacebook(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		default:
+			c.String(400, "Invalid platform")
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+		return
+	}
+}
+
 func forceDeplete(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {

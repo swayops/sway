@@ -56,6 +56,47 @@ func CreateCustomer(name, email string, cc *CC) (string, error) {
 	return target.ID, nil
 }
 
+func AddSubscription(customerID, subscriptionID string, amount float64) error {
+	// Checks to see if the given subscription is present.. if it isn't charge!
+	if amount == 0 {
+		return ErrAmount
+	}
+
+	return nil
+
+	// // Expects a value in dollars
+	// if id == "" {
+	// 	return ErrCreditCard
+	// }
+
+	// cust, err := customer.Get(id, nil)
+	// if err != nil {
+	// 	return ErrCustomer
+	// }
+
+	// chargeParams := &stripe.ChargeParams{
+	// 	Amount:   uint64(amount * 100),
+	// 	Currency: currency.USD,
+	// 	Customer: cust.ID,
+	// 	Params: stripe.Params{
+	// 		Meta: map[string]string{
+	// 			"name":        name,
+	// 			"cid":         cid,
+	// 			"fromBalance": strconv.FormatFloat(fromBalance, 'f', 2, 64),
+	// 		},
+	// 	},
+	// }
+
+	// if cust.Sources != nil && len(cust.Sources.Values) > 0 {
+	// 	chargeParams.SetSource(cust.Sources.Values[0].Card.ID)
+	// } else {
+	// 	return ErrCreditCard
+	// }
+
+	// _, err = charge.New(chargeParams)
+	// return err
+}
+
 func Charge(id, name, cid string, amount, fromBalance float64) error {
 	if amount == 0 {
 		return ErrAmount

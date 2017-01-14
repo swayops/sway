@@ -19,6 +19,10 @@ type Advertiser struct {
 
 	Customer string `json:"customer,omitempty"` // Stripe ID
 
+	Plan           string  `json:"plan,omitempty"`         // Sway Plan Type (only needed for Sway agency advertisers)
+	SubscriptionID string  `json:"subID,omitempty"`        // Stripe Subscription ID
+	MonthlyPrice   float64 `json:"monthlyPrice,omitempty"` // Subscription Plan Price (ingested because Enterprise price will be negotiated)
+
 	// Tmp field used to pass in a new credit card
 	CCLoad *swipe.CC `json:"ccLoad,omitempty"`
 }
@@ -98,6 +102,12 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 		}
 
 		adv.CCLoad = nil
+	}
+
+	// If they just opted in for a subscription plan.. lets save that shit
+	if adv.Plan != "" {
+		// Lets make sure this is actually an update and not just the plan being passed
+		// again
 	}
 
 	u.Advertiser = adv

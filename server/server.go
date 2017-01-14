@@ -425,6 +425,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/approvePerk/:influencerId/:campaignId", approvePerk(srv))
 
 	adminGroup.GET("/forceApprove/:influencerId/:campaignId", forceApproveAny(srv))
+	adminGroup.POST("/forceApprovePost", forceApprovePost(srv))
 	adminGroup.GET("/forceDeplete", forceDeplete(srv))
 	adminGroup.GET("/forceEngine", forceEngine(srv))
 	adminGroup.GET("/forceScrapEmail", forceScrapEmail(srv))

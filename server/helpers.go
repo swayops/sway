@@ -590,6 +590,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64) {
 	// Lite version of the original GetAVailableDeals just for forecasting
 	for _, inf := range s.auth.Influencers.GetAll() {
+		// ADD ELIGIBLE CHECK HERE
 		if inf.Banned {
 			continue
 		}

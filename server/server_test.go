@@ -2378,7 +2378,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	var status Status
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &status)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 	cid = status.ID
@@ -2387,7 +2387,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	var deals []*common.Deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+infId+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 
@@ -2789,13 +2789,13 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Lets create a new influencer with that email and handle..
-	// they should get the same keywords! 
+	// they should get the same keywords!
 	// Create an influencer with same credential as scrap
 	inf := getSignupUserWithEmail("blah25@a.b")
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			Male:      true,
-			Geo:       &geo.GeoRecord{},
+			Male: true,
+			Geo:  &geo.GeoRecord{},
 		},
 	}
 
@@ -3963,6 +3963,102 @@ func TestAttributer(t *testing.T) {
 
 		}
 	}
+}
+
+func TestForceApprove(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an influencer
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.1,
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &ag, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:      true,
+			Geo:       &geo.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId: "justinbieber",
+		},
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+	infId := st.ID
+
+	// Do a deal but DON'T approve yet!
+	doDeal(rst, t, infId, "2", false)
+
+	// Lets grab the influencer
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(load.ActiveDeals) != 1 {
+		t.Fatal("No active deals!")
+		return
+	}
+
+	if load.Twitter == nil || len(load.Twitter.LatestTweets) == 0 {
+		t.Fatal("Huh? Twitter feed empty!")
+		return
+	}
+
+	cmpId := load.ActiveDeals[0].CampaignId
+
+	// Lets try force approving via a bad URL.. should yield an error!
+	fApp := &ForceApproval{
+		URL:          "blahblah.com/test",
+		Platform:     "twitter",
+		InfluencerID: infId,
+		CampaignID:   cmpId,
+	}
+
+	r = rst.DoTesting(t, "POST", "/forceApprovePost", &fApp, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!", string(r.Value))
+		return
+	}
+
+	// Lets try a valid URL now!
+	postURL := load.Twitter.LatestTweets[0].PostURL
+	if postURL == "" {
+		t.Fatal("Missing post URL!")
+		return
+	}
+
+	fApp.URL = postURL
+	r = rst.DoTesting(t, "POST", "/forceApprovePost", &fApp, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	verifyDeal(t, cmpId, infId, ag.ExpID, rst, false)
+
+	return
 }
 
 func TestBilling(t *testing.T) {
