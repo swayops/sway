@@ -178,7 +178,7 @@ const campaignStatusEmail = `
 		Hey {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		We regret to inform you that the deal you had accepted for {{Company}} is no longer available.
+		We regret to inform you that the deal you had accepted for {{Company}} is no longer available. This is mostly because the brand made a mistake creating their campaign and will be re-creating it shortly.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		If you would like to access more deals, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> .
