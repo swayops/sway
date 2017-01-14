@@ -1672,6 +1672,8 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 					// Lets also delete the coupon code
 					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
+				} else {
+					s.Notify("Perk requested!", "Somebody just requested a perk to be mailed to them! Please check admin dash.")
 				}
 			}
 
@@ -2744,6 +2746,9 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+
+		s.Notify("Check requested!", "Somebody just requested a check! Please check admin dash.")
+
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
 	}
