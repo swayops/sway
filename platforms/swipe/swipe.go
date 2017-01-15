@@ -9,12 +9,18 @@ import (
 	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/currency"
 	"github.com/stripe/stripe-go/customer"
+	"github.com/stripe/stripe-go/plan"
+	"github.com/stripe/stripe-go/subscription"
+
+	"github.com/swayops/sway/internal/subscriptions"
 )
 
 var (
 	ErrAmount            = errors.New("Attempting to charge zero dollar value")
 	ErrCreditCard        = errors.New("Credit card missing")
+	ErrPrice             = errors.New("Invalid monthly price")
 	ErrCustomer          = errors.New("Unrecognized customer")
+	ErrUnknownPlan       = errors.New("Unrecognized plam")
 	ErrInvalidFirstName  = errors.New("invalid first name")
 	ErrInvalidLastName   = errors.New("invalid last name")
 	ErrInvalidAddress    = errors.New("invalid address")
@@ -56,45 +62,96 @@ func CreateCustomer(name, email string, cc *CC) (string, error) {
 	return target.ID, nil
 }
 
-func AddSubscription(customerID, subscriptionID string, amount float64) error {
+type Subscription struct {
+	SubscriptionID string  `json:"subID,omitempty"`        // Stripe Subscription ID
+	Plan           string  `json:"plan,omitempty"`         // Sway Plan Type (only needed for Sway agency advertisers)
+	MonthlyPrice   float64 `json:"monthlyPrice,omitempty"` // Subscription Plan Price (ingested because Enterprise price will be negotiated)
+}
+
+func AddSubscription(name, id, custID string, sub *Subscription) (string, error) {
 	// Checks to see if the given subscription is present.. if it isn't charge!
-	if amount == 0 {
-		return ErrAmount
+	var planKey string
+	if sub.Plan == subscriptions.ENTERPRISE {
+		if sub.MonthlyPrice == 0 {
+			return "", ErrPrice
+		}
+
+		// This is an enterprise plan.. which means it has it's own unique plan!
+		planKey = "Enterprise - " + id + " - " + name
+		planParams := &stripe.PlanParams{
+			ID:          key,
+			Name:        key,
+			Amount:      sub.MonthlyPrice,
+			Currency:    currency.USD,
+			Interval:    plan.Month,
+			TrialPeriod: 14,
+		}
+		plan.New(planParams)
+	} else {
+		swayPlan := subscriptions.GetPlan(sub.Plan)
+		if swayPlan == nil {
+			return "", ErrUnknownPlan
+		}
+
+		planKey = swayPlan.GetKey()
 	}
 
-	return nil
+	if planKey == "" {
+		return "", ErrUnknownPlan
+	}
 
-	// // Expects a value in dollars
-	// if id == "" {
-	// 	return ErrCreditCard
-	// }
+	subParams := &stripe.SubParams{
+		Customer: custID,
+		Plan:     planKey,
+	}
 
-	// cust, err := customer.Get(id, nil)
-	// if err != nil {
-	// 	return ErrCustomer
-	// }
+	target, err := subscription.New(subParams)
+	if err != nil {
+		return "", err
+	}
 
-	// chargeParams := &stripe.ChargeParams{
-	// 	Amount:   uint64(amount * 100),
-	// 	Currency: currency.USD,
-	// 	Customer: cust.ID,
-	// 	Params: stripe.Params{
-	// 		Meta: map[string]string{
-	// 			"name":        name,
-	// 			"cid":         cid,
-	// 			"fromBalance": strconv.FormatFloat(fromBalance, 'f', 2, 64),
-	// 		},
-	// 	},
-	// }
+	return target.ID, nil
+}
 
-	// if cust.Sources != nil && len(cust.Sources.Values) > 0 {
-	// 	chargeParams.SetSource(cust.Sources.Values[0].Card.ID)
-	// } else {
-	// 	return ErrCreditCard
-	// }
+func UpdateSubscription(name, id, custID string, sub *Subscription) (string, error) {
+	// Checks to see if the given subscription is present.. if it isn't charge!
+	var planKey string
+	if sub.Plan == subscriptions.ENTERPRISE {
+		// This is an enterprise plan.. which means it has it's own unique plan!
+		planKey = "Enterprise - " + id + " - " + name
+		planParams := &stripe.PlanParams{
+			ID:          key,
+			Name:        key,
+			Amount:      sub.MonthlyPrice,
+			Currency:    currency.USD,
+			Interval:    plan.Month,
+			TrialPeriod: 14,
+		}
+		plan.New(planParams)
+	} else {
+		swayPlan := subscriptions.GetPlan(sub.Plan)
+		if swayPlan == nil {
+			return "", ErrUnknownPlan
+		}
 
-	// _, err = charge.New(chargeParams)
-	// return err
+		planKey = swayPlan.GetKey()
+	}
+
+	if planKey == "" {
+		return "", ErrUnknownPlan
+	}
+
+	subParams := &stripe.SubParams{
+		Customer: custID,
+		Plan:     planKey,
+	}
+
+	target, err := subscription.New(subParams)
+	if err != nil {
+		return "", err
+	}
+
+	return target.ID, nil
 }
 
 func Charge(id, name, cid string, amount, fromBalance float64) error {

@@ -12,6 +12,11 @@ func (plan *Enterprise) Name() string {
 	return "Enterprise"
 }
 
+func (plan *Enterprise) GetKey() string {
+	// Returns stripe key
+	return ""
+}
+
 func (plan *Enterprise) IsEligibleInfluencer(inf influencer.Influencer) bool {
 	return true
 }

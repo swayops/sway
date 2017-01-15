@@ -14,6 +14,11 @@ func (plan *HyperLocal) Name() string {
 	return "Hyper Local"
 }
 
+func (plan *HyperLocal) GetKey() string {
+	// Returns stripe key
+	return "Hyper Local Key"
+}
+
 func (plan *HyperLocal) IsEligibleInfluencer(inf influencer.Influencer) bool {
 	// No more than 50k followers!
 	if inf.GetFollowers() > 50000 {

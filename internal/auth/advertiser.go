@@ -1,8 +1,14 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/platforms/swipe"
+)
+
+var (
+	ErrCreditCardRequired = errors.New("A credit card is required to enroll into a plan")
 )
 
 type Advertiser struct {
@@ -19,12 +25,13 @@ type Advertiser struct {
 
 	Customer string `json:"customer,omitempty"` // Stripe ID
 
-	Plan           string  `json:"plan,omitempty"`         // Sway Plan Type (only needed for Sway agency advertisers)
-	SubscriptionID string  `json:"subID,omitempty"`        // Stripe Subscription ID
-	MonthlyPrice   float64 `json:"monthlyPrice,omitempty"` // Subscription Plan Price (ingested because Enterprise price will be negotiated)
+	Subscription string `json:"subID,omitempty"` // Stripe Subscription ID
 
 	// Tmp field used to pass in a new credit card
 	CCLoad *swipe.CC `json:"ccLoad,omitempty"`
+
+	// Tmp fields used to pass in a new subscription plan
+	SubLoad *swipe.Subscription `json:"subLoad,omitempty"`
 }
 
 func GetAdvertiser(u *User) *Advertiser {
@@ -105,9 +112,30 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	}
 
 	// If they just opted in for a subscription plan.. lets save that shit
-	if adv.Plan != "" {
-		// Lets make sure this is actually an update and not just the plan being passed
-		// again
+	if adv.SubLoad != nil {
+		if adv.Customer == "" {
+			// No credit card assigned! How the hell will they sign up for a plan?
+			return ErrCreditCardRequired
+		}
+
+		if adv.Subscription == "" {
+			// First time this advertiser is getting a subscription
+			adv.Subscription, err = swipe.AddSubscription(u.Name, u.ID, adv.Customer, adv.CCLoad)
+			if err != nil {
+				adv.SubLoad = nil
+				return err
+			}
+		} else {
+			// Subscription is being updated!
+			// STOPPING POINT! FIGURE OUT UPDATING PLAN!
+			err = swipe.UpdateSubscription(u.Name, u.ID, adv.Customer, adv.SubLoad)
+			if err != nil {
+				adv.SubLoad = nil
+				return err
+			}
+		}
+
+		adv.SubLoad = nil
 	}
 
 	u.Advertiser = adv

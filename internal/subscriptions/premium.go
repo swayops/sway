@@ -15,6 +15,11 @@ func (plan *Premium) Name() string {
 	return "Premium"
 }
 
+func (plan *Premium) GetKey() string {
+	// Returns stripe key
+	return "Premium key"
+}
+
 func (plan *Premium) IsEligibleInfluencer(inf influencer.Influencer) bool {
 	// No more than 1 million followers!
 	if inf.GetFollowers() > 1000000 {
