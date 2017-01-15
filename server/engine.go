@@ -166,7 +166,9 @@ func run(srv *Server) error {
 
 	log.Println("Scraps emailed. Sent:", scrapsEmailed)
 
-	srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, scrapsEmailed, start)
+	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed > 0 || totalDepleted > 0 {
+		srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, scrapsEmailed, start)
+	}
 
 	return nil
 }
