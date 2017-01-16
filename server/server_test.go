@@ -430,7 +430,7 @@ func TestCampaigns(t *testing.T) {
 			"agencyId": ag.ExpID,
 		}},
 
-		{"POST", "/campaign", &cmp, 200, nil},
+		{"POST", "/campaign?dbg=1", &cmp, 200, nil},
 		{"PUT", "/campaign/1", cmpUpdate1, 200, nil},
 		{"GET", "/campaign/1", nil, 200, M{
 			"name":         "Blade V",
@@ -448,7 +448,7 @@ func TestCampaigns(t *testing.T) {
 		{"GET", "/campaign/1", nil, 401, nil},
 
 		// try to create a campaign with a bad advertiser id
-		{"POST", "/campaign", &badAdvId, 400, nil},
+		{"POST", "/campaign?dbg=1", &badAdvId, 400, nil},
 	} {
 		tr.Run(t, rst)
 	}
@@ -511,7 +511,7 @@ func TestDeals(t *testing.T) {
 		// create new advertiser and sign in
 		{"POST", "/signUp", adv, 200, misc.StatusOK(adv.ExpID)},
 		// create a new campaign
-		{"POST", "/campaign", &cmp, 200, nil},
+		{"POST", "/campaign?dbg=1", &cmp, 200, nil},
 		// sign in as influencer and get deals for the influencer
 		{"POST", "/signIn", M{"email": inf.Email, "pass": defaultPass}, 200, nil},
 
@@ -859,7 +859,7 @@ func TestDeals(t *testing.T) {
 	}
 
 	var status Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpBlacklist, &status)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpBlacklist, &status)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -1226,8 +1226,37 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	if cmp.Approved > 0 {
-		t.Fatal("Campaign should not be approved!")
+	// Lets try increasing the number of perks!
+	cmpUpdate := CampaignUpdate{
+		Geos:       cmp.Geos,
+		Categories: cmp.Categories,
+		Status:     &cmp.Status,
+		Budget:     &cmp.Budget,
+		Male:       &cmp.Male,
+		Female:     &cmp.Female,
+		Name:       &cmp.Name,
+		Perks:      &common.Perk{Name: "Nike Air Shoes", Type: 1, Count: 9},
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/4", &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check the number of deals and shit!
+	r = rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count {
+		t.Fatal("Unexpected number of deals!")
+		return
+	}
+
+	if cmpLoad.Perks.Count != cmpUpdate.Perks.Count {
+		t.Fatal("Unexpected number of perks!")
 		return
 	}
 
@@ -1453,7 +1482,7 @@ SKIP_APPROVE_1:
 		t.Fatal("Campaign has no perks man!")
 	}
 
-	if cmpLoad.Perks.Count != 4 {
+	if cmpLoad.Perks.Count != 8 {
 		t.Fatal("Campaign perk count did not decrement!")
 	}
 
@@ -1568,6 +1597,40 @@ SKIP_APPROVE_2:
 	// verify deal
 	verifyDeal(t, "4", inf.ExpID, ag.ExpID, rst, false)
 
+	// Lets try increasing the number of perks!
+	cmpUpdate = CampaignUpdate{
+		Geos:       cmpLoad.Geos,
+		Categories: cmpLoad.Categories,
+		Status:     &cmpLoad.Status,
+		Budget:     &cmpLoad.Budget,
+		Male:       &cmpLoad.Male,
+		Female:     &cmpLoad.Female,
+		Name:       &cmpLoad.Name,
+		Perks:      &common.Perk{Name: "Nike Air Shoes", Type: 1, Count: 15},
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/4", &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check the number of deals and shit!
+	r = rst.DoTesting(t, "GET", "/campaign/4?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count {
+		t.Fatal("Unexpected number of deals!")
+		return
+	}
+
+	if cmpLoad.Perks.Count+1 != cmpUpdate.Perks.Count {
+		t.Fatal("Unexpected number of perks!")
+		return
+	}
+
 	// Create a campaign with coupon perks
 	cmp = common.Campaign{
 		Status:       true,
@@ -1583,7 +1646,7 @@ SKIP_APPROVE_2:
 		Perks:        &common.Perk{Name: "Nike Air Shoes Coupons", Count: 5}, // No type so should error!
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, nil)
 	if r.Status == 200 {
 		// Should reject!
 		t.Fatalf("Bad status code: %s", r.Value)
@@ -1598,7 +1661,7 @@ SKIP_APPROVE_2:
 	cmp.Perks.Type = 2 // Set coupon type
 
 	// Should now reject because we didn't pass any coupon codes!
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, nil)
 	if r.Status == 200 {
 		// Should reject!
 		t.Fatalf("Bad status code: %s", r.Value)
@@ -1614,7 +1677,7 @@ SKIP_APPROVE_2:
 	cmp.Perks.Instructions = "Go to nike.com and use the coupon at check out!"
 
 	var st Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -1641,6 +1704,41 @@ SKIP_APPROVE_2:
 
 	if len(couponCmp.Deals) != couponCmp.Perks.Count {
 		t.Fatal("Bad deal count!")
+		return
+	}
+
+	// Lets try increasing the number of perks!
+	updatedCodes := append(cmp.Perks.Codes, "LASTLASTCOUPON")
+	cmpUpdate = CampaignUpdate{
+		Geos:       cmp.Geos,
+		Categories: cmp.Categories,
+		Status:     &cmp.Status,
+		Budget:     &cmp.Budget,
+		Male:       &cmp.Male,
+		Female:     &cmp.Female,
+		Name:       &cmp.Name,
+		Perks:      &common.Perk{Type: 2, Codes: updatedCodes},
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check the number of deals and shit!
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &couponCmp)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	if len(couponCmp.Deals) != len(cmpUpdate.Perks.Codes) {
+		t.Fatal("Unexpected number of deals!")
+		return
+	}
+
+	if couponCmp.Perks.Count != len(cmpUpdate.Perks.Codes) {
+		t.Fatal("Unexpected number of perks!")
 		return
 	}
 
@@ -1718,7 +1816,7 @@ SKIP_APPROVE_2:
 		return
 	}
 
-	if doneDeal.Perk.Code != "LASTCOUPON" {
+	if doneDeal.Perk.Code != "LASTLASTCOUPON" {
 		t.Fatal("Bad coupon code")
 		return
 	}
@@ -1759,10 +1857,45 @@ SKIP_APPROVE_2:
 	}
 
 	for _, code := range updCampaign.Perks.Codes {
-		if code == "LASTCOUPON" {
+		if code == "LASTLASTCOUPON" {
 			t.Fatal("Coupon code did not delete")
 			return
 		}
+	}
+
+	// Lets add a new coupon given that there's already one deal assigned
+	updatedCodes = append(updCampaign.Perks.Codes, "THEFINALCOUNTDOWN")
+	cmpUpdate = CampaignUpdate{
+		Geos:       updCampaign.Geos,
+		Categories: updCampaign.Categories,
+		Status:     &updCampaign.Status,
+		Budget:     &updCampaign.Budget,
+		Male:       &updCampaign.Male,
+		Female:     &updCampaign.Female,
+		Name:       &updCampaign.Name,
+		Perks:      &common.Perk{Type: 2, Codes: updatedCodes},
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check the number of deals and shit!
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &couponCmp)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	if len(updCampaign.Deals) != len(cmpUpdate.Perks.Codes) {
+		t.Fatal("Unexpected number of deals!")
+		return
+	}
+
+	if updCampaign.Perks.Count+1 != len(cmpUpdate.Perks.Codes) {
+		t.Fatal("Unexpected number of perks!")
+		return
 	}
 }
 
@@ -1878,7 +2011,7 @@ func TestInfluencerEmail(t *testing.T) {
 			Task:         "POST THAT DOPE SHIT " + strconv.Itoa(i) + " TIMES!",
 			Tags:         []string{"#mmmm"},
 		}
-		r := rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+		r := rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, nil)
 		if r.Status != 200 {
 			t.Fatalf("Bad status code: %s", r.Value)
 		}
@@ -1949,7 +2082,7 @@ func TestImages(t *testing.T) {
 		Tags:         []string{"#mmmm"},
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, nil)
 	if r.Status != 200 {
 		t.Fatalf("Bad status code: %s", r.Value)
 	}
@@ -2107,7 +2240,7 @@ func TestInfluencerGeo(t *testing.T) {
 		Geos:         fakeGeo,
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, nil)
 	if r.Status == 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -2120,7 +2253,7 @@ func TestInfluencerGeo(t *testing.T) {
 	}
 	cmp.Geos = fakeGeo
 	var st Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -2376,7 +2509,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	}
 
 	var status Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &status)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &status)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!", string(r.Value))
 		return
@@ -2693,7 +2826,7 @@ func TestScraps(t *testing.T) {
 		Tags:         []string{"#mmmm"},
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, nil)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -2869,7 +3002,7 @@ func TestBalances(t *testing.T) {
 	}
 
 	var st Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -2993,7 +3126,7 @@ func TestBalances(t *testing.T) {
 	}
 
 	var stOn Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpOn, &stOn)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpOn, &stOn)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -3097,7 +3230,7 @@ func TestBalances(t *testing.T) {
 	}
 
 	var stSmall Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpSmall, &stSmall)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpSmall, &stSmall)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -3152,7 +3285,7 @@ func TestBalances(t *testing.T) {
 	}
 
 	var stBig Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpBig, &stBig)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpBig, &stBig)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -3261,7 +3394,7 @@ func TestInfluencerClearout(t *testing.T) {
 	}
 
 	var st Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -3453,7 +3586,7 @@ func TestStripe(t *testing.T) {
 	}
 
 	var st Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -3495,7 +3628,7 @@ func TestStripe(t *testing.T) {
 		Tags:         []string{"#mmmmDonuts"},
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmp2, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp2, &st)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
@@ -3578,7 +3711,7 @@ func TestStripe(t *testing.T) {
 		Tags:         []string{"#mmmm"},
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpNoCC, nil)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpNoCC, nil)
 	if r.Status == 200 {
 		t.Fatal("Unexpected status code!")
 	}
@@ -3622,7 +3755,7 @@ func TestStripe(t *testing.T) {
 		Tags:         []string{"#mmmm"},
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpIO, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpIO, &st)
 	if r.Status != 200 {
 		t.Fatal("Unexpected status code!")
 	}
@@ -3665,7 +3798,7 @@ func TestStripe(t *testing.T) {
 		Tags:         []string{"#mmmm"},
 	}
 
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpCC, &st)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpCC, &st)
 	if r.Status != 200 {
 		t.Fatal("Unexpected status code!")
 	}
@@ -3730,7 +3863,7 @@ func TestStripe(t *testing.T) {
 	}
 
 	var newSt Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpIOSwitch, &newSt)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpIOSwitch, &newSt)
 	if r.Status != 200 {
 		t.Fatal("Unexpected status code!")
 	}
@@ -3826,7 +3959,7 @@ func TestStripe(t *testing.T) {
 	}
 
 	var switchSt Status
-	r = rst.DoTesting(t, "POST", "/campaign", &cmpCCSwitch, &switchSt)
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmpCCSwitch, &switchSt)
 	if r.Status != 200 {
 		t.Fatal("Unexpected status code!")
 	}

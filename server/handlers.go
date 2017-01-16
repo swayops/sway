@@ -23,6 +23,7 @@ import (
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
@@ -326,11 +327,9 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Perks.Count = len(cmp.Perks.Codes)
 		}
 
-		// If there are perks AND its a product perk..
-		// campaign is put in pending until admin approval
-		if cmp.Perks != nil && cmp.Perks.IsProduct() {
-			cmp.Approved = 0
-		} else {
+		// Campaign always put into pending
+		cmp.Approved = 0
+		if c.Query("dbg") == "1" {
 			cmp.Approved = int32(time.Now().Unix())
 		}
 
@@ -504,6 +503,7 @@ type CampaignUpdate struct {
 	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
 	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
 	Task       *string          `json:"task,omitempty"`
+	Perks      *common.Perk     `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -642,6 +642,73 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Whitelist = updatedWl
 		if len(additions) > 0 {
 			go emailList(s, cmp.Id, additions)
+		}
+
+		if upd.Perks != nil && cmp.Perks != nil {
+			// Only update if the campaign already has perks..
+			if cmp.Perks.IsCoupon() && upd.Perks.IsCoupon() {
+				// If the saved perk is a coupon.. lets add more!
+				existingCoupons := cmp.Perks.Codes
+
+				// Get all the coupons saved in the deals
+				for _, d := range cmp.Deals {
+					if d.Perk != nil && d.Perk.Code != "" {
+						existingCoupons = append(existingCoupons, d.Perk.Code)
+					}
+				}
+
+				// Only add the codes which are not already saved!
+				var filteredList []string
+				for _, newCouponCode := range upd.Perks.Codes {
+					if !common.IsInList(existingCoupons, newCouponCode) {
+						filteredList = append(filteredList, newCouponCode)
+					}
+				}
+
+				dealsToAdd := len(filteredList)
+				if dealsToAdd > 0 {
+					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
+					cmp.Perks.Count += dealsToAdd
+
+					// Add deals
+					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+						addDeals(&cmp, dealsToAdd, s, tx)
+						return saveCampaign(tx, &cmp, s)
+					}); err != nil {
+						misc.AbortWithErr(c, 500, err)
+						return
+					}
+				}
+			} else if !cmp.Perks.IsCoupon() && !upd.Perks.IsCoupon() {
+				// If the saved perk is a physical product.. lets add more!
+				perksInUse := cmp.Perks.Count
+
+				// Get all the coupons saved in the deals
+				for _, d := range cmp.Deals {
+					if d.Perk != nil {
+						perksInUse += 1
+					}
+				}
+
+				if perksInUse > upd.Perks.Count {
+					c.JSON(400, misc.StatusErr("Perk count can only be increased"))
+					return
+				}
+
+				dealsToAdd := upd.Perks.Count - perksInUse
+				if dealsToAdd > 0 {
+					cmp.Perks.Count += dealsToAdd
+
+					// Add deals
+					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+						addDeals(&cmp, dealsToAdd, s, tx)
+						return saveCampaign(tx, &cmp, s)
+					}); err != nil {
+						misc.AbortWithErr(c, 500, err)
+						return
+					}
+				}
+			}
 		}
 
 		// Save the Campaign
@@ -1195,7 +1262,40 @@ func addKeyword(s *Server) gin.HandlerFunc {
 	}
 }
 
-func addDeals(s *Server) gin.HandlerFunc {
+func setSignature(s *Server) gin.HandlerFunc {
+	// Manually set sig id
+	return func(c *gin.Context) {
+		sigId := c.Param("sigId")
+		if sigId == "" {
+			c.JSON(400, misc.StatusErr("Please submit a valid sigId"))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		inf.SignatureId = sigId
+		inf.RequestedCheck = int32(time.Now().Unix())
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
+func addDealCount(s *Server) gin.HandlerFunc {
 	// Manually add a certain number of deals
 	return func(c *gin.Context) {
 		count, err := strconv.Atoi(c.Param("count"))
@@ -1651,6 +1751,8 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 					// Lets also delete the coupon code
 					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
+				} else {
+					s.Notify("Perk requested!", "Somebody just requested a perk to be mailed to them! Please check admin dash.")
 				}
 			}
 
@@ -2338,7 +2440,9 @@ func runBilling(s *Server) gin.HandlerFunc {
 				// Lets make sure this campaign has an active advertiser, active agency,
 				// is set to on, is approved and has a budget!
 				if !cmp.Status {
-					log.Println("Campaign is off", cmp.Id)
+					if !s.Cfg.Sandbox {
+						log.Println("Campaign is off", cmp.Id)
+					}
 					return nil
 				}
 
@@ -2574,7 +2678,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 }
 
 func approveCampaign(s *Server) gin.HandlerFunc {
-	// Used once we have received the perk!
+	// Used once we have approved the campaign!
 	return func(c *gin.Context) {
 		var (
 			cmp common.Campaign
@@ -2594,6 +2698,12 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 
 		if err = json.Unmarshal(b, &cmp); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			return
+		}
+
+		user := s.auth.GetUser(cmp.AdvertiserId)
+		if user == nil || user.Advertiser == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
@@ -2620,6 +2730,25 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 				time.Sleep(2 * time.Hour)
 				emailDeal(s, cmp.Id)
 			}()
+		}
+
+		if !s.Cfg.Sandbox && cmp.Perks != nil && !cmp.Perks.IsCoupon() {
+			// Lets let the advertiser know that we've received their product!
+			if s.Cfg.ReplyMailClient() != nil {
+				email := templates.NotifyPerkEmail.Render(map[string]interface{}{"Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+				resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your shipment has been received!"), user.Email, user.Name,
+					[]string{""})
+				if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+					s.Alert("Failed to mail advertiser regarding shipment", err)
+				} else {
+					if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+						"tag": "received shipment",
+						"id":  user.ID,
+					}); err != nil {
+						log.Println("Failed to log shipment received notify email!", user.ID)
+					}
+				}
+			}
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
@@ -2650,6 +2779,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 			if d.CampaignId == cid && d.Perk != nil {
 				d.Perk.Status = true
 				d.PerkIncr()
+				inf.PerkNotify(d, s.Cfg)
 			}
 		}
 
@@ -2723,6 +2853,9 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+
+		s.Notify("Check requested!", "Somebody just requested a check! Please check admin dash.")
+
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
 	}
@@ -3019,6 +3152,11 @@ func emailTaxForm(s *Server) gin.HandlerFunc {
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		if inf.SignatureId != "" {
+			c.JSON(500, misc.StatusErr("Tax documents have already been sent! Please fill those out and allow us 4-8 hours to approve your information. Thank-you!"))
 			return
 		}
 
