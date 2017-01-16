@@ -16,7 +16,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const engineRunTime = 1
+const engineRunTime = 2
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
@@ -281,7 +281,9 @@ func depleteBudget(s *Server) (float64, error) {
 		// Get this month's store for this campaign
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
 		if err != nil {
-			log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
+			if !s.Cfg.Sandbox {
+				log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
+			}
 			continue
 		}
 		updatedStore := false
@@ -439,6 +441,11 @@ func emailDeals(s *Server) (int32, error) {
 		// Save the last email timestamp
 		if err := updateLastEmail(s, inf.Id); err != nil {
 			log.Println("Error when saving influencer", err, inf.Id)
+		}
+
+		if infEmails > 20 {
+			// No more than 20 emails per run
+			break
 		}
 	}
 

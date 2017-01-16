@@ -232,6 +232,29 @@ const privateEmail = `
 </div>
 `
 
+const perkMailEmail = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}}!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		We are emailing to inform you that we have just sent out your perk for the deal you have accepted for {{Company}}. Please allow atleast 5-7 business days for the product to arrive.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Feel free to call or email me with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
 	InfluencerEmail        = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail     = MustacheMust(infCmpEmail)
@@ -242,4 +265,5 @@ var (
 	CampaignStatusEmail    = MustacheMust(campaignStatusEmail)
 	DealRejectionEmail     = MustacheMust(dealRejectionEmail)
 	PrivateEmail           = MustacheMust(privateEmail)
+	PerkMailEmail          = MustacheMust(perkMailEmail)
 )

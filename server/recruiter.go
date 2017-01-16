@@ -36,8 +36,8 @@ func emailScraps(srv *Server) (int32, error) {
 	now := int32(time.Now().Unix())
 	var count int32
 	for _, sc := range scraps {
-		if count >= 100 {
-			// Only send 100 emails max per run
+		if count >= 35 {
+			// Only send 20 emails max per run
 			break
 		}
 
