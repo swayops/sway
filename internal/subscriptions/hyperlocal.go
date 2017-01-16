@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
 )
 
 type HyperLocal struct {
@@ -14,14 +13,18 @@ func (plan *HyperLocal) Name() string {
 	return "Hyper Local"
 }
 
-func (plan *HyperLocal) GetKey() string {
+func (plan *HyperLocal) GetKey(monthly bool) string {
 	// Returns stripe key
-	return "Hyper Local Key"
+	if monthly {
+		return "Hyper Local Monthly Key"
+	} else {
+		return "Hyper Local Yearly Key"
+	}
 }
 
-func (plan *HyperLocal) IsEligibleInfluencer(inf influencer.Influencer) bool {
+func (plan *HyperLocal) IsEligibleInfluencer(followers int64) bool {
 	// No more than 50k followers!
-	if inf.GetFollowers() > 50000 {
+	if followers > 50000 {
 		return false
 	}
 

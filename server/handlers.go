@@ -341,6 +341,12 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		cmp.CreatedAt = time.Now().Unix()
 
+		// Before creating the campaign.. lets make sure the plan allows for it!
+		if !subscriptions.CanCampaignRun(cmp.AgencyId, adv.Plan, cmp) {
+			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
+			return
+		}
+
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) { // have to get an id early for saveImage
 			cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign)
 			return
@@ -595,6 +601,16 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		cmp.Geos = upd.Geos
+		cmp.Categories = common.LowerSlice(upd.Categories)
+		cmp.Keywords = common.LowerSlice(upd.Keywords)
+
+		// Before creating the campaign.. lets make sure the plan allows for it!
+		if !subscriptions.CanCampaignRun(cmp.AgencyId, adv.Plan, cmp) {
+			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
+			return
+		}
+
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
 			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
@@ -612,10 +628,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			cmp.Budget = *upd.Budget
 		}
-
-		cmp.Geos = upd.Geos
-		cmp.Categories = common.LowerSlice(upd.Categories)
-		cmp.Keywords = common.LowerSlice(upd.Keywords)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)
 		additions := []string{}

@@ -1,26 +1,25 @@
 package subscriptions
 
-import (
-	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
-)
+import "github.com/swayops/sway/internal/common"
 
 const (
-HYPERLOCAL = "0"
-PREMIUM = "1"
-ENTERPRISE = "2")
+	HYPERLOCAL            = 1
+	PREMIUM               = 2
+	ENTERPRISE            = 3
+	SwayOpsTalentAgencyID = "3"
+)
 
 type Plan interface {
 	Name() string
-	IsEligibleInfluencer(inf influencer.Influencer) bool
+	IsEligibleInfluencer(followers int64) bool
 	IsEligibleCampaign(cmp common.Campaign) bool
-	GetKey() string
+	GetKey(monthly bool) string
 }
 
-func CanCampaignRun(agencyID string, planID string, cmp Common.Campaign) bool {
+func CanCampaignRun(agencyID string, planID int, cmp Common.Campaign) bool {
 	// Checks if the campaign is allowed the given capabilities
 
-	if agencyID != auth.SwayOpsTalentAgencyID {
+	if agencyID != SwayOpsTalentAgencyID {
 		// Anything that's not Sway can do whatever the hell
 		// they want
 		return true
@@ -35,7 +34,7 @@ func CanCampaignRun(agencyID string, planID string, cmp Common.Campaign) bool {
 	return plan.IsEligibleCampaign(cmp)
 }
 
-func GetPlan(ID string) *Plan {
+func GetPlan(ID int) *Plan {
 	switch ID {
 	case HYPERLOCAL:
 		return new(HyperLocal)

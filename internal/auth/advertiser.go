@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrCreditCardRequired = errors.New("A credit card is required to enroll into a plan")
+	ErrPlan               = errors.New("Bad plan type")
 )
 
 type Advertiser struct {
@@ -25,7 +26,8 @@ type Advertiser struct {
 
 	Customer string `json:"customer,omitempty"` // Stripe ID
 
-	Subscription string `json:"subID,omitempty"` // Stripe Subscription ID
+	Subscription string `json:"subID,omitempty"`  // Stripe Subscription ID
+	Plan         int    `json:"planID,omitempty"` // Stripe Plan ID
 
 	// Tmp field used to pass in a new credit card
 	CCLoad *swipe.CC `json:"ccLoad,omitempty"`
@@ -118,17 +120,25 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 			return ErrCreditCardRequired
 		}
 
-		if adv.Subscription == "" {
+		if adv.SubLoad.Plan == 0 && adv.Subscription != "" {
+			// Plan is being cancelled!
+			swipe.CancelSubscription(adv.Subscription)
+			adv.Subscription = ""
+			return ErrPlan
+		}
+
+		if adv.Subscription == "" && adv.Plan == 0 {
 			// First time this advertiser is getting a subscription
-			adv.Subscription, err = swipe.AddSubscription(u.Name, u.ID, adv.Customer, adv.CCLoad)
+			adv.Subscription, err = swipe.AddSubscription(u.Name, u.ID, adv.Customer, adv.SubLoad)
 			if err != nil {
 				adv.SubLoad = nil
 				return err
 			}
-		} else {
+			adv.PlanID = adv.SubLoad.Plan
+		} else if adv.Subscription != "" && adv.Plan != 0 {
 			// Subscription is being updated!
 			// STOPPING POINT! FIGURE OUT UPDATING PLAN!
-			err = swipe.UpdateSubscription(u.Name, u.ID, adv.Customer, adv.SubLoad)
+			adv.Subscription, err = swipe.UpdateSubscription(u.Name, u.ID, adv.Customer, adv.Subscription, adv.SubLoad)
 			if err != nil {
 				adv.SubLoad = nil
 				return err

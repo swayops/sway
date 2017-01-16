@@ -1,9 +1,6 @@
 package subscriptions
 
-import (
-	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
-)
+import "github.com/swayops/sway/internal/common"
 
 type Enterprise struct {
 }
@@ -12,12 +9,12 @@ func (plan *Enterprise) Name() string {
 	return "Enterprise"
 }
 
-func (plan *Enterprise) GetKey() string {
+func (plan *Enterprise) GetKey(monthly bool) string {
 	// Returns stripe key
 	return ""
 }
 
-func (plan *Enterprise) IsEligibleInfluencer(inf influencer.Influencer) bool {
+func (plan *Enterprise) IsEligibleInfluencer(followers int64) bool {
 	return true
 }
 

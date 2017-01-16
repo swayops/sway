@@ -5,7 +5,6 @@ import (
 
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
-	"github.com/swayops/sway/internal/influencer"
 )
 
 type Premium struct {
@@ -15,14 +14,18 @@ func (plan *Premium) Name() string {
 	return "Premium"
 }
 
-func (plan *Premium) GetKey() string {
+func (plan *Premium) GetKey(monthly bool) string {
 	// Returns stripe key
-	return "Premium key"
+	if monthly {
+		return "Premium Monthly Key"
+	} else {
+		return "Premium Yearly Key"
+	}
 }
 
-func (plan *Premium) IsEligibleInfluencer(inf influencer.Influencer) bool {
+func (plan *Premium) IsEligibleInfluencer(followers int64) bool {
 	// No more than 1 million followers!
-	if inf.GetFollowers() > 1000000 {
+	if followers > 1000000 {
 		return false
 	}
 
