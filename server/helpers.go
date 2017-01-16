@@ -99,10 +99,6 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 	// been assigned and if they are eligible for the
 	// given influencer.
 
-	if cmp.Deals == nil || len(cmp.Deals) == 0 {
-		cmp.Deals = make(map[string]*common.Deal)
-	}
-
 	var maxDeals int
 	// If there are perks assigned, # of deals are capped
 	// at the # of available perks
@@ -127,6 +123,14 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 		// Override so tests don't fail on the last day of the month
 		// when we have little spendable
 		maxDeals = 100
+	}
+
+	return addDeals(cmp, maxDeals, s, tx)
+}
+
+func addDeals(cmp *common.Campaign, maxDeals int, s *Server, tx *bolt.Tx) *common.Campaign {
+	if cmp.Deals == nil || len(cmp.Deals) == 0 {
+		cmp.Deals = make(map[string]*common.Deal)
 	}
 
 	for i := 0; i < maxDeals; i++ {
