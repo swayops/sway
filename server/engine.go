@@ -16,7 +16,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const engineRunTime = 1
+const engineRunTime = 2
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
@@ -441,6 +441,11 @@ func emailDeals(s *Server) (int32, error) {
 		// Save the last email timestamp
 		if err := updateLastEmail(s, inf.Id); err != nil {
 			log.Println("Error when saving influencer", err, inf.Id)
+		}
+
+		if infEmails > 20 {
+			// No more than 20 emails per run
+			break
 		}
 	}
 
