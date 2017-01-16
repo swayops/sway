@@ -23,6 +23,7 @@ import (
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
@@ -2665,7 +2666,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 }
 
 func approveCampaign(s *Server) gin.HandlerFunc {
-	// Used once we have received the perk!
+	// Used once we have approved the campaign!
 	return func(c *gin.Context) {
 		var (
 			cmp common.Campaign
@@ -2685,6 +2686,18 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 
 		if err = json.Unmarshal(b, &cmp); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			return
+		}
+
+		user := s.auth.GetUser(cmp.AdvertiserId)
+		if user == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			return
+		}
+
+		adv := user.Advertiser
+		if adv == nil {
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
@@ -2711,6 +2724,27 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 				time.Sleep(2 * time.Hour)
 				emailDeal(s, cmp.Id)
 			}()
+		}
+
+		if !s.Cfg.Sandbox {
+			if cmp.Perks != nil && !cmp.Perks.IsCoupon() {
+				// Lets let the advertiser know that we've received their product!
+				if s.Cfg.ReplyMailClient() != nil {
+					email := templates.NotifyPerkEmail.Render(map[string]interface{}{"Perk": cmp.Perks.Name, "Name": adv.Name})
+					resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your shipment has been received!"), user.Email, user.Name,
+						[]string{""})
+					if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+						s.Alert("Failed to mail advertiser regarding shipment", err)
+					} else {
+						if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+							"tag": "received shipment",
+							"id":  adv.ID,
+						}); err != nil {
+							log.Println("Failed to log shipment received notify email!", adv.ID)
+						}
+					}
+				}
+			}
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
@@ -2741,6 +2775,7 @@ func approvePerk(s *Server) gin.HandlerFunc {
 			if d.CampaignId == cid && d.Perk != nil {
 				d.Perk.Status = true
 				d.PerkIncr()
+				inf.PerkNotify(d, s.Cfg)
 			}
 		}
 

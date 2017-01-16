@@ -1221,6 +1221,38 @@ func (inf *Influencer) CheckEmail(check *lob.Check, cfg *config.Config) error {
 	return nil
 }
 
+func (inf *Influencer) PerkNotify(deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.PerkMailEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your perk has been mailed!"), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "perk notify",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log perk notify email!", inf.Id)
+	}
+
+	return nil
+}
+
 func (inf *Influencer) Audited() bool {
 	return len(inf.Categories) > 0 && (inf.Male || inf.Female)
 }
