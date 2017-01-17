@@ -411,7 +411,7 @@ func getCampaign(s *Server) gin.HandlerFunc {
 
 		// This is an edge case where we need to display perk count
 		// for the purpose of UI
-		if cmp.Perks != nil {
+		if cmp.Perks != nil && !s.Cfg.Sandbox {
 			for _, d := range cmp.Deals {
 				if d.Perk != nil {
 					cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
