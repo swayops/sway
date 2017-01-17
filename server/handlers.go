@@ -409,6 +409,17 @@ func getCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// This is an edge case where we need to display perk count
+		// for the purpose of UI
+		if cmp.Perks != nil {
+			for _, d := range cmp.Deals {
+				if d.Perk != nil {
+					cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
+					cmp.Perks.Count += d.Perk.Count
+				}
+			}
+		}
+
 		if c.Query("deals") != "true" {
 			// Hide deals otherwise output will get massive
 			cmp.Deals = nil
@@ -658,7 +669,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// Get all the coupons saved in the deals
 				for _, d := range cmp.Deals {
 					if d.Perk != nil {
-						perksInUse += 1
+						perksInUse += d.Perk.Count
 					}
 				}
 
