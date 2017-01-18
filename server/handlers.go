@@ -396,23 +396,6 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// Email eligible influencers!
-		if cmp.Perks == nil {
-			if len(cmp.Whitelist) > 0 {
-				go func() {
-					// Wait an hour before emailing
-					time.Sleep(1 * time.Hour)
-					emailList(s, cmp.Id, nil)
-				}()
-			} else {
-				go func() {
-					// Wait 2 hours before emailing
-					time.Sleep(2 * time.Hour)
-					emailDeal(s, cmp.Id)
-				}()
-			}
-		}
-
 		go s.Notify(
 			fmt.Sprintf("New campaign created %s (%s)", cmp.Name, cmp.Id),
 			fmt.Sprintf("%s (%s) created a campaign for %f", adv.Name, adv.ID, cmp.Budget),
@@ -430,6 +413,17 @@ func getCampaign(s *Server) gin.HandlerFunc {
 		if cmp == nil {
 			c.JSON(500, ErrCampaign)
 			return
+		}
+
+		// This is an edge case where we need to display perk count
+		// for the purpose of UI
+		if cmp.Perks != nil && !s.Cfg.Sandbox {
+			for _, d := range cmp.Deals {
+				if d.Perk != nil {
+					cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
+					cmp.Perks.Count += d.Perk.Count
+				}
+			}
 		}
 
 		if c.Query("deals") != "true" {
@@ -640,7 +634,8 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		cmp.Whitelist = updatedWl
-		if len(additions) > 0 {
+		// If there are additions and the campaign is already approved..
+		if len(additions) > 0 && cmp.Approved > 0 {
 			go emailList(s, cmp.Id, additions)
 		}
 
@@ -686,7 +681,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// Get all the coupons saved in the deals
 				for _, d := range cmp.Deals {
 					if d.Perk != nil {
-						perksInUse += 1
+						perksInUse += d.Perk.Count
 					}
 				}
 
@@ -2717,7 +2712,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// Email eligible influencers now that perks are approved!
+		// Email eligible influencers now that campaign is approved!
 		if len(cmp.Whitelist) > 0 {
 			go func() {
 				// Wait an hour before emailing
