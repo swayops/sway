@@ -134,7 +134,7 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 				adv.SubLoad = nil
 				return err
 			}
-			adv.PlanID = adv.SubLoad.Plan
+			adv.Plan = adv.SubLoad.Plan
 		} else if adv.Subscription != "" && adv.Plan != 0 {
 			// Subscription is being updated!
 			// STOPPING POINT! FIGURE OUT UPDATING PLAN!
@@ -143,6 +143,7 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 				adv.SubLoad = nil
 				return err
 			}
+			adv.Plan = adv.SubLoad.Plan
 		}
 
 		adv.SubLoad = nil
@@ -173,4 +174,8 @@ func (adv *Advertiser) Check() error {
 	}
 
 	return nil
+}
+
+func (adv *Advertiser) IsSelfServe() bool {
+	return adv.AgencyID == SwayOpsAdAgencyID
 }

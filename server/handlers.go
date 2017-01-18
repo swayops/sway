@@ -23,6 +23,7 @@ import (
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -302,6 +303,9 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Keywords = common.LowerSlice(cmp.Keywords)
 		cmp.Whitelist = common.TrimEmails(cmp.Whitelist)
 
+		// Copy the plan from the Advertiser
+		cmp.Plan = adv.Plan
+
 		if len(adv.Blacklist) > 0 {
 			// Blacklist is always set at the advertiser level using content feed bad!
 			cmp.Blacklist = adv.Blacklist
@@ -341,7 +345,14 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.CreatedAt = time.Now().Unix()
 
 		// Before creating the campaign.. lets make sure the plan allows for it!
-		if !subscriptions.CanCampaignRun(cmp.AgencyId, adv.Plan, cmp) {
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		if err != nil {
+			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+			return
+		}
+
+		if !allowed {
 			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
 			return
 		}
@@ -599,8 +610,18 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Categories = common.LowerSlice(upd.Categories)
 		cmp.Keywords = common.LowerSlice(upd.Keywords)
 
+		// Copy the plan from the Advertiser
+		cmp.Plan = adv.Plan
+
 		// Before creating the campaign.. lets make sure the plan allows for it!
-		if !subscriptions.CanCampaignRun(cmp.AgencyId, adv.Plan, cmp) {
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		if err != nil {
+			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+			return
+		}
+
+		if !allowed {
 			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
 			return
 		}
@@ -1599,7 +1620,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "", "",
-			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
+			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), s.Cfg)
 		c.JSON(200, deals)
 	}
 }
@@ -1634,12 +1655,82 @@ func getDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, true, s.Cfg)
-		if len(deals) != 1 {
-			c.JSON(500, misc.StatusErr("Deal no longer available"))
+		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, misc.StatusErr("Campaign unavailable"))
 			return
 		}
-		c.JSON(200, deals[0])
+
+		for _, deal := range cmp.Deals {
+			if deal.Id == dealId {
+				// Fill in some fields!
+
+				// Add platforms
+				if cmp.YouTube && inf.YouTube != nil {
+					if !common.IsInList(deal.Platforms, platform.YouTube) {
+						deal.Platforms = append(deal.Platforms, platform.YouTube)
+					}
+				}
+
+				if cmp.Instagram && inf.Instagram != nil {
+					if !common.IsInList(deal.Platforms, platform.Instagram) {
+						deal.Platforms = append(deal.Platforms, platform.Instagram)
+					}
+				}
+
+				if cmp.Twitter && inf.Twitter != nil {
+					if !common.IsInList(deal.Platforms, platform.Twitter) {
+						deal.Platforms = append(deal.Platforms, platform.Twitter)
+					}
+				}
+
+				if cmp.Facebook && inf.Facebook != nil {
+					if !common.IsInList(deal.Platforms, platform.Facebook) {
+						deal.Platforms = append(deal.Platforms, platform.Facebook)
+					}
+				}
+
+				if len(deal.Platforms) > 0 {
+					// Add the rest!
+					deal.Tags = cmp.Tags
+					deal.Mention = cmp.Mention
+					deal.Task = cmp.Task
+					if cmp.Perks != nil {
+						var code string
+						if deal.Perk != nil {
+							code = deal.Perk.Code
+						}
+						deal.Perk = &common.Perk{
+							Name:         cmp.Perks.Name,
+							Instructions: cmp.Perks.Instructions,
+							Category:     cmp.Perks.GetType(),
+							Code:         code,
+							Count:        1}
+					}
+
+					if deal.Link == "" {
+						deal.Link = cmp.Link
+					}
+
+					// Add some display attributes..
+					// These will be saved permanently if they accept deal!
+					deal.CampaignName = cmp.Name
+					deal.CampaignImage = cmp.ImageURL
+					deal.Company = cmp.Company
+
+					// Spendable
+					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, deal.CampaignId, "")
+					if err == nil && store != nil && store.Spendable > 0 && store.Spent < store.Budget {
+						deal.Spendable = misc.TruncateFloat(store.Spendable, 2)
+					}
+					c.JSON(200, deal)
+					return
+
+				}
+			}
+		}
+
+		c.JSON(500, misc.StatusErr("Deal no longer available"))
 	}
 }
 
@@ -1678,7 +1769,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			dbg = true
 		}
 
-		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, false, s.Cfg)
+		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				if dbg || deal.Id == dealId {
@@ -2473,6 +2564,18 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 				if !adv.Status {
 					log.Println("Advertiser is off!", cmp.AdvertiserId)
+					return nil
+				}
+
+				// Lets make sure they have an active subscription!
+				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, *cmp)
+				if err != nil {
+					s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+					return nil
+				}
+
+				if !allowed {
+					log.Println("Subscription is now off", adv.ID)
 					return nil
 				}
 

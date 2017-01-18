@@ -43,7 +43,8 @@ type Server struct {
 	auth     *auth.Auth
 
 	Campaigns *common.Campaigns
-	Keywords  []string // List of available keywords
+
+	Keywords []string // List of available keywords
 
 	LimitSet *common.LimitSet
 }

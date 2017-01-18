@@ -1,36 +1,66 @@
 package swipe // Stripe combined with sway.. get it?
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/currency"
-	"github.com/stripe/stripe-go/customer"
+	"github.com/stripe/stripe-go/plan"
+	"github.com/stripe/stripe-go/sub"
+
+	"github.com/swayops/sway/internal/subscriptions"
+	"github.com/swayops/sway/misc"
 )
 
-func CreateCustomer(name, email string, cc *CC) (string, error) {
-	customerParams := &stripe.CustomerParams{
-		Desc:  name,
-		Email: email,
+type Subscription struct {
+	SubscriptionID string  `json:"subID,omitempty"`     // Stripe Subscription ID
+	Plan           int     `json:"plan,omitempty"`      // Sway Plan Type (only needed for Sway agency advertisers)
+	Price          float64 `json:"price,omitempty"`     // NOTE: This is only used for enterprise since the price is negotiated there
+	Monthly        bool    `json:"isMonthly,omitempty"` // If false, we assume it's the yearly plan
+
+}
+
+func AddSubscription(name, id, custID string, newSub *Subscription) (string, error) {
+	var planKey string
+	if newSub.Plan == subscriptions.ENTERPRISE {
+		if newSub.Price == 0 {
+			return "", ErrPrice
+		}
+
+		// This is an enterprise plan.. which means it has it's own unique plan!
+		planKey = "Enterprise - " + id + " - " + name + " - " + misc.PseudoUUID()
+		planParams := &stripe.PlanParams{
+			ID:          planKey,
+			Name:        planKey,
+			Amount:      uint64(newSub.Price * 100),
+			Currency:    currency.USD,
+			Interval:    plan.Month,
+			TrialPeriod: 14,
+		}
+		if newSub.Monthly {
+			planParams.Interval = plan.Month
+		} else {
+			planParams.Interval = plan.Year
+		}
+
+		plan.New(planParams)
+	} else {
+		swayPlan := subscriptions.GetPlan(newSub.Plan)
+		if swayPlan == nil {
+			return "", ErrUnknownPlan
+		}
+
+		planKey = swayPlan.GetKey(newSub.Monthly)
 	}
 
-	customerParams.SetSource(&stripe.CardParams{
-		Name:     cc.FirstName + " " + cc.LastName,
-		Address1: cc.Address,
-		City:     cc.City,
-		State:    cc.State,
-		Country:  cc.Country,
-		Zip:      cc.Zip,
+	if planKey == "" {
+		return "", ErrUnknownPlan
+	}
 
-		Number: cc.CardNumber,
-		Month:  cc.ExpMonth,
-		Year:   cc.ExpYear,
-		CVC:    cc.CVC,
-	})
+	subParams := &stripe.SubParams{
+		Customer: custID,
+		Plan:     planKey,
+	}
 
-	target, err := customer.New(customerParams)
+	target, err := sub.New(subParams)
 	if err != nil {
 		return "", err
 	}
@@ -38,219 +68,51 @@ func CreateCustomer(name, email string, cc *CC) (string, error) {
 	return target.ID, nil
 }
 
-func Charge(id, name, cid string, amount, fromBalance float64) error {
-	if amount == 0 {
-		return ErrAmount
-	}
+func UpdateSubscription(name, id, custID, oldSub string, newSub *Subscription) (string, error) {
+	var planKey string
+	if newSub.Plan == subscriptions.ENTERPRISE {
+		if newSub.Price == 0 {
+			return "", ErrPrice
+		}
 
-	// Expects a value in dollars
-	if id == "" {
-		return ErrCreditCard
-	}
-
-	cust, err := customer.Get(id, nil)
-	if err != nil {
-		return ErrCustomer
-	}
-
-	chargeParams := &stripe.ChargeParams{
-		Amount:   uint64(amount * 100),
-		Currency: currency.USD,
-		Customer: cust.ID,
-		Params: stripe.Params{
-			Meta: map[string]string{
-				"name":        name,
-				"cid":         cid,
-				"fromBalance": strconv.FormatFloat(fromBalance, 'f', 2, 64),
-			},
-		},
-	}
-
-	if cust.Sources != nil && len(cust.Sources.Values) > 0 {
-		chargeParams.SetSource(cust.Sources.Values[0].Card.ID)
+		// This is an enterprise plan.. which means it has it's own unique plan!
+		planKey = "Enterprise - " + id + " - " + name + " - " + misc.PseudoUUID()
+		planParams := &stripe.PlanParams{
+			ID:          planKey,
+			Name:        planKey,
+			Amount:      uint64(newSub.Price * 100),
+			Currency:    currency.USD,
+			Interval:    plan.Month,
+			TrialPeriod: 14,
+		}
+		plan.New(planParams)
 	} else {
-		return ErrCreditCard
+		swayPlan := subscriptions.GetPlan(newSub.Plan)
+		if swayPlan == nil {
+			return "", ErrUnknownPlan
+		}
+
+		planKey = swayPlan.GetKey(newSub.Monthly)
 	}
 
-	_, err = charge.New(chargeParams)
+	if planKey == "" {
+		return "", ErrUnknownPlan
+	}
+
+	subParams := &stripe.SubParams{
+		Customer: custID,
+		Plan:     planKey,
+	}
+
+	target, err := sub.Update(oldSub, subParams)
+	if err != nil {
+		return "", err
+	}
+
+	return target.ID, nil
+}
+
+func CancelSubscription(oldSub string) error {
+	_, err := sub.Cancel(oldSub, nil)
 	return err
-}
-
-func Update(id string, cc *CC) error {
-	if cc == nil {
-		return ErrCreditCard
-	}
-
-	updated := &stripe.CustomerParams{}
-	updated.SetSource(&stripe.CardParams{
-		Name:     cc.FirstName + " " + cc.LastName,
-		Address1: cc.Address,
-		City:     cc.City,
-		State:    cc.State,
-		Country:  cc.Country,
-		Zip:      cc.Zip,
-
-		Number: cc.CardNumber,
-		Month:  cc.ExpMonth,
-		Year:   cc.ExpYear,
-		CVC:    cc.CVC,
-	})
-
-	_, err := customer.Update(id, updated)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type History struct {
-	Name          string `json:"name"`
-	ID            string `json:"id"`
-	Amount        uint64 `json:"amount"`
-	Created       int64  `json:"created"`
-	CustID        string `json:"custID"`
-	TransactionID string `json:"transactionID"`
-	FromBalance   string `json:"fromBalance"` // Amount used from balance
-}
-
-func GetBillingHistory(id, email string, sandbox bool) []*History {
-	var history []*History
-
-	if sandbox {
-		// For sandbox users just get the given ID
-		return getChargesFromID(id)
-	}
-
-	custList := customer.List(nil)
-	for custList.Next() {
-		if cust := custList.Customer(); cust != nil {
-			if strings.EqualFold(cust.Email, email) {
-				// Get customers by email
-				history = append(history, getChargesFromID(cust.ID)...)
-			}
-		}
-	}
-
-	return history
-}
-
-func getChargesFromID(id string) []*History {
-	var history []*History
-
-	params := &stripe.ChargeListParams{}
-	params.Filters.AddFilter("customer", "", id)
-	i := charge.List(params)
-	for i.Next() {
-		if ch := i.Charge(); ch != nil && ch.Status == "succeeded" {
-			name, _ := ch.Meta["name"]
-			cid, _ := ch.Meta["cid"]
-			fromBalance, _ := ch.Meta["fromBalance"]
-			hist := &History{Name: name, ID: cid, Amount: ch.Amount, Created: ch.Created, TransactionID: ch.ID, CustID: id, FromBalance: fromBalance}
-			history = append(history, hist)
-		}
-	}
-
-	return history
-}
-
-type CC struct {
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-
-	Address string `json:"address"`
-	City    string `json:"city"`
-	State   string `json:"state"`
-	Country string `json:"country"`
-	Zip     string `json:"zip"`
-
-	CardNumber string `json:"cardNumber"`
-	CVC        string `json:"cvc"`
-	ExpMonth   string `json:"expMonth"`
-	ExpYear    string `json:"expYear"`
-}
-
-func (c *CC) Check() error {
-	if len(c.FirstName) == 0 {
-		return ErrInvalidFirstName
-	}
-
-	if len(c.LastName) == 0 {
-		return ErrInvalidLastName
-	}
-
-	if len(c.Address) == 0 {
-		return ErrInvalidAddress
-	}
-
-	if len(c.City) == 0 {
-		return ErrInvalidCity
-	}
-
-	if len(c.State) != 2 {
-		return ErrInvalidState
-	}
-
-	if len(c.Zip) == 0 {
-		return ErrInvalidZipcode
-	}
-
-	if len(c.CardNumber) == 0 {
-		return ErrInvalidCardNumber
-	}
-
-	if len(c.Country) != 2 {
-		return ErrInvalidCountry
-	}
-
-	if lngth := len(c.CVC); lngth != 3 && lngth != 4 {
-		return ErrInvalidCVC
-	}
-
-	if len(c.ExpMonth) != 2 {
-		return ErrInvalidExpMonth
-	}
-
-	if len(c.ExpYear) != 2 {
-		return ErrInvalidExpYear
-	}
-
-	return nil
-}
-
-func GetCleanCreditCard(id string) (*CC, error) {
-	cc := &CC{}
-
-	cust, err := customer.Get(id, nil)
-	if err != nil {
-		return cc, ErrCustomer
-	}
-
-	if cust.Sources != nil && len(cust.Sources.Values) > 0 && cust.Sources.Values[0].Card != nil {
-		card := cust.Sources.Values[0].Card
-		parts := strings.Split(card.Name, " ")
-		var firstName, lastName string
-		if len(parts) > 1 {
-			firstName = parts[0]
-			lastName = parts[1]
-		}
-
-		cc = &CC{
-			FirstName: firstName,
-			LastName:  lastName,
-
-			Address: card.Address1,
-			City:    card.City,
-			State:   card.State,
-			Country: card.Country,
-			Zip:     card.Zip,
-
-			CardNumber: card.LastFour,
-			CVC:        "",
-			ExpMonth:   strconv.Itoa(int(card.Month)),
-			ExpYear:    strconv.Itoa(int(card.Year) - 2000),
-		}
-	}
-
-	return cc, nil
 }

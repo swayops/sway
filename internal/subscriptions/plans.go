@@ -1,6 +1,9 @@
 package subscriptions
 
-import "github.com/swayops/sway/internal/common"
+import (
+	"github.com/stripe/stripe-go/sub"
+	"github.com/swayops/sway/internal/common"
+)
 
 const (
 	HYPERLOCAL            = 1
@@ -16,25 +19,50 @@ type Plan interface {
 	GetKey(monthly bool) string
 }
 
-func CanCampaignRun(agencyID string, planID int, cmp Common.Campaign) bool {
-	// Checks if the campaign is allowed the given capabilities
+func CanCampaignRun(isSelfServe bool, subID string, planID int, cmp common.Campaign) (bool, error) {
+	if !isSelfServe {
+		return true, nil
+	}
 
+	// Checks if the campaign is allowed the given capabilities
+	// Lets make sure this subscription is still active!
+	active, err := IsSubscriptionActive(true, subID)
+
+	if err != nil {
+		return false, err
+	}
+
+	if !active {
+		// The subscription is no longer active! DEY NOT PAYIN UP
+		return false, nil
+	}
+
+	plan := GetPlan(planID)
+	if plan == nil {
+		// They have no plan!
+		return false, nil
+	}
+
+	return plan.IsEligibleCampaign(cmp), nil
+}
+
+func CanInfluencerRun(agencyID string, planID int, followers int64) bool {
 	if agencyID != SwayOpsTalentAgencyID {
-		// Anything that's not Sway can do whatever the hell
-		// they want
+		// If it's not self serve.. they can do whatever!
 		return true
 	}
 
+	// Checks if the influencer is allowed to run given the plan
 	plan := GetPlan(planID)
 	if plan == nil {
 		// They have no plan!
 		return false
 	}
 
-	return plan.IsEligibleCampaign(cmp)
+	return plan.IsEligibleInfluencer(followers)
 }
 
-func GetPlan(ID int) *Plan {
+func GetPlan(ID int) (p Plan) {
 	switch ID {
 	case HYPERLOCAL:
 		return new(HyperLocal)
@@ -45,4 +73,21 @@ func GetPlan(ID int) *Plan {
 	default:
 		return nil
 	}
+}
+
+func IsSubscriptionActive(selfServe bool, subID string) (bool, error) {
+	if !selfServe {
+		// Anything that's not self serve can do whatever they want!
+		return true, nil
+	}
+
+	target, err := sub.Get(subID, nil)
+	if err != nil {
+		return false, err
+	}
+	if st := target.Status; st == "active" || st == "trialing" {
+		return true, nil
+	}
+
+	return false, err
 }

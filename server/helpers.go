@@ -20,6 +20,7 @@ import (
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/misc"
 )
 
@@ -509,9 +510,21 @@ func getActiveAdvertisers(s *Server) map[string]bool {
 	out := make(map[string]bool)
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
-			if adv := auth.GetAdvertiser(u); adv != nil && adv.Status {
+			adv := auth.GetAdvertiser(u)
+			if adv == nil || adv.Status {
+				return nil
+			}
+
+			allowed, err := subscriptions.IsSubscriptionActive(adv.IsSelfServe(), adv.Subscription)
+			if err != nil {
+				s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+				return nil
+			}
+
+			if allowed {
 				out[adv.ID] = true
 			}
+
 			return nil
 		})
 	})
@@ -574,7 +587,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", "", nil, false, s.Cfg)
+		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", "", nil, s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}

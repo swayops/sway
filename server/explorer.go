@@ -11,6 +11,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
@@ -48,6 +49,24 @@ func explore(srv *Server) (int32, error) {
 	minTs := now - (timeoutSeconds)
 
 	for _, deal := range activeDeals {
+		// Lets check to make sure the subscription is active before
+		// we start approving deals!
+		adv := srv.auth.GetAdvertiser(deal.AdvertiserId)
+		if adv == nil {
+			srv.Notify("Couldn't find advertiser "+deal.AdvertiserId, "Check ASAP!")
+			continue
+		}
+
+		allowed, err := subscriptions.IsSubscriptionActive(adv.IsSelfServe(), adv.Subscription)
+		if err != nil {
+			srv.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+			continue
+		}
+
+		if !allowed {
+			continue
+		}
+
 		var foundPost bool
 
 		// Go over all assigned deals in the platform

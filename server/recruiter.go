@@ -10,6 +10,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/misc"
 )
 
@@ -76,6 +77,17 @@ func emailScraps(srv *Server) (int32, error) {
 		}
 
 		if spendable == 0 {
+			continue
+		}
+
+		// Is the scrap eligible given the plan!
+		adv := srv.auth.GetAdvertiser(cmp.AdvertiserId)
+		if adv == nil {
+			srv.Notify("Couldn't find advertiser "+cmp.AdvertiserId, "Check ASAP!")
+			continue
+		}
+
+		if !subscriptions.CanInfluencerRun(adv.AgencyID, adv.Plan, sc.Followers) {
 			continue
 		}
 

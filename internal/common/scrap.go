@@ -60,10 +60,6 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 
 func (sc *Scrap) Match(cmp Campaign, forecast bool) bool {
 	if !forecast {
-		if cmp.Budget < 1000 && sc.Followers > 50000 {
-			return false
-		}
-
 		// Check if there's an available deal
 		var dealFound bool
 		for _, deal := range cmp.Deals {
