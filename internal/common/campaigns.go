@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -59,10 +60,45 @@ type Campaign struct {
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID
 	Deals map[string]*Deal `json:"deals,omitempty"`
 	Plan  int              `json:"planID,omitempty"`
+
+	Timeline []*Timeline `json:"timeline,omitempty"`
 }
 
 func (cmp *Campaign) IsValid() bool {
 	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
+}
+
+func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) {
+	// If the unique flag is present we will make sure this msg
+	// has not previously been set
+	tl := &Timeline{Message: msg, TS: time.Now().Unix()}
+
+	switch msg {
+	case PERK_WAIT:
+		tl.Link = "INSERT LINK FOR SHIPPING INFO PAGE"
+	case CAMPAIGN_START, PERKS_RECEIVED:
+		tl.Link = "INSERT LINK TO WIKI PAGE"
+	case DEAL_ACCEPTED, PERKS_MAILED:
+		tl.Link = "INSERT LINK TO MANAGE CAMPAIGNS PAGE"
+	case CAMPAIGN_SUCCESS:
+		tl.Link = "INSERT LINK TO ADV CONTENT FEED"
+	case CAMPAIGN_PAUSED:
+		tl.Link = "INSERT LINK TO EDIT CAMPAIGN PAGE"
+	}
+
+	if len(cmp.Timeline) == 0 {
+		cmp.Timeline = []*Timeline{tl}
+	} else {
+		if unique {
+			for _, old := range cmp.Timeline {
+				if old.Message == tl.Message {
+					// If this message has been made before.. bail!
+					return
+				}
+			}
+		}
+		cmp.Timeline = append(cmp.Timeline, tl)
+	}
 }
 
 type Campaigns struct {

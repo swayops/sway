@@ -399,9 +399,19 @@ func saveAllActiveDeals(s *Server, inf influencer.Influencer) error {
 				log.Println("Err unmarshalling campaign", err)
 				continue
 			}
+
+			var foundPerksMailed bool
 			if _, ok := cmp.Deals[deal.Id]; ok {
 				// Replace the old deal saved with the new one
 				cmp.Deals[deal.Id] = deal
+				if deal.Perk != nil && deal.Perk.Status {
+					foundPerksMailed = true
+				}
+			}
+
+			if foundPerksMailed {
+				// Lets add to timeline
+				cmp.AddToTimeline(common.PERKS_MAILED, true, s.Cfg)
 			}
 
 			// Save the campaign!

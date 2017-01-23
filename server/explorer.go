@@ -236,6 +236,9 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		}
 		inf.ActiveDeals = activeDeals
 
+		// Lets add to timeline!
+		cmp.AddToTimeline(common.CAMPAIGN_SUCCESS, true, srv.Cfg)
+
 		// Save the Influencer
 		if err := saveInfluencer(srv, tx, inf); err != nil {
 			log.Println("Error saving influencer!", err)

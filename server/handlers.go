@@ -400,6 +400,14 @@ func postCampaign(s *Server) gin.HandlerFunc {
 				}
 
 				addDealsToCampaign(&cmp, spendable, s, tx)
+
+				// Lets add to timeline!
+				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
+				if cmp.Perks == nil || isCoupon {
+					cmp.AddToTimeline(common.CAMPAIGN_APPROVAL, false, s.Cfg)
+				} else {
+					cmp.AddToTimeline(common.PERK_WAIT, false, s.Cfg)
+				}
 			}
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
@@ -763,6 +771,22 @@ func putCampaign(s *Server) gin.HandlerFunc {
 						return
 					}
 				}
+
+				// Campaign has been toggled to on.. so lets add to timeline
+				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
+				if cmp.Perks == nil || isCoupon {
+					if cmp.Approved == 0 {
+						cmp.AddToTimeline(common.CAMPAIGN_APPROVAL, false, s.Cfg)
+					} else {
+						cmp.AddToTimeline(common.CAMPAIGN_START, false, s.Cfg)
+					}
+				} else {
+					if cmp.Approved == 0 {
+						cmp.AddToTimeline(common.PERK_WAIT, false, s.Cfg)
+					} else {
+						cmp.AddToTimeline(common.PERKS_RECEIVED, false, s.Cfg)
+					}
+				}
 			} else if !*upd.Status && cmp.Status != *upd.Status {
 				// If the status has been toggled to off..
 				// Clear out the spendable from the DB and add that value to the balance
@@ -783,6 +807,9 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					}
 				}
 				turnedOff = true
+
+				// Since the campaign has toggled to off.. lets add to timeline
+				cmp.AddToTimeline(common.CAMPAIGN_PAUSED, false, s.Cfg)
 			}
 			cmp.Status = *upd.Status
 
@@ -1788,6 +1815,9 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			// Append to the influencer's active deals
 			inf.ActiveDeals = append(inf.ActiveDeals, foundDeal)
 
+			// Lets add to timeline
+			cmp.AddToTimeline(common.DEAL_ACCEPTED, true, s.Cfg)
+
 			// Save the Influencer
 			if err = saveInfluencer(s, tx, inf); err != nil {
 				return
@@ -2049,6 +2079,35 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, a)
+	}
+}
+
+func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			targetAdv = c.Param("id")
+		)
+
+		cmpTimeline := make(map[string][]*common.Timeline)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if cmp.AdvertiserId == targetAdv {
+					cmpTimeline[cmp.Id] = cmp.Timeline
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, cmpTimeline)
 	}
 }
 
@@ -2739,6 +2798,14 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		cmp.Approved = int32(time.Now().Unix())
+
+		// Lets add to timeline!
+		isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
+		if cmp.Perks == nil || isCoupon {
+			cmp.AddToTimeline(common.CAMPAIGN_START, false, s.Cfg)
+		} else {
+			cmp.AddToTimeline(common.PERKS_RECEIVED, false, s.Cfg)
+		}
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
