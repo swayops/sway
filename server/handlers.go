@@ -431,7 +431,9 @@ func getCampaign(s *Server) gin.HandlerFunc {
 		if cmp.Perks != nil && !s.Cfg.Sandbox {
 			for _, d := range cmp.Deals {
 				if d.Perk != nil {
-					cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
+					if d.Perk.Code != "" {
+						cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
+					}
 					cmp.Perks.Count += d.Perk.Count
 				}
 			}
@@ -934,7 +936,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 		// Update Address
 		if upd.Address.AddressOne != "" {
-			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg.Sandbox)
+			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg)
 			if err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
@@ -1620,13 +1622,14 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, "", "",
-			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), s.Cfg)
+			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
 		c.JSON(200, deals)
 	}
 }
 
 func getDeal(s *Server) gin.HandlerFunc {
-	// Gets assigned deal
+	// Gets assigned deal using GetAvailableDeals func so we can make sure
+	// the campaign still wants this influencer!
 	return func(c *gin.Context) {
 		var (
 			campaignId = c.Param("campaignId")
@@ -1655,82 +1658,12 @@ func getDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
-		if cmp == nil {
-			c.JSON(500, misc.StatusErr("Campaign unavailable"))
+		deals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, true, s.Cfg)
+		if len(deals) != 1 {
+			c.JSON(500, misc.StatusErr("Deal no longer available"))
 			return
 		}
-
-		for _, deal := range cmp.Deals {
-			if deal.Id == dealId {
-				// Fill in some fields!
-
-				// Add platforms
-				if cmp.YouTube && inf.YouTube != nil {
-					if !common.IsInList(deal.Platforms, platform.YouTube) {
-						deal.Platforms = append(deal.Platforms, platform.YouTube)
-					}
-				}
-
-				if cmp.Instagram && inf.Instagram != nil {
-					if !common.IsInList(deal.Platforms, platform.Instagram) {
-						deal.Platforms = append(deal.Platforms, platform.Instagram)
-					}
-				}
-
-				if cmp.Twitter && inf.Twitter != nil {
-					if !common.IsInList(deal.Platforms, platform.Twitter) {
-						deal.Platforms = append(deal.Platforms, platform.Twitter)
-					}
-				}
-
-				if cmp.Facebook && inf.Facebook != nil {
-					if !common.IsInList(deal.Platforms, platform.Facebook) {
-						deal.Platforms = append(deal.Platforms, platform.Facebook)
-					}
-				}
-
-				if len(deal.Platforms) > 0 {
-					// Add the rest!
-					deal.Tags = cmp.Tags
-					deal.Mention = cmp.Mention
-					deal.Task = cmp.Task
-					if cmp.Perks != nil {
-						var code string
-						if deal.Perk != nil {
-							code = deal.Perk.Code
-						}
-						deal.Perk = &common.Perk{
-							Name:         cmp.Perks.Name,
-							Instructions: cmp.Perks.Instructions,
-							Category:     cmp.Perks.GetType(),
-							Code:         code,
-							Count:        1}
-					}
-
-					if deal.Link == "" {
-						deal.Link = cmp.Link
-					}
-
-					// Add some display attributes..
-					// These will be saved permanently if they accept deal!
-					deal.CampaignName = cmp.Name
-					deal.CampaignImage = cmp.ImageURL
-					deal.Company = cmp.Company
-
-					// Spendable
-					store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, deal.CampaignId, "")
-					if err == nil && store != nil && store.Spendable > 0 && store.Spent < store.Budget {
-						deal.Spendable = misc.TruncateFloat(store.Spendable, 2)
-					}
-					c.JSON(200, deal)
-					return
-
-				}
-			}
-		}
-
-		c.JSON(500, misc.StatusErr("Deal no longer available"))
+		c.JSON(200, deals[0])
 	}
 }
 
@@ -1769,7 +1702,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			dbg = true
 		}
 
-		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, s.Cfg)
+		currentDeals := inf.GetAvailableDeals(s.Campaigns, s.budgetDb, campaignId, dealId, nil, false, s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.Spendable > 0 && deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				if dbg || deal.Id == dealId {
@@ -3906,7 +3839,7 @@ func setScrap(s *Server) gin.HandlerFunc {
 	// Ingests a scrap and puts it into pool
 	return func(c *gin.Context) {
 		var (
-			scraps []*common.Scrap
+			scraps []*influencer.Scrap
 			err    error
 		)
 

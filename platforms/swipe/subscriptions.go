@@ -112,6 +112,18 @@ func UpdateSubscription(name, id, custID, oldSub string, newSub *Subscription) (
 	return target.ID, nil
 }
 
+func GetSubscription(subID string) (price float64, monthly bool, err error) {
+	target, err := sub.Get(subID, nil)
+	if err != nil {
+		return
+	}
+	if target.Plan != nil {
+		price = float64(target.Plan.Amount / 100)
+		monthly = target.Plan.Interval == plan.Month
+	}
+	return
+}
+
 func CancelSubscription(oldSub string) error {
 	_, err := sub.Cancel(oldSub, nil)
 	return err

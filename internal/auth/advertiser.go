@@ -58,7 +58,6 @@ func (a *Auth) GetAdvertiser(userID string) (adv *Advertiser) {
 func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 	// Newly created/updated user is passed in
 	var err error
-
 	if adv == nil {
 		return ErrUnexpected
 	}
@@ -124,10 +123,8 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 			// Plan is being cancelled!
 			swipe.CancelSubscription(adv.Subscription)
 			adv.Subscription = ""
-			return ErrPlan
-		}
-
-		if adv.Subscription == "" && adv.Plan == 0 {
+			adv.Plan = 0
+		} else if adv.Subscription == "" && adv.Plan == 0 {
 			// First time this advertiser is getting a subscription
 			adv.Subscription, err = swipe.AddSubscription(u.Name, u.ID, adv.Customer, adv.SubLoad)
 			if err != nil {

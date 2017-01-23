@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	HYPERLOCAL            = 1
-	PREMIUM               = 2
-	ENTERPRISE            = 3
-	SwayOpsTalentAgencyID = "3"
+	HYPERLOCAL        = 1
+	PREMIUM           = 2
+	ENTERPRISE        = 3
+	SwayOpsAdAgencyID = "2"
 )
 
 type Plan interface {
@@ -46,8 +46,8 @@ func CanCampaignRun(isSelfServe bool, subID string, planID int, cmp common.Campa
 	return plan.IsEligibleCampaign(cmp), nil
 }
 
-func CanInfluencerRun(agencyID string, planID int, followers int64) bool {
-	if agencyID != SwayOpsTalentAgencyID {
+func CanInfluencerRun(adAgencyId string, planID int, followers int64) bool {
+	if adAgencyId != SwayOpsAdAgencyID {
 		// If it's not self serve.. they can do whatever!
 		return true
 	}
@@ -79,6 +79,11 @@ func IsSubscriptionActive(selfServe bool, subID string) (bool, error) {
 	if !selfServe {
 		// Anything that's not self serve can do whatever they want!
 		return true, nil
+	}
+
+	if subID == "" {
+		// No subscription set? That's easy
+		return false, nil
 	}
 
 	target, err := sub.Get(subID, nil)

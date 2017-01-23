@@ -17,9 +17,9 @@ func (plan *Premium) Name() string {
 func (plan *Premium) GetKey(monthly bool) string {
 	// Returns stripe key
 	if monthly {
-		return "Premium Monthly Key"
+		return "Premium Monthly"
 	} else {
-		return "Premium Yearly Key"
+		return "Premium Yearly"
 	}
 }
 

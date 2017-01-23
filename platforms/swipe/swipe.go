@@ -12,7 +12,7 @@ var (
 	ErrCreditCard        = errors.New("Credit card missing")
 	ErrPrice             = errors.New("Invalid monthly price")
 	ErrCustomer          = errors.New("Unrecognized customer")
-	ErrUnknownPlan       = errors.New("Unrecognized plam")
+	ErrUnknownPlan       = errors.New("Unrecognized plan")
 	ErrInvalidFirstName  = errors.New("invalid first name")
 	ErrInvalidLastName   = errors.New("invalid last name")
 	ErrInvalidAddress    = errors.New("invalid address")

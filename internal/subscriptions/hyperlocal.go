@@ -16,9 +16,9 @@ func (plan *HyperLocal) Name() string {
 func (plan *HyperLocal) GetKey(monthly bool) string {
 	// Returns stripe key
 	if monthly {
-		return "Hyper Local Monthly Key"
+		return "Hyper Local Monthly"
 	} else {
-		return "Hyper Local Yearly Key"
+		return "Hyper Local Yearly"
 	}
 }
 

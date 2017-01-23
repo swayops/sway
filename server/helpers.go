@@ -587,7 +587,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", "", nil, s.Cfg)
+		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", "", nil, false, s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}
@@ -737,7 +737,7 @@ func emailDeal(s *Server, cid string) (bool, error) {
 
 	emailed := 0
 	for _, offer := range influencerPool {
-		if emailed >= 50 {
+		if emailed >= len(cmp.Deals) {
 			break
 		}
 
@@ -954,6 +954,31 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 				return err
 			}
 			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
+		}
+
+		if incUser.Advertiser != nil && incUser.Advertiser.SubLoad != nil && user.Advertiser != nil {
+			if incUser.Advertiser.SubLoad.Plan != user.Advertiser.Plan {
+				// The plan was updated! Lets copy over the plan to all child campaigns
+				targetPlan := incUser.Advertiser.SubLoad.Plan
+				tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+					cmp := &common.Campaign{}
+					if err := json.Unmarshal(v, cmp); err != nil {
+						log.Printf("error when unmarshalling campaign %s: %v", v, err)
+						return nil
+					}
+
+					if cmp.AdvertiserId == user.Advertiser.ID {
+						// Change the plan!
+						cmp.Plan = targetPlan
+					}
+
+					// Save the campaign!
+					if err := saveCampaign(tx, cmp, s); err != nil {
+						return err
+					}
+					return
+				})
+			}
 		}
 
 		if su == nil { // admin

@@ -9,6 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/genderize"
 	"github.com/swayops/sway/platforms/imagga"
@@ -275,11 +276,11 @@ func assignGeo(srv *Server) (err error) {
 	return nil
 }
 
-func getAllNewScraps(s *Server) (scraps []*common.Scrap, err error) {
+func getAllNewScraps(s *Server) (scraps []*influencer.Scrap, err error) {
 	// Gets all scraps that have not been attribuetd
 	if err = s.db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
-			var sc common.Scrap
+			var sc influencer.Scrap
 			if err := json.Unmarshal(v, &sc); err != nil {
 				log.Println("error when unmarshalling scrap", string(v))
 				return nil

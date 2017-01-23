@@ -9,8 +9,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/budget"
-	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/subscriptions"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/misc"
 )
 
@@ -80,17 +79,6 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
-		// Is the scrap eligible given the plan!
-		adv := srv.auth.GetAdvertiser(cmp.AdvertiserId)
-		if adv == nil {
-			srv.Notify("Couldn't find advertiser "+cmp.AdvertiserId, "Check ASAP!")
-			continue
-		}
-
-		if !subscriptions.CanInfluencerRun(adv.AgencyID, adv.Plan, sc.Followers) {
-			continue
-		}
-
 		if sent := sc.Email(cmp, spendable, srv.Cfg); !sent {
 			continue
 		}
@@ -104,10 +92,10 @@ func emailScraps(srv *Server) (int32, error) {
 	return count, nil
 }
 
-func getAllScraps(s *Server) (scraps []*common.Scrap, err error) {
+func getAllScraps(s *Server) (scraps []*influencer.Scrap, err error) {
 	if err = s.db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
-			var sc common.Scrap
+			var sc influencer.Scrap
 			if err := json.Unmarshal(v, &sc); err != nil {
 				log.Println("error when unmarshalling scrap", string(v))
 				return nil
@@ -122,7 +110,7 @@ func getAllScraps(s *Server) (scraps []*common.Scrap, err error) {
 	return
 }
 
-func saveScrap(s *Server, sc *common.Scrap) error {
+func saveScrap(s *Server, sc *influencer.Scrap) error {
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		if sc.Id == "" {
 			if sc.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Scrap); err != nil {
@@ -152,7 +140,7 @@ func saveScrap(s *Server, sc *common.Scrap) error {
 	return nil
 }
 
-func saveScraps(s *Server, scs []*common.Scrap) error {
+func saveScraps(s *Server, scs []*influencer.Scrap) error {
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		for _, sc := range scs {
 			if sc.Id == "" {
@@ -189,7 +177,7 @@ func saveScraps(s *Server, scs []*common.Scrap) error {
 func getScrapKeywords(s *Server, email, id string) (keywords []string) {
 	if err := s.db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
-			var sc common.Scrap
+			var sc influencer.Scrap
 			if err := json.Unmarshal(v, &sc); err != nil {
 				log.Println("error when unmarshalling scrap", string(v))
 				return nil
