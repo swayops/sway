@@ -77,6 +77,16 @@
 		"key": "CBBCDCDDCF7374AA49C3CE5B0A5A577B"
 	},
 
+	"stripe": {
+		"key": "sk_test_t6NYedi21SglECi1HwEvSMb8"
+	},
+
+	"lob": {
+		"key": "test_08d860361c920163e4fba655f2de5131cfb",
+		"bank": "bank_15a6b397e90cd9b",
+		"addr": "adr_7261cc34ecda09af"
+	},
+
 	"jsonXlsxPath": "./config/json2xlsx.py",
 	"imagesDir": "./images/",
 	"imageUrlPath": "images/",

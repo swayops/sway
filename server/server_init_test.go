@@ -198,3 +198,11 @@ func getSignupUserWithEmail(email string) *signupUser {
 		id,
 	}
 }
+
+func getSubscription(plan int, price float64, monthly bool) *swipe.Subscription {
+	return &swipe.Subscription{
+		Plan:    plan,
+		Price:   price,
+		Monthly: monthly,
+	}
+}

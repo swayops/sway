@@ -17,6 +17,7 @@ import (
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/lob"
@@ -475,7 +476,9 @@ func TestDeals(t *testing.T) {
 
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
-		DspFee: 0.2,
+		DspFee:  0.2,
+		CCLoad:  creditCard,
+		SubLoad: getSubscription(3, 100, true),
 	}
 
 	cmp := common.Campaign{
@@ -1164,6 +1167,8 @@ func TestPerks(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:      0.2,
 		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
 	}
 
 	cmp := common.Campaign{
@@ -1993,6 +1998,8 @@ func TestInfluencerEmail(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:      0.2,
 		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
@@ -2065,6 +2072,8 @@ func TestImages(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:      0.2,
 		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
@@ -2214,6 +2223,8 @@ func TestInfluencerGeo(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:      0.2,
 		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
 	}
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
@@ -2488,6 +2499,11 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 		AgencyID: agId,
 	}
 
+	if agId != auth.SwayOpsTalentAgencyID {
+		adv.Advertiser.CCLoad = creditCard
+		adv.Advertiser.SubLoad = getSubscription(3, 100, true)
+	}
+
 	var st Status
 	r := rst.DoTesting(t, "POST", "/signUp", adv, &st)
 	if r.Status != 200 {
@@ -2511,7 +2527,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	var status Status
 	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &status)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 	cid = status.ID
@@ -2520,7 +2536,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	var deals []*common.Deal
 	r = rst.DoTesting(t, "GET", "/getDeals/"+infId+"/0/0", nil, &deals)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 
@@ -2775,20 +2791,20 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Create some scraps
-	scraps := []common.Scrap{}
-	scraps = append(scraps, common.Scrap{
+	scraps := []influencer.Scrap{}
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "blah23@a.b",
 	})
 
-	scraps = append(scraps, common.Scrap{
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "blah24@a.b",
 	})
 
-	scraps = append(scraps, common.Scrap{
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "nba",
 		Instagram:    true,
 		EmailAddress: "blah25@a.b",
@@ -2804,6 +2820,8 @@ func TestScraps(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:   0.2,
 		AgencyID: "2",
+		CCLoad:   creditCard,
+		SubLoad:  getSubscription(3, 100, true),
 	}
 
 	var st Status
@@ -2847,7 +2865,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Lets get all scraps to verify values
-	var getScraps []*common.Scrap
+	var getScraps []*influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -2889,7 +2907,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Verify values again!
-	var lastScraps []*common.Scrap
+	var lastScraps []*influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &lastScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -3374,7 +3392,10 @@ func TestInfluencerClearout(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:      0.2,
 		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
 	}
+
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -3993,7 +4014,7 @@ func TestAttributer(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	var getScraps []*common.Scrap
+	var getScraps []*influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4001,26 +4022,26 @@ func TestAttributer(t *testing.T) {
 	}
 
 	// Create some scraps
-	scraps := []common.Scrap{}
-	scraps = append(scraps, common.Scrap{
+	scraps := []influencer.Scrap{}
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "nba@a.b",
 	})
 
-	scraps = append(scraps, common.Scrap{
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "justinbieber",
 		Twitter:      true,
 		EmailAddress: "jb@a.b",
 	})
 
-	scraps = append(scraps, common.Scrap{
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "UCWJ2lWNubArHWmf3FIHbfcQ",
 		YouTube:      true,
 		EmailAddress: "jb@a.b",
 	})
 
-	scraps = append(scraps, common.Scrap{
+	scraps = append(scraps, influencer.Scrap{
 		Name:         "angelicaalcalaherrera",
 		Instagram:    true,
 		EmailAddress: "insta@a.b",
@@ -4044,7 +4065,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	var updatedScraps []*common.Scrap
+	var updatedScraps []*influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &updatedScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4095,6 +4116,720 @@ func TestAttributer(t *testing.T) {
 			}
 
 		}
+	}
+}
+
+func TestForceApprove(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an influencer
+	ag := getSignupUser()
+	ag.TalentAgency = &auth.TalentAgency{
+		Fee: 0.1,
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &ag, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:       true,
+			Geo:        &geo.GeoRecord{},
+			InviteCode: common.GetCodeFromID(ag.ExpID),
+			TwitterId:  "justinbieber",
+		},
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+	infId := st.ID
+
+	// Do a deal but DON'T approve yet!
+	doDeal(rst, t, infId, "2", false)
+
+	// Lets grab the influencer
+	var load influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+infId, nil, &load)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(load.ActiveDeals) != 1 {
+		t.Fatal("No active deals!")
+		return
+	}
+
+	if load.Twitter == nil || len(load.Twitter.LatestTweets) == 0 {
+		t.Fatal("Huh? Twitter feed empty!")
+		return
+	}
+
+	cmpId := load.ActiveDeals[0].CampaignId
+
+	// Lets try force approving via a bad URL.. should yield an error!
+	fApp := &ForceApproval{
+		URL:          "blahblah.com/test",
+		Platform:     "twitter",
+		InfluencerID: infId,
+		CampaignID:   cmpId,
+	}
+
+	r = rst.DoTesting(t, "POST", "/forceApprovePost", &fApp, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!", string(r.Value))
+		return
+	}
+
+	// Lets try a valid URL now!
+	postURL := load.Twitter.LatestTweets[0].PostURL
+	if postURL == "" {
+		t.Fatal("Missing post URL!")
+		return
+	}
+
+	fApp.URL = postURL
+	r = rst.DoTesting(t, "POST", "/forceApprovePost", &fApp, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	verifyDeal(t, cmpId, infId, ag.ExpID, rst, false)
+
+	return
+}
+
+func TestSubscriptions(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	/////////////////////////////////////
+	//////// ENTERPRISE TESTING /////////
+	/////////////////////////////////////
+
+	// Create an advertiser with the ENTERPRISE subscription
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(subscriptions.ENTERPRISE, 125, true),
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var advertiser auth.Advertiser
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// The advertiser should have a subscription ID assigned and a plan ID
+	if advertiser.Plan != subscriptions.ENTERPRISE {
+		t.Fatal("Bad plan code!")
+		return
+	}
+
+	if advertiser.Subscription == "" {
+		t.Fatal("No subscription ID assigned!")
+		return
+	}
+
+	// Lets make sure the price we sent is the one in stripe!
+	price, monthly, err := swipe.GetSubscription(advertiser.Subscription)
+	if err != nil {
+		t.Fatal("Err on sub query")
+		return
+	}
+
+	if price != 125 {
+		t.Fatal("Bad sub price")
+		return
+	}
+
+	if !monthly {
+		t.Fatal("Bad sub interval")
+		return
+	}
+
+	// Lets create a campaign under ENTERPRISE with full capabilities!
+	// Should work!
+	fakeGeo := []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+		&geo.GeoRecord{State: "ON", Country: "CA"},
+		&geo.GeoRecord{Country: "GB"},
+		&geo.GeoRecord{Country: "AW"},
+	}
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Campaign that does all targeting",
+		Twitter:      true,
+		YouTube:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	// Make sure there are no errors with creating!
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cmpLoad.Plan != subscriptions.ENTERPRISE {
+		t.Fatal("Campaign plan incorrect!")
+		return
+	}
+
+	/////////////////////////////////////
+	//////// PREMIUM TESTING ////////////
+	/////////////////////////////////////
+
+	// Lets try a Premium plan and make sure our campaign filters work!
+	adv = getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(subscriptions.PREMIUM, 100, true),
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// The advertiser should have a subscription ID assigned and a plan ID
+	if advertiser.Plan != subscriptions.PREMIUM {
+		t.Fatal("Bad plan code!")
+		return
+	}
+
+	if advertiser.Subscription == "" {
+		t.Fatal("No subscription ID assigned!")
+		return
+	}
+
+	// Lets create a campaign that should be REJECTED based on what Premium plan
+	// allows
+	// NOTE: This campaign is targeting Aruba so should be rejected!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+		&geo.GeoRecord{State: "ON", Country: "CA"},
+		&geo.GeoRecord{Country: "GB"},
+		&geo.GeoRecord{Country: "AW"},
+	}
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Campaign that does all targeting",
+		Twitter:      true,
+		YouTube:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	// Make sure there ARE errors with creating!
+	if r.Status == 200 {
+		t.Fatal("Expected rejection!")
+	}
+
+	// Lets create a campaign that should be ACCEPTED based on what Premium plan
+	// allows
+	// NOTE: This campaign is targeting Aruba so should be rejected!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+		&geo.GeoRecord{State: "ON", Country: "CA"},
+		&geo.GeoRecord{Country: "GB"},
+	}
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Campaign that does most targeting",
+		Twitter:      true,
+		YouTube:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	// Make sure there ARE errors with creating!
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cmpLoad.Plan != subscriptions.PREMIUM {
+		t.Fatal("Campaign plan incorrect!")
+		return
+	}
+
+	//////////////////////////////////////
+	//////// HYPER LOCAL TESTING /////////
+	//////////////////////////////////////
+
+	// Lets try a HYPER LOCAL plan and make sure our campaign filters work!
+	adv = getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(subscriptions.HYPERLOCAL, 100, true),
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// The advertiser should have a subscription ID assigned and a plan ID
+	if advertiser.Plan != subscriptions.HYPERLOCAL {
+		t.Fatal("Bad plan code!")
+		return
+	}
+
+	if advertiser.Subscription == "" {
+		t.Fatal("No subscription ID assigned!")
+		return
+	}
+
+	// Lets create a campaign that should be REJECTED based on what Premium plan
+	// allows
+	// NOTE: This campaign is targeting Canada so should be rejected!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+		&geo.GeoRecord{State: "ON", Country: "CA"},
+	}
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Campaign that does all targeting",
+		Instagram:    true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	// Make sure there ARE errors with creating!
+	if r.Status == 200 {
+		t.Fatal("Expected rejection!")
+	}
+
+	// Lets create a campaign that should be REJECTED based on what Premium plan
+	// allows
+	// NOTE: This campaign is targeting Twitter and Youtube so should be rejected!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+	}
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Campaign that does all targeting",
+		Twitter:      true,
+		YouTube:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	// Make sure there ARE errors with creating!
+	if r.Status == 200 {
+		t.Fatal("Expected rejection!")
+	}
+
+	// Lets create a campaign that should be ACCEPTED based on what Premium plan
+	// allows
+	// NOTE: This campaign is targeting Aruba so should be rejected!
+	fakeGeo = []*geo.GeoRecord{
+		&geo.GeoRecord{State: "CA", Country: "US"},
+	}
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Campaign that does most targeting",
+		Instagram:    true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Geos:         fakeGeo,
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	// Make sure there ARE errors with creating!
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cmpLoad.Plan != subscriptions.HYPERLOCAL {
+		t.Fatal("Campaign plan incorrect!")
+		return
+	}
+
+	////////////////////////[/////////////
+	//////// PLAN CHANGE TESTING /////////
+	//////////////////////////////////////
+
+	// Lets update a plan!
+
+	// Lets start off with a PREMIUM plan
+	adv = getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(subscriptions.PREMIUM, 100, true),
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if advertiser.Plan != subscriptions.PREMIUM {
+		t.Fatal("Bad plan set!")
+		return
+	}
+
+	oldSub := advertiser.Subscription
+	if oldSub == "" {
+		t.Fatal("Bad sub set")
+		return
+	}
+
+	// Lets upgrade to enterprise!
+	advUpd1 := &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, SubLoad: getSubscription(subscriptions.ENTERPRISE, 100, true)}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		log.Println(string(r.Value))
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if advertiser.Subscription == "" {
+		t.Fatal("Bad sub set")
+		return
+	}
+
+	if advertiser.Plan != subscriptions.ENTERPRISE {
+		t.Fatal("Bad plan set")
+		return
+	}
+
+	if advertiser.Subscription == oldSub {
+		t.Fatal("Sub not updated")
+		return
+	}
+
+	oldSub = advertiser.Subscription
+
+	// Lets downgrade to hyperlocal!
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, SubLoad: getSubscription(subscriptions.HYPERLOCAL, 100, true)}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if advertiser.Subscription == "" {
+		t.Fatal("Bad sub set")
+		return
+	}
+
+	if advertiser.Plan != subscriptions.HYPERLOCAL {
+		t.Fatal("Bad plan set")
+		return
+	}
+
+	if advertiser.Subscription == oldSub {
+		t.Fatal("Sub not updated")
+		return
+	}
+
+	// Lets cancel the plan now!
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{Status: true, DspFee: 0.1, CCLoad: creditCard, Subscription: advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// The subscription should be cancelled on stripe!
+	_, _, err = swipe.GetSubscription(advertiser.Subscription)
+	if err == nil {
+		t.Fatal("Subscription should be cancelled!")
+		return
+	}
+
+	var cancelledAdv auth.Advertiser
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &cancelledAdv)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cancelledAdv.Subscription != "" {
+		t.Fatal("Bad sub set")
+		return
+	}
+
+	if cancelledAdv.Plan != 0 {
+		t.Fatal("Bad plan set")
+		return
+	}
+
+	// Lets create a hyperlocal advertiser.. NOT get a deal under them
+	// for a big inf then lets upgrade the plan to enterprise and make sure
+	// that deal appears! Then lets cancel the plan and make sure
+	// deal disappears!
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			InstagramId: "kimkardashian",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+	// Create a campaign
+	adv = getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(subscriptions.HYPERLOCAL, 100, true),
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "DIS NOT DA ONE HOMIE",
+		Instagram:    true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see if our influencer gets a deal with this campaign!
+	// They should NOT!
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	deals = getDeals(st.ID, deals)
+	if len(deals) > 0 {
+		t.Fatal("Unexpected number of deals.. should have zero!")
+	}
+
+	// Lets switch the plan to enterprise.. should get deals now!
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, SubLoad: getSubscription(subscriptions.ENTERPRISE, 100, true)}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets make sure the campaign's plan value was updated!
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cmpLoad.Plan != subscriptions.ENTERPRISE {
+		t.Fatal("Campaign failed to update")
+		return
+	}
+
+	// Lets see if our influencer gets a deal with this campaign!
+	// They should!
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	deals = getDeals(st.ID, deals)
+	if len(deals) != 1 {
+		t.Fatal("Unexpected number of deals.. should have 1!")
+	}
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+st.ID+"/"+deals[0].Id+"/instagram", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Make sure deal is there!
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// lets make sure there is an assigned deal
+	var found bool
+	for _, deal := range cmpLoad.Deals {
+		if deal.IsActive() && deal.InfluencerId == inf.ExpID {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		t.Fatal("No active deals!")
+		return
+	}
+
+	// Lets cancel the plan now!
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, Subscription: advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see if a deal appears for a cancelled subscription.. it shouldn't!
+	// Create an influencer
+	inf = getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			InstagramId: "selenagomez",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see if our influencer gets a deal with this campaign!
+	// They should NOT!
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	deals = getDeals(st.ID, deals)
+	if len(deals) > 0 {
+		t.Fatal("Unexpected number of deals.. should have zero!")
 	}
 }
 

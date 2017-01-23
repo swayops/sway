@@ -23,6 +23,7 @@ import (
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/reporting"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -302,6 +303,9 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Keywords = common.LowerSlice(cmp.Keywords)
 		cmp.Whitelist = common.TrimEmails(cmp.Whitelist)
 
+		// Copy the plan from the Advertiser
+		cmp.Plan = adv.Plan
+
 		if len(adv.Blacklist) > 0 {
 			// Blacklist is always set at the advertiser level using content feed bad!
 			cmp.Blacklist = adv.Blacklist
@@ -339,6 +343,19 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		cmp.CreatedAt = time.Now().Unix()
+
+		// Before creating the campaign.. lets make sure the plan allows for it!
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
+		if err != nil {
+			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+			return
+		}
+
+		if !allowed {
+			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
+			return
+		}
 
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) { // have to get an id early for saveImage
 			cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign)
@@ -414,7 +431,9 @@ func getCampaign(s *Server) gin.HandlerFunc {
 		if cmp.Perks != nil && !s.Cfg.Sandbox {
 			for _, d := range cmp.Deals {
 				if d.Perk != nil {
-					cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
+					if d.Perk.Code != "" {
+						cmp.Perks.Codes = append(cmp.Perks.Codes, d.Perk.Code)
+					}
 					cmp.Perks.Count += d.Perk.Count
 				}
 			}
@@ -589,6 +608,26 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		cmp.Geos = upd.Geos
+		cmp.Categories = common.LowerSlice(upd.Categories)
+		cmp.Keywords = common.LowerSlice(upd.Keywords)
+
+		// Copy the plan from the Advertiser
+		cmp.Plan = adv.Plan
+
+		// Before creating the campaign.. lets make sure the plan allows for it!
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
+		if err != nil {
+			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+			return
+		}
+
+		if !allowed {
+			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
+			return
+		}
+
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
 			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
@@ -606,10 +645,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			cmp.Budget = *upd.Budget
 		}
-
-		cmp.Geos = upd.Geos
-		cmp.Categories = common.LowerSlice(upd.Categories)
-		cmp.Keywords = common.LowerSlice(upd.Keywords)
 
 		updatedWl := common.TrimEmails(upd.Whitelist)
 		additions := []string{}
@@ -901,7 +936,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 		// Update Address
 		if upd.Address.AddressOne != "" {
-			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg.Sandbox)
+			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg)
 			if err != nil {
 				c.JSON(400, misc.StatusErr(err.Error()))
 				return
@@ -1593,7 +1628,8 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 }
 
 func getDeal(s *Server) gin.HandlerFunc {
-	// Gets assigned deal
+	// Gets assigned deal using GetAvailableDeals func so we can make sure
+	// the campaign still wants this influencer!
 	return func(c *gin.Context) {
 		var (
 			campaignId = c.Param("campaignId")
@@ -2464,6 +2500,18 @@ func runBilling(s *Server) gin.HandlerFunc {
 					return nil
 				}
 
+				// Lets make sure they have an active subscription!
+				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+				if err != nil {
+					s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+					return nil
+				}
+
+				if !allowed {
+					log.Println("Subscription is now off", adv.ID)
+					return nil
+				}
+
 				// This functionality carry over any left over spendable too
 				// It will also look to check if there's a pending (lowered)
 				// budget that was saved to db last month.. and that should be
@@ -2916,6 +2964,176 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 		}
 		c.JSON(200, misc.StatusOK(infId))
 
+	}
+}
+
+type ForceApproval struct {
+	URL          string `json:"url,omitempty"`
+	Platform     string `json:"platform,omitempty"`
+	InfluencerID string `json:"infId,omitempty"`
+	CampaignID   string `json:"campaignId,omitempty"`
+}
+
+func forceApprovePost(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// /platform/influencerId/campaignId/URL
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		var fApp ForceApproval
+
+		defer c.Request.Body.Close()
+		if err := json.NewDecoder(c.Request.Body).Decode(&fApp); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		postUrl := fApp.URL
+		if postUrl == "" {
+			c.JSON(400, misc.StatusErr("invalid post url"))
+			return
+		}
+
+		infId := fApp.InfluencerID
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		campaignId := fApp.CampaignID
+		cmp, ok := s.Campaigns.Get(campaignId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			return
+		}
+
+		if !cmp.IsValid() {
+			c.JSON(500, misc.StatusErr("invalid campaign"))
+			return
+		}
+
+		var foundDeal *common.Deal
+		for _, deal := range cmp.Deals {
+			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+				foundDeal = deal
+				break
+			}
+		}
+
+		if foundDeal == nil {
+			c.JSON(500, misc.StatusErr("no available deals left for this campaign"))
+			return
+		}
+
+		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, campaignId, "")
+		if err != nil || store == nil && store.Spendable == 0 && store.Spent > store.Budget {
+			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
+			return
+		}
+
+		// Fill in some display properties for the deal
+		// (Set in influencer.GetAvailableDeals otherwise)
+		foundDeal.CampaignName = cmp.Name
+		foundDeal.CampaignImage = cmp.ImageURL
+		foundDeal.Company = cmp.Company
+		foundDeal.InfluencerId = infId
+		foundDeal.InfluencerName = inf.Name
+		foundDeal.Assigned = int32(time.Now().Unix())
+
+		// NOTE: Not touching the campaigns perks! Look into this
+
+		// Update the influencer
+		switch fApp.Platform {
+		case platform.Twitter:
+			if inf.Twitter == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.Twitter.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.Twitter.LatestTweets {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveTweet(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		case platform.Instagram:
+			if inf.Instagram == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.Instagram.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.Instagram.LatestPosts {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveInstagram(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		case platform.YouTube:
+			if inf.YouTube == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.YouTube.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.YouTube.LatestPosts {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveYouTube(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		case platform.Facebook:
+			if inf.Facebook == nil {
+				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				return
+			}
+			if err = inf.Facebook.UpdateData(s.Cfg, true); err != nil {
+				c.String(400, err.Error())
+				return
+			}
+
+			for _, post := range inf.Facebook.LatestPosts {
+				if post.PostURL == postUrl {
+					// So we just found the post.. lets accept!
+					if err = s.ApproveFacebook(post, foundDeal); err != nil {
+						c.JSON(500, misc.StatusErr(err.Error()))
+						return
+					}
+				}
+			}
+		default:
+			c.String(400, "Invalid platform")
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+		return
 	}
 }
 
@@ -3621,7 +3839,7 @@ func setScrap(s *Server) gin.HandlerFunc {
 	// Ingests a scrap and puts it into pool
 	return func(c *gin.Context) {
 		var (
-			scraps []*common.Scrap
+			scraps []*influencer.Scrap
 			err    error
 		)
 

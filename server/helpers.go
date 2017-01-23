@@ -20,6 +20,7 @@ import (
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/misc"
 )
 
@@ -509,9 +510,21 @@ func getActiveAdvertisers(s *Server) map[string]bool {
 	out := make(map[string]bool)
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
-			if adv := auth.GetAdvertiser(u); adv != nil && adv.Status {
+			adv := auth.GetAdvertiser(u)
+			if adv == nil || !adv.Status {
+				return nil
+			}
+
+			allowed, err := subscriptions.IsSubscriptionActive(adv.IsSelfServe(), adv.Subscription)
+			if err != nil {
+				s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+				return nil
+			}
+
+			if allowed {
 				out[adv.ID] = true
 			}
+
 			return nil
 		})
 	})
@@ -723,7 +736,7 @@ func emailDeal(s *Server, cid string) (bool, error) {
 
 	emailed := 0
 	for _, offer := range influencerPool {
-		if emailed >= 50 {
+		if emailed >= len(cmp.Deals) {
 			break
 		}
 
@@ -940,6 +953,34 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 				return err
 			}
 			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
+		}
+
+		if adv := incUser.Advertiser; adv != nil && adv.SubLoad != nil && user.Advertiser != nil {
+			if incUser.Advertiser.SubLoad.Plan != user.Advertiser.Plan {
+				// The plan was updated! Lets copy over the plan to all child campaigns
+				targetPlan := incUser.Advertiser.SubLoad.Plan
+				tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+					cmp := &common.Campaign{}
+					if err := json.Unmarshal(v, cmp); err != nil {
+						log.Printf("error when unmarshalling campaign %s: %v", v, err)
+						return nil
+					}
+
+					if cmp.AdvertiserId != user.Advertiser.ID {
+						// If advertiser ID is different.. BAIL!
+						return
+					}
+
+					// Change the plan!
+					cmp.Plan = targetPlan
+
+					// Save the campaign!
+					if err := saveCampaign(tx, cmp, s); err != nil {
+						return err
+					}
+					return
+				})
+			}
 		}
 
 		if su == nil { // admin

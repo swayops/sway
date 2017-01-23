@@ -17,14 +17,6 @@ import (
 const (
 	lobEndpoint     = "https://api.lob.com/v1/checks"
 	lobAddrEndpoint = "https://api.lob.com/v1/verify"
-
-	lobTestAuth  = "test_08d860361c920163e4fba655f2de5131cfb"
-	testBankAcct = "bank_15a6b397e90cd9b"
-	testFromAddr = "adr_7261cc34ecda09af"
-
-	lobProdAuth = "live_520283b8a87facd50d06da245f0ec29e247"
-	bankAcct    = "bank_2f526b5be9acd14"
-	fromAddr    = "adr_10ddb1de2895b320"
 )
 
 var (
@@ -69,13 +61,8 @@ func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config
 	form.Add("to[address_zip]", addr.Zip)
 	form.Add("to[address_country]", addr.Country)
 
-	if cfg.Sandbox {
-		form.Add("from", testFromAddr)
-		form.Add("bank_account", testBankAcct)
-	} else {
-		form.Add("from", fromAddr)
-		form.Add("bank_account", bankAcct)
-	}
+	form.Add("from", cfg.Lob.Addr)
+	form.Add("bank_account", cfg.Lob.BankAcct)
 
 	form.Add("amount", strconv.FormatFloat(payout, 'f', 6, 64))
 
@@ -89,11 +76,8 @@ func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config
 	if err != nil {
 		return nil, err
 	}
-	if cfg.Sandbox {
-		req.SetBasicAuth(lobTestAuth, "")
-	} else {
-		req.SetBasicAuth(lobProdAuth, "")
-	}
+
+	req.SetBasicAuth(cfg.Lob.Key, "")
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -121,7 +105,7 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
+func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) {
 	if addr == nil || addr.AddressOne == "" {
 		return nil, ErrAddr
 	}
@@ -144,11 +128,7 @@ func VerifyAddress(addr *AddressLoad, sandbox bool) (*AddressLoad, error) {
 		return nil, err
 	}
 
-	if sandbox {
-		req.SetBasicAuth(lobTestAuth, "")
-	} else {
-		req.SetBasicAuth(lobProdAuth, "")
-	}
+	req.SetBasicAuth(cfg.Lob.Key, "")
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 

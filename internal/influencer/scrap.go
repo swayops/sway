@@ -1,17 +1,16 @@
-package common
+package influencer
 
 import (
-	"errors"
 	"log"
 	"math"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
-
-var ErrEmail = errors.New("Error sending email!")
 
 type Scrap struct {
 	FullName string `json:"fullName,omitempty"` // Full name
@@ -46,9 +45,9 @@ type Scrap struct {
 	Ignore bool `json:"ignore,omitempty"`
 }
 
-func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
+func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign) *common.Campaign {
 	// Get all campaigns that match the platform setting for the campaign
-	var considered []*Campaign
+	var considered []*common.Campaign
 	for _, cmp := range cmps {
 		if sc.Match(cmp, false) {
 			considered = append(considered, &cmp)
@@ -58,12 +57,8 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]Campaign) *Campaign {
 	return getBiggestBudget(considered)
 }
 
-func (sc *Scrap) Match(cmp Campaign, forecast bool) bool {
+func (sc *Scrap) Match(cmp common.Campaign, forecast bool) bool {
 	if !forecast {
-		if cmp.Budget < 1000 && sc.Followers > 50000 {
-			return false
-		}
-
 		// Check if there's an available deal
 		var dealFound bool
 		for _, deal := range cmp.Deals {
@@ -77,6 +72,10 @@ func (sc *Scrap) Match(cmp Campaign, forecast bool) bool {
 			return false
 		}
 
+		// Check if scrap satisfies the plan
+		if !subscriptions.CanInfluencerRun(cmp.AgencyId, cmp.Plan, sc.Followers) {
+			return false
+		}
 	}
 
 	if len(cmp.Whitelist) > 0 {
@@ -157,7 +156,7 @@ func (sc *Scrap) Match(cmp Campaign, forecast bool) bool {
 	return true
 }
 
-func (sc *Scrap) Email(cmp *Campaign, spendable float64, cfg *config.Config) bool {
+func (sc *Scrap) Email(cmp *common.Campaign, spendable float64, cfg *config.Config) bool {
 	if cfg.ReplyMailClient() == nil || sc.Ignore {
 		return false
 	}
@@ -246,12 +245,12 @@ func (sc *Scrap) Email(cmp *Campaign, spendable float64, cfg *config.Config) boo
 	return false
 }
 
-func getBiggestBudget(considered []*Campaign) *Campaign {
+func getBiggestBudget(considered []*common.Campaign) *common.Campaign {
 	if len(considered) == 0 {
 		return nil
 	}
 
-	var highest *Campaign
+	var highest *common.Campaign
 	for _, cmp := range considered {
 		if highest == nil || cmp.Budget > highest.Budget {
 			highest = cmp

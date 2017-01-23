@@ -163,6 +163,16 @@ type Config struct {
 		APIKey    string `json:"key"`
 	} `json:"sharpSpring"`
 
+	Stripe struct {
+		Key string `json:"key"`
+	} `json:"stripe"`
+
+	Lob struct {
+		Key      string `json:"key"`
+		Addr     string `json:"addr"`
+		BankAcct string `json:"bank"`
+	} `json:"lob"`
+
 	ec      *mandrill.Client
 	replyEc *mandrill.Client
 

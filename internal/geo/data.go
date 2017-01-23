@@ -252,6 +252,36 @@ var COUNTRIES = map[string]string{
 	"zw": "zimbabwe",
 }
 
+var EU_COUNTRIES = map[string]struct{}{
+	"at": struct{}{},
+	"be": struct{}{},
+	"bg": struct{}{},
+	"cy": struct{}{},
+	"cz": struct{}{},
+	"dk": struct{}{},
+	"ee": struct{}{},
+	"fi": struct{}{},
+	"fr": struct{}{},
+	"de": struct{}{},
+	"gr": struct{}{},
+	"hu": struct{}{},
+	"ie": struct{}{},
+	"it": struct{}{},
+	"lv": struct{}{},
+	"lt": struct{}{},
+	"lu": struct{}{},
+	"mt": struct{}{},
+	"nl": struct{}{},
+	"pl": struct{}{},
+	"pt": struct{}{},
+	"ro": struct{}{},
+	"sk": struct{}{},
+	"si": struct{}{},
+	"es": struct{}{},
+	"se": struct{}{},
+	"gb": struct{}{},
+}
+
 var US_STATES = map[string]struct{}{
 	"al": struct{}{},
 	"ak": struct{}{},

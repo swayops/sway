@@ -22,6 +22,9 @@ func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
 	// This will be used by "GetAvailableDeals"
 	// to avoid constant unmarshalling of campaigns
+
+	// getActiveAdvertisers only returns advertisers which are on
+	// and have valid subscriptions!
 	srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
 	cTicker := time.NewTicker(5 * time.Minute)
 	go func() {
@@ -70,7 +73,7 @@ func newSwayEngine(srv *Server) error {
 				srv.Alert("Error running YouTube init!", err)
 			}
 
-			if _, err := lob.VerifyAddress(addr, false); err != nil {
+			if _, err := lob.VerifyAddress(addr, srv.Cfg); err != nil {
 				srv.Alert("Error hitting LOB!", err)
 			}
 

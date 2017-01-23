@@ -58,6 +58,7 @@ type Campaign struct {
 	// Internal attribute set by putCampaign and un/assignDeal
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID
 	Deals map[string]*Deal `json:"deals,omitempty"`
+	Plan  int              `json:"planID,omitempty"`
 }
 
 func (cmp *Campaign) IsValid() bool {

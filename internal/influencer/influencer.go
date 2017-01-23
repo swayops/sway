@@ -14,6 +14,7 @@ import (
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
@@ -147,7 +148,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 	}
 
 	if address != nil && address.AddressOne != "" {
-		addr, err := lob.VerifyAddress(address, cfg.Sandbox)
+		addr, err := lob.VerifyAddress(address, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -671,18 +672,20 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	rejections := make(map[string]string)
 
 	for _, cmp := range store {
+		// Store only contains campaigns with active advertisers with proper
+		// subscriptions!
+
+		// Check for advertiser eligibility!
+		if !subscriptions.CanInfluencerRun(cmp.AgencyId, cmp.Plan, inf.GetFollowers()) {
+			rejections[cmp.Id] = "INVALID_SUBSCRIPTION"
+			continue
+		}
+
 		targetDeal := &common.Deal{}
 		dealFound := false
 		if !cmp.IsValid() {
 			rejections[cmp.Id] = "INVALID"
 			continue
-		}
-
-		if !cfg.Sandbox {
-			if cmp.Budget < 1000 && inf.GetFollowers() > 50000 {
-				rejections[cmp.Id] = "SAVING_BIG DEALS"
-				continue
-			}
 		}
 
 		for _, deal := range cmp.Deals {
@@ -801,6 +804,21 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			}
 		}
 
+		// Fill in and check available spendable
+		store, err := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
+		if err != nil || store == nil || store.Spendable == 0 || store.Spent > store.Budget {
+			if !query {
+				// Influencer may query for their assigned deal.. but we don't want to
+				// hide the deal if there's no spendable.. we just want to tell them that
+				// there's 0 spendable
+				rejections[cmp.Id] = "BUDGET"
+				continue
+			}
+		}
+		if store != nil {
+			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
+		}
+
 		// Social Media Checks
 		if cmp.YouTube && inf.YouTube != nil {
 			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
@@ -860,19 +878,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 	}
 
-	// Fill in available spendables now
-	// This also makes sure that only campaigns with spendable are the
-	// only ones eligible for deals
-	filtered := make([]*common.Deal, 0, len(infDeals))
-	for _, deal := range infDeals {
-		store, err := budget.GetBudgetInfo(budgetDb, cfg, deal.CampaignId, "")
-		if err == nil && store != nil && store.Spendable > 0 && store.Spent < store.Budget {
-			deal.Spendable = misc.TruncateFloat(store.Spendable, 2)
-			filtered = append(filtered, deal)
-		}
-	}
-
-	return filtered
+	return infDeals
 }
 
 var (
