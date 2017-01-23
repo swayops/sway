@@ -31,7 +31,7 @@ func (plan *HyperLocal) IsEligibleInfluencer(followers int64) bool {
 	return true
 }
 
-func (plan *HyperLocal) IsEligibleCampaign(cmp common.Campaign) bool {
+func (plan *HyperLocal) IsEligibleCampaign(cmp *common.Campaign) bool {
 	// Coupon perks only!
 	if cmp.Perks != nil {
 		if !cmp.Perks.IsCoupon() {

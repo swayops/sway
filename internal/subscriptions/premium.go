@@ -32,7 +32,7 @@ func (plan *Premium) IsEligibleInfluencer(followers int64) bool {
 	return true
 }
 
-func (plan *Premium) IsEligibleCampaign(cmp common.Campaign) bool {
+func (plan *Premium) IsEligibleCampaign(cmp *common.Campaign) bool {
 	// USA, Canada, and EU targeting only!
 	for _, cGeo := range cmp.Geos {
 		cy := strings.ToLower(cGeo.Country)

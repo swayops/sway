@@ -345,7 +345,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.CreatedAt = time.Now().Unix()
 
 		// Before creating the campaign.. lets make sure the plan allows for it!
-		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
 		if err != nil {
 			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
 			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
@@ -616,7 +616,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Plan = adv.Plan
 
 		// Before creating the campaign.. lets make sure the plan allows for it!
-		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
 		if err != nil {
 			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
 			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
@@ -2501,7 +2501,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				}
 
 				// Lets make sure they have an active subscription!
-				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, *cmp)
+				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
 				if err != nil {
 					s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
 					return nil

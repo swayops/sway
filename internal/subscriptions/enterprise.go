@@ -18,6 +18,6 @@ func (plan *Enterprise) IsEligibleInfluencer(followers int64) bool {
 	return true
 }
 
-func (plan *Enterprise) IsEligibleCampaign(cmp common.Campaign) bool {
+func (plan *Enterprise) IsEligibleCampaign(cmp *common.Campaign) bool {
 	return true
 }
