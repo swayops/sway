@@ -300,56 +300,56 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 }
 
 func (a *Auth) AddSubUserHandler(c *gin.Context) {
-	var su struct {
-		UserID   string `json:"userID"`
-		Email    string `json:"email"`
-		Password string `json:"pass"`
-	}
+	var (
+		su struct {
+			Email    string `json:"email"`
+			Password string `json:"pass"`
+		}
+
+		id = c.Param("id")
+	)
 
 	if err := c.Bind(&su); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 
-	if u := GetCtxUser(c); u == nil || su.UserID != u.ID || IsSubUser(c) {
+	if IsSubUser(c) {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
 
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		return a.AddSubUsersTx(tx, su.UserID, su.Email, su.Password)
+		return a.AddSubUsersTx(tx, id, su.Email, su.Password)
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 	} else {
-		c.JSON(200, misc.StatusOK(su.UserID))
+		c.JSON(200, misc.StatusOK(id))
 	}
 }
 
 func (a *Auth) DelSubUserHandler(c *gin.Context) {
-	var su struct {
-		UserID string `json:"userID"`
-		Email  string `json:"email"`
-	}
+	var (
+		su struct {
+			Email string `json:"email"`
+		}
+		id = c.Param("id")
+	)
 
 	if err := c.Bind(&su); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 
-	if u := GetCtxUser(c); u == nil || su.UserID != u.ID || IsSubUser(c) {
-		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
-		return
-	}
-
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		if l := a.GetLoginTx(tx, su.Email); l == nil || !l.IsSubUser {
+		if l := a.GetLoginTx(tx, su.Email); l == nil || !l.IsSubUser || l.UserID != id {
 			return ErrInvalidRequest
 		}
 		return misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(su.Email))
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 	} else {
-		c.JSON(200, misc.StatusOK(su.UserID))
+		c.JSON(200, misc.StatusOK(id))
 	}
 }
 

@@ -228,7 +228,7 @@ func TestNewAdvertiser(t *testing.T) {
 	}
 
 	subUserEmail := adv.ExpID + "-login@test.org"
-	subUser := M{"userID": adv.ExpID, "email": subUserEmail, "pass": "12345678"}
+	subUser := M{"email": subUserEmail, "pass": "12345678"}
 
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
@@ -252,6 +252,9 @@ func TestNewAdvertiser(t *testing.T) {
 
 		{"POST", "/signIn", adminReq, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
+
+		// add sub user as admin
+		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
 
 		// create a new agency
 		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
