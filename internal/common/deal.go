@@ -251,6 +251,8 @@ func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 		data.Shares += stats.Shares
 		data.Views += stats.Views
 		data.Clicks += stats.Clicks
+
+		data.Perks += stats.Perks
 	}
 	return data
 }
