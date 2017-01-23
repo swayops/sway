@@ -2,6 +2,7 @@ package sharpspring
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -17,6 +18,9 @@ const (
 
 	AdvList = "440804355"
 	InfList = "440805379"
+
+	AdvOwner = "313376955"
+	InfOwner = "313376954"
 )
 
 func Post(cfg *config.Config, req interface{}) error {
@@ -37,10 +41,20 @@ func Post(cfg *config.Config, req interface{}) error {
 	return parseResponse(resp.Body)
 }
 
-func CreateLead(cfg *config.Config, typ, aid, oid, name, email, desc string) error {
+func CreateLead(cfg *config.Config, typ, aid, name, email, desc string) error {
+	var oid string
+	switch typ {
+	case AdvList:
+		oid = AdvOwner
+	case InfList:
+		oid = InfOwner
+	default:
+		return fmt.Errorf("unexpected type: %v", typ)
+	}
 	ll := NewLeads(aid, "createLeads", []*Lead{
 		NewLead(aid, oid, name, email, desc),
 	})
+
 	if err := Post(cfg, ll); err != nil {
 		return err
 	}
@@ -69,6 +83,9 @@ type Lead struct {
 }
 
 func NewLead(aid, oid, name, email, desc string) *Lead {
+	if oid != InfOwner && oid != AdvOwner {
+		panic("oid != InfOwner && oid != AdvOwner")
+	}
 	return &Lead{
 		ID:      aid,
 		OwnerID: oid,

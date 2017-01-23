@@ -47,6 +47,7 @@ func Merge(totals []map[string]*Totals) map[string]*Totals {
 			val.Shares += stats.Shares
 			val.Spent += stats.Spent
 			val.Influencers += stats.Influencers
+			val.Perks += stats.Perks
 		}
 	}
 	return tot
