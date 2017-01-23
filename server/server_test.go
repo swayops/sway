@@ -243,7 +243,13 @@ func TestNewAdvertiser(t *testing.T) {
 		// try to add a sub user as a sub user
 		{"POST", "/subUsers/" + adv.ExpID, subUser, 401, nil},
 
-		// sign in as admin and access the advertiser
+		// log back in as the main adv
+		{"POST", "/signIn", adv, 200, nil},
+
+		// delete the subuser and try to log back in as it
+		{"DELETE", "/subUsers/" + adv.ExpID, subUser, 200, nil},
+		{"POST", "/signIn", subUser, 400, nil},
+
 		{"POST", "/signIn", adminReq, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
 

@@ -325,6 +325,34 @@ func (a *Auth) AddSubUserHandler(c *gin.Context) {
 	}
 }
 
+func (a *Auth) DelSubUserHandler(c *gin.Context) {
+	var su struct {
+		UserID string `json:"userID"`
+		Email  string `json:"email"`
+	}
+
+	if err := c.Bind(&su); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if u := GetCtxUser(c); u == nil || su.UserID != u.ID || IsSubUser(c) {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
+
+	if err := a.db.Update(func(tx *bolt.Tx) error {
+		if l := a.GetLoginTx(tx, su.Email); l == nil || !l.IsSubUser {
+			return ErrInvalidRequest
+		}
+		return misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(su.Email))
+	}); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+	} else {
+		c.JSON(200, misc.StatusOK(su.UserID))
+	}
+}
+
 func (a *Auth) ListSubUsersHandler(c *gin.Context) {
 	if _, ok := c.Get(IsSubUserKey); ok {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)

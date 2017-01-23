@@ -353,7 +353,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	advScopes := srv.auth.CheckScopes(scopes["adv"])
 	verifyGroup.GET("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
 	verifyGroup.POST("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
-	// verifyGroup.DELETE("/subUser/:id", srv.auth.DeleteSubUserHandler) // not impl, is it needed?
+	verifyGroup.DELETE("/subUsers/:id", srv.auth.DelSubUserHandler)
+
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
