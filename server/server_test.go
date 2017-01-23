@@ -227,11 +227,18 @@ func TestNewAdvertiser(t *testing.T) {
 		DspFee: 2,
 	}
 
+	subUserEmail := adv.ExpID + "-login@test.org"
+	subUser := M{"userID": adv.ExpID, "email": subUserEmail, "pass": "12345678"}
+
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
 		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.2}}, 200, nil},
+
+		// add a sub user and try to login with it
+		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
+		{"POST", "/signIn", subUser, 200, nil},
 
 		// sign in as admin and access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
