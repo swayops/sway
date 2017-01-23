@@ -41,7 +41,10 @@ func AddSubscription(name, id, custID string, newSub *Subscription) (string, err
 			planParams.Interval = plan.Year
 		}
 
-		plan.New(planParams)
+		_, err := plan.New(planParams)
+		if err != nil {
+			return "", err
+		}
 	} else {
 		swayPlan := subscriptions.GetPlan(newSub.Plan)
 		if swayPlan == nil {

@@ -15,11 +15,11 @@ const (
 type Plan interface {
 	Name() string
 	IsEligibleInfluencer(followers int64) bool
-	IsEligibleCampaign(cmp common.Campaign) bool
+	IsEligibleCampaign(campaign common.Campaign) bool
 	GetKey(monthly bool) string
 }
 
-func CanCampaignRun(isSelfServe bool, subID string, planID int, cmp common.Campaign) (bool, error) {
+func CanCampaignRun(isSelfServe bool, subID string, planID int, campaign common.Campaign) (bool, error) {
 	if !isSelfServe {
 		return true, nil
 	}
@@ -43,7 +43,7 @@ func CanCampaignRun(isSelfServe bool, subID string, planID int, cmp common.Campa
 		return false, nil
 	}
 
-	return plan.IsEligibleCampaign(cmp), nil
+	return plan.IsEligibleCampaign(campaign), nil
 }
 
 func CanInfluencerRun(adAgencyId string, planID int, followers int64) bool {

@@ -511,7 +511,7 @@ func getActiveAdvertisers(s *Server) map[string]bool {
 	s.db.View(func(tx *bolt.Tx) error {
 		return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
 			adv := auth.GetAdvertiser(u)
-			if adv == nil || adv.Status {
+			if adv == nil || !adv.Status {
 				return nil
 			}
 
@@ -607,7 +607,6 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64) {
 	// Lite version of the original GetAVailableDeals just for forecasting
 	for _, inf := range s.auth.Influencers.GetAll() {
-		// ADD ELIGIBLE CHECK HERE
 		if inf.Banned {
 			continue
 		}
@@ -956,7 +955,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
 		}
 
-		if incUser.Advertiser != nil && incUser.Advertiser.SubLoad != nil && user.Advertiser != nil {
+		if adv := incUser.Advertiser; adv != nil && adv.SubLoad != nil && user.Advertiser != nil {
 			if incUser.Advertiser.SubLoad.Plan != user.Advertiser.Plan {
 				// The plan was updated! Lets copy over the plan to all child campaigns
 				targetPlan := incUser.Advertiser.SubLoad.Plan
@@ -967,10 +966,13 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 						return nil
 					}
 
-					if cmp.AdvertiserId == user.Advertiser.ID {
-						// Change the plan!
-						cmp.Plan = targetPlan
+					if cmp.AdvertiserId != user.Advertiser.ID {
+						// If advertiser ID is different.. BAIL!
+						return
 					}
+
+					// Change the plan!
+					cmp.Plan = targetPlan
 
 					// Save the campaign!
 					if err := saveCampaign(tx, cmp, s); err != nil {

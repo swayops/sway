@@ -4651,7 +4651,7 @@ func TestSubscriptions(t *testing.T) {
 	}
 
 	// Lets cancel the plan now!
-	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, Subscription: advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{Status: true, DspFee: 0.1, CCLoad: creditCard, Subscription: advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
