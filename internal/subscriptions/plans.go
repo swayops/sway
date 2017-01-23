@@ -16,6 +16,7 @@ type Plan interface {
 	Name() string
 	IsEligibleInfluencer(followers int64) bool
 	IsEligibleCampaign(campaign *common.Campaign) bool
+	CanAddSubUser(curr int) bool
 	GetKey(monthly bool) string
 }
 

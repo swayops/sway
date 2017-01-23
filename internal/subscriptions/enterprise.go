@@ -21,3 +21,7 @@ func (plan *Enterprise) IsEligibleInfluencer(followers int64) bool {
 func (plan *Enterprise) IsEligibleCampaign(cmp *common.Campaign) bool {
 	return true
 }
+
+func (plan *Enterprise) CanAddSubUser(curr int) bool {
+	return true
+}

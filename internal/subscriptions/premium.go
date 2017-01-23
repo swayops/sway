@@ -44,3 +44,12 @@ func (plan *Premium) IsEligibleCampaign(cmp *common.Campaign) bool {
 
 	return true
 }
+
+func (plan *Premium) CanAddSubUser(curr int) bool {
+	// No more than 5 subusers!
+	if curr >= 5 {
+		return false
+	}
+
+	return true
+}

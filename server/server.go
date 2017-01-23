@@ -349,6 +349,12 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Advertiser
 	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, nil,
 		putAdvertiser, nil)
+
+	advScopes := srv.auth.CheckScopes(scopes["adv"])
+	verifyGroup.GET("/subUsers/:id", advScopes, srv.auth.ListSubUsersHandler)
+	verifyGroup.POST("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
+	verifyGroup.DELETE("/subUsers/:id", srv.auth.DelSubUserHandler)
+
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))

@@ -217,6 +217,8 @@ func TestNewAdvertiser(t *testing.T) {
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
 		DspFee: 0.5,
+		CCLoad:  creditCard,
+		SubLoad: getSubscription(3, 100, true),
 	}
 
 	ag := getSignupUser()
@@ -227,15 +229,37 @@ func TestNewAdvertiser(t *testing.T) {
 		DspFee: 2,
 	}
 
+	subUserEmail := adv.ExpID + "-login@test.org"
+	subUser := M{"email": subUserEmail, "pass": "12345678"}
+
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signUp?autologin=true", adv, 200, misc.StatusOK(adv.ExpID)},
 
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{AgencyID: auth.SwayOpsAdAgencyID, DspFee: 0.5}},
-		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.2}}, 200, nil},
+		{"PUT", "/advertiser/" + adv.ExpID, &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.2, Plan: 3}}, 200, nil},
 
-		// sign in as admin and access the advertiser
+		// add a sub user and try to login with it
+		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
+		{"GET", "/subUsers/" + adv.ExpID, nil, 200, []string{subUserEmail}},
+		{"POST", "/signIn", subUser, 200, nil},
+
+		// try to add a sub user as a sub user
+		{"POST", "/subUsers/" + adv.ExpID, subUser, 401, nil},
+
+		// log back in as the main adv
+		{"POST", "/signIn", adv, 200, nil},
+
+		// delete the subuser and try to log back in as it
+		{"DELETE", "/subUsers/" + adv.ExpID, subUser, 200, nil},
+		{"POST", "/signIn", subUser, 400, nil},
+
 		{"POST", "/signIn", adminReq, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
+
+		// add sub user as admin
+		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
+
+		{"GET", "/subUsers/" + adv.ExpID, nil, 200, []string{subUserEmail}},
 
 		// create a new agency
 		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
@@ -4278,6 +4302,23 @@ func TestSubscriptions(t *testing.T) {
 		return
 	}
 
+	// Sign in as admin
+	r = rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see how many sub users we can make for enterprise!
+	for i := 1; i <= 10; i++ {
+		subUserEmail := adv.ExpID + "-login@test.org" + strconv.Itoa(i)
+		subUser := M{ "email": subUserEmail, "pass": "12345678"}
+		r = rst.DoTesting(t, "POST", "/subUsers/"+adv.ExpID, subUser, nil)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!", string(r.Value), i)
+			return
+		}
+	}
+
 	// Lets create a campaign under ENTERPRISE with full capabilities!
 	// Should work!
 	fakeGeo := []*geo.GeoRecord{
@@ -4354,6 +4395,31 @@ func TestSubscriptions(t *testing.T) {
 	if advertiser.Subscription == "" {
 		t.Fatal("No subscription ID assigned!")
 		return
+	}
+
+	// Sign in as admin
+	r = rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see how many sub users we can make for premium! Should be 5
+	LIMIT := 5
+	for i := 1; i <= 10; i++ {
+		subUserEmail := adv.ExpID + "-login@test.org" + strconv.Itoa(i)
+		subUser := M{ "email": subUserEmail, "pass": "12345678"}
+		r = rst.DoTesting(t, "POST", "/subUsers/"+adv.ExpID, subUser, nil)
+		if i > LIMIT {
+			if r.Status == 200 {
+				t.Fatal("Bad status code!", string(r.Value), i)
+				return
+			}
+		} else {
+			if r.Status != 200 {
+				t.Fatal("Bad status code!", string(r.Value), i)
+				return
+			}
+		}
 	}
 
 	// Lets create a campaign that should be REJECTED based on what Premium plan
@@ -4459,6 +4525,21 @@ func TestSubscriptions(t *testing.T) {
 
 	if advertiser.Subscription == "" {
 		t.Fatal("No subscription ID assigned!")
+		return
+	}
+
+	// Sign in as admin
+	r = rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets see how many sub users we can make for hyperlocal! Should be 0
+	subUserEmail := adv.ExpID + "-login@test.org.hyper"
+	subUser := M{ "email": subUserEmail, "pass": "12345678"}
+	r = rst.DoTesting(t, "POST", "/subUsers/"+adv.ExpID, subUser, nil)
+	if r.Status == 200 {
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 
