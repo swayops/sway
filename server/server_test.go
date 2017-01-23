@@ -240,6 +240,9 @@ func TestNewAdvertiser(t *testing.T) {
 		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
 		{"POST", "/signIn", subUser, 200, nil},
 
+		// try to add a sub user as a sub user
+		{"POST", "/subUsers/" + adv.ExpID, subUser, 401, nil},
+
 		// sign in as admin and access the advertiser
 		{"POST", "/signIn", adminReq, 200, nil},
 		{"GET", "/advertiser/" + adv.ExpID, nil, 200, &auth.Advertiser{DspFee: 0.2}},
