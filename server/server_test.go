@@ -238,6 +238,7 @@ func TestNewAdvertiser(t *testing.T) {
 
 		// add a sub user and try to login with it
 		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
+		{"GET", "/subUsers/" + adv.ExpID, nil, 200, []string{subUserEmail}},
 		{"POST", "/signIn", subUser, 200, nil},
 
 		// try to add a sub user as a sub user
@@ -255,6 +256,8 @@ func TestNewAdvertiser(t *testing.T) {
 
 		// add sub user as admin
 		{"POST", "/subUsers/" + adv.ExpID, subUser, 200, M{"id": adv.ExpID}},
+
+		{"GET", "/subUsers/" + adv.ExpID, nil, 200, []string{subUserEmail}},
 
 		// create a new agency
 		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},

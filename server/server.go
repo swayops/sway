@@ -351,7 +351,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		putAdvertiser, nil)
 
 	advScopes := srv.auth.CheckScopes(scopes["adv"])
-	verifyGroup.GET("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
+	verifyGroup.GET("/subUsers/:id", advScopes, srv.auth.ListSubUsersHandler)
 	verifyGroup.POST("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
 	verifyGroup.DELETE("/subUsers/:id", srv.auth.DelSubUserHandler)
 
