@@ -14,6 +14,8 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
+const IsSubUserKey = ":isSubUser:"
+
 func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 	domain := a.cfg.Domain
 	return func(c *gin.Context) {
@@ -35,6 +37,9 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 			return
 		}
 		c.Set(gin.AuthUserKey, ri.user)
+		if ri.isSubUser {
+			c.Set(IsSubUserKey, true)
+		}
 		if !ri.isApiKey {
 			misc.RefreshCookie(w, r, domain, "token", TokenAge)
 			misc.RefreshCookie(w, r, domain, "key", TokenAge)
@@ -294,6 +299,51 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 	}
 }
 
+func (a *Auth) AddSubUserHandler(c *gin.Context) {
+	var su struct {
+		UserID   string `json:"userID"`
+		Email    string `json:"email"`
+		Password string `json:"pass"`
+	}
+
+	if err := c.Bind(&su); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if u := GetCtxUser(c); u == nil || su.UserID != u.ID || IsSubUser(c) {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
+
+	if err := a.db.Update(func(tx *bolt.Tx) error {
+		return a.AddSubUsersTx(tx, su.UserID, su.Email, su.Password)
+	}); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+	} else {
+		c.JSON(200, misc.StatusOK(su.UserID))
+	}
+}
+
+func (a *Auth) ListSubUsersHandler(c *gin.Context) {
+	if _, ok := c.Get(IsSubUserKey); ok {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
+
+	var (
+		id  = c.Param("id")
+		out []string
+	)
+
+	a.db.View(func(tx *bolt.Tx) error {
+		out = a.ListSubUsersTx(tx, id)
+		return nil
+	})
+
+	c.JSON(200, out)
+}
+
 const resetPasswordUrl = "%s/resetPassword/%s"
 
 func (a *Auth) ReqResetHandler(c *gin.Context) {
@@ -310,13 +360,21 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		err  error
 	)
 	a.db.Update(func(tx *bolt.Tx) error {
-		u, stok, err = a.RequestResetPasswordTx(tx, req.Email)
+		if l := a.GetLoginTx(tx, req.Email); l != nil && l.IsSubUser {
+			err = ErrSubUser
+		} else if l == nil {
+			err = ErrInvalidEmail
+		} else {
+			u, stok, err = a.RequestResetPasswordTx(tx, req.Email)
+		}
+
 		return nil
 	})
 	if err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
+
 	tmplData := struct {
 		Sandbox bool
 		URL     string

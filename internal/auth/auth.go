@@ -45,10 +45,11 @@ func New(db *bolt.DB, cfg *config.Config) *Auth {
 }
 
 func (a *Auth) PurgeInvalidTokens() {
+	t := time.NewTicker(purgeFrequency)
 	for {
+		ts := time.Now()
 		a.db.Update(func(tx *bolt.Tx) error {
 			b := misc.GetBucket(tx, a.cfg.Bucket.Token)
-			ts := time.Now()
 			return b.ForEach(func(k, v []byte) error {
 				var tok Token
 				if json.Unmarshal(v, &tok) != nil || !tok.IsValid(ts) {
@@ -58,7 +59,7 @@ func (a *Auth) PurgeInvalidTokens() {
 			})
 		})
 
-		time.Sleep(purgeFrequency)
+		<-t.C
 	}
 
 }
@@ -86,6 +87,7 @@ type reqInfo struct {
 	stoken     string
 	user       *User
 	isApiKey   bool
+	isSubUser  bool
 }
 
 func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
@@ -106,6 +108,7 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 		return &ri
 	}
 	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
+		ri.isSubUser = l.IsSubUser
 		ri.hashedPass = l.Password
 	} else {
 		return nil
@@ -152,10 +155,42 @@ func (a *Auth) GetUsersByTypeTx(tx *bolt.Tx, typ Scope, fn func(u *User) error) 
 	})
 }
 
+func (a *Auth) AddSubUsersTx(tx *bolt.Tx, userID, email, pass string) (err error) {
+	if email = misc.TrimEmail(email); a.GetLoginTx(tx, email) != nil {
+		return ErrUserExists
+	}
+
+	if pass, err = HashPassword(pass); err != nil {
+		return
+	}
+
+	return misc.PutTxJson(tx, a.cfg.Bucket.Login, email, &Login{
+		UserID:    userID,
+		Password:  pass,
+		IsSubUser: true,
+	})
+}
+
+func (a *Auth) ListSubUsersTx(tx *bolt.Tx, userID string) (out []string) {
+	misc.GetBucket(tx, a.cfg.Bucket.Login).ForEach(func(k []byte, v []byte) error {
+		var l Login
+		if json.Unmarshal(v, &l) == nil && l.UserID == userID && l.IsSubUser {
+			out = append(out, string(k)) // user's email
+		}
+		return nil
+	})
+
+	return
+}
+
 type Token struct {
 	UserID  string `json:"userId"`
 	Email   string `json:"email"`
 	Expires int64  `json:"expires"`
+
+	// if IsSubUser is true it means this is a sub-user under and advertiser.
+	// this is only used by the UI
+	IsSubUser bool `json:"isSubUser,omitempty"`
 }
 
 func (t *Token) IsValid(ts time.Time) bool {

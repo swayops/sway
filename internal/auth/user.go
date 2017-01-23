@@ -29,8 +29,9 @@ const (
 )
 
 type Login struct {
-	UserID   string `json:"userID"`
-	Password string `json:"password"`
+	UserID    string `json:"userID"`
+	Password  string `json:"password"`
+	IsSubUser bool   `json:"isSubUser,omitempty"`
 }
 
 type User struct {
