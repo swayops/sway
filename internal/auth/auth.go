@@ -108,11 +108,11 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 		return &ri
 	}
 	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
-		ri.isSubUser = l.IsSubUser
 		ri.hashedPass = l.Password
 	} else {
 		return nil
 	}
+	ri.isSubUser = token.IsSubUser
 	return &ri
 }
 
@@ -124,7 +124,7 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 		return nil, "", ErrInvalidPass
 	}
 	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
-	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(TokenAge).UnixNano()}
+	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(TokenAge).UnixNano(), IsSubUser: l.IsSubUser}
 	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, ntok)
 	return
 }
