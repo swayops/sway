@@ -134,7 +134,6 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 			adv.Plan = adv.SubLoad.Plan
 		} else if adv.Subscription != "" && adv.Plan != 0 {
 			// Subscription is being updated!
-			// STOPPING POINT! FIGURE OUT UPDATING PLAN!
 			adv.Subscription, err = swipe.UpdateSubscription(u.Name, u.ID, adv.Customer, adv.Subscription, adv.SubLoad)
 			if err != nil {
 				adv.SubLoad = nil

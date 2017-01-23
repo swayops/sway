@@ -99,8 +99,6 @@ func newSwayEngine(srv *Server) error {
 func run(srv *Server) error {
 	log.Println("Beginning engine run!")
 
-	// SHOUDL WE CHECK FOR ACTIVE SUBSCRIPTIONS HERE OR THERE
-
 	var (
 		err                                                            error
 		updatedInf, foundDeals, sigsFound, dealsEmailed, scrapsEmailed int32
