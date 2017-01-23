@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/sharpspring"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
@@ -319,7 +321,20 @@ func (a *Auth) AddSubUserHandler(c *gin.Context) {
 		return
 	}
 
+	u := GetCtxUser(c)
+	if u.ID != id {
+		u = a.GetUser(id)
+	}
+
 	if err := a.db.Update(func(tx *bolt.Tx) error {
+		if u.Advertiser != nil && u.Advertiser.IsSelfServe() {
+			// If the user is a self serve advertiser.. we need to
+			// check that their plan allows for this!
+			plan := subscriptions.GetPlan(u.Advertiser.Plan)
+			if plan == nil || !plan.CanAddSubUser(len(a.ListSubUsersTx(tx, u.ID))) {
+				return errors.New("Current plan does not allow for any more logins")
+			}
+		}
 		return a.AddSubUsersTx(tx, id, su.Email, su.Password)
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
