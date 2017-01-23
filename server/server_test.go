@@ -4292,13 +4292,13 @@ func TestSubscriptions(t *testing.T) {
 		Budget:       150,
 		Name:         "Campaign that does all targeting",
 		Twitter:      true,
-		YouTube: true,
+		YouTube:      true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Geos: fakeGeo,
+		Geos:         fakeGeo,
 	}
 
 	var st Status
@@ -4371,13 +4371,13 @@ func TestSubscriptions(t *testing.T) {
 		Budget:       150,
 		Name:         "Campaign that does all targeting",
 		Twitter:      true,
-		YouTube: true,
+		YouTube:      true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Geos: fakeGeo,
+		Geos:         fakeGeo,
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
@@ -4400,13 +4400,13 @@ func TestSubscriptions(t *testing.T) {
 		Budget:       150,
 		Name:         "Campaign that does most targeting",
 		Twitter:      true,
-		YouTube: true,
+		YouTube:      true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Geos: fakeGeo,
+		Geos:         fakeGeo,
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
@@ -4474,13 +4474,13 @@ func TestSubscriptions(t *testing.T) {
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
 		Name:         "Campaign that does all targeting",
-		Instagram:      true,
+		Instagram:    true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Geos: fakeGeo,
+		Geos:         fakeGeo,
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
@@ -4489,7 +4489,7 @@ func TestSubscriptions(t *testing.T) {
 		t.Fatal("Expected rejection!")
 	}
 
-		// Lets create a campaign that should be REJECTED based on what Premium plan
+	// Lets create a campaign that should be REJECTED based on what Premium plan
 	// allows
 	// NOTE: This campaign is targeting Twitter and Youtube so should be rejected!
 	fakeGeo = []*geo.GeoRecord{
@@ -4501,13 +4501,13 @@ func TestSubscriptions(t *testing.T) {
 		Budget:       150,
 		Name:         "Campaign that does all targeting",
 		Twitter:      true,
-		YouTube: true,
+		YouTube:      true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Geos: fakeGeo,
+		Geos:         fakeGeo,
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
@@ -4527,13 +4527,13 @@ func TestSubscriptions(t *testing.T) {
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
 		Name:         "Campaign that does most targeting",
-		Instagram: true,
+		Instagram:    true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Geos: fakeGeo,
+		Geos:         fakeGeo,
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &st)
@@ -4592,14 +4592,14 @@ func TestSubscriptions(t *testing.T) {
 	}
 
 	// Lets upgrade to enterprise!
-		advUpd1 := &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1,CCLoad: creditCard,SubLoad: getSubscription(subscriptions.ENTERPRISE, 100, true)}}
+	advUpd1 := &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, SubLoad: getSubscription(subscriptions.ENTERPRISE, 100, true)}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
 		log.Println(string(r.Value))
 		t.Fatal("Bad status code!")
 	}
 
-		r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -4617,19 +4617,19 @@ func TestSubscriptions(t *testing.T) {
 
 	if advertiser.Subscription == oldSub {
 		t.Fatal("Sub not updated")
-		return	
+		return
 	}
 
 	oldSub = advertiser.Subscription
 
 	// Lets downgrade to hyperlocal!
-		advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1,CCLoad: creditCard,SubLoad: getSubscription(subscriptions.HYPERLOCAL, 100, true)}}
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, SubLoad: getSubscription(subscriptions.HYPERLOCAL, 100, true)}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 	}
 
-		r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &advertiser)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -4647,11 +4647,11 @@ func TestSubscriptions(t *testing.T) {
 
 	if advertiser.Subscription == oldSub {
 		t.Fatal("Sub not updated")
-		return	
+		return
 	}
 
 	// Lets cancel the plan now!
-		advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1,CCLoad: creditCard, Subscription:advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, Subscription: advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4665,7 +4665,7 @@ func TestSubscriptions(t *testing.T) {
 	}
 
 	var cancelledAdv auth.Advertiser
-		r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &cancelledAdv)
+	r = rst.DoTesting(t, "GET", "/advertiser/"+adv.ExpID, nil, &cancelledAdv)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -4683,7 +4683,7 @@ func TestSubscriptions(t *testing.T) {
 
 	// Lets create a hyperlocal advertiser.. NOT get a deal under them
 	// for a big inf then lets upgrade the plan to enterprise and make sure
-	// that deal appears! Then lets cancel the plan and make sure 
+	// that deal appears! Then lets cancel the plan and make sure
 	// deal disappears!
 
 	// Create an influencer
@@ -4716,7 +4716,7 @@ func TestSubscriptions(t *testing.T) {
 		AdvertiserId: adv.ExpID,
 		Budget:       150,
 		Name:         "DIS NOT DA ONE HOMIE",
-		Instagram:      true,
+		Instagram:    true,
 		Male:         true,
 		Female:       true,
 		Link:         "haha.org",
@@ -4743,7 +4743,7 @@ func TestSubscriptions(t *testing.T) {
 	}
 
 	// Lets switch the plan to enterprise.. should get deals now!
-		advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1,CCLoad: creditCard,SubLoad: getSubscription(subscriptions.ENTERPRISE, 100, true)}}
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, SubLoad: getSubscription(subscriptions.ENTERPRISE, 100, true)}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4769,7 +4769,7 @@ func TestSubscriptions(t *testing.T) {
 	}
 
 	deals = getDeals(st.ID, deals)
-	if len(deals) != 1{
+	if len(deals) != 1 {
 		t.Fatal("Unexpected number of deals.. should have 1!")
 	}
 
@@ -4800,7 +4800,7 @@ func TestSubscriptions(t *testing.T) {
 	}
 
 	// Lets cancel the plan now!
-		advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1,CCLoad: creditCard, Subscription:advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, CCLoad: creditCard, Subscription: advertiser.Subscription, SubLoad: getSubscription(0, 0, true)}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
