@@ -24,8 +24,6 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
-const DEAL_YIELD = 5
-
 var ErrDealActive = errors.New("Deal is not active")
 
 func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool) error {
@@ -89,7 +87,7 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 
 var ErrClick = errors.New("Err shortening url")
 
-func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *bolt.Tx) *common.Campaign {
+func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx) *common.Campaign {
 	// Assuming each deal will be paying out max of $5
 	// Lower this if you want less deals
 
@@ -115,9 +113,8 @@ func addDealsToCampaign(cmp *common.Campaign, spendable float64, s *Server, tx *
 		}
 		maxDeals = cmp.Perks.Count
 	} else {
-		// Assume each deal will yield about $5
-		// Can optimize this later
-		maxDeals = int(spendable / DEAL_YIELD)
+		//
+		maxDeals = cmp.Goal
 	}
 
 	if maxDeals == 0 && s.Cfg.Sandbox {

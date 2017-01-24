@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"encoding/json"
 	"time"
 
 	"github.com/swayops/resty"

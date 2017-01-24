@@ -31,6 +31,8 @@ type Campaign struct {
 	Status   bool  `json:"status"`
 	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
 
+	Goal int `json:"infGoal"` // How many influencers does the client want ideally as part of this deal? Ignored if perks present
+
 	// Social Media Post/User Requirements
 	Tags    []string         `json:"tags,omitempty"`
 	Mention string           `json:"mention,omitempty"`
@@ -99,6 +101,28 @@ func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) 
 		}
 		cmp.Timeline = append(cmp.Timeline, tl)
 	}
+}
+
+func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
+	// Lets figure out the number of available deals
+	dealsEmpty := 0
+	for _, deal := range cmp.Deals {
+		if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+			dealsEmpty += 1
+		}
+	}
+
+	if dealsEmpty == 0 {
+		return 0, 0
+	}
+
+	// For even distribution.. lets give a target spendable for each available
+	// deal
+	target := spendable / float64(dealsEmpty)
+
+	// 30% margin left and right of target
+	margin := 0.3 * target
+	return target - margin, target + margin
 }
 
 type Campaigns struct {
