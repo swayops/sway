@@ -949,7 +949,11 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			return auth.ErrInvalidID
 		}
 		if changePass {
-			if err := s.auth.ChangePasswordTx(tx, incUser.Email, incUser.OldPass, incUser.Pass, false); err != nil {
+			email := incUser.Email
+			if subEmail := auth.SubUser(c); subEmail != "" {
+				email = subEmail
+			}
+			if err := s.auth.ChangePasswordTx(tx, email, incUser.OldPass, incUser.Pass, false); err != nil {
 				return err
 			}
 			user = s.auth.GetUserTx(tx, id) // always reload after changing the password

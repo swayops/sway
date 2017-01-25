@@ -145,7 +145,6 @@ func putAdmin(s *Server) gin.HandlerFunc {
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		saveUserHelper(s, c, "advertiser")
-
 	}
 }
 

@@ -44,9 +44,12 @@ func GetCtxUser(c *gin.Context) *User {
 	return nil
 }
 
-func IsSubUser(c *gin.Context) bool {
-	_, isu := c.Get(IsSubUserKey)
-	return isu
+func SubUser(c *gin.Context) string {
+	su, _ := c.Get(SubUserKey)
+	if su, ok := su.(string); ok && len(su) > 0 {
+		return su
+	}
+	return ""
 }
 
 func getOwnersKey(itemType ItemType, itemID string) []byte {
