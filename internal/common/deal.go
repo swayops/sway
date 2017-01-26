@@ -326,6 +326,10 @@ func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
 				return nil
 			}
 
+			if !cmp.IsValid() {
+				return nil
+			}
+
 			for _, deal := range cmp.Deals {
 				if deal.IsActive() {
 					deals = append(deals, deal)
