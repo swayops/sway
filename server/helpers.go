@@ -88,16 +88,6 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 var ErrClick = errors.New("Err shortening url")
 
 func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx) *common.Campaign {
-	// Assuming each deal will be paying out max of $5
-	// Lower this if you want less deals
-
-	// The number of deals created is based on an avg
-	// pay per deal value. These deals will be the pool
-	// available.. no more. The deals are later checked
-	// in GetAvailableDeals function to see if they have
-	// been assigned and if they are eligible for the
-	// given influencer.
-
 	var maxDeals int
 	// If there are perks assigned, # of deals are capped
 	// at the # of available perks
@@ -109,17 +99,29 @@ func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx) *common.Ca
 			// so now regardless of whether or not their budget is increased,
 			// or billing is ran, we need to maintain the same number of deals
 			// SO LETS RETURN EARLY
+
+			// NOTE: The only way they can have deals added is if they were
+			// to add more perks!
 			return cmp
 		}
 		maxDeals = cmp.Perks.Count
+	} else if len(cmp.Whitelist) > 0 {
+		if len(cmp.Deals) > 0 {
+			// If a whitelist campaign already has deals, that means that
+			// we've already given them the appropriate number of deals. Only way
+			// they can get more deals if it they add more users to their whitelist
+			return cmp
+		}
+		maxDeals = len(cmp.Whitelist)
 	} else {
-		//
+		// This function is only called on campaign creation and on billing day,
+		// So if it's a goal based campaign, lets replenish deals!
 		maxDeals = cmp.Goal
 	}
 
 	if maxDeals == 0 && s.Cfg.Sandbox {
-		// Override so tests don't fail on the last day of the month
-		// when we have little spendable
+		// Override so tests don't fail based on avg engagements
+		// of test users
 		maxDeals = 100
 	}
 
@@ -707,7 +709,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 	}
 
 	for _, sc := range scraps {
-		if sc.Match(cmp, true) {
+		if sc.Match(cmp, s.budgetDb, s.Cfg, true) {
 			influencers += 1
 			reach += sc.Followers
 		}

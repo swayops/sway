@@ -4,12 +4,19 @@ import (
 	"log"
 	"math"
 
+	"github.com/boltdb/bolt"
+
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/platforms/facebook"
+	"github.com/swayops/sway/platforms/instagram"
+	"github.com/swayops/sway/platforms/twitter"
+	"github.com/swayops/sway/platforms/youtube"
 )
 
 type Scrap struct {
@@ -33,7 +40,7 @@ type Scrap struct {
 	Keywords   []string `json:"keywords,omitempty"`
 
 	// Have all attrs been set already?
-	Attributed bool `json:"attr,omitempty"`
+	Attributed bool `json:"isAttr,omitempty"`
 	// How many times have we tried getting data on this user?
 	Attempts int32 `json:"attempts,omitempty"`
 
@@ -43,13 +50,18 @@ type Scrap struct {
 
 	// Set when the scrap has unsubscribed
 	Ignore bool `json:"ignore,omitempty"`
+
+	FBData    *facebook.Facebook   `json:"fbData,omitempty"`
+	InstaData *instagram.Instagram `json:"instaData,omitempty"`
+	TWData    *twitter.Twitter     `json:"twData,omitempty"`
+	YTData    *youtube.YouTube     `json:"ytData,omitempty"`
 }
 
-func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign) *common.Campaign {
+func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, budgetDb *bolt.DB, cfg *config.Config) *common.Campaign {
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []*common.Campaign
 	for _, cmp := range cmps {
-		if sc.Match(cmp, false) {
+		if sc.Match(cmp, budgetDb, cfg, false) {
 			considered = append(considered, &cmp)
 		}
 	}
@@ -57,7 +69,48 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign) *common.Ca
 	return getBiggestBudget(considered)
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, forecast bool) bool {
+func (sc *Scrap) GetMaxYield(cmp *common.Campaign) float64 {
+	// Expected value on average a post generates
+	var maxYield float64
+	if cmp.YouTube && sc.YTData != nil {
+		yield := sc.YTData.AvgViews * budget.YT_VIEW
+		yield += sc.YTData.AvgComments * budget.YT_COMMENT
+		yield += sc.YTData.AvgLikes * budget.YT_LIKE
+		yield += sc.YTData.AvgDislikes * budget.YT_DISLIKE
+		if yield > maxYield {
+			maxYield = yield
+		}
+	}
+
+	if cmp.Instagram && sc.InstaData != nil {
+		yield := sc.InstaData.AvgLikes * budget.INSTA_LIKE
+		yield += sc.InstaData.AvgComments * budget.INSTA_COMMENT
+		if yield > maxYield {
+			maxYield = yield
+		}
+	}
+
+	if cmp.Twitter && sc.TWData != nil {
+		yield := sc.TWData.AvgLikes * budget.TW_FAVORITE
+		yield += sc.TWData.AvgRetweets * budget.TW_RETWEET
+		if yield > maxYield {
+			maxYield = yield
+		}
+	}
+
+	if cmp.Facebook && sc.FBData != nil {
+		yield := sc.FBData.AvgLikes * budget.FB_LIKE
+		yield += sc.FBData.AvgComments * budget.FB_COMMENT
+		yield += sc.FBData.AvgShares * budget.FB_SHARE
+		if yield > maxYield {
+			maxYield = yield
+		}
+	}
+
+	return maxYield
+}
+
+func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
@@ -75,6 +128,20 @@ func (sc *Scrap) Match(cmp common.Campaign, forecast bool) bool {
 		// Check if scrap satisfies the plan
 		if !subscriptions.CanInfluencerRun(cmp.AgencyId, cmp.Plan, sc.Followers) {
 			return false
+		}
+
+		// Optimization
+		store, err := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
+		if err != nil || store == nil || store.Spendable == 0 || store.Spent > store.Budget {
+			return false
+		}
+
+		if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
+			min, max := cmp.GetTargetYield(store.Spendable)
+			maxYield := sc.GetMaxYield(&cmp)
+			if maxYield < min || maxYield > max || maxYield == 0 {
+				return false
+			}
 		}
 	}
 

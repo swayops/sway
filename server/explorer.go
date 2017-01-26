@@ -401,12 +401,12 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(tw.Text, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}
@@ -441,9 +441,9 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
-		if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
-			continue
-		}
+		// if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
+		// 	continue
+		// }
 
 		postTags := post.Hashtags()
 		if !hasReqHash(post.Caption, postTags) {
@@ -514,12 +514,12 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(post.Caption, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}
@@ -562,10 +562,10 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 	rejections := make(map[string]string)
 
 	for _, post := range inf.Instagram.LatestPosts {
-		if misc.WithinLast(int32(post.Published), waitingPeriod) {
-			rejections[post.Caption] = "WAITING_PERIOD"
-			continue
-		}
+		// if misc.WithinLast(int32(post.Published), waitingPeriod) {
+		// 	rejections[post.Caption] = "WAITING_PERIOD"
+		// 	continue
+		// }
 
 		if !hasReqHash(post.Caption, post.Hashtags) {
 			rejections[post.Caption] = "REQ_HASH"
@@ -640,12 +640,12 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range post.Hashtags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(post.Caption, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}
@@ -686,9 +686,9 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
-		if misc.WithinLast(post.Published, waitingPeriod) {
-			continue
-		}
+		// if misc.WithinLast(post.Published, waitingPeriod) {
+		// 	continue
+		// }
 
 		postTags := post.Hashtags()
 		if !hasReqHash(post.Description, postTags) {
@@ -759,12 +759,12 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(post.Description, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}

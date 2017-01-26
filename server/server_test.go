@@ -3035,15 +3035,15 @@ func TestBalances(t *testing.T) {
 		return
 	}
 
-	// Make sure it DOESNT have deals
+	// Make sure it DOES have deals
 	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmp)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	if len(cmp.Deals) != 0 {
-		t.Fatal("Should NOT have deals now")
+	if len(cmp.Deals) != 100 {
+		t.Fatal("Should have deals from the get-go")
 		return
 	}
 
@@ -5141,10 +5141,6 @@ func TestBilling(t *testing.T) {
 
 			if load.Budget != 5000 {
 				t.Fatal("Campaign budget did not increment!")
-			}
-
-			if len(load.Deals) <= len(oldLoad.Deals) {
-				t.Fatal("Deals did not increase!")
 			}
 
 			// Lets see if it's new store was affected!

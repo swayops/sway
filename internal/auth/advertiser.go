@@ -90,6 +90,15 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 		}
 	}
 
+	if !adv.Status && adv.Subscription != "" {
+		// If the advertiser is being paused.. lets pause the subscription
+		// Plan is being cancelled!
+		swipe.CancelSubscription(adv.Subscription)
+		adv.Subscription = ""
+		adv.Plan = 0
+		adv.SubLoad = nil
+	}
+
 	// Generate a Stripe Customer for an advertiser who passes in
 	// credit card
 	if adv.CCLoad != nil {
@@ -132,7 +141,7 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 				return err
 			}
 			adv.Plan = adv.SubLoad.Plan
-		} else if adv.Subscription != "" && adv.Plan != 0 {
+		} else if adv.Subscription != "" && adv.Plan != 0 && adv.Plan != adv.SubLoad.Plan {
 			// Subscription is being updated!
 			adv.Subscription, err = swipe.UpdateSubscription(u.Name, u.ID, adv.Customer, adv.Subscription, adv.SubLoad)
 			if err != nil {

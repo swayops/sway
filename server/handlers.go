@@ -390,6 +390,11 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Add deals regardless of their budget!
+			// This way we won't care about whether they turn the campaign
+			// on or off.. they always have the appropriate deals given their goal
+			addDealsToCampaign(&cmp, s, tx)
+
 			if cmp.Status {
 				// Create their budget key IF the campaign is on
 				// NOTE: Create budget key requires cmp.Id be set
@@ -397,8 +402,6 @@ func postCampaign(s *Server) gin.HandlerFunc {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
 					return
 				}
-
-				addDealsToCampaign(&cmp, s, tx)
 
 				// Lets add to timeline!
 				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
@@ -687,7 +690,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
 					cmp.Perks.Count += dealsToAdd
 
-					// Add deals
+					// Add deals for perks we added
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 						addDeals(&cmp, dealsToAdd, s, tx)
 						return saveCampaign(tx, &cmp, s)
@@ -716,7 +719,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				if dealsToAdd > 0 {
 					cmp.Perks.Count += dealsToAdd
 
-					// Add deals
+					// Add deals for perks we added
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 						addDeals(&cmp, dealsToAdd, s, tx)
 						return saveCampaign(tx, &cmp, s)
@@ -731,6 +734,13 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		var turnedOff bool
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			if len(additions) > 0 && cmp.Perks == nil {
+				// Add deals depending on how many whitelisted influencers were added
+				// ONLY if it's a non-perk based campaign. We don't add deals for whitelists
+				// for perks
+				addDeals(&cmp, len(additions), s, tx)
+			}
+
 			if upd.Status == nil {
 				goto END
 			}
@@ -1771,6 +1781,33 @@ func assignDeal(s *Server) gin.HandlerFunc {
 					Status:       false,
 				}
 
+				if cmp.Perks.Count == 0 {
+					// Lets email the advertiser letting them know there are no more
+					// perks available!
+
+					user := s.auth.GetUser(cmp.AdvertiserId)
+					if user == nil || user.Advertiser == nil {
+						c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+						return
+					}
+
+					if s.Cfg.ReplyMailClient() != nil {
+						email := templates.NotifyEmptyPerkEmail.Render(map[string]interface{}{"ID": user.ID, "Campaign": cmp.Name, "Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+						resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have no remaining perks for the campaign "+cmp.Name), user.Email, user.Name,
+							[]string{""})
+						if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+							s.Alert("Failed to mail advertiser regarding perks running out", err)
+						} else {
+							if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+								"tag": "no more perks",
+								"id":  user.ID,
+							}); err != nil {
+								log.Println("Failed to log out of perks notify email!", user.ID)
+							}
+						}
+					}
+				}
+
 				// If it's a coupon code.. we do not need admin approval
 				// so lets set the status to true
 				if cmp.Perks.IsCoupon() {
@@ -1973,6 +2010,7 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
+
 				if cmp.Approved == 0 {
 					// This is a campaign who's perks we are waiting for! (inbound)
 					if cmp.Perks != nil {
@@ -1983,6 +2021,10 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 					if cmp.Perks != nil {
 						perksStored += cmp.Perks.Count
 					}
+				}
+
+				if !cmp.IsValid() {
+					return nil
 				}
 
 				for _, d := range cmp.Deals {
@@ -2085,7 +2127,7 @@ func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if cmp.AdvertiserId == targetAdv {
-					cmpTimeline[cmp.Id] = cmp.Timeline
+					cmpTimeline[fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)] = cmp.Timeline
 				}
 				return
 			})
@@ -2550,7 +2592,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				// Lets make sure they have an active subscription!
 				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
 				if err != nil {
-					s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+					s.Alert("Stripe subscription lookup error for "+adv.ID, err)
 					return nil
 				}
 
