@@ -246,11 +246,14 @@ func TestNewAdvertiser(t *testing.T) {
 		// try to add a sub user as a sub user
 		{"POST", "/subUsers/" + adv.ExpID, subUser, 401, nil},
 
+		// this used to fail, so testing for it in case a future change breaks it again
+		{"GET", "/user", nil, 200, M{"id": adv.ExpID}},
+
 		// log back in as the main adv
 		{"POST", "/signIn", adv, 200, nil},
 
 		// delete the subuser and try to log back in as it
-		{"DELETE", "/subUsers/" + adv.ExpID, subUser, 200, nil},
+		{"DELETE", "/subUsers/" + adv.ExpID + "/" + subUserEmail, nil, 200, nil},
 		{"POST", "/signIn", subUser, 400, nil},
 
 		{"POST", "/signIn", adminReq, 200, nil},

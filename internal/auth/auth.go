@@ -107,12 +107,15 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 		ri.hashedPass = ri.user.ID
 		return &ri
 	}
-	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
+	email := ri.user.Email
+	if ri.subUser = token.SubUser; ri.subUser != "" {
+		email = ri.subUser
+	}
+	if l := a.GetLoginTx(tx, email); l != nil {
 		ri.hashedPass = l.Password
 	} else {
 		return nil
 	}
-	ri.subUser = token.SubUser
 	return &ri
 }
 
