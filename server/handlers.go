@@ -352,6 +352,26 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if !allowed {
+			// Lets check if it'd run on the one plan higher
+			for i := 1; i < 4; i++ {
+				// Iterate over campaigns and find the next one that'd work!
+				nextPlan := adv.Plan + i
+				higherAllowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, nextPlan, &cmp)
+				if higherAllowed && err == nil {
+					// The next plan would work!
+					switch nextPlan {
+					case subscriptions.HYPERLOCAL:
+						c.JSON(400, misc.StatusErr(subscriptions.UpgradeToHyper.Error()))
+						return
+					case subscriptions.PREMIUM:
+						c.JSON(400, misc.StatusErr(subscriptions.UpgradeToPremium.Error()))
+						return
+					case subscriptions.ENTERPRISE:
+						c.JSON(400, misc.StatusErr(subscriptions.UpgradeToEnterprise.Error()))
+						return
+					}
+				}
+			}
 			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
 			return
 		}
