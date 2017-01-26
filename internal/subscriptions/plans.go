@@ -1,6 +1,8 @@
 package subscriptions
 
 import (
+	"errors"
+
 	"github.com/stripe/stripe-go/sub"
 	"github.com/swayops/sway/internal/common"
 )
@@ -10,6 +12,12 @@ const (
 	PREMIUM           = 2
 	ENTERPRISE        = 3
 	SwayOpsAdAgencyID = "2"
+)
+
+var (
+	UpgradeToHyper      = errors.New("This campaign requires the Hyper Local Plan")
+	UpgradeToPremium    = errors.New("This campaign requires the Premium Plan")
+	UpgradeToEnterprise = errors.New("This campaign requires the Enterprise Plan")
 )
 
 type Plan interface {
