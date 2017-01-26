@@ -3225,7 +3225,7 @@ func userProfile(srv *Server) gin.HandlerFunc {
 		cu := auth.GetCtxUser(c)
 		id := c.Param("id")
 
-		if id == "" {
+		if id == "" || id == cu.ID {
 			goto SKIP
 		}
 

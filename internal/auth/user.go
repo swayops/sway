@@ -58,6 +58,8 @@ type User struct {
 
 	//special hack, the gods will look down upon us and spit
 	InfluencerLoad *InfluencerLoad `json:"influencer,omitempty"`
+
+	SubUser string `json:"subUser,omitempty"`
 }
 
 type signupUser struct {

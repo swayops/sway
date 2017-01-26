@@ -39,7 +39,10 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 			return
 		}
 		c.Set(gin.AuthUserKey, ri.user)
-		c.Set(SubUserKey, ri.subUser)
+		if ri.subUser != "" {
+			c.Set(SubUserKey, ri.subUser)
+			ri.user.SubUser = ri.subUser
+		}
 		if !ri.isApiKey {
 			misc.RefreshCookie(w, r, domain, "token", TokenAge)
 			misc.RefreshCookie(w, r, domain, "key", TokenAge)
