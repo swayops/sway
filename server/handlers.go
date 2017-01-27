@@ -2846,8 +2846,6 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 		// Email eligible influencers now that campaign is approved!
 		if len(cmp.Whitelist) > 0 {
 			go func() {
-				// Wait an hour before emailing
-				time.Sleep(1 * time.Hour)
 				emailList(s, cmp.Id, nil)
 			}()
 		} else {
