@@ -21,10 +21,6 @@ type Subscription struct {
 func AddSubscription(name, id, custID string, newSub *Subscription) (string, error) {
 	var planKey string
 	if newSub.Plan == subscriptions.ENTERPRISE {
-		if newSub.Price == 0 {
-			return "", ErrPrice
-		}
-
 		// This is an enterprise plan.. which means it has it's own unique plan!
 		planKey = "Enterprise - " + id + " - " + name + " - " + misc.PseudoUUID()
 		planParams := &stripe.PlanParams{
