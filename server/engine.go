@@ -8,6 +8,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/geo"
+	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/instagram"
@@ -54,7 +55,7 @@ func newSwayEngine(srv *Server) error {
 
 	// Check social media keys every hour!
 	addr := &lob.AddressLoad{"917 HARTFORD WAY", "", "BEVERLY HILLS", "CA", "US", "90210"}
-	alertTicker := time.NewTicker(30 * time.Minute)
+	alertTicker := time.NewTicker(10 * time.Minute)
 	go func() {
 		for range alertTicker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
@@ -79,6 +80,11 @@ func newSwayEngine(srv *Server) error {
 
 			if testGeo := geo.GetGeoFromCoords(34.1341, -118.3215, int32(time.Now().Unix())); testGeo == nil || testGeo.State != "CA" {
 				srv.Alert("Error hitting Google geo!", nil)
+			}
+
+			// Ping click URL
+			if err := misc.Request("GET", "https://swayops.com/cl/fakeID", "", nil); err != nil {
+				srv.Alert("Error hitting Click URL!", err)
 			}
 		}
 	}()
@@ -169,7 +175,7 @@ func run(srv *Server) error {
 
 	log.Println("Scraps emailed. Sent:", scrapsEmailed)
 
-	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed > 0 || totalDepleted > 0 {
+	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed > 0 || totalDepleted >= 0.9 {
 		srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, scrapsEmailed, start)
 	}
 
