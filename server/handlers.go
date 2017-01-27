@@ -145,7 +145,6 @@ func putAdmin(s *Server) gin.HandlerFunc {
 func putAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		saveUserHelper(s, c, "advertiser")
-
 	}
 }
 
@@ -348,12 +347,12 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
 		if err != nil {
 			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
-			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign."))
 			return
 		}
 
 		if !allowed {
-			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
+			c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
 			return
 		}
 
@@ -624,7 +623,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if !allowed {
-			c.JSON(400, misc.StatusErr("Advertiser's current subscription plan does not allow for this campaign"))
+			c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
 			return
 		}
 
@@ -3226,7 +3225,7 @@ func userProfile(srv *Server) gin.HandlerFunc {
 		cu := auth.GetCtxUser(c)
 		id := c.Param("id")
 
-		if id == "" {
+		if id == "" || id == cu.ID {
 			goto SKIP
 		}
 

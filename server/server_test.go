@@ -216,7 +216,7 @@ func TestNewAdvertiser(t *testing.T) {
 
 	adv := getSignupUser()
 	adv.Advertiser = &auth.Advertiser{
-		DspFee: 0.5,
+		DspFee:  0.5,
 		CCLoad:  creditCard,
 		SubLoad: getSubscription(3, 100, true),
 	}
@@ -246,11 +246,14 @@ func TestNewAdvertiser(t *testing.T) {
 		// try to add a sub user as a sub user
 		{"POST", "/subUsers/" + adv.ExpID, subUser, 401, nil},
 
+		// this used to fail, so testing for it in case a future change breaks it again
+		{"GET", "/user", nil, 200, M{"id": adv.ExpID}},
+
 		// log back in as the main adv
 		{"POST", "/signIn", adv, 200, nil},
 
 		// delete the subuser and try to log back in as it
-		{"DELETE", "/subUsers/" + adv.ExpID, subUser, 200, nil},
+		{"DELETE", "/subUsers/" + adv.ExpID + "/" + subUserEmail, nil, 200, nil},
 		{"POST", "/signIn", subUser, 400, nil},
 
 		{"POST", "/signIn", adminReq, 200, nil},
@@ -4311,7 +4314,7 @@ func TestSubscriptions(t *testing.T) {
 	// Lets see how many sub users we can make for enterprise!
 	for i := 1; i <= 10; i++ {
 		subUserEmail := adv.ExpID + "-login@test.org" + strconv.Itoa(i)
-		subUser := M{ "email": subUserEmail, "pass": "12345678"}
+		subUser := M{"email": subUserEmail, "pass": "12345678"}
 		r = rst.DoTesting(t, "POST", "/subUsers/"+adv.ExpID, subUser, nil)
 		if r.Status != 200 {
 			t.Fatal("Bad status code!", string(r.Value), i)
@@ -4361,6 +4364,8 @@ func TestSubscriptions(t *testing.T) {
 		return
 	}
 
+	t.Logf("enterprise subscription user: %s", adv.ExpID)
+
 	/////////////////////////////////////
 	//////// PREMIUM TESTING ////////////
 	/////////////////////////////////////
@@ -4407,7 +4412,7 @@ func TestSubscriptions(t *testing.T) {
 	LIMIT := 5
 	for i := 1; i <= 10; i++ {
 		subUserEmail := adv.ExpID + "-login@test.org" + strconv.Itoa(i)
-		subUser := M{ "email": subUserEmail, "pass": "12345678"}
+		subUser := M{"email": subUserEmail, "pass": "12345678"}
 		r = rst.DoTesting(t, "POST", "/subUsers/"+adv.ExpID, subUser, nil)
 		if i > LIMIT {
 			if r.Status == 200 {
@@ -4492,6 +4497,8 @@ func TestSubscriptions(t *testing.T) {
 		return
 	}
 
+	t.Logf("premium subscription user: %s", adv.ExpID)
+
 	//////////////////////////////////////
 	//////// HYPER LOCAL TESTING /////////
 	//////////////////////////////////////
@@ -4536,7 +4543,7 @@ func TestSubscriptions(t *testing.T) {
 
 	// Lets see how many sub users we can make for hyperlocal! Should be 0
 	subUserEmail := adv.ExpID + "-login@test.org.hyper"
-	subUser := M{ "email": subUserEmail, "pass": "12345678"}
+	subUser := M{"email": subUserEmail, "pass": "12345678"}
 	r = rst.DoTesting(t, "POST", "/subUsers/"+adv.ExpID, subUser, nil)
 	if r.Status == 200 {
 		t.Fatal("Bad status code!", string(r.Value))
@@ -4633,6 +4640,8 @@ func TestSubscriptions(t *testing.T) {
 		t.Fatal("Campaign plan incorrect!")
 		return
 	}
+
+	t.Logf("hyberlocal subscription user: %s", adv.ExpID)
 
 	////////////////////////[/////////////
 	//////// PLAN CHANGE TESTING /////////

@@ -12,6 +12,13 @@ const (
 	SwayOpsAdAgencyID = "2"
 )
 
+var (
+	UpgradeToHyper      = "This campaign requires the Hyper Local Plan"
+	UpgradeToPremium    = "This campaign requires the Premium Plan"
+	UpgradeToEnterprise = "This campaign requires the Enterprise Plan"
+	GenericUpgrade      = "The current subscription plan does not allow for this campaign."
+)
+
 type Plan interface {
 	Name() string
 	IsEligibleInfluencer(followers int64) bool
@@ -96,4 +103,30 @@ func IsSubscriptionActive(selfServe bool, subID string) (bool, error) {
 	}
 
 	return false, err
+}
+
+func GetNextPlanMsg(campaign *common.Campaign, currPlan int) string {
+	// Lets check if it'd run on the one plan higher
+	for i := 1; i < 4; i++ {
+		// Iterate over campaigns and find the next one that'd work!
+		nextPlan := currPlan + i
+		plan := GetPlan(nextPlan)
+		if plan == nil {
+			continue
+		}
+
+		allowed := plan.IsEligibleCampaign(campaign)
+		if allowed {
+			// The next plan would work!
+			switch nextPlan {
+			case HYPERLOCAL:
+				return UpgradeToHyper
+			case PREMIUM:
+				return UpgradeToPremium
+			case ENTERPRISE:
+				return UpgradeToEnterprise
+			}
+		}
+	}
+	return GenericUpgrade
 }

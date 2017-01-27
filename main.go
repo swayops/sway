@@ -23,6 +23,10 @@ func main() {
 	if !cfg.Sandbox {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
+	log.Println("Stripe:", cfg.Stripe.Key)
+	log.Println("Lob:", cfg.Lob.Key, cfg.Lob.Addr, cfg.Lob.BankAcct)
+
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(ginLogger("/static", "/favicon.ico", "/api/v1/getIncompleteInfluencers"))

@@ -87,7 +87,7 @@ type reqInfo struct {
 	stoken     string
 	user       *User
 	isApiKey   bool
-	isSubUser  bool
+	subUser    string
 }
 
 func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
@@ -107,12 +107,15 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 		ri.hashedPass = ri.user.ID
 		return &ri
 	}
-	if l := a.GetLoginTx(tx, ri.user.Email); l != nil {
+	email := ri.user.Email
+	if ri.subUser = token.SubUser; ri.subUser != "" {
+		email = ri.subUser
+	}
+	if l := a.GetLoginTx(tx, email); l != nil {
 		ri.hashedPass = l.Password
 	} else {
 		return nil
 	}
-	ri.isSubUser = token.IsSubUser
 	return &ri
 }
 
@@ -124,7 +127,10 @@ func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string,
 		return nil, "", ErrInvalidPass
 	}
 	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
-	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(TokenAge).UnixNano(), IsSubUser: l.IsSubUser}
+	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(TokenAge).UnixNano()}
+	if l.IsSubUser {
+		ntok.SubUser = email
+	}
 	err = misc.PutTxJson(tx, a.cfg.Bucket.Token, stok, ntok)
 	return
 }
@@ -190,7 +196,7 @@ type Token struct {
 
 	// if IsSubUser is true it means this is a sub-user under and advertiser.
 	// this is only used by the UI
-	IsSubUser bool `json:"isSubUser,omitempty"`
+	SubUser string `json:"subUser,omitempty"`
 }
 
 func (t *Token) IsValid(ts time.Time) bool {

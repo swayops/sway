@@ -16,7 +16,7 @@ import (
 	"github.com/swayops/sway/misc"
 )
 
-const IsSubUserKey = ":isSubUser:"
+const SubUserKey = "subUser"
 
 func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 	domain := a.cfg.Domain
@@ -39,8 +39,9 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 			return
 		}
 		c.Set(gin.AuthUserKey, ri.user)
-		if ri.isSubUser {
-			c.Set(IsSubUserKey, true)
+		if ri.subUser != "" {
+			c.Set(SubUserKey, ri.subUser)
+			ri.user.SubUser = ri.subUser
 		}
 		if !ri.isApiKey {
 			misc.RefreshCookie(w, r, domain, "token", TokenAge)
@@ -304,6 +305,7 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 func (a *Auth) AddSubUserHandler(c *gin.Context) {
 	var (
 		su struct {
+			Name     string `json:"name"`
 			Email    string `json:"email"`
 			Password string `json:"pass"`
 		}
@@ -316,7 +318,7 @@ func (a *Auth) AddSubUserHandler(c *gin.Context) {
 		return
 	}
 
-	if IsSubUser(c) {
+	if SubUser(c) != "" {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
@@ -345,22 +347,15 @@ func (a *Auth) AddSubUserHandler(c *gin.Context) {
 
 func (a *Auth) DelSubUserHandler(c *gin.Context) {
 	var (
-		su struct {
-			Email string `json:"email"`
-		}
-		id = c.Param("id")
+		id    = c.Param("id")
+		email = c.Param("email")
 	)
 
-	if err := c.Bind(&su); err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, err)
-		return
-	}
-
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		if l := a.GetLoginTx(tx, su.Email); l == nil || !l.IsSubUser || l.UserID != id {
+		if l := a.GetLoginTx(tx, email); l == nil || !l.IsSubUser || l.UserID != id {
 			return ErrInvalidRequest
 		}
-		return misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(su.Email))
+		return misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(email))
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 	} else {
@@ -369,7 +364,7 @@ func (a *Auth) DelSubUserHandler(c *gin.Context) {
 }
 
 func (a *Auth) ListSubUsersHandler(c *gin.Context) {
-	if _, ok := c.Get(IsSubUserKey); ok {
+	if SubUser(c) != "" {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
@@ -403,14 +398,11 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		err  error
 	)
 	a.db.Update(func(tx *bolt.Tx) error {
-		if l := a.GetLoginTx(tx, req.Email); l != nil && l.IsSubUser {
-			err = ErrSubUser
-		} else if l == nil {
+		if a.GetLoginTx(tx, req.Email) == nil {
 			err = ErrInvalidEmail
 		} else {
 			u, stok, err = a.RequestResetPasswordTx(tx, req.Email)
 		}
-
 		return nil
 	})
 	if err != nil {
@@ -432,6 +424,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		misc.AbortWithErr(c, 500, ErrUnexpected)
 		return
 	}
+
 	c.JSON(200, misc.StatusOK(""))
 }
 
@@ -452,12 +445,14 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)
 		return
 	}
+
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		return a.ResetPasswordTx(tx, req.Token, req.Email, req.Password)
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
+
 	c.JSON(200, misc.StatusOK(""))
 }
 
