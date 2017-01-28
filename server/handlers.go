@@ -447,6 +447,12 @@ func getCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getCampaignStore(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(200, s.Campaigns.GetStore())
+	}
+}
+
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		targetAdv := c.Param("id")
