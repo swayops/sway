@@ -53,3 +53,8 @@ func (plan *HyperLocal) IsEligibleCampaign(cmp *common.Campaign) bool {
 
 	return true
 }
+
+func (plan *HyperLocal) CanAddSubUser(curr int) bool {
+	// Only allowed 1!
+	return false
+}

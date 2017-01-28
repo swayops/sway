@@ -232,6 +232,8 @@ func getDashRoutes(srv *Server) func(c *gin.Context) {
 		case "static":
 			staticGzer(c)
 			return
+		case "views":
+			c.File(filepath.Join(srv.Cfg.DashboardPath, "app", "views", parts[1]))
 		default:
 			c.Data(200, gin.MIMEHTML, idxFileHTML)
 		}
@@ -349,12 +351,19 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Advertiser
 	createRoutes(verifyGroup, srv, "/advertiser", "id", scopes["adv"], auth.AdvertiserItem, getAdvertiser, nil,
 		putAdvertiser, nil)
+
+	advScopes := srv.auth.CheckScopes(scopes["adv"])
+	verifyGroup.GET("/subUsers/:id", advScopes, srv.auth.ListSubUsersHandler)
+	verifyGroup.POST("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
+	verifyGroup.DELETE("/subUsers/:id/:email", srv.auth.DelSubUserHandler)
+
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
 	verifyGroup.GET("/getAdvertiserTimeline/:id", getAdvertiserTimeline(srv))
 
 	adminGroup.GET("/balance/:id", getBalance(srv))
+	adminGroup.GET("/getCampaignStore", getCampaignStore(srv))
 
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)

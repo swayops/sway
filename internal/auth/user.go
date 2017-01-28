@@ -29,8 +29,9 @@ const (
 )
 
 type Login struct {
-	UserID   string `json:"userID"`
-	Password string `json:"password"`
+	UserID    string `json:"userID"`
+	Password  string `json:"password"`
+	IsSubUser bool   `json:"isSubUser,omitempty"`
 }
 
 type User struct {
@@ -57,6 +58,8 @@ type User struct {
 
 	//special hack, the gods will look down upon us and spit
 	InfluencerLoad *InfluencerLoad `json:"influencer,omitempty"`
+
+	SubUser string `json:"subUser,omitempty"`
 }
 
 type signupUser struct {

@@ -3,10 +3,10 @@ package templates
 const infEmailTmpl = `
 <div>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hey {{Name}},
+		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hope you're doing well. I wanted to reach out as we are excited to announce there are new Sways that requested your participation:
+		We are excited to announce there are new Sways that requested your participation:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">
@@ -44,10 +44,10 @@ const infEmailTmpl = `
 const infCmpEmail = `
 <div>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hey {{Name}},
+		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hope you're doing well. Just wanted to reach out as we are excited to announce there is a new Sway that requested your participation and I wanted to get your interest level:
+		We are excited to announce there is a new Sway that requested your participation and I wanted to get your interest level:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">

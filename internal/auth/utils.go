@@ -15,6 +15,7 @@ var (
 	ErrInvalidAgencyID  = errors.New("invalid agency id")
 	ErrInvalidID        = errors.New("invalid item id")
 	ErrInvalidName      = errors.New("invalid or missing name (must be full name)")
+	ErrSubUser          = errors.New("only the main account owner can request a change password")
 	ErrInvalidEmail     = errors.New("invalid or missing email")
 	ErrUserExists       = errors.New("the email address already exists")
 	ErrInvalidUserType  = errors.New("invalid or missing user type")
@@ -41,6 +42,14 @@ func GetCtxUser(c *gin.Context) *User {
 		}
 	}
 	return nil
+}
+
+func SubUser(c *gin.Context) string {
+	su, _ := c.Get(SubUserKey)
+	if su, ok := su.(string); ok && len(su) > 0 {
+		return su
+	}
+	return ""
 }
 
 func getOwnersKey(itemType ItemType, itemID string) []byte {

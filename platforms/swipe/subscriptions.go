@@ -21,19 +21,14 @@ type Subscription struct {
 func AddSubscription(name, id, custID string, newSub *Subscription) (string, error) {
 	var planKey string
 	if newSub.Plan == subscriptions.ENTERPRISE {
-		if newSub.Price == 0 {
-			return "", ErrPrice
-		}
-
 		// This is an enterprise plan.. which means it has it's own unique plan!
 		planKey = "Enterprise - " + id + " - " + name + " - " + misc.PseudoUUID()
 		planParams := &stripe.PlanParams{
-			ID:          planKey,
-			Name:        planKey,
-			Amount:      uint64(newSub.Price * 100),
-			Currency:    currency.USD,
-			Interval:    plan.Month,
-			TrialPeriod: 14,
+			ID:       planKey,
+			Name:     planKey,
+			Amount:   uint64(newSub.Price * 100),
+			Currency: currency.USD,
+			Interval: plan.Month,
 		}
 		if newSub.Monthly {
 			planParams.Interval = plan.Month
@@ -74,19 +69,14 @@ func AddSubscription(name, id, custID string, newSub *Subscription) (string, err
 func UpdateSubscription(name, id, custID, oldSub string, newSub *Subscription) (string, error) {
 	var planKey string
 	if newSub.Plan == subscriptions.ENTERPRISE {
-		if newSub.Price == 0 {
-			return "", ErrPrice
-		}
-
 		// This is an enterprise plan.. which means it has it's own unique plan!
 		planKey = "Enterprise - " + id + " - " + name + " - " + misc.PseudoUUID()
 		planParams := &stripe.PlanParams{
-			ID:          planKey,
-			Name:        planKey,
-			Amount:      uint64(newSub.Price * 100),
-			Currency:    currency.USD,
-			Interval:    plan.Month,
-			TrialPeriod: 14,
+			ID:       planKey,
+			Name:     planKey,
+			Amount:   uint64(newSub.Price * 100),
+			Currency: currency.USD,
+			Interval: plan.Month,
 		}
 		plan.New(planParams)
 	} else {

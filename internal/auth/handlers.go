@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,9 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/sharpspring"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
+
+const SubUserKey = "subUser"
 
 func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 	domain := a.cfg.Domain
@@ -35,6 +39,10 @@ func (a *Auth) VerifyUser(allowAnon bool) func(c *gin.Context) {
 			return
 		}
 		c.Set(gin.AuthUserKey, ri.user)
+		if ri.subUser != "" {
+			c.Set(SubUserKey, ri.subUser)
+			ri.user.SubUser = ri.subUser
+		}
 		if !ri.isApiKey {
 			misc.RefreshCookie(w, r, domain, "token", TokenAge)
 			misc.RefreshCookie(w, r, domain, "key", TokenAge)
@@ -294,6 +302,86 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 	}
 }
 
+func (a *Auth) AddSubUserHandler(c *gin.Context) {
+	var (
+		su struct {
+			Name     string `json:"name"`
+			Email    string `json:"email"`
+			Password string `json:"pass"`
+		}
+
+		id = c.Param("id")
+	)
+
+	if err := c.Bind(&su); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+		return
+	}
+
+	if SubUser(c) != "" {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
+
+	u := GetCtxUser(c)
+	if u.ID != id {
+		u = a.GetUser(id)
+	}
+
+	if err := a.db.Update(func(tx *bolt.Tx) error {
+		if u.Advertiser != nil && u.Advertiser.IsSelfServe() {
+			// If the user is a self serve advertiser.. we need to
+			// check that their plan allows for this!
+			plan := subscriptions.GetPlan(u.Advertiser.Plan)
+			if plan == nil || !plan.CanAddSubUser(len(a.ListSubUsersTx(tx, u.ID))) {
+				return errors.New("Current plan does not allow for any more logins")
+			}
+		}
+		return a.AddSubUsersTx(tx, id, su.Email, su.Password)
+	}); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+	} else {
+		c.JSON(200, misc.StatusOK(id))
+	}
+}
+
+func (a *Auth) DelSubUserHandler(c *gin.Context) {
+	var (
+		id    = c.Param("id")
+		email = c.Param("email")
+	)
+
+	if err := a.db.Update(func(tx *bolt.Tx) error {
+		if l := a.GetLoginTx(tx, email); l == nil || !l.IsSubUser || l.UserID != id {
+			return ErrInvalidRequest
+		}
+		return misc.GetBucket(tx, a.cfg.Bucket.Login).Delete([]byte(email))
+	}); err != nil {
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
+	} else {
+		c.JSON(200, misc.StatusOK(id))
+	}
+}
+
+func (a *Auth) ListSubUsersHandler(c *gin.Context) {
+	if SubUser(c) != "" {
+		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
+		return
+	}
+
+	var (
+		id  = c.Param("id")
+		out []string
+	)
+
+	a.db.View(func(tx *bolt.Tx) error {
+		out = a.ListSubUsersTx(tx, id)
+		return nil
+	})
+
+	c.JSON(200, out)
+}
+
 const resetPasswordUrl = "%s/resetPassword/%s"
 
 func (a *Auth) ReqResetHandler(c *gin.Context) {
@@ -310,13 +398,18 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		err  error
 	)
 	a.db.Update(func(tx *bolt.Tx) error {
-		u, stok, err = a.RequestResetPasswordTx(tx, req.Email)
+		if a.GetLoginTx(tx, req.Email) == nil {
+			err = ErrInvalidEmail
+		} else {
+			u, stok, err = a.RequestResetPasswordTx(tx, req.Email)
+		}
 		return nil
 	})
 	if err != nil {
-		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
+		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
+
 	tmplData := struct {
 		Sandbox bool
 		URL     string
@@ -331,6 +424,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		misc.AbortWithErr(c, 500, ErrUnexpected)
 		return
 	}
+
 	c.JSON(200, misc.StatusOK(""))
 }
 
@@ -351,12 +445,14 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrPasswordMismatch)
 		return
 	}
+
 	if err := a.db.Update(func(tx *bolt.Tx) error {
 		return a.ResetPasswordTx(tx, req.Token, req.Email, req.Password)
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
+
 	c.JSON(200, misc.StatusOK(""))
 }
 
