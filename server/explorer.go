@@ -325,10 +325,6 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		}
 
 		postTags := tw.Hashtags()
-		// check for required hashes!
-		if !hasReqHash(tw.Text, postTags) {
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -394,6 +390,14 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		}
 
 		if foundHash && foundMention && foundLink {
+			// check for required hashes!
+			if !hasReqHash(tw.Text, postTags) {
+				if err := inf.DealRejection("hashtags (#ad)", tw.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -446,9 +450,6 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 		// }
 
 		postTags := post.Hashtags()
-		if !hasReqHash(post.Caption, postTags) {
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -507,6 +508,13 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !hasReqHash(post.Caption, postTags) {
+				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -566,11 +574,6 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		// 	rejections[post.Caption] = "WAITING_PERIOD"
 		// 	continue
 		// }
-
-		if !hasReqHash(post.Caption, post.Hashtags) {
-			rejections[post.Caption] = "REQ_HASH"
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -633,6 +636,13 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !hasReqHash(post.Caption, post.Hashtags) {
+				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -691,9 +701,6 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		// }
 
 		postTags := post.Hashtags()
-		if !hasReqHash(post.Description, postTags) {
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -752,6 +759,13 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !hasReqHash(post.Description, postTags) {
+				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
