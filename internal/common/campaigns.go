@@ -75,6 +75,7 @@ func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) 
 	// has not previously been set
 	tl := &Timeline{Message: msg, TS: time.Now().Unix()}
 
+	// Need Ahmed's help here!
 	switch msg {
 	case PERK_WAIT:
 		tl.Link = "INSERT LINK FOR SHIPPING INFO PAGE"
