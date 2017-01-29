@@ -217,10 +217,10 @@ func (t *Tweet) UpdateData(cfg *config.Config) (ban, err error) {
 		}
 	}
 
-	t.FavoritesDelta = tmp.Favorites - t.Favorites
+	t.FavoritesDelta += tmp.Favorites - t.Favorites
 	t.Favorites = tmp.Favorites
 
-	t.RetweetsDelta = tmp.Retweets - t.Retweets
+	t.RetweetsDelta += tmp.Retweets - t.Retweets
 	t.Retweets = tmp.Retweets
 
 	t.LastUpdated = int32(time.Now().Unix())
