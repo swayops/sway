@@ -134,7 +134,7 @@ func billingNotify(s *Server) error {
 
 		if s.Cfg.ReplyMailClient() != nil {
 			email := templates.NotifyBillingEmail.Render(map[string]interface{}{"Name": user.Name, "campaign": v})
-			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Sway Billing Notification for Advertiser "+user.Name), "shahzilabid@gmail.com", user.Name,
+			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Sway Billing Notification for Advertiser "+user.Name), user.Email, user.Name,
 				[]string{""})
 			if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 				s.Alert("Failed to mail advertiser about billing notification", err)
@@ -169,10 +169,10 @@ func daysInMonth(year int, month time.Month) int {
 }
 
 func isNotificationDay() bool {
-	// Checks to see if there are 7 days left until billing
+	// Checks to see if there are 5 days left until billing
 	now := time.Now().UTC()
 	days := daysInMonth(now.Year(), now.Month())
 	daysUntilEnd := days - now.Day()
 
-	return daysUntilEnd == 7
+	return daysUntilEnd == 5
 }
