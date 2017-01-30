@@ -1828,7 +1828,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 					// Lets also delete the coupon code
 					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
 				} else {
-					s.Notify("Perk requested!", "Somebody just requested a perk to be mailed to them! Please check admin dash.")
+					s.Notify("Perk requested!", fmt.Sprintf("%s just requested a perk (%s) to be mailed to them! Please check admin dash.", inf.Name, cmp.Perks.Name))
 				}
 			}
 
@@ -2983,7 +2983,7 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		s.Notify("Check requested!", "Somebody just requested a check! Please check admin dash.")
+		s.Notify("Check requested!", fmt.Sprintf("%s just requested a check of %f! Please check admin dash.", inf.Name, inf.PendingPayout))
 
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
