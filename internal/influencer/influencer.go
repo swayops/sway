@@ -466,47 +466,6 @@ func (inf *Influencer) GetImages(cfg *config.Config) []string {
 	return urls
 }
 
-func (inf *Influencer) GetMaxYield(cmp *common.Campaign) float64 {
-	// Expected value on average a post generates
-	var maxYield float64
-	if cmp.YouTube && inf.YouTube != nil {
-		yield := inf.YouTube.AvgViews * budget.YT_VIEW
-		yield += inf.YouTube.AvgComments * budget.YT_COMMENT
-		yield += inf.YouTube.AvgLikes * budget.YT_LIKE
-		yield += inf.YouTube.AvgDislikes * budget.YT_DISLIKE
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Instagram && inf.Instagram != nil {
-		yield := inf.Instagram.AvgLikes * budget.INSTA_LIKE
-		yield += inf.Instagram.AvgComments * budget.INSTA_COMMENT
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Twitter && inf.Twitter != nil {
-		yield := inf.Twitter.AvgLikes * budget.TW_FAVORITE
-		yield += inf.Twitter.AvgRetweets * budget.TW_RETWEET
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Facebook && inf.Facebook != nil {
-		yield := inf.Facebook.AvgLikes * budget.FB_LIKE
-		yield += inf.Facebook.AvgComments * budget.FB_COMMENT
-		yield += inf.Facebook.AvgShares * budget.FB_SHARE
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	return maxYield
-}
-
 func (inf *Influencer) GetNetworks() []string {
 	var networks []string
 	if inf.Facebook != nil {
@@ -866,7 +825,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				// given what the campaign's influencer goal is and how
 				// many funds we have left
 				min, max := cmp.GetTargetYield(targetDeal.Spendable)
-				maxYield := inf.GetMaxYield(&cmp)
+				maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 				if maxYield < min || maxYield > max || maxYield == 0 {
 					rejections[cmp.Id] = "MAX_YIELD"
 					continue

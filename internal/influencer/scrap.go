@@ -69,47 +69,6 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, budgetDb *
 	return getBiggestBudget(considered)
 }
 
-func (sc *Scrap) GetMaxYield(cmp *common.Campaign) float64 {
-	// Expected value on average a post generates
-	var maxYield float64
-	if cmp.YouTube && sc.YTData != nil {
-		yield := sc.YTData.AvgViews * budget.YT_VIEW
-		yield += sc.YTData.AvgComments * budget.YT_COMMENT
-		yield += sc.YTData.AvgLikes * budget.YT_LIKE
-		yield += sc.YTData.AvgDislikes * budget.YT_DISLIKE
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Instagram && sc.InstaData != nil {
-		yield := sc.InstaData.AvgLikes * budget.INSTA_LIKE
-		yield += sc.InstaData.AvgComments * budget.INSTA_COMMENT
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Twitter && sc.TWData != nil {
-		yield := sc.TWData.AvgLikes * budget.TW_FAVORITE
-		yield += sc.TWData.AvgRetweets * budget.TW_RETWEET
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Facebook && sc.FBData != nil {
-		yield := sc.FBData.AvgLikes * budget.FB_LIKE
-		yield += sc.FBData.AvgComments * budget.FB_COMMENT
-		yield += sc.FBData.AvgShares * budget.FB_SHARE
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	return maxYield
-}
-
 func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
 	if !forecast {
 		// Check if there's an available deal
@@ -138,7 +97,7 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 
 		if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
 			min, max := cmp.GetTargetYield(store.Spendable)
-			maxYield := sc.GetMaxYield(&cmp)
+			maxYield := getMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 			if maxYield < min || maxYield > max || maxYield == 0 {
 				return false
 			}
