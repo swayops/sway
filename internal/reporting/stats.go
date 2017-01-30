@@ -205,7 +205,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 			val.Comments += tot.Total.Comments
 			val.Shares += tot.Total.Shares
 			val.Spent += tot.Total.Spent
-			val.Influencers = tot.Total.Influencers
+			val.Influencers += tot.Total.Influencers
 			val.Perks += tot.Total.Perks
 		}
 	}
