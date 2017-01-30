@@ -72,7 +72,7 @@ func (cmp *Campaign) IsValid() bool {
 }
 
 const (
-	WIKI = "http://swayops.com/wiki/how-sway-works.php"
+	WIKI = "https://swayops.com/wiki/how-sway-works.php"
 )
 
 func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) {
