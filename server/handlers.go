@@ -1117,7 +1117,7 @@ func getBio(s *Server) gin.HandlerFunc {
 		)
 		for _, deal := range inf.CompletedDeals {
 			total := deal.TotalStats()
-			dealEng := int64(total.Likes + total.Comments + total.Shares + total.Clicks)
+			dealEng := int64(total.Likes + total.Comments + total.Shares + total.GetClicks())
 
 			eng += dealEng
 
@@ -2025,7 +2025,7 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 					comments += stats.Comments
 					shares += stats.Shares
 					views += stats.Views
-					clicks += stats.Clicks
+					clicks += stats.GetClicks()
 				}
 			}
 
@@ -3460,11 +3460,6 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if foundDeal.Completed == 0 {
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
-
 		infId := foundDeal.InfluencerId
 		// Stored as a comma separated list of dealIDs satisfied
 		prevClicks := misc.GetCookie(c.Request, "click")
@@ -3482,18 +3477,31 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		var added bool
+
+		// Lets search in completed deals first!
 		for _, infDeal := range inf.CompletedDeals {
-			if foundDeal.Id == infDeal.Id && infDeal.Completed > 0 {
+			if foundDeal.Id == infDeal.Id {
 				infDeal.Click()
 				added = true
 				break
 			}
 		}
 
+		if !added {
+			// Ok lets check active deals if deal wasn't found in completed!
+			for _, infDeal := range inf.ActiveDeals {
+				if foundDeal.Id == infDeal.Id {
+					infDeal.Click()
+					added = true
+					break
+				}
+			}
+		}
+
 		// SAVE!
 		// Also saves influencers!
 		if added {
-			if err := saveAllCompletedDeals(s, inf); err != nil {
+			if err := saveAllDeals(s, inf); err != nil {
 				c.Redirect(302, foundDeal.Link)
 				return
 			}
@@ -3568,7 +3576,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							d.Comments = total.Comments
 							d.Shares = total.Shares
 							d.Views = total.Views
-							d.Clicks = total.Clicks
+							d.Clicks = total.GetClicks()
 
 							// Check for virality
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)

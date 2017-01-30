@@ -2663,7 +2663,6 @@ func TestClicks(t *testing.T) {
 	doDeal(rst, t, inf.ExpID, "2", false)
 
 	// Influencer has assigned deals.. lets try clicking!
-	// It shouldn't allow it!
 	var load auth.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
@@ -2708,7 +2707,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Make sure there are no clicks
+	// Make sure there are no clicks in reporting
 	var breakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &breakdown)
 	if r.Status != 200 {
@@ -2718,6 +2717,26 @@ func TestClicks(t *testing.T) {
 
 	if breakdown["total"].Clicks > 0 {
 		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	// There should be a pending click for the deal however!
+	var pendingClick common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &pendingClick)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	clicks := 0
+	for _, deal := range pendingClick.Deals {
+		for _, stats := range deal.Reporting {
+			clicks += len(stats.PendingClicks)
+		}
+	}
+
+	if clicks != 1 {
+		t.Fatal("Expected one pending click")
 		return
 	}
 
@@ -2761,6 +2780,32 @@ func TestClicks(t *testing.T) {
 
 	if !strings.Contains(r.URL, "blank.org") {
 		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	// Make sure pending click was emptied out but approved is there!
+	var approvedClick common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &approvedClick)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	var pending, approved int
+	for _, deal := range approvedClick.Deals {
+		for _, stats := range deal.Reporting {
+			pending += len(stats.PendingClicks)
+			approved += len(stats.ApprovedClicks)
+		}
+	}
+
+	if pending != 0 {
+		t.Fatal("Expected zero pending click")
+		return
+	}
+
+	if approved != 1 {
+		t.Fatal("Expected one approved click")
 		return
 	}
 

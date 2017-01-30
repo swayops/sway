@@ -191,7 +191,7 @@ func explore(srv *Server) (int32, error) {
 
 var urlErr = errors.New("Failed to retrieve post URL")
 
-func (srv *Server) CompleteDeal(d *common.Deal) error {
+func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 	if d.PostUrl == "" {
 		return urlErr
 	}
@@ -213,6 +213,13 @@ func (srv *Server) CompleteDeal(d *common.Deal) error {
 		}
 
 		d.Completed = int32(time.Now().Unix())
+
+		// Lets move over any clicks that may have been pending to APPROVED
+		if completion == 0 {
+			completion = d.Completed
+		}
+		d.Reporting = d.SanitizeClicks(completion)
+
 		cmp.Deals[d.Id] = d
 
 		inf, ok := srv.auth.Influencers.Get(d.InfluencerId)
@@ -267,28 +274,28 @@ func (srv *Server) ApproveTweet(tweet *twitter.Tweet, d *common.Deal) error {
 	d.Tweet = tweet
 	d.PostUrl = tweet.PostURL
 	d.AssignedPlatform = platform.Twitter
-	return srv.CompleteDeal(d)
+	return srv.CompleteDeal(d, int32(tweet.CreatedAt.Unix()))
 }
 
 func (srv *Server) ApproveFacebook(post *facebook.Post, d *common.Deal) error {
 	d.Facebook = post
 	d.PostUrl = post.PostURL
 	d.AssignedPlatform = platform.Facebook
-	return srv.CompleteDeal(d)
+	return srv.CompleteDeal(d, int32(post.Published.Unix()))
 }
 
 func (srv *Server) ApproveInstagram(post *instagram.Post, d *common.Deal) error {
 	d.Instagram = post
 	d.PostUrl = post.PostURL
 	d.AssignedPlatform = platform.Instagram
-	return srv.CompleteDeal(d)
+	return srv.CompleteDeal(d, post.Published)
 }
 
 func (srv *Server) ApproveYouTube(post *youtube.Post, d *common.Deal) error {
 	d.YouTube = post
 	d.PostUrl = post.PostURL
 	d.AssignedPlatform = platform.YouTube
-	return srv.CompleteDeal(d)
+	return srv.CompleteDeal(d, post.Published)
 }
 
 func hasReqHash(text string, hashtags []string) bool {

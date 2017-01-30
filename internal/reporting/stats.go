@@ -78,7 +78,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 
 			tg.Total.Engagements += eng
 			tg.Total.Likes += st.Likes
-			tg.Total.Clicks += st.Clicks
+			tg.Total.Clicks += st.GetClicks()
 			tg.Total.Views += st.Views
 			tg.Total.Spent += st.Influencer + st.TotalMarkup()
 			tg.Total.Shares += st.Shares
@@ -133,7 +133,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats,
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += st.Views
-	stats.Clicks += st.Clicks
+	stats.Clicks += st.GetClicks()
 	stats.Spent += st.Influencer + st.TotalMarkup()
 	stats.InfluencerId = infId
 	stats.Network = channel
@@ -148,7 +148,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	}
 
 	stats.Likes += st.Likes
-	stats.Clicks += st.Clicks
+	stats.Clicks += st.GetClicks()
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += st.Views
@@ -171,7 +171,7 @@ func GetInfluencerStats(inf influencer.Influencer, cfg *config.Config, from, to 
 
 		st := deal.Get(dates, agid)
 		eng := getEngagements(st)
-		stats.Clicks += st.Clicks
+		stats.Clicks += st.GetClicks()
 		stats.Likes += st.Likes
 		stats.Comments += st.Comments
 		stats.Shares += st.Shares

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -93,12 +94,39 @@ type Stats struct {
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 	Views    int32 `json:"views,omitempty"`
-	Clicks   int32 `json:"clicks,omitempty"`
 	Perks    int32 `json:"perks,omitempty"`
+
+	PendingClicks  []*Click `json:"pendingClicks,omitempty"`
+	ApprovedClicks []*Click `json:"approvedClicks,omitempty"`
+}
+
+type Click struct {
+	TS int32 `json:"ts,omitempty"`
 }
 
 func (st *Stats) TotalMarkup() float64 {
 	return st.DSP + st.Exchange + st.Agency
+}
+
+func (st *Stats) GetClicks() int32 {
+	return int32(len(st.ApprovedClicks))
+}
+
+func (d *Deal) SanitizeClicks(completion int32) map[string]*Stats {
+	// Takes in a completion time and calculates which ones were AFTER the completion time!
+	reporting := make(map[string]*Stats)
+
+	for key, data := range d.Reporting {
+		for _, click := range data.PendingClicks {
+			if click.TS >= completion {
+				data.ApprovedClicks = append(data.ApprovedClicks, click)
+			}
+		}
+		data.PendingClicks = nil
+		reporting[key] = data
+	}
+
+	return reporting
 }
 
 func (d *Deal) TotalStats() *Stats {
@@ -109,7 +137,7 @@ func (d *Deal) TotalStats() *Stats {
 		total.Comments += data.Comments
 		total.Shares += data.Shares
 		total.Views += data.Views
-		total.Clicks += data.Clicks
+		total.ApprovedClicks = append(total.ApprovedClicks, data.ApprovedClicks...)
 		total.Influencer += data.Influencer
 		total.Agency += data.Agency
 	}
@@ -202,7 +230,7 @@ func (d *Deal) Click() {
 		d.Reporting[key] = data
 	}
 
-	data.Clicks += 1
+	data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
 }
 
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {
@@ -250,7 +278,7 @@ func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 		data.Comments += stats.Comments
 		data.Shares += stats.Shares
 		data.Views += stats.Views
-		data.Clicks += stats.Clicks
+		data.ApprovedClicks = append(data.ApprovedClicks, stats.ApprovedClicks...)
 
 		data.Perks += stats.Perks
 	}
