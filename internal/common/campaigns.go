@@ -80,10 +80,10 @@ func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) 
 	// has not previously been set
 	tl := &Timeline{Message: msg, TS: time.Now().Unix()}
 
-	editCampaign := fmt.Sprintf("%s/editCampaign/%s/%s", cfg.DashURL, cmp.AdvertiserId, cmp.Id)
-	contentFeed := fmt.Sprintf("%s/contentFeed/%s", cfg.DashURL, cmp.AdvertiserId)
-	manageCampaigns := fmt.Sprintf("%s/mCampaigns/%s", cfg.DashURL, cmp.AdvertiserId)
-	shippingInfo := fmt.Sprintf("%s/shippingPerks/%s", cfg.DashURL, cmp.AdvertiserId)
+	editCampaign := fmt.Sprintf("/editCampaign/%s/%s", cmp.AdvertiserId, cmp.Id)
+	contentFeed := fmt.Sprintf("/contentFeed/%s", cmp.AdvertiserId)
+	manageCampaigns := fmt.Sprintf("/mCampaigns/%s", cmp.AdvertiserId)
+	shippingInfo := fmt.Sprintf("/shippingPerks/%s", cmp.AdvertiserId)
 
 	switch msg {
 	case PERK_WAIT:
