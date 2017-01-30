@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -70,23 +71,31 @@ func (cmp *Campaign) IsValid() bool {
 	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
 }
 
+const (
+	WIKI = "http://swayops.com/wiki/how-sway-works.php"
+)
+
 func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) {
 	// If the unique flag is present we will make sure this msg
 	// has not previously been set
 	tl := &Timeline{Message: msg, TS: time.Now().Unix()}
 
-	// Need Ahmed's help here!
+	editCampaign := fmt.Sprintf("%s/editCampaign/%s/%s", cfg.DashURL, cmp.AdvertiserId, cmp.Id)
+	contentFeed := fmt.Sprintf("%s/contentFeed/%s", cfg.DashURL, cmp.AdvertiserId)
+	manageCampaigns := fmt.Sprintf("%s/mCampaigns/%s", cfg.DashURL, cmp.AdvertiserId)
+	shippingInfo := fmt.Sprintf("%s/shippingPerks/%s", cfg.DashURL, cmp.AdvertiserId)
+
 	switch msg {
 	case PERK_WAIT:
-		tl.Link = "INSERT LINK FOR SHIPPING INFO PAGE"
+		tl.Link = shippingInfo
 	case CAMPAIGN_START, PERKS_RECEIVED:
-		tl.Link = "INSERT LINK TO WIKI PAGE"
+		tl.Link = WIKI
 	case DEAL_ACCEPTED, PERKS_MAILED:
-		tl.Link = "INSERT LINK TO MANAGE CAMPAIGNS PAGE"
+		tl.Link = manageCampaigns
 	case CAMPAIGN_SUCCESS:
-		tl.Link = "INSERT LINK TO ADV CONTENT FEED"
+		tl.Link = contentFeed
 	case CAMPAIGN_PAUSED:
-		tl.Link = "INSERT LINK TO EDIT CAMPAIGN PAGE"
+		tl.Link = editCampaign
 	}
 
 	if len(cmp.Timeline) == 0 {
