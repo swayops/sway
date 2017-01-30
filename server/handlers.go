@@ -1882,7 +1882,18 @@ func getStore(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
-		c.JSON(200, store)
+
+		if c.Query("active") == "1" {
+			filteredStore := make(map[string]*budget.Store)
+			for campaignID, val := range store {
+				if _, ok := s.Campaigns.Get(campaignID); ok {
+					filteredStore[campaignID] = val
+				}
+			}
+			c.JSON(200, filteredStore)
+		} else {
+			c.JSON(200, store)
+		}
 	}
 }
 
