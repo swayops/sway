@@ -3286,17 +3286,23 @@ func forceTimeline(s *Server) gin.HandlerFunc {
 					return nil
 				}
 
+				if !cmp.Status {
+					cmp.AddToTimeline(common.CAMPAIGN_PAUSED, false, s.Cfg)
+				}
+
+				time.Sleep(1 * time.Second)
+
 				if cmp.HasMailedPerk() {
 					cmp.AddToTimeline(common.PERKS_MAILED, true, s.Cfg)
 				}
 
-				time.Sleep(2 * time.Second)
+				time.Sleep(1 * time.Second)
 
 				if cmp.HasAcceptedDeal() {
 					cmp.AddToTimeline(common.DEAL_ACCEPTED, true, s.Cfg)
 				}
 
-				time.Sleep(2 * time.Second)
+				time.Sleep(1 * time.Second)
 
 				if cmp.HasCompletedDeal() {
 					cmp.AddToTimeline(common.CAMPAIGN_SUCCESS, true, s.Cfg)
