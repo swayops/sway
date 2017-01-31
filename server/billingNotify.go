@@ -79,7 +79,7 @@ func billingNotify(s *Server) error {
 				return nil
 			}
 
-			if !allowed && 1 == 2 {
+			if !allowed {
 				log.Println("Subscription is now off", adv.ID)
 				return nil
 			}
