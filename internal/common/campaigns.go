@@ -2,8 +2,10 @@ package common
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -29,6 +31,8 @@ type Campaign struct {
 
 	Status   bool  `json:"status"`
 	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
+
+	Goal float64 `json:"infGoal"` // Price per influencer goal
 
 	// Social Media Post/User Requirements
 	Tags    []string         `json:"tags,omitempty"`
@@ -59,10 +63,76 @@ type Campaign struct {
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID
 	Deals map[string]*Deal `json:"deals,omitempty"`
 	Plan  int              `json:"planID,omitempty"`
+
+	Timeline []*Timeline `json:"timeline,omitempty"`
 }
 
 func (cmp *Campaign) IsValid() bool {
 	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
+}
+
+const (
+	WIKI = "https://swayops.com/wiki/how-sway-works.php"
+)
+
+func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) {
+	// If the unique flag is present we will make sure this msg
+	// has not previously been set
+	tl := &Timeline{Message: msg, TS: time.Now().Unix()}
+
+	editCampaign := fmt.Sprintf("/editCampaign/%s/%s", cmp.AdvertiserId, cmp.Id)
+	contentFeed := fmt.Sprintf("/contentFeed/%s", cmp.AdvertiserId)
+	manageCampaigns := fmt.Sprintf("/mCampaigns/%s", cmp.AdvertiserId)
+	shippingInfo := fmt.Sprintf("/shippingPerks/%s", cmp.AdvertiserId)
+
+	switch msg {
+	case PERK_WAIT:
+		tl.Link = shippingInfo
+	case CAMPAIGN_START, PERKS_RECEIVED:
+		tl.Link = WIKI
+	case DEAL_ACCEPTED, PERKS_MAILED:
+		tl.Link = manageCampaigns
+	case CAMPAIGN_SUCCESS:
+		tl.Link = contentFeed
+	case CAMPAIGN_PAUSED:
+		tl.Link = editCampaign
+	}
+
+	if len(cmp.Timeline) == 0 {
+		cmp.Timeline = []*Timeline{tl}
+	} else {
+		if unique {
+			for _, old := range cmp.Timeline {
+				if old.Message == tl.Message {
+					// If this message has been made before.. bail!
+					return
+				}
+			}
+		}
+		cmp.Timeline = append(cmp.Timeline, tl)
+	}
+}
+
+func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
+	// Lets figure out the number of available deals
+	dealsEmpty := 0
+	for _, deal := range cmp.Deals {
+		if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+			dealsEmpty += 1
+		}
+	}
+
+	if dealsEmpty == 0 {
+		return 0, 0
+	}
+
+	// For even distribution.. lets give a target spendable for each available
+	// deal
+	target := spendable / float64(dealsEmpty)
+
+	// 30% margin left and right of target
+	margin := 0.3 * target
+	return target - margin, target + margin
 }
 
 type Campaigns struct {

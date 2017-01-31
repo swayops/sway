@@ -806,7 +806,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// Fill in and check available spendable
 		store, err := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
-		if err != nil || store == nil || store.Spendable == 0 || store.Spent > store.Budget {
+		if err != nil || store == nil || store.Spendable < 5 || store.Spent > store.Budget {
 			if !query {
 				// Influencer may query for their assigned deal.. but we don't want to
 				// hide the deal if there's no spendable.. we just want to tell them that
@@ -817,6 +817,28 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 		if store != nil {
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
+
+			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
+				// NOTE: Skip this for whitelisted campaigns!
+
+				// OPTIMIZATION: Goal is to distribute funds evenly
+				// given what the campaign's influencer goal is and how
+				// many funds we have left
+				min, max := cmp.GetTargetYield(targetDeal.Spendable)
+				maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+				if maxYield < min || maxYield > max || maxYield == 0 {
+					rejections[cmp.Id] = "MAX_YIELD"
+					continue
+				}
+			}
+		}
+
+		if !query {
+			// If it's a perk campaign and there's no perks to give.. BAIL!
+			if cmp.Perks != nil && cmp.Perks.Count == 0 {
+				rejections[cmp.Id] = "NO_PERKS"
+				continue
+			}
 		}
 
 		// Social Media Checks

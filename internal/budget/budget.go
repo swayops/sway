@@ -160,6 +160,9 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// so we need to calculate what the given
 			// (monthly) budget would be for the days left.
 			monthlyBudget = GetProratedBudget(cmp.Budget)
+			if cfg.Sandbox {
+				monthlyBudget = cmp.Budget
+			}
 		} else {
 			// TODAY IS BILLING DAY! (first of the month)
 			// Is there a newBudget (pending) value (i.e. a lower budget)?

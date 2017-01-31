@@ -97,6 +97,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 				// yet..
 				sc.FullName = insta.FullName
 			}
+
+			sc.InstaData = insta
 		} else if sc.YouTube && sc.Name != "" {
 			// This scrap is from YT!
 			yt, err := youtube.New(sc.Name, srv.Cfg)
@@ -112,6 +114,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 			}
 
 			images = yt.Images
+
+			sc.YTData = yt
 		} else if sc.Twitter && sc.Name != "" {
 			tw, err := twitter.New(sc.Name, srv.Cfg)
 			if err != nil {
@@ -132,6 +136,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 			if tw.FullName != "" && sc.FullName == "" {
 				sc.FullName = tw.FullName
 			}
+
+			sc.TWData = tw
 		} else if sc.Facebook && sc.Name != "" {
 			fb, err := facebook.New(sc.Name, srv.Cfg)
 			if err != nil {
@@ -144,6 +150,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 			if fb.Followers > 0 {
 				sc.Followers = int64(fb.Followers)
 			}
+
+			sc.FBData = fb
 		}
 
 		// Set keywords based on images!
