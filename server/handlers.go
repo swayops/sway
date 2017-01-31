@@ -1588,6 +1588,30 @@ func getDealsForCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+type TargetYield struct {
+	Min float64 `json:"min,omitempty"`
+	Max float64 `json:"max,omitempty"`
+}
+
+func getTargetYield(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
+			return
+		}
+
+		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+		if store == nil || err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		min, max := cmp.GetTargetYield(store.Spendable)
+		c.JSON(200, &TargetYield{Min: min, Max: max})
+	}
+}
+
 type Match struct {
 	Id       string `json:"id,omitempty"`
 	Type     string `json:"type,omitempty"`

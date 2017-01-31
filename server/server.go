@@ -376,6 +376,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		getCampaignsByAdvertiser, nil, nil, nil)
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
+	verifyGroup.GET("/getTargetYield/:id", getTargetYield(srv))
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/getKeywords", getKeywords(srv))
