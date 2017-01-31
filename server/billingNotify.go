@@ -146,6 +146,11 @@ func billingNotify(s *Server) error {
 					log.Println("Failed to log out of perks notify email!", user.ID)
 				}
 			}
+			for _, admin := range mailingList {
+				// Email admins as well
+				s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Sway Billing Notification for Advertiser "+user.Name), admin, user.Name,
+					[]string{""})
+			}
 		}
 	}
 	return nil
