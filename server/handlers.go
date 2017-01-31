@@ -444,6 +444,8 @@ func getCampaign(s *Server) gin.HandlerFunc {
 					cmp.Perks.Count += d.Perk.Count
 				}
 			}
+			cmp.Perks.Count += cmp.Perks.PendingCount
+
 		}
 
 		if c.Query("deals") != "true" {
@@ -714,7 +716,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// If the saved perk is a physical product.. lets add more!
 				perksInUse := cmp.Perks.Count
 
-				// Get all the coupons saved in the deals
+				// Get all the products saved in the deals
 				for _, d := range cmp.Deals {
 					if d.Perk != nil {
 						perksInUse += d.Perk.Count
@@ -726,13 +728,17 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					return
 				}
 
-				dealsToAdd := upd.Perks.Count - perksInUse
+				// Subtracting pending count because frontend's upd.Perks.Count value
+				// includes pending count!
+				dealsToAdd := upd.Perks.Count - perksInUse - cmp.Perks.PendingCount
 				if dealsToAdd > 0 {
-					cmp.Perks.Count += dealsToAdd
-
+					// For perks.. lets put it into pending count instead of the actual
+					// count
+					// NOTE: We'll add deals and perk count once the addition is approved
+					// by admin
+					cmp.Perks.PendingCount += dealsToAdd
 					// Add deals for perks we added
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						addDeals(&cmp, dealsToAdd, s, tx)
 						return saveCampaign(tx, &cmp, s)
 					}); err != nil {
 						misc.AbortWithErr(c, 500, err)
@@ -2716,7 +2722,7 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if cmp.Approved == 0 {
+				if cmp.Approved == 0 || (cmp.Perks != nil && cmp.Perks.PendingCount > 0) {
 					// Hide deals
 					cmp.Deals = nil
 					campaigns = append(campaigns, &cmp)
@@ -2852,6 +2858,48 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if cmp.Perks != nil && cmp.Perks.PendingCount > 0 {
+			// Add deals for perks we added
+			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				// Add deals for pending value once we have received product!
+				addDeals(&cmp, cmp.Perks.PendingCount, s, tx)
+
+				// Empty out fields and increment perk count
+				cmp.Perks.Count += cmp.Perks.PendingCount
+				cmp.Perks.PendingCount = 0
+
+				return saveCampaign(tx, &cmp, s)
+			}); err != nil {
+				misc.AbortWithErr(c, 500, err)
+				return
+			}
+		}
+
+		if !s.Cfg.Sandbox && cmp.Perks != nil && !cmp.Perks.IsCoupon() {
+			// Lets let the advertiser know that we've received their product!
+			if s.Cfg.ReplyMailClient() != nil {
+				email := templates.NotifyPerkEmail.Render(map[string]interface{}{"Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+				resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your shipment has been received!"), user.Email, user.Name,
+					[]string{""})
+				if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+					s.Alert("Failed to mail advertiser regarding shipment", err)
+				} else {
+					if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+						"tag": "received shipment",
+						"id":  user.ID,
+					}); err != nil {
+						log.Println("Failed to log shipment received notify email!", user.ID)
+					}
+				}
+			}
+		}
+
+		// Bail early if this JUST an acceptance for a perk increase!
+		if cmp.Approved > 0 {
+			c.JSON(200, misc.StatusOK(cmp.Id))
+			return
+		}
+
 		cmp.Approved = int32(time.Now().Unix())
 
 		// Lets add to timeline!
@@ -2881,25 +2929,6 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 				time.Sleep(2 * time.Hour)
 				emailDeal(s, cmp.Id)
 			}()
-		}
-
-		if !s.Cfg.Sandbox && cmp.Perks != nil && !cmp.Perks.IsCoupon() {
-			// Lets let the advertiser know that we've received their product!
-			if s.Cfg.ReplyMailClient() != nil {
-				email := templates.NotifyPerkEmail.Render(map[string]interface{}{"Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
-				resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your shipment has been received!"), user.Email, user.Name,
-					[]string{""})
-				if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-					s.Alert("Failed to mail advertiser regarding shipment", err)
-				} else {
-					if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
-						"tag": "received shipment",
-						"id":  user.ID,
-					}); err != nil {
-						log.Println("Failed to log shipment received notify email!", user.ID)
-					}
-				}
-			}
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
