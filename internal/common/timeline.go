@@ -32,30 +32,28 @@ type Timeline struct {
 	Color     string `json:"color,omitempty"`
 }
 
-func SetLinkTitles(m map[string][]*Timeline) {
-	for _, tls := range m {
-		for _, tl := range tls {
-			switch tl.Message {
-			case PERK_WAIT:
-				tl.LinkTitle = "Learn More »"
-				tl.Color = tlColorRed
-			case CAMPAIGN_START, PERKS_RECEIVED:
-				tl.LinkTitle = "Learn More »"
-				tl.Color = tlColorBlue
-			case DEAL_ACCEPTED, PERKS_MAILED:
-				tl.LinkTitle = "View Campaigns »"
-				tl.Color = tlColorBlue
-			case CAMPAIGN_SUCCESS:
-				tl.LinkTitle = "See Who »"
-				tl.Color = tlColorGreen
-			case CAMPAIGN_PAUSED:
-				tl.LinkTitle = "Edit Campaign »"
-				tl.Color = tlColorGrey
-			case CAMPAIGN_APPROVAL:
-				tl.Color = tlColorRed
-			default:
-				tl.Color = tlColorGrey
-			}
+func SetLinkTitles(m map[string]*Timeline) {
+	for _, tl := range m {
+		switch tl.Message {
+		case PERK_WAIT:
+			tl.LinkTitle = "Learn More »"
+			tl.Color = tlColorRed
+		case CAMPAIGN_START, PERKS_RECEIVED:
+			tl.LinkTitle = "Learn More »"
+			tl.Color = tlColorBlue
+		case DEAL_ACCEPTED, PERKS_MAILED:
+			tl.LinkTitle = "View Campaigns »"
+			tl.Color = tlColorBlue
+		case CAMPAIGN_SUCCESS:
+			tl.LinkTitle = "See Who »"
+			tl.Color = tlColorGreen
+		case CAMPAIGN_PAUSED:
+			tl.LinkTitle = "Edit Campaign »"
+			tl.Color = tlColorGrey
+		case CAMPAIGN_APPROVAL:
+			tl.Color = tlColorRed
+		default:
+			tl.Color = tlColorGrey
 		}
 	}
 }

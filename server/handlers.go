@@ -2123,7 +2123,7 @@ func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
 			targetAdv = c.Param("id")
 		)
 
-		cmpTimeline := make(map[string][]*common.Timeline)
+		cmpTimeline := make(map[string]*common.Timeline)
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -2131,8 +2131,8 @@ func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if cmp.AdvertiserId == targetAdv {
-					cmpTimeline[fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)] = cmp.Timeline
+				if cmp.AdvertiserId == targetAdv && len(cmp.Timeline) > 0 {
+					cmpTimeline[fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)] = cmp.Timeline[len(cmp.Timeline)-1]
 				}
 				return
 			})
