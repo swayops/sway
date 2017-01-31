@@ -1282,13 +1282,20 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count {
+	// It should be equal to the value it was before since new products
+	// are in pending count!
+	if len(cmpLoad.Deals) != cmp.Perks.Count {
 		t.Fatal("Unexpected number of deals!")
 		return
 	}
 
-	if cmpLoad.Perks.Count != cmpUpdate.Perks.Count {
+	if cmpLoad.Perks.Count != cmp.Perks.Count {
 		t.Fatal("Unexpected number of perks!")
+		return
+	}
+
+	if cmpLoad.Perks.PendingCount != 4 {
+		t.Fatal("Unexpected number of pending perks!")
 		return
 	}
 
@@ -1344,6 +1351,8 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
+	var cmpPerks common.Campaign
+
 	if *genData {
 		goto SKIP_APPROVE_1
 	}
@@ -1368,14 +1377,26 @@ func TestPerks(t *testing.T) {
 	}
 
 	// make sure approved value is correct!
-	r = rst.DoTesting(t, "GET", "/campaign/4", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/4", nil, &cmpPerks)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	if cmpLoad.Approved == 0 {
+	if cmpPerks.Approved == 0 {
 		t.Fatal("Admin approval didnt work!")
+		return
+	}
+
+	// Lets make sure perk count is 9 now!
+	if cmpPerks.Perks.PendingCount != 0 {
+		log.Println("PENDING COUNT", cmpPerks.Perks.PendingCount)
+		t.Fatal("pending count incorrect!")
+		return
+	}
+
+	if cmpPerks.Perks.Count != 9 {
+		t.Fatal("pending count incorrect!")
 		return
 	}
 
@@ -1653,12 +1674,12 @@ SKIP_APPROVE_2:
 		return
 	}
 
-	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count {
+	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count-cmpLoad.Perks.PendingCount {
 		t.Fatal("Unexpected number of deals!")
 		return
 	}
 
-	if cmpLoad.Perks.Count+1 != cmpUpdate.Perks.Count {
+	if cmpLoad.Perks.Count+1 != cmpUpdate.Perks.Count-cmpLoad.Perks.PendingCount {
 		t.Fatal("Unexpected number of perks!")
 		return
 	}
