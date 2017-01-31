@@ -118,6 +118,9 @@ func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx, spendable 
 		// So if it's a goal based campaign, lets replenish deals!
 		if cmp.Goal > 0 {
 			maxDeals = int(spendable / cmp.Goal)
+		} else {
+			// Default goal of 50 bucks
+			maxDeals = int(spendable / 50.0)
 		}
 	}
 
