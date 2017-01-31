@@ -4953,6 +4953,8 @@ func TestTimeline(t *testing.T) {
 		SubLoad:     getSubscription(3, 100, true),
 	}
 
+	t.Logf("timeline userID: %s", adv.ExpID)
+
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4979,7 +4981,7 @@ func TestTimeline(t *testing.T) {
 
 	// Lets make sure we got the correct timeline message
 	var cmpLoad common.Campaign
-	r = rst.DoTesting(t, "GET", "/campaign/" +st.ID, nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -5002,7 +5004,7 @@ func TestTimeline(t *testing.T) {
 		return
 	}
 
-	r = rst.DoTesting(t, "GET", "/campaign/" +st.ID, nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -5118,7 +5120,7 @@ func TestTimeline(t *testing.T) {
 	}
 
 	var timeline map[string][]*common.Timeline
-	r = rst.DoTesting(t, "GET", "/getAdvertiserTimeline/" +cmpLoad.AdvertiserId, nil, &timeline)
+	r = rst.DoTesting(t, "GET", "/getAdvertiserTimeline/"+cmpLoad.AdvertiserId, nil, &timeline)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
