@@ -114,13 +114,17 @@ func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx, spendable 
 		}
 		maxDeals = len(cmp.Whitelist)
 	} else {
-		// This function is only called on campaign creation and on billing day,
+		// This function is only called on campaign creation, update and on billing day,
 		// So if it's a goal based campaign, lets replenish deals!
 		if cmp.Goal > 0 {
-			maxDeals = int(spendable / cmp.Goal)
+			if cmp.Goal > spendable {
+				maxDeals = 1
+			} else {
+				maxDeals = int(spendable / cmp.Goal)
+			}
 		} else {
-			// Default goal of 50 bucks
-			maxDeals = int(spendable / 50.0)
+			// Default goal of spendable divided by 5 (so 5 deals per campaign)
+			maxDeals = int(spendable / 5)
 		}
 	}
 
