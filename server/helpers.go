@@ -87,7 +87,7 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 
 var ErrClick = errors.New("Err shortening url")
 
-func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx) *common.Campaign {
+func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx, spendable float64) *common.Campaign {
 	var maxDeals int
 	// If there are perks assigned, # of deals are capped
 	// at the # of available perks
@@ -116,7 +116,9 @@ func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx) *common.Ca
 	} else {
 		// This function is only called on campaign creation and on billing day,
 		// So if it's a goal based campaign, lets replenish deals!
-		maxDeals = cmp.Goal
+		if cmp.Goal > 0 {
+			maxDeals = int(spendable / cmp.Goal)
+		}
 	}
 
 	if maxDeals == 0 && s.Cfg.Sandbox {

@@ -389,18 +389,16 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Add deals regardless of their budget!
-			// This way we won't care about whether they turn the campaign
-			// on or off.. they always have the appropriate deals given their goal
-			addDealsToCampaign(&cmp, s, tx)
-
 			if cmp.Status {
+				var spendable float64
 				// Create their budget key IF the campaign is on
 				// NOTE: Create budget key requires cmp.Id be set
-				if _, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
+				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
 					return
 				}
+
+				addDealsToCampaign(&cmp, s, tx, spendable)
 
 				// Lets add to timeline!
 				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
@@ -644,10 +642,18 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			if _, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
+			var spendable float64
+			if spendable, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
+			}
+
+			if spendable > 0 {
+				s.db.Update(func(tx *bolt.Tx) error {
+					addDealsToCampaign(&cmp, s, tx, spendable)
+					return nil
+				})
 			}
 
 			cmp.Budget = *upd.Budget
@@ -758,11 +764,14 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					// off so a budget key was NOT created.. so we have to create it now!
 					// NOTE: Create budget key requires cmp.Id be set
 
-					if _, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
+					var spendable float64
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
 						s.Alert("Error initializing budget key for "+adv.Name, err)
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}
+
+					addDealsToCampaign(&cmp, s, tx, spendable)
 
 				} else {
 					// This campaign does have a store.. so it was active sometime this month.
@@ -2625,7 +2634,8 @@ func runBilling(s *Server) gin.HandlerFunc {
 
 				// Create their budget key for this month in the DB
 				// NOTE: last month's leftover spendable will be carried over
-				if _, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
+				var spendable float64
+				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
 					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 					// Don't return because an agency that switched from IO to CC that has
 					// advertisers with no CC will always error here.. just alert!
@@ -2633,7 +2643,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				}
 
 				// Add fresh deals for this month
-				addDealsToCampaign(cmp, s, tx)
+				addDealsToCampaign(cmp, s, tx, spendable)
 
 				if err = saveCampaign(tx, cmp, s); err != nil {
 					log.Println("Error saving campaign for billing", err)
