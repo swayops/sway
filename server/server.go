@@ -441,6 +441,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceEngine", forceEngine(srv))
 	adminGroup.GET("/forceScrapEmail", forceScrapEmail(srv))
 	adminGroup.GET("/forceAttributer", forceAttributer(srv))
+	adminGroup.GET("/forceTimeline", forceTimeline(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))

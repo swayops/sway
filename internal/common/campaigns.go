@@ -71,6 +71,33 @@ func (cmp *Campaign) IsValid() bool {
 	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
 }
 
+func (cmp *Campaign) HasMailedPerk() bool {
+	for _, deal := range cmp.Deals {
+		if deal.Perk != nil && deal.Perk.Status {
+			return true
+		}
+	}
+	return false
+}
+
+func (cmp *Campaign) HasAcceptedDeal() bool {
+	for _, deal := range cmp.Deals {
+		if deal.Completed == 0 && deal.Assigned > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (cmp *Campaign) HasCompletedDeal() bool {
+	for _, deal := range cmp.Deals {
+		if deal.Completed > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 const (
 	WIKI = "https://swayops.com/wiki/how-sway-works.php"
 )

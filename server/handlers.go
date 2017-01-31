@@ -3272,6 +3272,49 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 	}
 }
 
+func forceTimeline(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+
+				if cmp.HasMailedPerk() {
+					cmp.AddToTimeline(common.PERKS_MAILED, true, s.Cfg)
+				}
+
+				time.Sleep(2 * time.Second)
+
+				if cmp.HasAcceptedDeal() {
+					cmp.AddToTimeline(common.DEAL_ACCEPTED, true, s.Cfg)
+				}
+
+				time.Sleep(2 * time.Second)
+
+				if cmp.HasCompletedDeal() {
+					cmp.AddToTimeline(common.CAMPAIGN_SUCCESS, true, s.Cfg)
+				}
+
+				saveCampaign(tx, &cmp, s)
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
 func forceEngine(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {
