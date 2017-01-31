@@ -43,7 +43,7 @@ func SetLinkTitles(m map[string][]*Timeline) {
 				tl.LinkTitle = "Learn More »"
 				tl.Color = tlColorBlue
 			case DEAL_ACCEPTED, PERKS_MAILED:
-				tl.Link = "View Campaigns »"
+				tl.LinkTitle = "View Campaigns »"
 				tl.Color = tlColorBlue
 			case CAMPAIGN_SUCCESS:
 				tl.LinkTitle = "See Who »"
