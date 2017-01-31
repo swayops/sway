@@ -2142,6 +2142,7 @@ func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		common.SetLinkTitles(cmpTimeline)
 		c.JSON(200, cmpTimeline)
 	}
 }
