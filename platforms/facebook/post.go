@@ -43,21 +43,21 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	// }
 
 	if lk, err := getLikes(pt.Id, cfg); err == nil {
-		pt.LikesDelta += pt.Likes - lk
+		pt.LikesDelta = pt.Likes - lk
 		pt.Likes = lk
 	} else {
 		return err
 	}
 
 	if cm, err := getComments(pt.Id, cfg); err == nil {
-		pt.CommentsDelta += pt.Comments - cm
+		pt.CommentsDelta = pt.Comments - cm
 		pt.Comments = cm
 	} else {
 		return err
 	}
 
 	if sh, _, err := getShares(pt.Id, cfg); err == nil {
-		pt.SharesDelta += pt.Shares - sh
+		pt.SharesDelta = pt.Shares - sh
 		pt.Shares = sh
 	} else {
 		return err

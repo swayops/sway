@@ -50,16 +50,16 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	}
 	pt.Description = desc
 
-	pt.LikesDelta += likes - pt.Likes
+	pt.LikesDelta = likes - pt.Likes
 	pt.Likes = likes
 
-	pt.DislikesDelta += dislikes - pt.Dislikes
+	pt.DislikesDelta = dislikes - pt.Dislikes
 	pt.Dislikes = dislikes
 
-	pt.ViewsDelta += views - pt.Views
+	pt.ViewsDelta = views - pt.Views
 	pt.Views = views
 
-	pt.CommentsDelta += comments - pt.Comments
+	pt.CommentsDelta = comments - pt.Comments
 	pt.Comments = comments
 
 	pt.LastUpdated = int32(time.Now().Unix())

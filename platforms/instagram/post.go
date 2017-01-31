@@ -95,12 +95,12 @@ func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 	}
 
 	if post.Data.Comments != nil {
-		pt.CommentsDelta += post.Data.Comments.Count - pt.Comments
+		pt.CommentsDelta = post.Data.Comments.Count - pt.Comments
 		pt.Comments = post.Data.Comments.Count
 	}
 
 	if post.Data.Likes != nil {
-		pt.LikesDelta += post.Data.Likes.Count - pt.Likes
+		pt.LikesDelta = post.Data.Likes.Count - pt.Likes
 		pt.Likes = post.Data.Likes.Count
 	}
 
