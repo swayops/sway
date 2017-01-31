@@ -298,6 +298,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Public endpoint
 	r.GET("/cl/:id", click(srv))
+	r.GET("/c/:id", click(srv))
+
 	r.GET("/optout/:email", optoutScrap(srv))
 	r.GET("/value/:platform/:handle", influencerValue(srv))
 

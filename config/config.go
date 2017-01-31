@@ -44,9 +44,9 @@ func New(loc string) (_ *Config, err error) {
 	}
 
 	if c.Sandbox {
-		c.ClickUrl = c.DashURL + "/cl/"
+		c.ClickUrl = c.DashURL + "/c/"
 	} else {
-		c.ClickUrl = c.HomeURL + "/cl/"
+		c.ClickUrl = c.HomeURL + "/c/"
 	}
 
 	c.ec = mandrill.New(c.Mandrill.APIKey, c.Mandrill.SubAccount, c.Mandrill.FromEmail, c.Mandrill.FromName)

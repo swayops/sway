@@ -2621,7 +2621,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 }
 
 func getTestClick(url string) string {
-	idx := strings.Index(url, "/cl/")
+	idx := strings.Index(url, "/c/")
 	return url[idx:]
 }
 
@@ -2630,7 +2630,7 @@ func TestClicks(t *testing.T) {
 	defer putClient(rst)
 
 	// Make sure click endpoint accessible without signing in
-	r := rst.DoTesting(t, "GET", "/cl/JxA", nil, nil)
+	r := rst.DoTesting(t, "GET", "/c/JxA", nil, nil)
 	if r.Status == 401 {
 		t.Fatal("Unexpected unauthorized error!")
 		return
@@ -2690,7 +2690,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "/cl/") {
+	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "/c/") {
 		t.Fatal("Unexpected shortened link")
 		return
 	}
@@ -2767,7 +2767,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(getTestClick(newLoad.CompletedDeals[0].ShortenedLink), "/cl/") {
+	if !strings.Contains(getTestClick(newLoad.CompletedDeals[0].ShortenedLink), "/c/") {
 		t.Fatal("Bad shortened link")
 		return
 	}

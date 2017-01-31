@@ -82,9 +82,13 @@ func newSwayEngine(srv *Server) error {
 				srv.Alert("Error hitting Google geo!", nil)
 			}
 
-			// Ping click URL
+			// Ping click URLs
 			if err := misc.Request("GET", "https://swayops.com/cl/fakeID", "", nil); err != nil {
-				srv.Alert("Error hitting Click URL!", err)
+				srv.Alert("Error hitting First Click URL!", err)
+			}
+
+			if err := misc.Request("GET", "https://swayops.com/c/fakeID", "", nil); err != nil {
+				srv.Alert("Error hitting Second Click URL!", err)
 			}
 		}
 	}()
