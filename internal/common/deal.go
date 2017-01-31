@@ -96,6 +96,8 @@ type Stats struct {
 	Views    int32 `json:"views,omitempty"`
 	Perks    int32 `json:"perks,omitempty"`
 
+	LegacyClicks int32 `json:"clicks,omitempty"`
+
 	PendingClicks  []*Click `json:"pendingClicks,omitempty"`
 	ApprovedClicks []*Click `json:"approvedClicks,omitempty"`
 }
@@ -109,7 +111,7 @@ func (st *Stats) TotalMarkup() float64 {
 }
 
 func (st *Stats) GetClicks() int32 {
-	return int32(len(st.ApprovedClicks))
+	return int32(len(st.ApprovedClicks)) + st.LegacyClicks
 }
 
 func (d *Deal) SanitizeClicks(completion int32) map[string]*Stats {
