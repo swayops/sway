@@ -480,7 +480,7 @@ type ManageCampaign struct {
 
 	Spent     float64 `json:"spent"`     // Monthly
 	Remaining float64 `json:"remaining"` // Monthly
-	Budget    float64 `json:"spent"`     // Monthly
+	Budget    float64 `json:"budget"`    // Monthly
 
 	Stats *reporting.TargetStats `json:"stats"`
 
