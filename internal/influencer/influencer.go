@@ -815,9 +815,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				continue
 			}
 		}
+
+		maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+		// Subtract default margins to give influencers an accurate likely earning value
+		// NOTE: Assuming a DSP fee, exchange fee, and talent agency fee each of 60%.. so lets
+		// just show influencer 40% of total yield
+		targetDeal.LikelyEarnings = misc.TruncateFloat(maxYield*0.4, 2)
 		if store != nil {
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
-
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 				// NOTE: Skip this for whitelisted campaigns!
 
@@ -825,7 +831,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				// given what the campaign's influencer goal is and how
 				// many funds we have left
 				min, max := cmp.GetTargetYield(targetDeal.Spendable)
-				maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 				if maxYield < min || maxYield > max || maxYield == 0 {
 					rejections[cmp.Id] = "MAX_YIELD"
 					continue

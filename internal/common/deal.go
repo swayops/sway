@@ -73,6 +73,9 @@ type Deal struct {
 	// and is saved to show how much the influencer was offered
 	// when the deal was assigned
 	Spendable float64 `json:"spendable,omitempty"`
+	// Field set by GetAvailableDeals specifying how much the influencer
+	// COULD earn on this deal
+	LikelyEarnings float64 `json:"likelyEarnings,omitempty"`
 
 	// Keyed on DAY.. showing stats calculated by DAY
 	Reporting map[string]*Stats `json:"stats,omitempty"`
