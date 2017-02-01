@@ -4384,7 +4384,8 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 							continue
 						}
 
-						if likesDiff := reportingLikes - totalLikes; likesDiff > 0 {
+						likesDiff := reportingLikes - totalLikes
+						if likesDiff > 0 {
 							// Subtract likes from stats
 
 							if stats.Likes > likesDiff {
@@ -4392,10 +4393,13 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 								log.Println("Need to take out likes:", deal.Id, likesDiff)
 								stats.Likes -= likesDiff
 							}
-
+						} else if likesDiff < 0 {
+							// meaning we need to ADD likes
+							stats.Likes += totalLikes - reportingLikes
 						}
 
-						if commentsDiff := reportingComments - totalComments; commentsDiff > 0 {
+						commentsDiff := reportingComments - totalComments
+						if commentsDiff > 0 {
 							// Subtract comments from stats
 
 							if stats.Comments >= commentsDiff {
@@ -4403,8 +4407,9 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 
 								// We have all the likes we need on 31st.. lets surtact!
 								stats.Comments -= commentsDiff
+							} else if commentsDiff < 0 {
+								stats.Comments += totalComments - reportingComments
 							}
-
 						}
 
 						// Save and bail

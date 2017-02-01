@@ -16,17 +16,10 @@ type Post struct {
 	PostURL string `json:"url"` // Link to the post
 
 	// Stats
-	Views      float64 `json:"views"`
-	ViewsDelta float64 `json:"vDelta"`
-
-	Likes      float64 `json:"likes"`
-	LikesDelta float64 `json:"lDelta"`
-
-	Dislikes      float64 `json:"dislikes"`
-	DislikesDelta float64 `json:"dlDelta"`
-
-	Comments      float64 `json:"comments"`
-	CommentsDelta float64 `json:"cDelta"`
+	Views    float64 `json:"views"`
+	Likes    float64 `json:"likes"`
+	Dislikes float64 `json:"dislikes"`
+	Comments float64 `json:"comments"`
 
 	LastUpdated int32 `json:"lastUpdated"`
 }
@@ -50,16 +43,9 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	}
 	pt.Description = desc
 
-	pt.LikesDelta = likes - pt.Likes
 	pt.Likes = likes
-
-	pt.DislikesDelta = dislikes - pt.Dislikes
 	pt.Dislikes = dislikes
-
-	pt.ViewsDelta = views - pt.Views
 	pt.Views = views
-
-	pt.CommentsDelta = comments - pt.Comments
 	pt.Comments = comments
 
 	pt.LastUpdated = int32(time.Now().Unix())
@@ -76,8 +62,4 @@ func (pt *Post) Hashtags() []string {
 		}
 	}
 	return tags
-}
-
-func (pt *Post) Clear() {
-	pt.LikesDelta, pt.ViewsDelta, pt.DislikesDelta, pt.CommentsDelta = 0, 0, 0, 0
 }
