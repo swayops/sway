@@ -469,7 +469,7 @@ type ManageCampaign struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Active  bool   `json:"active"`
-	Created int32  `json:"created"`
+	Created int64  `json:"created"`
 
 	Twitter   bool `json:"twitter,omitempty"`
 	Facebook  bool `json:"facebook,omitempty"`
@@ -517,6 +517,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						Image:     cmp.ImageURL,
 						ID:        cmp.Id,
 						Name:      cmp.Name,
+						Created:   cmp.CreatedAt,
 						Active:    cmp.IsValid(),
 						Twitter:   cmp.Twitter,
 						Instagram: cmp.Instagram,
