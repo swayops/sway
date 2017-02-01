@@ -65,6 +65,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 		return tg, errors.New("Missing campaign!")
 	}
 
+	var influencers int32
 	for _, deal := range cmp.Deals {
 		if deal.Completed > 0 {
 			st := deal.Get(dates, "")
@@ -86,9 +87,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Perks += st.Perks
 
 			// This assumes each influencer can do the deal once
-			if eng > 0 {
-				tg.Total.Influencers++
-			}
+			influencers += 1
 
 			if onlyTotals {
 				continue
@@ -116,9 +115,8 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 		}
 	}
 
-	if tg.Total != nil && tg.Total.Influencers == 0 {
-		tg.Total.Influencers = int32(len(tg.Influencer))
-	}
+	tg.Total.Influencers = influencers
+
 	return tg, nil
 }
 
