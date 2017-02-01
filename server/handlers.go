@@ -518,7 +518,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						ID:        cmp.Id,
 						Name:      cmp.Name,
 						Created:   cmp.CreatedAt,
-						Active:    cmp.IsValid(),
+						Active:    cmp.Status,
 						Twitter:   cmp.Twitter,
 						Instagram: cmp.Instagram,
 						YouTube:   cmp.YouTube,
