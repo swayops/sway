@@ -133,6 +133,10 @@ func (tw *Twitter) GetScore() float64 {
 	return (tw.Followers * 3) + (tw.AvgRetweets * 2) + (tw.AvgLikes * 2)
 }
 
+func (tw *Twitter) GetProfileURL() string {
+	return "https://twitter.com/" + tw.Id
+}
+
 func getClient(cfg *config.Config) (*http.Client, error) {
 	c := cfg.Twitter
 	if len(c.Key) == 0 || len(c.Secret) == 0 || len(c.AccessToken) == 0 || len(c.AccessSecret) == 0 || len(c.Endpoint) == 0 {

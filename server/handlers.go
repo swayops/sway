@@ -463,10 +463,48 @@ func getCampaignStore(s *Server) gin.HandlerFunc {
 	}
 }
 
+type ManageCampaign struct {
+	Image string `json:"image"`
+
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Active  bool   `json:"active"`
+	Created int64  `json:"created"`
+
+	Twitter   bool `json:"twitter,omitempty"`
+	Facebook  bool `json:"facebook,omitempty"`
+	Instagram bool `json:"instagram,omitempty"`
+	YouTube   bool `json:"youtube,omitempty"`
+
+	Timeline *common.Timeline `json:"timeline"`
+
+	Spent     float64 `json:"spent"`     // Monthly
+	Remaining float64 `json:"remaining"` // Monthly
+	Budget    float64 `json:"budget"`    // Monthly
+
+	Stats *reporting.TargetStats `json:"stats"`
+
+	Accepted  []*manageInf `json:"accepted"`
+	Completed []*manageInf `json:"completed"`
+}
+
+type manageInf struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Engagements int32  `json:"engagements"`
+
+	ImageURL   string `json:"image"`
+	ProfileURL string `json:"profileUrl"`
+	Followers  int64  `json:"followers"`
+	PostURL    string `json:"postUrl"`
+}
+
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
+	// Prettifies the info because this is what Manage Campaigns
+	// page on frontend uses
 	return func(c *gin.Context) {
 		targetAdv := c.Param("id")
-		var campaigns []*common.Campaign
+		var campaigns []*ManageCampaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -475,9 +513,75 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if cmp.AdvertiserId == targetAdv {
-					// No need to display massive deal set
-					cmp.Deals = nil
-					campaigns = append(campaigns, &cmp)
+					mCmp := &ManageCampaign{
+						Image:     cmp.ImageURL,
+						ID:        cmp.Id,
+						Name:      cmp.Name,
+						Created:   cmp.CreatedAt,
+						Active:    cmp.Status,
+						Twitter:   cmp.Twitter,
+						Instagram: cmp.Instagram,
+						YouTube:   cmp.YouTube,
+						Facebook:  cmp.Facebook,
+						Budget:    cmp.Budget,
+					}
+
+					if len(cmp.Timeline) > 0 {
+						mCmp.Timeline = cmp.Timeline[len(cmp.Timeline)-1]
+						common.SetAttribute(mCmp.Timeline)
+					}
+
+					store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+					if store != nil {
+						mCmp.Spent = store.Spent
+						mCmp.Remaining = store.Spendable
+					}
+
+					end := time.Now()
+					start := end.AddDate(-1, 0, 0)
+					mCmp.Stats, _ = reporting.GetCampaignStats(cmp.Id, s.db, s.Cfg, start, end, true)
+
+					for _, deal := range cmp.Deals {
+						inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+						if !ok {
+							continue
+						}
+
+						tmpInf := &manageInf{
+							ID:   inf.Id,
+							Name: inf.Name,
+						}
+
+						if st := deal.TotalStats(); st != nil {
+							tmpInf.Engagements = st.Likes + st.Dislikes + st.Comments + st.Shares
+						}
+
+						tmpInf.PostURL = deal.PostUrl
+						if cmp.Twitter && inf.Twitter != nil {
+							tmpInf.ImageURL = inf.Twitter.ProfilePicture
+							tmpInf.Followers = int64(inf.Twitter.Followers)
+							tmpInf.ProfileURL = inf.Twitter.GetProfileURL()
+						} else if cmp.Facebook && inf.Facebook != nil {
+							tmpInf.ImageURL = inf.Facebook.ProfilePicture
+							tmpInf.Followers = int64(inf.Facebook.Followers)
+							tmpInf.ProfileURL = inf.Facebook.GetProfileURL()
+						} else if cmp.Instagram && inf.Instagram != nil {
+							tmpInf.ImageURL = inf.Instagram.ProfilePicture
+							tmpInf.Followers = int64(inf.Instagram.Followers)
+							tmpInf.ProfileURL = inf.Instagram.GetProfileURL()
+						} else if cmp.YouTube && inf.YouTube != nil {
+							tmpInf.ImageURL = inf.YouTube.ProfilePicture
+							tmpInf.Followers = int64(inf.YouTube.Subscribers)
+							tmpInf.ProfileURL = inf.YouTube.GetProfileURL()
+						}
+
+						if deal.IsActive() {
+							mCmp.Accepted = append(mCmp.Accepted, tmpInf)
+						} else if deal.IsComplete() {
+							mCmp.Completed = append(mCmp.Completed, tmpInf)
+						}
+					}
+					campaigns = append(campaigns, mCmp)
 				}
 				return
 			})
@@ -1501,28 +1605,28 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				)
 
 				if inf.Twitter != nil {
-					incInf.TwitterURL, found = "https://twitter.com/"+inf.Twitter.Id, true
+					incInf.TwitterURL, found = inf.Twitter.GetProfileURL(), true
 					if !incPosts {
 						inf.Twitter = nil
 					}
 				}
 
 				if inf.Facebook != nil {
-					incInf.FacebookURL, found = "https://www.facebook.com/"+inf.Facebook.Id, true
+					incInf.FacebookURL, found = inf.Facebook.GetProfileURL(), true
 					if !incPosts {
 						inf.Facebook = nil
 					}
 				}
 
 				if inf.Instagram != nil {
-					incInf.InstagramURL, found = "https://www.instagram.com/"+inf.Instagram.UserName, true
+					incInf.InstagramURL, found = inf.Instagram.GetProfileURL(), true
 					if !incPosts {
 						inf.Instagram = nil
 					}
 				}
 
 				if inf.YouTube != nil {
-					incInf.YouTubeURL, found = "https://www.youtube.com/channel/"+inf.YouTube.UserId, true
+					incInf.YouTubeURL, found = inf.YouTube.GetProfileURL(), true
 					if !incPosts {
 						inf.YouTube = nil
 					}
