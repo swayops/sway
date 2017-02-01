@@ -556,19 +556,19 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						}
 
 						tmpInf.PostURL = deal.PostUrl
-						if deal.Tweet != nil && inf.Twitter != nil {
+						if cmp.Twitter && inf.Twitter != nil {
 							tmpInf.ImageURL = inf.Twitter.ProfilePicture
 							tmpInf.Followers = int64(inf.Twitter.Followers)
 							tmpInf.ProfileURL = inf.Twitter.GetProfileURL()
-						} else if deal.Facebook != nil && inf.Facebook != nil {
+						} else if cmp.Facebook && inf.Facebook != nil {
 							tmpInf.ImageURL = inf.Facebook.ProfilePicture
 							tmpInf.Followers = int64(inf.Facebook.Followers)
 							tmpInf.ProfileURL = inf.Facebook.GetProfileURL()
-						} else if deal.Instagram != nil && inf.Instagram != nil {
+						} else if cmp.Instagram && inf.Instagram != nil {
 							tmpInf.ImageURL = inf.Instagram.ProfilePicture
 							tmpInf.Followers = int64(inf.Instagram.Followers)
 							tmpInf.ProfileURL = inf.Instagram.GetProfileURL()
-						} else if deal.YouTube != nil && inf.YouTube != nil {
+						} else if cmp.YouTube && inf.YouTube != nil {
 							tmpInf.ImageURL = inf.YouTube.ProfilePicture
 							tmpInf.Followers = int64(inf.YouTube.Subscribers)
 							tmpInf.ProfileURL = inf.YouTube.GetProfileURL()
