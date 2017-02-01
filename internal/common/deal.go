@@ -170,27 +170,6 @@ func (d *Deal) PerkIncr() {
 	data.Perks += 1
 }
 
-func (d *Deal) ClearDeltas() {
-	// Clears out deltas which are used
-	// to deplete budgets!
-
-	if d.Tweet != nil {
-		d.Tweet.Clear()
-	}
-
-	if d.Facebook != nil {
-		d.Facebook.Clear()
-	}
-
-	if d.Instagram != nil {
-		d.Instagram.Clear()
-	}
-
-	if d.YouTube != nil {
-		d.YouTube.Clear()
-	}
-}
-
 func (d *Deal) Click() {
 	if d.Reporting == nil {
 		d.Reporting = make(map[string]*Stats)

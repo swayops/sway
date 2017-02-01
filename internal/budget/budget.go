@@ -473,30 +473,24 @@ type Metrics struct {
 func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
 	var (
-		firstTouch                     bool
 		shares, likes, comments, views int32
 	)
-
-	if len(deal.Reporting) == 0 {
-		// This implies that we have no reporting for this deal,
-		// hence it was JUST discovered by explorer and we need to
-		// look at it's total engagements (what it got between being posted
-		// to our explorer picking it up) and not just deltas!
-		firstTouch = true
-	}
 
 	m := &Metrics{}
 
 	oldSpendable := store.Spendable
+
+	// We will use this to determine how many engagements have we already paid for
+	// and pay engagement deltas using that!
+	// This ensures that we pay for every engagement and makes payouts more robust.
+	total := deal.TotalStats()
+
 	if deal.Tweet != nil {
 		// Considering retweets as shares and favorites as likes!
-		if firstTouch {
-			shares = int32(deal.Tweet.Retweets)
-			likes = int32(deal.Tweet.Favorites)
-		} else {
-			shares = int32(deal.Tweet.RetweetsDelta)
-			likes = int32(deal.Tweet.FavoritesDelta)
-		}
+
+		// Subtracting all the engagements we have already recorded!
+		shares = int32(deal.Tweet.Retweets) - total.Shares
+		likes = int32(deal.Tweet.Favorites) - total.Likes
 
 		m.Shares += shares
 		m.Likes += likes
@@ -504,15 +498,10 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(shares) * TW_RETWEET)
 		store.deductSpendable(float64(likes) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		if firstTouch {
-			likes = int32(deal.Facebook.Likes)
-			shares = int32(deal.Facebook.Shares)
-			comments = int32(deal.Facebook.Comments)
-		} else {
-			likes = int32(deal.Facebook.LikesDelta)
-			shares = int32(deal.Facebook.SharesDelta)
-			comments = int32(deal.Facebook.CommentsDelta)
-		}
+		// Subtracting all the engagements we have already recorded!
+		likes = int32(deal.Facebook.Likes) - total.Likes
+		shares = int32(deal.Facebook.Shares) - total.Shares
+		comments = int32(deal.Facebook.Comments) - total.Comments
 
 		m.Likes += likes
 		m.Shares += shares
@@ -522,13 +511,8 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(shares) * FB_SHARE)
 		store.deductSpendable(float64(comments) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		if firstTouch {
-			likes = int32(deal.Instagram.Likes)
-			comments = int32(deal.Instagram.Comments)
-		} else {
-			likes = int32(deal.Instagram.LikesDelta)
-			comments = int32(deal.Instagram.CommentsDelta)
-		}
+		likes = int32(deal.Instagram.Likes) - total.Likes
+		comments = int32(deal.Instagram.Comments) - total.Comments
 
 		m.Likes += likes
 		m.Comments += comments
@@ -536,15 +520,9 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(likes) * INSTA_LIKE)
 		store.deductSpendable(float64(comments) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		if firstTouch {
-			views = int32(deal.YouTube.Views)
-			likes = int32(deal.YouTube.Likes)
-			comments = int32(deal.YouTube.Comments)
-		} else {
-			views = int32(deal.YouTube.ViewsDelta)
-			likes = int32(deal.YouTube.LikesDelta)
-			comments = int32(deal.YouTube.CommentsDelta)
-		}
+		views = int32(deal.YouTube.Views) - total.Views
+		likes = int32(deal.YouTube.Likes) - total.Likes
+		comments = int32(deal.YouTube.Comments) - total.Comments
 
 		m.Views += views
 		m.Likes += likes
@@ -557,9 +535,6 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
-
-	// Clear out deltas since they've been used now!
-	deal.ClearDeltas()
 
 	return store, spentDelta, m
 }
