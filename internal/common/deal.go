@@ -200,7 +200,9 @@ func (d *Deal) GetMonthStats(offset int) (m *Stats) {
 			data.Exchange += stats.Exchange
 			data.Influencer += stats.Influencer
 			data.Agency += stats.Agency
-			data.AgencyId = stats.AgencyId
+			if stats.AgencyId != "" {
+				data.AgencyId = stats.AgencyId
+			}
 		}
 	}
 	return data
