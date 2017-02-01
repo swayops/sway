@@ -4368,14 +4368,14 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 							reportingComments += stats.Comments
 						}
 
-						stats31, ok := deal.Reporting["2017-01-31"]
-						if !ok || stats31 == nil {
+						stats24, ok := deal.Reporting["2017-01-24"]
+						if !ok || stats24 == nil {
 							log.Println("no stats for 31", deal.Id)
 							continue
 						}
 
-						stats30, ok := deal.Reporting["2017-01-30"]
-						if !ok || stats30 == nil {
+						stats23, ok := deal.Reporting["2017-01-23"]
+						if !ok || stats23 == nil {
 							log.Println("no stats for 30", deal.Id)
 							continue
 						}
@@ -4383,38 +4383,40 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 						if likesDiff := reportingLikes - totalLikes; likesDiff > 0 {
 							// Subtract likes from stats
 
-							if stats31.Likes > likesDiff {
+							if stats24.Likes > likesDiff {
 								// We have all the likes we need on 31st.. lets surtact!
-								stats31.Likes -= likesDiff
+								stats24.Likes -= likesDiff
 							} else {
-								leftOver := stats31.Likes - likesDiff
-								stats31.Likes = 0
-								stats30.Likes -= leftOver
-
+								leftOver := stats24.Likes - likesDiff
+								stats24.Likes = 0
+								stats23.Likes -= leftOver
 							}
+							log.Println("Need to take out likes:", likesDiff)
+
 						}
 
 						if commentsDiff := reportingComments - totalComments; commentsDiff > 0 {
 							// Subtract comments from stats
 
-							if stats31.Comments >= commentsDiff {
+							if stats24.Comments >= commentsDiff {
 								// We have all the likes we need on 31st.. lets surtact!
-								stats31.Comments -= commentsDiff
+								stats24.Comments -= commentsDiff
 							} else {
-								leftOver := stats31.Comments - commentsDiff
-								stats31.Comments = 0
-								stats30.Comments -= leftOver
+								leftOver := stats24.Comments - commentsDiff
+								stats24.Comments = 0
+								stats23.Comments -= leftOver
 							}
+							log.Println("Need to take out comments:", commentsDiff)
+
 						}
 
 						// Save and bail
-						deal.Reporting["2017-01-31"] = stats31
-						deal.Reporting["2017-01-30"] = stats30
+						deal.Reporting["2017-01-24"] = stats24
+						deal.Reporting["2017-01-23"] = stats23
 					}
 				}
 			}
 			saveAllCompletedDeals(s, inf)
-			return
 		}
 
 		c.JSON(200, misc.StatusOK(""))
