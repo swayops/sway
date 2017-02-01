@@ -1282,13 +1282,20 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
-	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count {
+	// It should be equal to the value it was before since new products
+	// are in pending count!
+	if len(cmpLoad.Deals) != cmp.Perks.Count {
 		t.Fatal("Unexpected number of deals!")
 		return
 	}
 
-	if cmpLoad.Perks.Count != cmpUpdate.Perks.Count {
+	if cmpLoad.Perks.Count != cmp.Perks.Count {
 		t.Fatal("Unexpected number of perks!")
+		return
+	}
+
+	if cmpLoad.Perks.PendingCount != 4 {
+		t.Fatal("Unexpected number of pending perks!")
 		return
 	}
 
@@ -1344,6 +1351,8 @@ func TestPerks(t *testing.T) {
 		return
 	}
 
+	var cmpPerks common.Campaign
+
 	if *genData {
 		goto SKIP_APPROVE_1
 	}
@@ -1368,14 +1377,26 @@ func TestPerks(t *testing.T) {
 	}
 
 	// make sure approved value is correct!
-	r = rst.DoTesting(t, "GET", "/campaign/4", nil, &cmpLoad)
+	r = rst.DoTesting(t, "GET", "/campaign/4", nil, &cmpPerks)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	if cmpLoad.Approved == 0 {
+	if cmpPerks.Approved == 0 {
 		t.Fatal("Admin approval didnt work!")
+		return
+	}
+
+	// Lets make sure perk count is 9 now!
+	if cmpPerks.Perks.PendingCount != 0 {
+		log.Println("PENDING COUNT", cmpPerks.Perks.PendingCount)
+		t.Fatal("pending count incorrect!")
+		return
+	}
+
+	if cmpPerks.Perks.Count != 9 {
+		t.Fatal("pending count incorrect!")
 		return
 	}
 
@@ -1653,12 +1674,12 @@ SKIP_APPROVE_2:
 		return
 	}
 
-	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count {
+	if len(cmpLoad.Deals) != cmpUpdate.Perks.Count-cmpLoad.Perks.PendingCount {
 		t.Fatal("Unexpected number of deals!")
 		return
 	}
 
-	if cmpLoad.Perks.Count+1 != cmpUpdate.Perks.Count {
+	if cmpLoad.Perks.Count+1 != cmpUpdate.Perks.Count-cmpLoad.Perks.PendingCount {
 		t.Fatal("Unexpected number of perks!")
 		return
 	}
@@ -3047,6 +3068,7 @@ func TestScraps(t *testing.T) {
 		t.Fatal("Bad keyword!")
 	}
 }
+
 
 func TestBalances(t *testing.T) {
 	rst := getClient()
@@ -4968,6 +4990,215 @@ func TestSubscriptions(t *testing.T) {
 	}
 }
 
+func TestTimeline(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+	// Create a campaign
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
+	}
+
+	t.Logf("timeline userID: %s", adv.ExpID)
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       150,
+		Name:         "Insert cool campaign name",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets make sure we got the correct timeline message
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmpLoad.Timeline) != 1 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	if cmpLoad.Timeline[0].Message != common.CAMPAIGN_APPROVAL {
+		t.Fatal("Bad message!")
+		return
+	}
+
+	// approve campaign
+	r = rst.DoTesting(t, "GET", "/approveCampaign/"+st.ID, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmpLoad.Timeline) != 2 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	if cmpLoad.Timeline[1].Message != common.CAMPAIGN_START {
+		t.Fatal("Bad message!")
+		return
+	}
+
+	// Accept a deal
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	deals = getDeals(st.ID, deals)
+	if len(deals) == 0 {
+		t.Fatal("Unexpected number of deals.. should have atleast one!")
+	}
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+st.ID+"/"+deals[0].Id+"/twitter", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if len(cmpLoad.Timeline) != 3 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	if cmpLoad.Timeline[2].Message != common.DEAL_ACCEPTED {
+		t.Fatal("Bad message!")
+		return
+	}
+
+	// Toggle the campaign to OFF
+	updStatus := false
+	cmpUpdate := CampaignUpdate{
+		Geos:       cmpLoad.Geos,
+		Categories: cmpLoad.Categories,
+		Status:     &updStatus,
+		Budget:     &cmpLoad.Budget,
+		Male:       &cmpLoad.Male,
+		Female:     &cmpLoad.Female,
+		Name:       &cmpLoad.Name,
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if len(cmpLoad.Timeline) != 4 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	if cmpLoad.Timeline[3].Message != common.CAMPAIGN_PAUSED {
+		t.Fatal("Bad message!")
+		return
+	}
+
+	// Toggle the campaign to ON
+	updStatus = true
+	cmpUpdate = CampaignUpdate{
+		Geos:       cmpLoad.Geos,
+		Categories: cmpLoad.Categories,
+		Status:     &updStatus,
+		Budget:     &cmpLoad.Budget,
+		Male:       &cmpLoad.Male,
+		Female:     &cmpLoad.Female,
+		Name:       &cmpLoad.Name,
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if len(cmpLoad.Timeline) != 5 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	if cmpLoad.Timeline[4].Message != common.CAMPAIGN_START {
+		t.Fatal("Bad message!")
+		return
+	}
+
+	var timeline map[string][]*common.Timeline
+	r = rst.DoTesting(t, "GET", "/getAdvertiserTimeline/"+cmpLoad.AdvertiserId, nil, &timeline)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(timeline) == 0 {
+		t.Fatal("Bad advertiser timeline!")
+		return
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")
@@ -5069,10 +5300,6 @@ func TestBilling(t *testing.T) {
 
 			if load.Budget != 5000 {
 				t.Fatal("Campaign budget did not increment!")
-			}
-
-			if len(load.Deals) <= len(oldLoad.Deals) {
-				t.Fatal("Deals did not increase!")
 			}
 
 			// Lets see if it's new store was affected!

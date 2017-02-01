@@ -243,6 +243,9 @@ func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 		}
 		inf.ActiveDeals = activeDeals
 
+		// Lets add to timeline!
+		cmp.AddToTimeline(common.CAMPAIGN_SUCCESS, true, srv.Cfg)
+
 		// Save the Influencer
 		if err := saveInfluencer(srv, tx, inf); err != nil {
 			log.Println("Error saving influencer!", err)
@@ -329,10 +332,6 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		}
 
 		postTags := tw.Hashtags()
-		// check for required hashes!
-		if !hasReqHash(tw.Text, postTags) {
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -398,6 +397,14 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		}
 
 		if foundHash && foundMention && foundLink {
+			// check for required hashes!
+			if !hasReqHash(tw.Text, postTags) {
+				if err := inf.DealRejection("hashtags (#ad)", tw.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -405,12 +412,12 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(tw.Text, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}
@@ -445,14 +452,11 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
-		if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
-			continue
-		}
+		// if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
+		// 	continue
+		// }
 
 		postTags := post.Hashtags()
-		if !hasReqHash(post.Caption, postTags) {
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -511,6 +515,13 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !hasReqHash(post.Caption, postTags) {
+				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -518,12 +529,12 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(post.Caption, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}
@@ -566,15 +577,10 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 	rejections := make(map[string]string)
 
 	for _, post := range inf.Instagram.LatestPosts {
-		if misc.WithinLast(int32(post.Published), waitingPeriod) {
-			rejections[post.Caption] = "WAITING_PERIOD"
-			continue
-		}
-
-		if !hasReqHash(post.Caption, post.Hashtags) {
-			rejections[post.Caption] = "REQ_HASH"
-			continue
-		}
+		// if misc.WithinLast(int32(post.Published), waitingPeriod) {
+		// 	rejections[post.Caption] = "WAITING_PERIOD"
+		// 	continue
+		// }
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -637,6 +643,13 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !hasReqHash(post.Caption, post.Hashtags) {
+				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -644,12 +657,12 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range post.Hashtags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(post.Caption, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}
@@ -690,14 +703,11 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
-		if misc.WithinLast(post.Published, waitingPeriod) {
-			continue
-		}
+		// if misc.WithinLast(post.Published, waitingPeriod) {
+		// 	continue
+		// }
 
 		postTags := post.Hashtags()
-		if !hasReqHash(post.Description, postTags) {
-			continue
-		}
 
 		var (
 			foundHash, foundMention, foundLink bool
@@ -756,6 +766,13 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 		}
 
 		if foundHash && foundMention && foundLink {
+			if !hasReqHash(post.Description, postTags) {
+				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
+					log.Println("Error emailing rejection reason to influencer", err)
+				}
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// Before returning the post.. lets check for some fraud
 
@@ -763,12 +780,12 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				for _, tg := range hashBlacklist {
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 							return nil
 						}
 					}
 					if containsFold(post.Description, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag")
+						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
 						return nil
 					}
 				}

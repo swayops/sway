@@ -13,14 +13,9 @@ type Post struct {
 	Published FbTime `json:"published,omitempty"`
 
 	// Stats
-	Likes      float64 `json:"likes,omitempty"`
-	LikesDelta float64 `json:"lDelta,omitempty"`
-
-	Shares      float64 `json:"shares,omitempty"`
-	SharesDelta float64 `json:"shDelta,omitempty"`
-
-	Comments      float64 `json:"comments,omitempty"`
-	CommentsDelta float64 `json:"cDelta,omitempty"`
+	Likes    float64 `json:"likes,omitempty"`
+	Shares   float64 `json:"shares,omitempty"`
+	Comments float64 `json:"comments,omitempty"`
 
 	// Type
 	Type string `json:"type,omitempty"` // "video", "photo", "shared_story", "link"
@@ -43,21 +38,18 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	// }
 
 	if lk, err := getLikes(pt.Id, cfg); err == nil {
-		pt.LikesDelta += pt.Likes - lk
 		pt.Likes = lk
 	} else {
 		return err
 	}
 
 	if cm, err := getComments(pt.Id, cfg); err == nil {
-		pt.CommentsDelta += pt.Comments - cm
 		pt.Comments = cm
 	} else {
 		return err
 	}
 
 	if sh, _, err := getShares(pt.Id, cfg); err == nil {
-		pt.SharesDelta += pt.Shares - sh
 		pt.Shares = sh
 	} else {
 		return err
@@ -77,8 +69,4 @@ func (pt *Post) Hashtags() []string {
 		}
 	}
 	return tags
-}
-
-func (pt *Post) Clear() {
-	pt.LikesDelta, pt.CommentsDelta = 0, 0
 }

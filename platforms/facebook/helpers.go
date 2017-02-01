@@ -77,7 +77,6 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 
 		if lk, lkErr := getLikes(p.Id, cfg); lkErr == nil {
 			fbPost.Likes = lk
-			fbPost.LikesDelta = lk
 			likes += lk
 		} else {
 			err = lkErr
@@ -86,7 +85,6 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 
 		if cm, cmErr := getComments(p.Id, cfg); cmErr == nil {
 			fbPost.Comments = cm
-			fbPost.CommentsDelta = cm
 			comments += cm
 		} else {
 			err = cmErr
@@ -95,7 +93,6 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 
 		if sh, pType, shErr := getShares(p.Id, cfg); shErr == nil {
 			fbPost.Shares = sh
-			fbPost.SharesDelta = sh
 			fbPost.Type = pType
 			shares += sh
 		} else {

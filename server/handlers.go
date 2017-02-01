@@ -390,15 +390,23 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if cmp.Status {
+				var spendable float64
 				// Create their budget key IF the campaign is on
 				// NOTE: Create budget key requires cmp.Id be set
-				var spendable float64
 				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
 					return
 				}
 
-				addDealsToCampaign(&cmp, spendable, s, tx)
+				addDealsToCampaign(&cmp, s, tx, spendable)
+
+				// Lets add to timeline!
+				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
+				if cmp.Perks == nil || isCoupon {
+					cmp.AddToTimeline(common.CAMPAIGN_APPROVAL, false, s.Cfg)
+				} else {
+					cmp.AddToTimeline(common.PERK_WAIT, false, s.Cfg)
+				}
 			}
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
@@ -436,6 +444,8 @@ func getCampaign(s *Server) gin.HandlerFunc {
 					cmp.Perks.Count += d.Perk.Count
 				}
 			}
+			cmp.Perks.Count += cmp.Perks.PendingCount
+
 		}
 
 		if c.Query("deals") != "true" {
@@ -543,8 +553,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		var (
-			upd   CampaignUpdate
-			added float64
+			upd CampaignUpdate
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
@@ -635,15 +644,16 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			if added, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
+			var spendable float64
+			if spendable, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
 				log.Println("Error creating budget key!", err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
 
-			if added > 0 {
+			if spendable > 0 {
 				s.db.Update(func(tx *bolt.Tx) error {
-					addDealsToCampaign(&cmp, added, s, tx)
+					addDealsToCampaign(&cmp, s, tx, spendable)
 					return nil
 				})
 			}
@@ -693,7 +703,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
 					cmp.Perks.Count += dealsToAdd
 
-					// Add deals
+					// Add deals for perks we added
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 						addDeals(&cmp, dealsToAdd, s, tx)
 						return saveCampaign(tx, &cmp, s)
@@ -706,7 +716,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// If the saved perk is a physical product.. lets add more!
 				perksInUse := cmp.Perks.Count
 
-				// Get all the coupons saved in the deals
+				// Get all the products saved in the deals
 				for _, d := range cmp.Deals {
 					if d.Perk != nil {
 						perksInUse += d.Perk.Count
@@ -718,13 +728,17 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					return
 				}
 
-				dealsToAdd := upd.Perks.Count - perksInUse
+				// Subtracting pending count because frontend's upd.Perks.Count value
+				// includes pending count!
+				dealsToAdd := upd.Perks.Count - perksInUse - cmp.Perks.PendingCount
 				if dealsToAdd > 0 {
-					cmp.Perks.Count += dealsToAdd
-
-					// Add deals
+					// For perks.. lets put it into pending count instead of the actual
+					// count
+					// NOTE: We'll add deals and perk count once the addition is approved
+					// by admin
+					cmp.Perks.PendingCount += dealsToAdd
+					// Add deals for perks we added
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						addDeals(&cmp, dealsToAdd, s, tx)
 						return saveCampaign(tx, &cmp, s)
 					}); err != nil {
 						misc.AbortWithErr(c, 500, err)
@@ -737,6 +751,13 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		var turnedOff bool
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			if len(additions) > 0 && cmp.Perks == nil {
+				// Add deals depending on how many whitelisted influencers were added
+				// ONLY if it's a non-perk based campaign. We don't add deals for whitelists
+				// for perks
+				addDeals(&cmp, len(additions), s, tx)
+			}
+
 			if upd.Status == nil {
 				goto END
 			}
@@ -756,7 +777,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 						return
 					}
 
-					addDealsToCampaign(&cmp, spendable, s, tx)
+					addDealsToCampaign(&cmp, s, tx, spendable)
 
 				} else {
 					// This campaign does have a store.. so it was active sometime this month.
@@ -766,6 +787,22 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					if err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
+					}
+				}
+
+				// Campaign has been toggled to on.. so lets add to timeline
+				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
+				if cmp.Perks == nil || isCoupon {
+					if cmp.Approved == 0 {
+						cmp.AddToTimeline(common.CAMPAIGN_APPROVAL, false, s.Cfg)
+					} else {
+						cmp.AddToTimeline(common.CAMPAIGN_START, false, s.Cfg)
+					}
+				} else {
+					if cmp.Approved == 0 {
+						cmp.AddToTimeline(common.PERK_WAIT, false, s.Cfg)
+					} else {
+						cmp.AddToTimeline(common.PERKS_RECEIVED, false, s.Cfg)
 					}
 				}
 			} else if !*upd.Status && cmp.Status != *upd.Status {
@@ -788,6 +825,9 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					}
 				}
 				turnedOff = true
+
+				// Since the campaign has toggled to off.. lets add to timeline
+				cmp.AddToTimeline(common.CAMPAIGN_PAUSED, false, s.Cfg)
 			}
 			cmp.Status = *upd.Status
 
@@ -1349,7 +1389,7 @@ func addDealCount(s *Server) gin.HandlerFunc {
 
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			addDealsToCampaign(&cmp, float64(count)*DEAL_YIELD, s, tx)
+			addDeals(&cmp, count, s, tx)
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			misc.AbortWithErr(c, 500, err)
@@ -1545,6 +1585,30 @@ func getDealsForCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, getDealsForCmp(s, cmp, false))
+	}
+}
+
+type TargetYield struct {
+	Min float64 `json:"min,omitempty"`
+	Max float64 `json:"max,omitempty"`
+}
+
+func getTargetYield(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
+			return
+		}
+
+		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+		if store == nil || err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		min, max := cmp.GetTargetYield(store.Spendable)
+		c.JSON(200, &TargetYield{Min: min, Max: max})
 	}
 }
 
@@ -1761,6 +1825,33 @@ func assignDeal(s *Server) gin.HandlerFunc {
 					Status:       false,
 				}
 
+				if cmp.Perks.Count == 0 {
+					// Lets email the advertiser letting them know there are no more
+					// perks available!
+
+					user := s.auth.GetUser(cmp.AdvertiserId)
+					if user == nil || user.Advertiser == nil {
+						c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+						return
+					}
+
+					if s.Cfg.ReplyMailClient() != nil {
+						email := templates.NotifyEmptyPerkEmail.Render(map[string]interface{}{"ID": user.ID, "Campaign": cmp.Name, "Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+						resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have no remaining perks for the campaign "+cmp.Name), user.Email, user.Name,
+							[]string{""})
+						if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+							s.Alert("Failed to mail advertiser regarding perks running out", err)
+						} else {
+							if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+								"tag": "no more perks",
+								"id":  user.ID,
+							}); err != nil {
+								log.Println("Failed to log out of perks notify email!", user.ID)
+							}
+						}
+					}
+				}
+
 				// If it's a coupon code.. we do not need admin approval
 				// so lets set the status to true
 				if cmp.Perks.IsCoupon() {
@@ -1776,7 +1867,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 					// Lets also delete the coupon code
 					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
 				} else {
-					s.Notify("Perk requested!", "Somebody just requested a perk to be mailed to them! Please check admin dash.")
+					s.Notify("Perk requested!", fmt.Sprintf("%s just requested a perk (%s) to be mailed to them! Please check admin dash.", inf.Name, cmp.Perks.Name))
 				}
 			}
 
@@ -1792,6 +1883,9 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 			// Append to the influencer's active deals
 			inf.ActiveDeals = append(inf.ActiveDeals, foundDeal)
+
+			// Lets add to timeline
+			cmp.AddToTimeline(common.DEAL_ACCEPTED, true, s.Cfg)
 
 			// Save the Influencer
 			if err = saveInfluencer(s, tx, inf); err != nil {
@@ -1971,6 +2065,7 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
+
 				if cmp.Approved == 0 {
 					// This is a campaign who's perks we are waiting for! (inbound)
 					if cmp.Perks != nil {
@@ -1981,6 +2076,10 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 					if cmp.Perks != nil {
 						perksStored += cmp.Perks.Count
 					}
+				}
+
+				if !cmp.IsValid() {
+					return nil
 				}
 
 				for _, d := range cmp.Deals {
@@ -2065,6 +2164,36 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, a)
+	}
+}
+
+func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			targetAdv = c.Param("id")
+		)
+
+		cmpTimeline := make(map[string]*common.Timeline)
+		if err := s.db.View(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				if cmp.AdvertiserId == targetAdv && len(cmp.Timeline) > 0 {
+					cmpTimeline[fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)] = cmp.Timeline[len(cmp.Timeline)-1]
+				}
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		common.SetLinkTitles(cmpTimeline)
+		c.JSON(200, cmpTimeline)
 	}
 }
 
@@ -2519,7 +2648,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				// Lets make sure they have an active subscription!
 				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
 				if err != nil {
-					s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+					s.Alert("Stripe subscription lookup error for "+adv.ID, err)
 					return nil
 				}
 
@@ -2547,7 +2676,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 				// Create their budget key for this month in the DB
 				// NOTE: last month's leftover spendable will be carried over
 				var spendable float64
-
 				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
 					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 					// Don't return because an agency that switched from IO to CC that has
@@ -2556,7 +2684,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				}
 
 				// Add fresh deals for this month
-				addDealsToCampaign(cmp, spendable, s, tx)
+				addDealsToCampaign(cmp, s, tx, spendable)
 
 				if err = saveCampaign(tx, cmp, s); err != nil {
 					log.Println("Error saving campaign for billing", err)
@@ -2571,6 +2699,153 @@ func runBilling(s *Server) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func chargeBudget(s *Server) gin.HandlerFunc {
+	// Runs billing for one campaign and charges its budget
+	// and adds to spendable
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		cid := c.Param("campaignId")
+		if cid == "" {
+			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				cmp := &common.Campaign{}
+				if err := json.Unmarshal(v, cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return err
+				}
+
+				if cmp.Id != cid {
+					return nil
+				}
+
+				// Lets make sure this campaign has an active advertiser, active agency,
+				// is set to on, is approved and has a budget!
+				if !cmp.Status {
+					if !s.Cfg.Sandbox {
+						log.Println("Campaign is off", cmp.Id)
+					}
+					return nil
+				}
+
+				if cmp.Approved == 0 {
+					log.Println("Campaign is not approved", cmp.Id)
+					return nil
+				}
+
+				if cmp.Budget == 0 {
+					log.Println("Campaign has no budget", cmp.Budget)
+					return nil
+				}
+
+				var (
+					ag  *auth.AdAgency
+					adv *auth.Advertiser
+				)
+
+				if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+					log.Println("Could not find ad agency!", cmp.AgencyId)
+					return nil
+				}
+
+				if !ag.Status {
+					log.Println("Agency is off!", cmp.AgencyId)
+					return nil
+				}
+
+				if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+					log.Println("Could not find advertiser!", cmp.AgencyId)
+					return nil
+				}
+
+				if !adv.Status {
+					log.Println("Advertiser is off!", cmp.AdvertiserId)
+					return nil
+				}
+
+				// Lets make sure they have an active subscription!
+				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+				if err != nil {
+					s.Alert("Stripe subscription lookup error for "+adv.ID, err)
+					return nil
+				}
+
+				if !allowed {
+					log.Println("Subscription is now off", adv.ID)
+					return nil
+				}
+
+				// This functionality carry over any left over spendable too
+				// It will also look to check if there's a pending (lowered)
+				// budget that was saved to db last month.. and that should be
+				// used now
+				var (
+					leftover, pending float64
+				)
+
+				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+				if err == nil && store != nil {
+					// This campaign has a budget for this month! just charge budget
+					if err := budget.ChargeBudget(s.budgetDb, s.Cfg, cmp, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error charging budget key while billing for "+cmp.Id, err)
+						return nil
+					}
+
+					// We just charged for budget so lets add deals for that
+					addDealsToCampaign(cmp, s, tx, cmp.Budget)
+				} else {
+					// This campaign does not have a budget for this month. Create key!
+
+					var spendable float64
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
+						return nil
+					}
+
+					// Add fresh deals for this month
+					addDealsToCampaign(cmp, s, tx, spendable)
+				}
+
+				if err = saveCampaign(tx, cmp, s); err != nil {
+					log.Println("Error saving campaign for billing", err)
+					return err
+				}
+
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(ErrBilling))
+			return
+		}
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func transferSpendable(s *Server) gin.HandlerFunc {
+	// Transfers spendable from last month to this month
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		if err := budget.TransferSpendable(s.budgetDb, s.Cfg, cmp); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(cmp.Id))
 	}
 }
 
@@ -2618,7 +2893,7 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if cmp.Approved == 0 {
+				if cmp.Approved == 0 || (cmp.Perks != nil && cmp.Perks.PendingCount > 0) {
 					// Hide deals
 					cmp.Deals = nil
 					campaigns = append(campaigns, &cmp)
@@ -2754,29 +3029,21 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmp.Approved = int32(time.Now().Unix())
+		if cmp.Perks != nil && cmp.Perks.PendingCount > 0 {
+			// Add deals for perks we added
+			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+				// Add deals for pending value once we have received product!
+				addDeals(&cmp, cmp.Perks.PendingCount, s, tx)
 
-		// Save the Campaign
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveCampaign(tx, &cmp, s)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
+				// Empty out fields and increment perk count
+				cmp.Perks.Count += cmp.Perks.PendingCount
+				cmp.Perks.PendingCount = 0
 
-		// Email eligible influencers now that campaign is approved!
-		if len(cmp.Whitelist) > 0 {
-			go func() {
-				// Wait an hour before emailing
-				time.Sleep(1 * time.Hour)
-				emailList(s, cmp.Id, nil)
-			}()
-		} else {
-			go func() {
-				// Wait 2 hours before emailing
-				time.Sleep(2 * time.Hour)
-				emailDeal(s, cmp.Id)
-			}()
+				return saveCampaign(tx, &cmp, s)
+			}); err != nil {
+				misc.AbortWithErr(c, 500, err)
+				return
+			}
 		}
 
 		if !s.Cfg.Sandbox && cmp.Perks != nil && !cmp.Perks.IsCoupon() {
@@ -2796,6 +3063,43 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 					}
 				}
 			}
+		}
+
+		// Bail early if this JUST an acceptance for a perk increase!
+		if cmp.Approved > 0 {
+			c.JSON(200, misc.StatusOK(cmp.Id))
+			return
+		}
+
+		cmp.Approved = int32(time.Now().Unix())
+
+		// Lets add to timeline!
+		isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
+		if cmp.Perks == nil || isCoupon {
+			cmp.AddToTimeline(common.CAMPAIGN_START, false, s.Cfg)
+		} else {
+			cmp.AddToTimeline(common.PERKS_RECEIVED, false, s.Cfg)
+		}
+
+		// Save the Campaign
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveCampaign(tx, &cmp, s)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		// Email eligible influencers now that campaign is approved!
+		if len(cmp.Whitelist) > 0 {
+			go func() {
+				emailList(s, cmp.Id, nil)
+			}()
+		} else {
+			go func() {
+				// Wait 2 hours before emailing
+				time.Sleep(2 * time.Hour)
+				emailDeal(s, cmp.Id)
+			}()
 		}
 
 		c.JSON(200, misc.StatusOK(cmp.Id))
@@ -2901,7 +3205,7 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		s.Notify("Check requested!", "Somebody just requested a check! Please check admin dash.")
+		s.Notify("Check requested!", fmt.Sprintf("%s just requested a check of %f! Please check admin dash.", inf.Name, inf.PendingPayout))
 
 		// Insert log
 		c.JSON(200, misc.StatusOK(infId))
@@ -3161,6 +3465,55 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 
 		if _, err := depleteBudget(s); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func forceTimeline(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+
+				if !cmp.Status {
+					cmp.AddToTimeline(common.CAMPAIGN_PAUSED, false, s.Cfg)
+				}
+
+				time.Sleep(1 * time.Second)
+
+				if cmp.HasMailedPerk() {
+					cmp.AddToTimeline(common.PERKS_MAILED, true, s.Cfg)
+				}
+
+				time.Sleep(1 * time.Second)
+
+				if cmp.HasAcceptedDeal() {
+					cmp.AddToTimeline(common.DEAL_ACCEPTED, true, s.Cfg)
+				}
+
+				time.Sleep(1 * time.Second)
+
+				if cmp.HasCompletedDeal() {
+					cmp.AddToTimeline(common.CAMPAIGN_SUCCESS, true, s.Cfg)
+				}
+
+				saveCampaign(tx, &cmp, s)
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -4150,5 +4503,78 @@ func influencerValue(s *Server) gin.HandlerFunc {
 
 		c.String(200, strconv.FormatFloat(value, 'f', 6, 64))
 		return
+	}
+}
+
+func syncAllStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, deal := range inf.CompletedDeals {
+				if deal.IsComplete() {
+					// Lets make sure numbers for likes and comments on insta
+					// post line up with daily stats
+					if deal.Instagram != nil {
+						totalLikes := int32(deal.Instagram.Likes)
+						totalComments := int32(deal.Instagram.Comments)
+
+						var (
+							reportingLikes, reportingComments int32
+							key                               string
+							stats                             *common.Stats
+							highestLikes                      int32
+						)
+
+						for day, target := range deal.Reporting {
+							if target.Likes > highestLikes {
+								highestLikes = target.Likes
+
+								stats = target
+								key = day
+							}
+							reportingLikes += target.Likes
+							reportingComments += target.Comments
+						}
+
+						if stats == nil || key == "" {
+							continue
+						}
+
+						likesDiff := reportingLikes - totalLikes
+						if likesDiff > 0 {
+							// Subtract likes from stats
+
+							if stats.Likes > likesDiff {
+								// We have all the likes we need on 31st.. lets surtact!
+								log.Println("Need to take out likes:", deal.Id, likesDiff)
+								stats.Likes -= likesDiff
+							}
+						} else if likesDiff < 0 {
+							// meaning we need to ADD likes
+							stats.Likes += totalLikes - reportingLikes
+						}
+
+						commentsDiff := reportingComments - totalComments
+						if commentsDiff > 0 {
+							// Subtract comments from stats
+
+							if stats.Comments >= commentsDiff {
+								log.Println("Need to take out comments:", deal.Id, commentsDiff)
+
+								// We have all the likes we need on 31st.. lets surtact!
+								stats.Comments -= commentsDiff
+							} else if commentsDiff < 0 {
+								stats.Comments += totalComments - reportingComments
+							}
+						}
+
+						// Save and bail
+						deal.Reporting[key] = stats
+					}
+				}
+			}
+			saveAllCompletedDeals(s, inf)
+		}
+
+		c.JSON(200, misc.StatusOK(""))
 	}
 }

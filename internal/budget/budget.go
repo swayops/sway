@@ -160,6 +160,9 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// so we need to calculate what the given
 			// (monthly) budget would be for the days left.
 			monthlyBudget = GetProratedBudget(cmp.Budget)
+			if cfg.Sandbox {
+				monthlyBudget = cmp.Budget
+			}
 		} else {
 			// TODAY IS BILLING DAY! (first of the month)
 			// Is there a newBudget (pending) value (i.e. a lower budget)?
@@ -173,7 +176,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		// NOTE: This will automatically reset Pending too
 		spendable = leftover + monthlyBudget
 		store := &Store{
-			Budget:    monthlyBudget,
+			Budget:    cmp.Budget,
 			Leftover:  leftover,
 			Spendable: spendable,
 		}
@@ -386,6 +389,150 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 	return nil
 }
 
+func ChargeBudget(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
+	st, err := GetStore(db, cfg, "")
+	if err != nil {
+		return err
+	}
+
+	store, ok := st[cmp.Id]
+	if !ok {
+		return ErrNotFound
+	}
+
+	spendable := cmp.Budget + store.Spendable
+	if spendable < 0 {
+		spendable = 0
+	}
+
+	newStore := &Store{
+		Budget:    store.Budget,
+		Leftover:  store.Leftover,
+		Spent:     store.Spent,
+		Charges:   store.Charges,
+		Pending:   store.Pending,
+		Spendable: spendable,
+	}
+
+	if !isIO {
+		// CHARGE!
+		if cust == "" {
+			return ErrCC
+		}
+
+		if err := db.Update(func(tx *bolt.Tx) (err error) {
+			if err := newStore.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	st[cmp.Id] = newStore
+
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		var b []byte
+		if b, err = json.Marshal(&st); err != nil {
+			return
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
+			return
+		}
+		return
+	}); err != nil {
+		log.Println("Error when saving budget key", err)
+		return err
+	}
+
+	return nil
+}
+
+func TransferSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) error {
+	// Transfers spendable from last month to this month
+
+	oldStore, err := GetStore(db, cfg, GetLastMonthBudgetKey())
+	if err != nil {
+		return err
+	}
+
+	cmpStore, ok := oldStore[cmp.Id]
+	if !ok {
+		return ErrNotFound
+	}
+
+	if cmpStore.Spendable == 0 {
+		return ErrNotFound
+	}
+
+	oldSpendable := cmpStore.Spendable
+
+	// Lets give this spendable for thsi month!
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		key := getBudgetKey()
+		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
+
+		var newStore map[string]*Store
+		if len(b) == 0 {
+			// First save of the month!
+			newStore = make(map[string]*Store)
+		} else {
+			if err = json.Unmarshal(b, &newStore); err != nil {
+				return ErrUnmarshal
+			}
+		}
+
+		store := &Store{
+			Budget:    cmp.Budget,
+			Spendable: oldSpendable,
+		}
+
+		newStore[cmp.Id] = store
+
+		if b, err = json.Marshal(&newStore); err != nil {
+			return err
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Save everything except the spendable for last month! It's 0 now muahahaha
+	lastMonthStore := &Store{
+		Budget:   cmpStore.Budget,
+		Leftover: cmpStore.Leftover,
+		Spent:    cmpStore.Spent,
+		Charges:  cmpStore.Charges,
+		Pending:  cmpStore.Pending,
+	}
+
+	oldStore[cmp.Id] = lastMonthStore
+
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		var b []byte
+		if b, err = json.Marshal(&oldStore); err != nil {
+			return
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, GetLastMonthBudgetKey(), b); err != nil {
+			return
+		}
+		return
+	}); err != nil {
+		log.Println("Error when saving budget key", err)
+		return err
+	}
+
+	return nil
+}
+
 func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
@@ -470,30 +617,24 @@ type Metrics struct {
 func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	// Add logging here eventually!
 	var (
-		firstTouch                     bool
 		shares, likes, comments, views int32
 	)
-
-	if len(deal.Reporting) == 0 {
-		// This implies that we have no reporting for this deal,
-		// hence it was JUST discovered by explorer and we need to
-		// look at it's total engagements (what it got between being posted
-		// to our explorer picking it up) and not just deltas!
-		firstTouch = true
-	}
 
 	m := &Metrics{}
 
 	oldSpendable := store.Spendable
+
+	// We will use this to determine how many engagements have we already paid for
+	// and pay engagement deltas using that!
+	// This ensures that we pay for every engagement and makes payouts more robust.
+	total := deal.TotalStats()
+
 	if deal.Tweet != nil {
 		// Considering retweets as shares and favorites as likes!
-		if firstTouch {
-			shares = int32(deal.Tweet.Retweets)
-			likes = int32(deal.Tweet.Favorites)
-		} else {
-			shares = int32(deal.Tweet.RetweetsDelta)
-			likes = int32(deal.Tweet.FavoritesDelta)
-		}
+
+		// Subtracting all the engagements we have already recorded!
+		shares = int32(deal.Tweet.Retweets) - total.Shares
+		likes = int32(deal.Tweet.Favorites) - total.Likes
 
 		m.Shares += shares
 		m.Likes += likes
@@ -501,15 +642,10 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(shares) * TW_RETWEET)
 		store.deductSpendable(float64(likes) * TW_FAVORITE)
 	} else if deal.Facebook != nil {
-		if firstTouch {
-			likes = int32(deal.Facebook.Likes)
-			shares = int32(deal.Facebook.Shares)
-			comments = int32(deal.Facebook.Comments)
-		} else {
-			likes = int32(deal.Facebook.LikesDelta)
-			shares = int32(deal.Facebook.SharesDelta)
-			comments = int32(deal.Facebook.CommentsDelta)
-		}
+		// Subtracting all the engagements we have already recorded!
+		likes = int32(deal.Facebook.Likes) - total.Likes
+		shares = int32(deal.Facebook.Shares) - total.Shares
+		comments = int32(deal.Facebook.Comments) - total.Comments
 
 		m.Likes += likes
 		m.Shares += shares
@@ -519,13 +655,8 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(shares) * FB_SHARE)
 		store.deductSpendable(float64(comments) * FB_COMMENT)
 	} else if deal.Instagram != nil {
-		if firstTouch {
-			likes = int32(deal.Instagram.Likes)
-			comments = int32(deal.Instagram.Comments)
-		} else {
-			likes = int32(deal.Instagram.LikesDelta)
-			comments = int32(deal.Instagram.CommentsDelta)
-		}
+		likes = int32(deal.Instagram.Likes) - total.Likes
+		comments = int32(deal.Instagram.Comments) - total.Comments
 
 		m.Likes += likes
 		m.Comments += comments
@@ -533,15 +664,9 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(likes) * INSTA_LIKE)
 		store.deductSpendable(float64(comments) * INSTA_COMMENT)
 	} else if deal.YouTube != nil {
-		if firstTouch {
-			views = int32(deal.YouTube.Views)
-			likes = int32(deal.YouTube.Likes)
-			comments = int32(deal.YouTube.Comments)
-		} else {
-			views = int32(deal.YouTube.ViewsDelta)
-			likes = int32(deal.YouTube.LikesDelta)
-			comments = int32(deal.YouTube.CommentsDelta)
-		}
+		views = int32(deal.YouTube.Views) - total.Views
+		likes = int32(deal.YouTube.Likes) - total.Likes
+		comments = int32(deal.YouTube.Comments) - total.Comments
 
 		m.Views += views
 		m.Likes += likes
@@ -554,9 +679,6 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
-
-	// Clear out deltas since they've been used now!
-	deal.ClearDeltas()
 
 	return store, spentDelta, m
 }

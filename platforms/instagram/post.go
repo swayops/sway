@@ -31,11 +31,8 @@ type Post struct {
 	Location *geo.GeoRecord `json:"location,omitempty"`
 
 	// Stats
-	Likes      float64 `json:"likes,omitempty"`
-	LikesDelta float64 `json:"lDelta,omitempty"`
-
-	Comments      float64 `json:"comments,omitempty"`
-	CommentsDelta float64 `json:"cDelta,omitempty"`
+	Likes    float64 `json:"likes,omitempty"`
+	Comments float64 `json:"comments,omitempty"`
 
 	// Type
 	Type string `json:"type,omitempty"` // "photo" or "video"
@@ -95,20 +92,14 @@ func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 	}
 
 	if post.Data.Comments != nil {
-		pt.CommentsDelta += post.Data.Comments.Count - pt.Comments
 		pt.Comments = post.Data.Comments.Count
 	}
 
 	if post.Data.Likes != nil {
-		pt.LikesDelta += post.Data.Likes.Count - pt.Likes
 		pt.Likes = post.Data.Likes.Count
 	}
 
 	pt.LastUpdated = int32(time.Now().Unix())
 
 	return nil, nil
-}
-
-func (pt *Post) Clear() {
-	pt.LikesDelta, pt.CommentsDelta = 0, 0
 }

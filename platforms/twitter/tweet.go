@@ -84,11 +84,8 @@ func (tws Tweets) LatestLocation() *geo.GeoRecord {
 type Tweet struct {
 	Id string `json:"id_str"`
 
-	Retweets      uint32 `json:"retweet_count"`
-	RetweetsDelta uint32 `json:"rtDelta"`
-
-	Favorites      uint32 `json:"favorite_count"`
-	FavoritesDelta uint32 `json:"fDelta"`
+	Retweets  uint32 `json:"retweet_count"`
+	Favorites uint32 `json:"favorite_count"`
 
 	CreatedAt TwitterTime `json:"created_at"`
 
@@ -165,10 +162,6 @@ func (t *Tweet) Urls() (out []string) {
 	return
 }
 
-func (t *Tweet) Clear() {
-	t.RetweetsDelta, t.FavoritesDelta = 0, 0
-}
-
 func (t *Tweet) UpdateData(cfg *config.Config) (ban, err error) {
 	// // If the post is more than 4 days old AND
 	// // it has been updated in the last week, SKIP!
@@ -217,10 +210,7 @@ func (t *Tweet) UpdateData(cfg *config.Config) (ban, err error) {
 		}
 	}
 
-	t.FavoritesDelta += tmp.Favorites - t.Favorites
 	t.Favorites = tmp.Favorites
-
-	t.RetweetsDelta += tmp.Retweets - t.Retweets
 	t.Retweets = tmp.Retweets
 
 	t.LastUpdated = int32(time.Now().Unix())

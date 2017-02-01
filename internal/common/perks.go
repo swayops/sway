@@ -9,6 +9,7 @@ type Perk struct {
 
 	Category     string `json:"category,omitempty"`     // Set internally
 	Count        int    `json:"count,omitempty"`        // Set internally for coupons
+	PendingCount int    `json:"pendingCount,omitempty"` // Set when the campaign increases perks
 	Instructions string `json:"instructions,omitempty"` // Optional
 
 	// Set once a user picks up a deal.. only set for the

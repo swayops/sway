@@ -210,11 +210,6 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 				}
 			}
 
-			p.LikesDelta = p.Likes
-			p.DislikesDelta = p.Dislikes
-			p.ViewsDelta = p.Views
-			p.CommentsDelta = p.Comments
-
 			avgLikes += p.Likes
 			avgDislikes += p.Dislikes
 

@@ -125,9 +125,6 @@ func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
 		if t.User != nil {
 			t.PostURL = fmt.Sprintf(postURL, t.User.Id, t.Id)
 		}
-		t.RetweetsDelta = t.Retweets
-		t.FavoritesDelta = t.Favorites
-
 	}
 	return
 }

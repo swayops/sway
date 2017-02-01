@@ -362,6 +362,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
+	verifyGroup.GET("/getAdvertiserTimeline/:id", getAdvertiserTimeline(srv))
+
 	adminGroup.GET("/balance/:id", getBalance(srv))
 	adminGroup.GET("/getCampaignStore", getCampaignStore(srv))
 
@@ -376,6 +378,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 		getCampaignsByAdvertiser, nil, nil, nil)
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
+	verifyGroup.GET("/getTargetYield/:id", getTargetYield(srv))
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/getKeywords", getKeywords(srv))
@@ -423,6 +426,9 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
 	adminGroup.GET("/billing", runBilling(srv))
+	adminGroup.GET("/chargeBudget/:campaignId", chargeBudget(srv))
+	adminGroup.GET("/transferSpendable/:campaignId", transferSpendable(srv))
+
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
 
@@ -441,6 +447,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceEngine", forceEngine(srv))
 	adminGroup.GET("/forceScrapEmail", forceScrapEmail(srv))
 	adminGroup.GET("/forceAttributer", forceAttributer(srv))
+	adminGroup.GET("/forceTimeline", forceTimeline(srv))
+	adminGroup.GET("/syncHack", syncAllStats(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))

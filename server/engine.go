@@ -17,7 +17,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const engineRunTime = 2
+const engineRunTime = 1
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
@@ -99,6 +99,16 @@ func newSwayEngine(srv *Server) error {
 		for range attrTicker.C {
 			if _, err := attributer(srv, false); err != nil {
 				srv.Alert("Err running scrap attributer", err)
+			}
+		}
+	}()
+
+	// Notify advertisers that billing is about to run in 5 days!
+	billingNotifyTicker := time.NewTicker(24 * time.Hour)
+	go func() {
+		for range billingNotifyTicker.C {
+			if err := billingNotify(srv); err != nil {
+				srv.Alert("Err running billing notifier", err)
 			}
 		}
 	}()
@@ -293,7 +303,7 @@ func depleteBudget(s *Server) (float64, error) {
 	for _, cmp := range s.Campaigns.GetStore() {
 		// Get this month's store for this campaign
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-		if err != nil {
+		if err != nil || store == nil || store.Spendable == 0 {
 			if !s.Cfg.Sandbox {
 				log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
 			}
