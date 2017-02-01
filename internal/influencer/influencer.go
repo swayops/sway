@@ -26,6 +26,12 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	DEFAULT_DSP_FEE      = 0.2
+	DEFAULT_EXCHANGE_FEE = 0.2
+	DEFAULT_AGENCY_FEE   = 0.2
+)
+
 var (
 	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
 	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
@@ -819,9 +825,10 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
 		// Subtract default margins to give influencers an accurate likely earning value
-		// NOTE: Assuming a DSP fee, exchange fee, and talent agency fee each of 60%.. so lets
-		// just show influencer 40% of total yield
-		targetDeal.LikelyEarnings = misc.TruncateFloat(maxYield*0.4, 2)
+		// NOTE: Mimics logic in depleteBudget functionality of sway engine
+		_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
+		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+
 		if store != nil {
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {

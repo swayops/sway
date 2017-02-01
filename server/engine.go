@@ -330,14 +330,7 @@ func depleteBudget(s *Server) (float64, error) {
 			if spentDelta > 0 {
 				totalDepleted += spentDelta
 
-				// DSP and Exchange fee taken away from the prinicpal
-				dspMarkup := spentDelta * dspFee
-				exchangeMarkup := spentDelta * exchangeFee
-
-				// Talent agency payout will be taken away from the influencer portion
-				influencerPool := spentDelta - (dspMarkup + exchangeMarkup)
-				agencyPayout := influencerPool * agencyFee
-				infPayout := influencerPool - agencyPayout
+				dspMarkup, exchangeMarkup, agencyPayout, infPayout := budget.GetMargins(spentDelta, dspFee, exchangeFee, agencyFee)
 
 				inf.PendingPayout += infPayout
 
