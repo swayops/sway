@@ -2702,8 +2702,9 @@ func runBilling(s *Server) gin.HandlerFunc {
 	}
 }
 
-func runSingleBilling(s *Server) gin.HandlerFunc {
-	// Runs billing for one campaign
+func chargeBudget(s *Server) gin.HandlerFunc {
+	// Runs billing for one campaign and charges its budget
+	// and adds to spendable
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {
 			return
@@ -2714,23 +2715,6 @@ func runSingleBilling(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("invalid campaign id"))
 			return
 		}
-
-		key := budget.GetLastMonthBudgetKey()
-
-		// Now that it's a new month.. get last month's budget store
-		store, err := budget.GetStore(s.budgetDb, s.Cfg, key)
-		if err != nil || len(store) == 0 {
-			// Insert file informant check
-			c.JSON(500, misc.StatusErr(ErrEmptyStore))
-			return
-		}
-
-		// TRANSFER PROCESS TO NEW MONTH
-		// - We wil now add fresh deals for the new month
-		// - Leftover budget from last month will be trans
-		// Create a new budget key (if there isn't already one)
-		// do a put on all the active campaigns in the system
-		// flush all unassigned deals
 
 		if err := s.db.Update(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
@@ -2808,26 +2792,28 @@ func runSingleBilling(s *Server) gin.HandlerFunc {
 					leftover, pending float64
 				)
 
-				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
+				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
 				if err == nil && store != nil {
-					leftover = store.Spendable
-					pending = store.Pending
+					// This campaign has a budget for this month! just charge budget
+					if err := budget.ChargeBudget(s.budgetDb, s.Cfg, cmp, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error charging budget key while billing for "+cmp.Id, err)
+						return nil
+					}
+
+					// We just charged for budget so lets add deals for that
+					addDealsToCampaign(cmp, s, tx, cmp.Budget)
 				} else {
-					log.Println("Last months store not found for", cmp.Id)
-				}
+					// This campaign does not have a budget for this month. Create key!
 
-				// Create their budget key for this month in the DB
-				// NOTE: last month's leftover spendable will be carried over
-				var spendable float64
-				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
-					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
-					// Don't return because an agency that switched from IO to CC that has
-					// advertisers with no CC will always error here.. just alert!
-					return nil
-				}
+					var spendable float64
+					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
+						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
+						return nil
+					}
 
-				// Add fresh deals for this month
-				addDealsToCampaign(cmp, s, tx, spendable)
+					// Add fresh deals for this month
+					addDealsToCampaign(cmp, s, tx, spendable)
+				}
 
 				if err = saveCampaign(tx, cmp, s); err != nil {
 					log.Println("Error saving campaign for billing", err)

@@ -389,6 +389,67 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 	return nil
 }
 
+func ChargeBudget(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
+	st, err := GetStore(db, cfg, "")
+	if err != nil {
+		return err
+	}
+
+	store, ok := st[cmp.Id]
+	if !ok {
+		return ErrNotFound
+	}
+
+	spendable := cmp.Budget + store.Spendable
+	if spendable < 0 {
+		spendable = 0
+	}
+
+	newStore := &Store{
+		Budget:    store.Budget,
+		Leftover:  store.Leftover,
+		Spent:     store.Spent,
+		Charges:   store.Charges,
+		Pending:   store.Pending,
+		Spendable: spendable,
+	}
+
+	if !isIO {
+		// CHARGE!
+		if cust == "" {
+			return ErrCC
+		}
+
+		if err := db.Update(func(tx *bolt.Tx) (err error) {
+			if err := newStore.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	st[cmp.Id] = newStore
+
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		var b []byte
+		if b, err = json.Marshal(&st); err != nil {
+			return
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
+			return
+		}
+		return
+	}); err != nil {
+		log.Println("Error when saving budget key", err)
+		return err
+	}
+
+	return nil
+}
+
 func TransferSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) error {
 	// Transfers spendable from last month to this month
 
