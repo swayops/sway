@@ -389,6 +389,89 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 	return nil
 }
 
+func TransferSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) error {
+	// Transfers spendable from last month to this month
+
+	oldStore, err := GetStore(db, cfg, GetLastMonthBudgetKey())
+	if err != nil {
+		return err
+	}
+
+	cmpStore, ok := oldStore[cmp.Id]
+	if !ok {
+		return ErrNotFound
+	}
+
+	if cmpStore.Spendable == 0 {
+		return ErrNotFound
+	}
+
+	oldSpendable := cmpStore.Spendable
+
+	// Lets give this spendable for thsi month!
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		key := getBudgetKey()
+		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
+
+		var newStore map[string]*Store
+		if len(b) == 0 {
+			// First save of the month!
+			newStore = make(map[string]*Store)
+		} else {
+			if err = json.Unmarshal(b, &newStore); err != nil {
+				return ErrUnmarshal
+			}
+		}
+
+		store := &Store{
+			Budget:    cmp.Budget,
+			Spendable: oldSpendable,
+		}
+
+		newStore[cmp.Id] = store
+
+		if b, err = json.Marshal(&newStore); err != nil {
+			return err
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// Save everything except the spendable for last month! It's 0 now muahahaha
+	lastMonthStore := &Store{
+		Budget:   cmpStore.Budget,
+		Leftover: cmpStore.Leftover,
+		Spent:    cmpStore.Spent,
+		Charges:  cmpStore.Charges,
+		Pending:  cmpStore.Pending,
+	}
+
+	oldStore[cmp.Id] = lastMonthStore
+
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		var b []byte
+		if b, err = json.Marshal(&oldStore); err != nil {
+			return
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, GetLastMonthBudgetKey(), b); err != nil {
+			return
+		}
+		return
+	}); err != nil {
+		log.Println("Error when saving budget key", err)
+		return err
+	}
+
+	return nil
+}
+
 func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (float64, error) {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
