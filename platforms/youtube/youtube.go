@@ -98,3 +98,7 @@ func (yt *YouTube) UpdateData(cfg *config.Config, savePosts bool) error {
 func (yt *YouTube) GetScore() float64 {
 	return (yt.Subscribers * 2.5) + (yt.AvgComments * 1.5) + float64(yt.AvgLikes) + float64(yt.AvgViews)
 }
+
+func (yt *YouTube) GetProfileURL() string {
+	return "https://www.youtube.com/channel/" + yt.UserId
+}

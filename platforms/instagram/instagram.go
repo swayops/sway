@@ -109,3 +109,7 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 func (in *Instagram) GetScore() float64 {
 	return (in.Followers * 3) + (in.AvgComments * 2) + (in.AvgLikes)
 }
+
+func (in *Instagram) GetProfileURL() string {
+	return "https://www.instagram.com/" + in.UserName
+}
