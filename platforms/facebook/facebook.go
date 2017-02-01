@@ -83,3 +83,7 @@ func (fb *Facebook) UpdateData(cfg *config.Config, savePosts bool) error {
 func (fb *Facebook) GetScore() float64 {
 	return (fb.Followers * 3) + (fb.AvgShares * 2) + (fb.AvgComments * 2) + (fb.AvgLikes)
 }
+
+func (fb *Facebook) GetProfileURL() string {
+	return "https://www.facebook.com/" + fb.Id
+}

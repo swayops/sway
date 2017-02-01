@@ -16,9 +16,9 @@ var (
 
 type TargetStats struct {
 	Total      *Totals                 `json:"total"`
-	Channel    map[string]*ReportStats `json:"channel"`
-	Influencer map[string]*ReportStats `json:"influencer"`
-	Post       map[string]*ReportStats `json:"post"`
+	Channel    map[string]*ReportStats `json:"channel,omitempty"`
+	Influencer map[string]*ReportStats `json:"influencer,omitempty"`
+	Post       map[string]*ReportStats `json:"post,omitempty"`
 }
 
 type Totals struct {
