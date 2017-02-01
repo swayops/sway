@@ -176,7 +176,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 		// NOTE: This will automatically reset Pending too
 		spendable = leftover + monthlyBudget
 		store := &Store{
-			Budget:    monthlyBudget,
+			Budget:    cmp.Budget,
 			Leftover:  leftover,
 			Spendable: spendable,
 		}
