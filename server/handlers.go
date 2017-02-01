@@ -4362,22 +4362,26 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 						totalLikes := int32(deal.Instagram.Likes)
 						totalComments := int32(deal.Instagram.Comments)
 
-						var reportingLikes, reportingComments int32
-						for _, stats := range deal.Reporting {
-							reportingLikes += stats.Likes
-							reportingComments += stats.Comments
+						var (
+							reportingLikes, reportingComments int32
+							key                               string
+							stats                             *common.Stats
+							highestLikes                      int32
+						)
+
+						for day, target := range deal.Reporting {
+							if target.Likes > highestLikes {
+								highestLikes = target.Likes
+
+								stats = target
+								key = day
+							}
+							reportingLikes += target.Likes
+							reportingComments += target.Comments
 						}
 
-						key := "2017-01-24"
-						stats, ok := deal.Reporting[key]
-						if !ok {
-							//lets try 23 then
-							key = "2017-01-23"
-							stats, ok = deal.Reporting[key]
-							if !ok {
-								log.Println("no stats", deal.Id)
-								continue
-							}
+						if stats == nil || key == "" {
+							continue
 						}
 
 						if likesDiff := reportingLikes - totalLikes; likesDiff > 0 {
