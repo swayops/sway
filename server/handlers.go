@@ -4368,51 +4368,43 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 							reportingComments += stats.Comments
 						}
 
-						stats24, ok := deal.Reporting["2017-01-24"]
-						if !ok || stats24 == nil {
-							log.Println("no stats for 31", deal.Id)
-							continue
-						}
-
-						stats23, ok := deal.Reporting["2017-01-23"]
-						if !ok || stats23 == nil {
-							log.Println("no stats for 30", deal.Id)
-							continue
+						key := "2017-01-24"
+						stats, ok := deal.Reporting[key]
+						if !ok {
+							//lets try 23 then
+							key = "2017-01-23"
+							stats, ok = deal.Reporting[key]
+							if !ok {
+								log.Println("no stats", deal.Id)
+								continue
+							}
 						}
 
 						if likesDiff := reportingLikes - totalLikes; likesDiff > 0 {
 							// Subtract likes from stats
 
-							if stats24.Likes > likesDiff {
+							if stats.Likes > likesDiff {
 								// We have all the likes we need on 31st.. lets surtact!
-								stats24.Likes -= likesDiff
-							} else {
-								leftOver := stats24.Likes - likesDiff
-								stats24.Likes = 0
-								stats23.Likes -= leftOver
+								log.Println("Need to take out likes:", deal.Id, likesDiff)
+								stats.Likes -= likesDiff
 							}
-							log.Println("Need to take out likes:", likesDiff)
 
 						}
 
 						if commentsDiff := reportingComments - totalComments; commentsDiff > 0 {
 							// Subtract comments from stats
 
-							if stats24.Comments >= commentsDiff {
+							if stats.Comments >= commentsDiff {
+								log.Println("Need to take out comments:", deal.Id, commentsDiff)
+
 								// We have all the likes we need on 31st.. lets surtact!
-								stats24.Comments -= commentsDiff
-							} else {
-								leftOver := stats24.Comments - commentsDiff
-								stats24.Comments = 0
-								stats23.Comments -= leftOver
+								stats.Comments -= commentsDiff
 							}
-							log.Println("Need to take out comments:", commentsDiff)
 
 						}
 
 						// Save and bail
-						deal.Reporting["2017-01-24"] = stats24
-						deal.Reporting["2017-01-23"] = stats23
+						deal.Reporting[key] = stats
 					}
 				}
 			}
