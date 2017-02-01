@@ -4353,50 +4353,67 @@ func influencerValue(s *Server) gin.HandlerFunc {
 
 func syncAllStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			dealId = c.Param("dealId")
-			infId  = c.Param("influencerId")
-			day    = c.Param("day")
-		)
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, deal := range inf.CompletedDeals {
+				if deal.IsComplete() {
+					// Lets make sure numbers for likes and comments on insta
+					// post line up with daily stats
+					if deal.Instagram != nil {
+						totalLikes := int32(deal.Instagram.Likes)
+						totalComments := int32(deal.Instagram.Comments)
 
-		likes, err := strconv.Atoi(c.Param("likes"))
-		if err != nil {
-			c.JSON(500, err)
-			return
-		}
+						var reportingLikes, reportingComments int32
+						for _, stats := range deal.Reporting {
+							reportingLikes += stats.Likes
+							reportingComments += stats.Comments
+						}
 
-		if len(infId) == 0 {
-			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
-			return
-		}
+						stats31, ok := deal.Reporting["2017-01-31"]
+						if !ok || stats31 == nil {
+							log.Println("no stats for 31", deal.Id)
+							continue
+						}
 
-		if len(dealId) == 0 {
-			c.JSON(500, misc.StatusErr("Deal ID undefined"))
-			return
-		}
+						stats30, ok := deal.Reporting["2017-01-30"]
+						if !ok || stats30 == nil {
+							log.Println("no stats for 30", deal.Id)
+							continue
+						}
 
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr("Inf ID undefined"))
-			return
-		}
+						if likesDiff := reportingLikes - totalLikes; likesDiff > 0 {
+							// Subtract likes from stats
 
-		for _, deal := range inf.CompletedDeals {
-			if deal.Id == dealId {
-				stats, ok := deal.Reporting[day]
-				if !ok || stats == nil {
-					log.Println("Stats not found for day", day)
-					break
+							if stats31.Likes > likesDiff {
+								// We have all the likes we need on 31st.. lets surtact!
+								stats31.Likes -= likesDiff
+							} else {
+								leftOver := stats31.Likes - likesDiff
+								stats31.Likes = 0
+								stats30.Likes -= leftOver
+
+							}
+						}
+
+						if commentsDiff := reportingComments - totalComments; commentsDiff > 0 {
+							// Subtract comments from stats
+
+							if stats31.Comments >= commentsDiff {
+								// We have all the likes we need on 31st.. lets surtact!
+								stats31.Comments -= commentsDiff
+							} else {
+								leftOver := stats31.Comments - commentsDiff
+								stats31.Comments = 0
+								stats30.Comments -= leftOver
+							}
+						}
+
+						// Save and bail
+						deal.Reporting["2017-01-31"] = stats31
+						deal.Reporting["2017-01-30"] = stats30
+					}
 				}
-				stats.Likes = int32(likes)
 			}
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
 			saveAllCompletedDeals(s, inf)
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
 
