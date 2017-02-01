@@ -65,7 +65,6 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 		return tg, errors.New("Missing campaign!")
 	}
 
-	var influencers int32
 	for _, deal := range cmp.Deals {
 		if deal.Completed > 0 {
 			st := deal.Get(dates, "")
@@ -87,7 +86,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Perks += st.Perks
 
 			// This assumes each influencer can do the deal once
-			influencers += 1
+			tg.Total.Influencers++
 
 			if onlyTotals {
 				continue
@@ -115,7 +114,9 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 		}
 	}
 
-	tg.Total.Influencers = influencers
+	if tg.Total != nil && tg.Total.Influencers == 0 {
+		tg.Total.Influencers = int32(len(tg.Influencer))
+	}
 
 	return tg, nil
 }
@@ -203,8 +204,11 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 			val.Comments += tot.Total.Comments
 			val.Shares += tot.Total.Shares
 			val.Spent += tot.Total.Spent
-			val.Influencers += tot.Total.Influencers
 			val.Perks += tot.Total.Perks
+			if val.Influencers == 0 {
+				// Only needs to be set once
+				val.Influencers = tot.Total.Influencers
+			}
 		}
 	}
 
