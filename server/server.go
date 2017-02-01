@@ -443,6 +443,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceScrapEmail", forceScrapEmail(srv))
 	adminGroup.GET("/forceAttributer", forceAttributer(srv))
 	adminGroup.GET("/forceTimeline", forceTimeline(srv))
+	adminGroup.GET("/syncHack", syncAllStats(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))

@@ -4350,3 +4350,84 @@ func influencerValue(s *Server) gin.HandlerFunc {
 		return
 	}
 }
+
+func syncAllStats(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
+				}
+				for _, deal := range cmp.Deals {
+					if deal.IsComplete() {
+						// Lets make sure numbers for likes and comments on insta
+						// post line up with daily stats
+						if deal.Instagram != nil {
+							totalLikes := int32(deal.Instagram.Likes)
+							totalComments := int32(deal.Instagram.Comments)
+
+							var reportingLikes, reportingComments int32
+							for _, stats := range deal.Reporting {
+								reportingLikes += stats.Likes
+								reportingComments += stats.Comments
+							}
+
+							stats31, ok := deal.Reporting["2017-01-31"]
+							if !ok || stats31 == nil {
+								log.Println("no stats for 31", deal.Id)
+								continue
+							}
+
+							stats30, ok := deal.Reporting["2017-01-30"]
+							if !ok || stats30 == nil {
+								log.Println("no stats for 30", deal.Id)
+								continue
+							}
+
+							if likesDiff := reportingLikes - totalLikes; likesDiff > 0 {
+								// Subtract likes from stats
+
+								if stats31.Likes > likesDiff {
+									// We have all the likes we need on 31st.. lets surtact!
+									stats31.Likes -= likesDiff
+								} else {
+									leftOver := stats31.Likes - likesDiff
+									stats31.Likes = 0
+									stats30.Likes -= leftOver
+
+								}
+							}
+
+							if commentsDiff := reportingComments - totalComments; commentsDiff > 0 {
+								// Subtract comments from stats
+
+								if stats31.Comments >= commentsDiff {
+									// We have all the likes we need on 31st.. lets surtact!
+									stats31.Comments -= commentsDiff
+								} else {
+									leftOver := stats31.Comments - commentsDiff
+									stats31.Comments = 0
+									stats30.Comments -= leftOver
+								}
+							}
+
+							// Save and bail
+							deal.Reporting["2017-01-31"] = stats31
+							deal.Reporting["2017-01-30"] = stats30
+						}
+					}
+				}
+				saveCampaign(tx, &cmp, s)
+				return
+			})
+			return nil
+		}); err != nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
