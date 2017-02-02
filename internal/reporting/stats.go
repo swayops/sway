@@ -86,9 +86,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Perks += st.Perks
 
 			// This assumes each influencer can do the deal once
-			if eng > 0 {
-				tg.Total.Influencers++
-			}
+			tg.Total.Influencers++
 
 			if onlyTotals {
 				continue
