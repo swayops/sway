@@ -114,10 +114,10 @@ func newSwayEngine(srv *Server) error {
 }
 
 type Depleted struct {
-	InfluencerID string  `json:"infID,omitempty"`
-	Campaign     string  `json:"campaign,omitempty"`
-	PostURL      string  `json:"postURL,omitempty"`
-	Spent        float64 `json:"spent,omitempty"`
+	Influencer string  `json:"inf,omitempty"`
+	Campaign   string  `json:"campaign,omitempty"`
+	PostURL    string  `json:"postURL,omitempty"`
+	Spent      float64 `json:"spent,omitempty"`
 }
 
 func run(srv *Server) error {
@@ -385,10 +385,10 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 
 				// Used for digest email!
 				depletions = append(depletions, &Depleted{
-					InfluencerID: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
-					Campaign:     fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
-					PostURL:      deal.PostUrl,
-					Spent:        spentDelta})
+					Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
+					Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
+					PostURL:    deal.PostUrl,
+					Spent:      misc.TruncateFloat(spentDelta, 2)})
 			}
 
 			updatedStore = true
