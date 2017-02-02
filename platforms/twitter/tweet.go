@@ -25,6 +25,9 @@ func (tws Tweets) Retweets() (n float64) {
 }
 
 func (tws Tweets) AvgRetweets() float64 {
+	if len(tws) == 0 {
+		return 0
+	}
 	return tws.Retweets() / float64(len(tws))
 }
 
@@ -37,6 +40,9 @@ func (tws Tweets) Likes() (n float64) {
 }
 
 func (tws Tweets) AvgLikes() float64 {
+	if len(tws) == 0 {
+		return 0
+	}
 	return tws.Likes() / float64(len(tws))
 }
 

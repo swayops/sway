@@ -75,7 +75,7 @@ type Influencer struct {
 	Instagram        *instagram.Instagram `json:"instagram,omitempty"`
 	Twitter          *twitter.Twitter     `json:"twitter,omitempty"`
 	YouTube          *youtube.YouTube     `json:"youtube,omitempty"`
-	LastSocialUpdate int32                `json:"lastSocialUpdate,omitempty"`
+	LastSocialUpdate int32                `json:"lastUpdate,omitempty"`
 
 	// Used for the API exclusively (set in the influencer's Clean method)
 	// Used for the getAllInfluencers* methods to provide concise structs
