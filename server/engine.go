@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const engineRunTime = 1
+const engineRunTime = 2
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
@@ -112,13 +113,20 @@ func newSwayEngine(srv *Server) error {
 	return nil
 }
 
+type Depleted struct {
+	InfluencerID string  `json:"infID,omitempty"`
+	Campaign     string  `json:"campaign,omitempty"`
+	PostURL      string  `json:"postURL,omitempty"`
+	Spent        float64 `json:"spent,omitempty"`
+}
+
 func run(srv *Server) error {
 	log.Println("Beginning engine run!")
 
 	var (
 		err                                                            error
 		updatedInf, foundDeals, sigsFound, dealsEmailed, scrapsEmailed int32
-		totalDepleted                                                  float64
+		depletions                                                     []*Depleted
 	)
 
 	// NOTE: This is the only function that can and should edit
@@ -156,13 +164,13 @@ func run(srv *Server) error {
 
 	// Iterate over deltas for completed deals
 	// and deplete budgets
-	if totalDepleted, err = depleteBudget(srv); err != nil {
+	if depletions, err = depleteBudget(srv); err != nil {
 		// Insert a file informant check
 		srv.Alert("Error depleting budget!", err)
 		return err
 	}
 
-	log.Println("Budgets depleted. Depleted:", totalDepleted)
+	log.Println("Budgets depleted. Depleted:", len(depletions))
 
 	if sigsFound, err = auditTaxes(srv); err != nil {
 		srv.Alert("Error auditing taxes!", err)
@@ -185,8 +193,8 @@ func run(srv *Server) error {
 
 	log.Println("Scraps emailed. Sent:", scrapsEmailed)
 
-	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed > 0 || totalDepleted > 0 {
-		srv.Digest(updatedInf, foundDeals, totalDepleted, sigsFound, dealsEmailed, scrapsEmailed, start)
+	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed > 0 || len(depletions) > 0 {
+		srv.Digest(updatedInf, foundDeals, depletions, sigsFound, dealsEmailed, scrapsEmailed, start)
 	}
 
 	return nil
@@ -284,16 +292,17 @@ func updateInfluencers(s *Server) (int32, error) {
 	return updated, nil
 }
 
-func depleteBudget(s *Server) (float64, error) {
+func depleteBudget(s *Server) ([]*Depleted, error) {
 	// now that we have updated stats for completed deals
 	// go over completed deals..
 	// Iterate over all
 
 	var (
-		spentDelta    float64
-		m             *budget.Metrics
-		totalDepleted float64
+		spentDelta float64
+		m          *budget.Metrics
 	)
+
+	depletions := []*Depleted{}
 
 	// Iterate over all active campaigns
 	for _, cmp := range s.Campaigns.GetStore() {
@@ -324,8 +333,6 @@ func depleteBudget(s *Server) (float64, error) {
 			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
-				totalDepleted += spentDelta
-
 				// DSP and Exchange fee taken away from the prinicpal
 				dspMarkup := spentDelta * dspFee
 				exchangeMarkup := spentDelta * exchangeFee
@@ -375,6 +382,13 @@ func depleteBudget(s *Server) (float64, error) {
 					// Insert file informant notification
 					s.Alert("Failed to save completed deals", err)
 				}
+
+				// Used for digest email!
+				depletions = append(depletions, &Depleted{
+					InfluencerID: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
+					Campaign:     fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
+					PostURL:      deal.PostUrl,
+					Spent:        spentDelta})
 			}
 
 			updatedStore = true
@@ -389,7 +403,7 @@ func depleteBudget(s *Server) (float64, error) {
 
 	}
 
-	return totalDepleted, nil
+	return depletions, nil
 }
 
 func auditTaxes(srv *Server) (int32, error) {
