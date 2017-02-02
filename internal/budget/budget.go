@@ -389,7 +389,7 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 	return nil
 }
 
-func ChargeBudget(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
+func Credit(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string, credit float64) error {
 	st, err := GetStore(db, cfg, "")
 	if err != nil {
 		return err
@@ -400,7 +400,7 @@ func ChargeBudget(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bo
 		return ErrNotFound
 	}
 
-	spendable := cmp.Budget + store.Spendable
+	spendable := credit + store.Spendable
 	if spendable < 0 {
 		spendable = 0
 	}

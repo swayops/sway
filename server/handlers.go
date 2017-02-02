@@ -2806,9 +2806,9 @@ func runBilling(s *Server) gin.HandlerFunc {
 	}
 }
 
-func chargeBudget(s *Server) gin.HandlerFunc {
-	// Runs billing for one campaign and charges its budget
-	// and adds to spendable
+func creditValue(s *Server) gin.HandlerFunc {
+	// Credits a campaign with a certain value (determined by query param
+	// whether the campaign should be charged or not)
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {
 			return
@@ -2820,115 +2820,118 @@ func chargeBudget(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		cmp := common.GetCampaign(cid, s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		value, err := strconv.ParseFloat(c.Param("value"), 64)
+		if err != nil || value == 0 {
+			c.JSON(500, misc.StatusErr("invalid value"))
+			return
+		}
+
+		credit, err := strconv.ParseBool(c.Param("credit"))
+		if err != nil {
+			c.JSON(500, misc.StatusErr("invalid credit"))
+			return
+		}
+
+		// Lets make sure this campaign has an active advertiser, active agency,
+		// is set to on, is approved and has a budget!
+		if !cmp.Status {
+			c.JSON(500, misc.StatusErr("campaign is off"))
+			return
+		}
+
+		if cmp.Approved == 0 {
+			c.JSON(500, misc.StatusErr("Campaign is not approved "+cmp.Id))
+			return
+		}
+
+		if cmp.Budget == 0 {
+			c.JSON(500, misc.StatusErr("Campaign has no budget "+cmp.Id))
+			return
+		}
+
+		var (
+			ag  *auth.AdAgency
+			adv *auth.Advertiser
+		)
+
+		if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+			c.JSON(500, misc.StatusErr("invalid ad agency"))
+			return
+		}
+
+		if !ag.Status {
+			c.JSON(500, misc.StatusErr("invalid ad agency"))
+			return
+		}
+
+		if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+			c.JSON(500, misc.StatusErr("invalid advertiser"))
+			return
+		}
+
+		if !adv.Status {
+			c.JSON(500, misc.StatusErr("invalid advertiser"))
+			return
+		}
+
+		// Lets make sure they have an active subscription!
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		if err != nil {
+			s.Alert("Stripe subscription lookup error for "+adv.ID, err)
+			c.JSON(500, misc.StatusErr("invalid susbcription"))
+			return
+		}
+
+		if !allowed {
+			c.JSON(500, misc.StatusErr("invalid susbcription"))
+			return
+		}
+
 		if err := s.db.Update(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-				cmp := &common.Campaign{}
-				if err := json.Unmarshal(v, cmp); err != nil {
-					log.Println("error when unmarshalling campaign", string(v))
+			store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+			if err == nil && store != nil {
+				// This campaign has a budget for this month! just charge budget
+
+				// IsIO replaced by incoming CREDIT value so the admin can decide whether
+				// they want to charge or not
+				if err := budget.Credit(s.budgetDb, s.Cfg, cmp, credit, adv.Customer, value); err != nil {
+					s.Alert("Error charging budget key while billing for "+cmp.Id, err)
 					return err
 				}
 
-				if cmp.Id != cid {
-					return nil
-				}
+				// We just charged for budget so lets add deals for that
+				addDealsToCampaign(cmp, s, tx, cmp.Budget)
+			} else {
+				// This campaign does not have a budget for this month. Create key!
 
-				// Lets make sure this campaign has an active advertiser, active agency,
-				// is set to on, is approved and has a budget!
-				if !cmp.Status {
-					if !s.Cfg.Sandbox {
-						log.Println("Campaign is off", cmp.Id)
-					}
-					return nil
-				}
+				var spendable float64
+				// Sending pending as VALUE so that the client gets credited/charged with the
+				// incoming value
 
-				if cmp.Approved == 0 {
-					log.Println("Campaign is not approved", cmp.Id)
-					return nil
-				}
-
-				if cmp.Budget == 0 {
-					log.Println("Campaign has no budget", cmp.Budget)
-					return nil
-				}
-
-				var (
-					ag  *auth.AdAgency
-					adv *auth.Advertiser
-				)
-
-				if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
-					log.Println("Could not find ad agency!", cmp.AgencyId)
-					return nil
-				}
-
-				if !ag.Status {
-					log.Println("Agency is off!", cmp.AgencyId)
-					return nil
-				}
-
-				if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
-					log.Println("Could not find advertiser!", cmp.AgencyId)
-					return nil
-				}
-
-				if !adv.Status {
-					log.Println("Advertiser is off!", cmp.AdvertiserId)
-					return nil
-				}
-
-				// Lets make sure they have an active subscription!
-				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
-				if err != nil {
-					s.Alert("Stripe subscription lookup error for "+adv.ID, err)
-					return nil
-				}
-
-				if !allowed {
-					log.Println("Subscription is now off", adv.ID)
-					return nil
-				}
-
-				// This functionality carry over any left over spendable too
-				// It will also look to check if there's a pending (lowered)
-				// budget that was saved to db last month.. and that should be
-				// used now
-				var (
-					leftover, pending float64
-				)
-
-				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-				if err == nil && store != nil {
-					// This campaign has a budget for this month! just charge budget
-					if err := budget.ChargeBudget(s.budgetDb, s.Cfg, cmp, ag.IsIO, adv.Customer); err != nil {
-						s.Alert("Error charging budget key while billing for "+cmp.Id, err)
-						return nil
-					}
-
-					// We just charged for budget so lets add deals for that
-					addDealsToCampaign(cmp, s, tx, cmp.Budget)
-				} else {
-					// This campaign does not have a budget for this month. Create key!
-
-					var spendable float64
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
-						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
-						return nil
-					}
-
-					// Add fresh deals for this month
-					addDealsToCampaign(cmp, s, tx, spendable)
-				}
-
-				if err = saveCampaign(tx, cmp, s); err != nil {
-					log.Println("Error saving campaign for billing", err)
+				// IsIO replaced by incoming CREDIT value so the admin can decide whether
+				// they want to charge or not
+				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, 0, value, true, credit, adv.Customer); err != nil {
+					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 					return err
 				}
 
-				return
-			})
+				// Add fresh deals for this month
+				addDealsToCampaign(cmp, s, tx, spendable)
+			}
+
+			if err = saveCampaign(tx, cmp, s); err != nil {
+				log.Println("Error saving campaign for billing", err)
+				return err
+			}
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(ErrBilling))
+			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 		c.JSON(200, misc.StatusOK(""))
