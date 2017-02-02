@@ -40,7 +40,7 @@ type Scrap struct {
 	Keywords   []string `json:"keywords,omitempty"`
 
 	// Have all attrs been set already?
-	Attributed bool `json:"checkAttr,omitempty"`
+	Attributed bool `json:"isAttr,omitempty"`
 	// How many times have we tried getting data on this user?
 	Attempts int32 `json:"attempts,omitempty"`
 
