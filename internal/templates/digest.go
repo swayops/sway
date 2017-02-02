@@ -25,12 +25,12 @@ const engineTmpl = `
 	    	<td align="left" valign="middle">{{Influencer}}</td>
 	    	<td align="left" valign="middle">{{Campaign}}</td>
 	    	<td align="left" valign="middle">{{PostURL}}</td>
-	    	<td align="left" valign="middle">{{Spent}}</td>
+	    	<td align="left" valign="middle">${{Spent}}</td>
 	    </tr>
 	    {{/depletions}}
 		</table>
 	</p>
-	<p style="font-size:14px; color:#000000; margin:0;"><b>Total Depleted:</b> {{totalSpent}} </a></p><br>
+	<p style="font-size:14px; color:#000000; margin:0;"><b>Total Depleted:</b> ${{totalSpent}} </a></p><br>
 
 	<p style="font-size:14px; color:#000000; margin:0;">Kind regards,</p>
 	<p style="font-size:14px; color:#000000; margin:0;">The SwayOps Server.</p>
