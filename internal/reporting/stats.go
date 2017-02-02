@@ -205,6 +205,10 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 			val.Shares += tot.Total.Shares
 			val.Spent += tot.Total.Spent
 			val.Perks += tot.Total.Perks
+			if val.Influencers == 0 {
+				// Only needs to be set once
+				val.Influencers = tot.Total.Influencers
+			}
 		}
 	}
 
