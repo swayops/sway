@@ -1911,7 +1911,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 				}
 
 				if inf.Address == nil {
-					return errors.New("Please enter a valid address in your profile before accepting this deal")
+					return errors.New("Please enter a valid mailing address in your profile before accepting this deal")
 				}
 
 				// Now that we know there is a deal for this dude..
