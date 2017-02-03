@@ -77,6 +77,7 @@ type PostData struct {
 	Tags      []string `json:"tags"`
 	Published string   `json:"created_time"`
 	URL       string   `json:"link"`
+	Type      string   `json:"type"`
 
 	Comments *Comments `json:"comments"`
 	Likes    *Likes    `json:"likes"`
@@ -154,11 +155,12 @@ func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 	}
 
 	var (
-		likes, comments float64
-		published       int32
-		raw             int64
-		latestGeo       *geo.GeoRecord
-		images          []string
+		published int32
+		raw       int64
+		latestGeo *geo.GeoRecord
+		images    []string
+
+		totalLikes, totalComments, consideredPosts float64
 	)
 
 	// Last 10 posts
@@ -175,15 +177,14 @@ func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 			Hashtags:    misc.SanitizeHashes(post.Tags),
 			PostURL:     post.URL,
 			LastUpdated: int32(time.Now().Unix()),
+			Type:        post.Type,
 		}
 
 		if post.Comments != nil {
-			comments += post.Comments.Count
 			p.Comments = post.Comments.Count
 		}
 
 		if post.Likes != nil {
-			likes += post.Likes.Count
 			p.Likes = post.Likes.Count
 		}
 
@@ -208,10 +209,21 @@ func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 		if post.User != nil && post.User.Name != "" {
 			postInfo.Name = post.User.Name
 		}
+
+		if !misc.WithinLast(p.Published, 24) && p.Type != "video" {
+			// If the post wasn't in the last 24 hours and it's not a video.. consider!
+			// NOTE: Videos don't currently have likes which is why we're not considering it
+			totalLikes += p.Likes
+			totalComments += p.Comments
+			consideredPosts += 1
+		}
 	}
 
-	postInfo.Likes = likes / postCount
-	postInfo.Comments = comments / postCount
+	if consideredPosts > 0 {
+		postInfo.Likes = totalLikes / consideredPosts
+		postInfo.Comments = totalComments / consideredPosts
+	}
+
 	postInfo.Posts = posts
 	postInfo.Geo = latestGeo
 	postInfo.Images = images

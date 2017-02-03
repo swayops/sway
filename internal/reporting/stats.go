@@ -16,9 +16,9 @@ var (
 
 type TargetStats struct {
 	Total      *Totals                 `json:"total"`
-	Channel    map[string]*ReportStats `json:"channel"`
-	Influencer map[string]*ReportStats `json:"influencer"`
-	Post       map[string]*ReportStats `json:"post"`
+	Channel    map[string]*ReportStats `json:"channel,omitempty"`
+	Influencer map[string]*ReportStats `json:"influencer,omitempty"`
+	Post       map[string]*ReportStats `json:"post,omitempty"`
 }
 
 type Totals struct {
@@ -86,9 +86,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Perks += st.Perks
 
 			// This assumes each influencer can do the deal once
-			if eng > 0 {
-				tg.Total.Influencers++
-			}
+			tg.Total.Influencers++
 
 			if onlyTotals {
 				continue
@@ -119,6 +117,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 	if tg.Total != nil && tg.Total.Influencers == 0 {
 		tg.Total.Influencers = int32(len(tg.Influencer))
 	}
+
 	return tg, nil
 }
 
@@ -205,8 +204,11 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 			val.Comments += tot.Total.Comments
 			val.Shares += tot.Total.Shares
 			val.Spent += tot.Total.Spent
-			val.Influencers += tot.Total.Influencers
 			val.Perks += tot.Total.Perks
+			if val.Influencers == 0 {
+				// Only needs to be set once
+				val.Influencers = tot.Total.Influencers
+			}
 		}
 	}
 

@@ -435,7 +435,7 @@ func getCampaign(s *Server) gin.HandlerFunc {
 
 		// This is an edge case where we need to display perk count
 		// for the purpose of UI
-		if cmp.Perks != nil && !s.Cfg.Sandbox {
+		if cmp.Perks != nil && !s.Cfg.Sandbox && c.Query("dbg") != "1" {
 			for _, d := range cmp.Deals {
 				if d.Perk != nil {
 					if d.Perk.Code != "" {
@@ -463,10 +463,48 @@ func getCampaignStore(s *Server) gin.HandlerFunc {
 	}
 }
 
+type ManageCampaign struct {
+	Image string `json:"image"`
+
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Active  bool   `json:"active"`
+	Created int64  `json:"created"`
+
+	Twitter   bool `json:"twitter,omitempty"`
+	Facebook  bool `json:"facebook,omitempty"`
+	Instagram bool `json:"instagram,omitempty"`
+	YouTube   bool `json:"youtube,omitempty"`
+
+	Timeline *common.Timeline `json:"timeline"`
+
+	Spent     float64 `json:"spent"`     // Monthly
+	Remaining float64 `json:"remaining"` // Monthly
+	Budget    float64 `json:"budget"`    // Monthly
+
+	Stats *reporting.TargetStats `json:"stats"`
+
+	Accepted  []*manageInf `json:"accepted"`
+	Completed []*manageInf `json:"completed"`
+}
+
+type manageInf struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Engagements int32  `json:"engagements"`
+
+	ImageURL   string `json:"image"`
+	ProfileURL string `json:"profileUrl"`
+	Followers  int64  `json:"followers"`
+	PostURL    string `json:"postUrl"`
+}
+
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
+	// Prettifies the info because this is what Manage Campaigns
+	// page on frontend uses
 	return func(c *gin.Context) {
 		targetAdv := c.Param("id")
-		var campaigns []*common.Campaign
+		var campaigns []*ManageCampaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -475,9 +513,75 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if cmp.AdvertiserId == targetAdv {
-					// No need to display massive deal set
-					cmp.Deals = nil
-					campaigns = append(campaigns, &cmp)
+					mCmp := &ManageCampaign{
+						Image:     cmp.ImageURL,
+						ID:        cmp.Id,
+						Name:      cmp.Name,
+						Created:   cmp.CreatedAt,
+						Active:    cmp.Status,
+						Twitter:   cmp.Twitter,
+						Instagram: cmp.Instagram,
+						YouTube:   cmp.YouTube,
+						Facebook:  cmp.Facebook,
+						Budget:    cmp.Budget,
+					}
+
+					if len(cmp.Timeline) > 0 {
+						mCmp.Timeline = cmp.Timeline[len(cmp.Timeline)-1]
+						common.SetAttribute(mCmp.Timeline)
+					}
+
+					store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+					if store != nil {
+						mCmp.Spent = store.Spent
+						mCmp.Remaining = store.Spendable
+					}
+
+					end := time.Now()
+					start := end.AddDate(-1, 0, 0)
+					mCmp.Stats, _ = reporting.GetCampaignStats(cmp.Id, s.db, s.Cfg, start, end, true)
+
+					for _, deal := range cmp.Deals {
+						inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+						if !ok {
+							continue
+						}
+
+						tmpInf := &manageInf{
+							ID:   inf.Id,
+							Name: inf.Name,
+						}
+
+						if st := deal.TotalStats(); st != nil {
+							tmpInf.Engagements = st.Likes + st.Dislikes + st.Comments + st.Shares
+						}
+
+						tmpInf.PostURL = deal.PostUrl
+						if cmp.Twitter && inf.Twitter != nil {
+							tmpInf.ImageURL = inf.Twitter.ProfilePicture
+							tmpInf.Followers = int64(inf.Twitter.Followers)
+							tmpInf.ProfileURL = inf.Twitter.GetProfileURL()
+						} else if cmp.Facebook && inf.Facebook != nil {
+							tmpInf.ImageURL = inf.Facebook.ProfilePicture
+							tmpInf.Followers = int64(inf.Facebook.Followers)
+							tmpInf.ProfileURL = inf.Facebook.GetProfileURL()
+						} else if cmp.Instagram && inf.Instagram != nil {
+							tmpInf.ImageURL = inf.Instagram.ProfilePicture
+							tmpInf.Followers = int64(inf.Instagram.Followers)
+							tmpInf.ProfileURL = inf.Instagram.GetProfileURL()
+						} else if cmp.YouTube && inf.YouTube != nil {
+							tmpInf.ImageURL = inf.YouTube.ProfilePicture
+							tmpInf.Followers = int64(inf.YouTube.Subscribers)
+							tmpInf.ProfileURL = inf.YouTube.GetProfileURL()
+						}
+
+						if deal.IsActive() {
+							mCmp.Accepted = append(mCmp.Accepted, tmpInf)
+						} else if deal.IsComplete() {
+							mCmp.Completed = append(mCmp.Completed, tmpInf)
+						}
+					}
+					campaigns = append(campaigns, mCmp)
 				}
 				return
 			})
@@ -1501,28 +1605,28 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				)
 
 				if inf.Twitter != nil {
-					incInf.TwitterURL, found = "https://twitter.com/"+inf.Twitter.Id, true
+					incInf.TwitterURL, found = inf.Twitter.GetProfileURL(), true
 					if !incPosts {
 						inf.Twitter = nil
 					}
 				}
 
 				if inf.Facebook != nil {
-					incInf.FacebookURL, found = "https://www.facebook.com/"+inf.Facebook.Id, true
+					incInf.FacebookURL, found = inf.Facebook.GetProfileURL(), true
 					if !incPosts {
 						inf.Facebook = nil
 					}
 				}
 
 				if inf.Instagram != nil {
-					incInf.InstagramURL, found = "https://www.instagram.com/"+inf.Instagram.UserName, true
+					incInf.InstagramURL, found = inf.Instagram.GetProfileURL(), true
 					if !incPosts {
 						inf.Instagram = nil
 					}
 				}
 
 				if inf.YouTube != nil {
-					incInf.YouTubeURL, found = "https://www.youtube.com/channel/"+inf.YouTube.UserId, true
+					incInf.YouTubeURL, found = inf.YouTube.GetProfileURL(), true
 					if !incPosts {
 						inf.YouTube = nil
 					}
@@ -1807,7 +1911,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 				}
 
 				if inf.Address == nil {
-					return errors.New("Please enter a valid address in your profile before accepting this deal")
+					return errors.New("Please enter a valid mailing address in your profile before accepting this deal")
 				}
 
 				// Now that we know there is a deal for this dude..
@@ -2702,9 +2806,9 @@ func runBilling(s *Server) gin.HandlerFunc {
 	}
 }
 
-func chargeBudget(s *Server) gin.HandlerFunc {
-	// Runs billing for one campaign and charges its budget
-	// and adds to spendable
+func creditValue(s *Server) gin.HandlerFunc {
+	// Credits a campaign with a certain value (determined by query param
+	// whether the campaign should be charged or not)
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {
 			return
@@ -2716,115 +2820,118 @@ func chargeBudget(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		cmp := common.GetCampaign(cid, s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		value, err := strconv.ParseFloat(c.Param("value"), 64)
+		if err != nil || value == 0 {
+			c.JSON(500, misc.StatusErr("invalid value"))
+			return
+		}
+
+		credit, err := strconv.ParseBool(c.Param("credit"))
+		if err != nil {
+			c.JSON(500, misc.StatusErr("invalid credit"))
+			return
+		}
+
+		// Lets make sure this campaign has an active advertiser, active agency,
+		// is set to on, is approved and has a budget!
+		if !cmp.Status {
+			c.JSON(500, misc.StatusErr("campaign is off"))
+			return
+		}
+
+		if cmp.Approved == 0 {
+			c.JSON(500, misc.StatusErr("Campaign is not approved "+cmp.Id))
+			return
+		}
+
+		if cmp.Budget == 0 {
+			c.JSON(500, misc.StatusErr("Campaign has no budget "+cmp.Id))
+			return
+		}
+
+		var (
+			ag  *auth.AdAgency
+			adv *auth.Advertiser
+		)
+
+		if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
+			c.JSON(500, misc.StatusErr("invalid ad agency"))
+			return
+		}
+
+		if !ag.Status {
+			c.JSON(500, misc.StatusErr("invalid ad agency"))
+			return
+		}
+
+		if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
+			c.JSON(500, misc.StatusErr("invalid advertiser"))
+			return
+		}
+
+		if !adv.Status {
+			c.JSON(500, misc.StatusErr("invalid advertiser"))
+			return
+		}
+
+		// Lets make sure they have an active subscription!
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		if err != nil {
+			s.Alert("Stripe subscription lookup error for "+adv.ID, err)
+			c.JSON(500, misc.StatusErr("invalid susbcription"))
+			return
+		}
+
+		if !allowed {
+			c.JSON(500, misc.StatusErr("invalid susbcription"))
+			return
+		}
+
 		if err := s.db.Update(func(tx *bolt.Tx) error {
-			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-				cmp := &common.Campaign{}
-				if err := json.Unmarshal(v, cmp); err != nil {
-					log.Println("error when unmarshalling campaign", string(v))
+			store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+			if err == nil && store != nil {
+				// This campaign has a budget for this month! just charge budget
+
+				// IsIO replaced by incoming CREDIT value so the admin can decide whether
+				// they want to charge or not
+				if err := budget.Credit(s.budgetDb, s.Cfg, cmp, credit, adv.Customer, value); err != nil {
+					s.Alert("Error charging budget key while billing for "+cmp.Id, err)
 					return err
 				}
 
-				if cmp.Id != cid {
-					return nil
-				}
+				// We just charged for budget so lets add deals for that
+				addDealsToCampaign(cmp, s, tx, cmp.Budget)
+			} else {
+				// This campaign does not have a budget for this month. Create key!
 
-				// Lets make sure this campaign has an active advertiser, active agency,
-				// is set to on, is approved and has a budget!
-				if !cmp.Status {
-					if !s.Cfg.Sandbox {
-						log.Println("Campaign is off", cmp.Id)
-					}
-					return nil
-				}
+				var spendable float64
+				// Sending pending as VALUE so that the client gets credited/charged with the
+				// incoming value
 
-				if cmp.Approved == 0 {
-					log.Println("Campaign is not approved", cmp.Id)
-					return nil
-				}
-
-				if cmp.Budget == 0 {
-					log.Println("Campaign has no budget", cmp.Budget)
-					return nil
-				}
-
-				var (
-					ag  *auth.AdAgency
-					adv *auth.Advertiser
-				)
-
-				if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
-					log.Println("Could not find ad agency!", cmp.AgencyId)
-					return nil
-				}
-
-				if !ag.Status {
-					log.Println("Agency is off!", cmp.AgencyId)
-					return nil
-				}
-
-				if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
-					log.Println("Could not find advertiser!", cmp.AgencyId)
-					return nil
-				}
-
-				if !adv.Status {
-					log.Println("Advertiser is off!", cmp.AdvertiserId)
-					return nil
-				}
-
-				// Lets make sure they have an active subscription!
-				allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
-				if err != nil {
-					s.Alert("Stripe subscription lookup error for "+adv.ID, err)
-					return nil
-				}
-
-				if !allowed {
-					log.Println("Subscription is now off", adv.ID)
-					return nil
-				}
-
-				// This functionality carry over any left over spendable too
-				// It will also look to check if there's a pending (lowered)
-				// budget that was saved to db last month.. and that should be
-				// used now
-				var (
-					leftover, pending float64
-				)
-
-				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-				if err == nil && store != nil {
-					// This campaign has a budget for this month! just charge budget
-					if err := budget.ChargeBudget(s.budgetDb, s.Cfg, cmp, ag.IsIO, adv.Customer); err != nil {
-						s.Alert("Error charging budget key while billing for "+cmp.Id, err)
-						return nil
-					}
-
-					// We just charged for budget so lets add deals for that
-					addDealsToCampaign(cmp, s, tx, cmp.Budget)
-				} else {
-					// This campaign does not have a budget for this month. Create key!
-
-					var spendable float64
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
-						s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
-						return nil
-					}
-
-					// Add fresh deals for this month
-					addDealsToCampaign(cmp, s, tx, spendable)
-				}
-
-				if err = saveCampaign(tx, cmp, s); err != nil {
-					log.Println("Error saving campaign for billing", err)
+				// IsIO replaced by incoming CREDIT value so the admin can decide whether
+				// they want to charge or not
+				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, 0, value, true, credit, adv.Customer); err != nil {
+					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 					return err
 				}
 
-				return
-			})
+				// Add fresh deals for this month
+				addDealsToCampaign(cmp, s, tx, spendable)
+			}
+
+			if err = saveCampaign(tx, cmp, s); err != nil {
+				log.Println("Error saving campaign for billing", err)
+				return err
+			}
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(ErrBilling))
+			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
 		c.JSON(200, misc.StatusOK(""))

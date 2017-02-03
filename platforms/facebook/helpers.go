@@ -66,6 +66,7 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 		filtered = posts.Data
 	}
 
+	var consideredPosts float64
 	for _, p := range filtered {
 		fbPost := &Post{
 			Id:          p.Id,
@@ -77,7 +78,6 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 
 		if lk, lkErr := getLikes(p.Id, cfg); lkErr == nil {
 			fbPost.Likes = lk
-			likes += lk
 		} else {
 			err = lkErr
 			return
@@ -85,14 +85,12 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 
 		if cm, cmErr := getComments(p.Id, cfg); cmErr == nil {
 			fbPost.Comments = cm
-			comments += cm
 		} else {
 			err = cmErr
 			return
 		}
 
 		if sh, pType, shErr := getShares(p.Id, cfg); shErr == nil {
-			fbPost.Shares = sh
 			fbPost.Type = pType
 			shares += sh
 		} else {
@@ -100,13 +98,21 @@ func getBasicInfo(id string, cfg *config.Config) (likes, comments, shares float6
 			return
 		}
 
+		if !misc.WithinLast(int32(fbPost.Published.Unix()), 24) {
+			likes += fbPost.Likes
+			comments += fbPost.Comments
+			shares += fbPost.Shares
+			consideredPosts += 1
+		}
+
 		fbPosts = append(fbPosts, fbPost)
 	}
 
-	total := float64(len(fbPosts))
-	likes = likes / total
-	comments = comments / total
-	shares = shares / total
+	if consideredPosts > 0 {
+		likes = likes / consideredPosts
+		comments = comments / consideredPosts
+		shares = shares / consideredPosts
+	}
 
 	endpoint = fmt.Sprintf(pictureUrl, cfg.Facebook.Endpoint, id, cfg.Facebook.Id, cfg.Facebook.Secret)
 	resp, err := http.Get(endpoint)

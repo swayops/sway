@@ -257,7 +257,9 @@ func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 		data.Exchange += stats.Exchange
 		data.Influencer += stats.Influencer
 		data.Agency += stats.Agency
-		data.AgencyId = stats.AgencyId
+		if stats.AgencyId != "" {
+			data.AgencyId = stats.AgencyId
+		}
 
 		data.Likes += stats.Likes
 		data.Dislikes += stats.Dislikes

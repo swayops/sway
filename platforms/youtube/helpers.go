@@ -185,6 +185,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 		return
 	}
 
+	var totalLikes, totalDislikes, consideredPosts float64
 	for _, v := range vid.Items {
 		if v.Snippet != nil && v.Id.VideoId != "" {
 			pub := int32(v.Snippet.Published.Unix())
@@ -210,16 +211,20 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 				}
 			}
 
-			avgLikes += p.Likes
-			avgDislikes += p.Dislikes
+			if !misc.WithinLast(p.Published, 24) {
+				totalLikes += p.Likes
+				totalDislikes += p.Dislikes
+				consideredPosts += 1
+			}
 
 			posts = append(posts, p)
 		}
 	}
 
-	length := float64(len(posts))
-	avgLikes = avgLikes / length
-	avgDislikes = avgDislikes / length
+	if consideredPosts > 0 {
+		avgLikes = totalLikes / consideredPosts
+		avgDislikes = totalDislikes / consideredPosts
+	}
 
 	return
 }

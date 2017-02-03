@@ -426,7 +426,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
 	adminGroup.GET("/billing", runBilling(srv))
-	adminGroup.GET("/chargeBudget/:campaignId", chargeBudget(srv))
+	adminGroup.GET("/credit/:campaignId/:value/:credit", creditValue(srv))
 	adminGroup.GET("/transferSpendable/:campaignId", transferSpendable(srv))
 
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
@@ -539,18 +539,24 @@ func (srv *Server) Fraud(cid, infId, url, reason string) {
 	}
 }
 
-func (srv *Server) Digest(updatedInf, foundDeals int32, totalDepleted float64, sigsFound, dealsEmailed, scrapsEmailed int32, start time.Time) {
+func (srv *Server) Digest(updatedInf, foundDeals int32, depletions []*Depleted, sigsFound, dealsEmailed, scrapsEmailed int32, start time.Time) {
 	if srv.Cfg.Sandbox {
 		return
 	}
 
 	now := time.Now()
 
+	var totalSpent float64
+	for _, d := range depletions {
+		totalSpent += d.Spent
+	}
+
 	load := map[string]interface{}{
 		"startTime":     start.String(),
 		"updatedInf":    updatedInf,
 		"foundDeals":    foundDeals,
-		"totalDepleted": totalDepleted,
+		"totalSpent":    misc.TruncateFloat(totalSpent, 2),
+		"depletions":    depletions,
 		"sigsFound":     sigsFound,
 		"dealsEmailed":  dealsEmailed,
 		"scrapsEmailed": scrapsEmailed,
