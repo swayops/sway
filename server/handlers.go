@@ -3923,7 +3923,7 @@ func click(s *Server) gin.HandlerFunc {
 		infId := foundDeal.InfluencerId
 		// Stored as a comma separated list of dealIDs satisfied
 		prevClicks := misc.GetCookie(c.Request, "click")
-		if strings.Contains(prevClicks, foundDeal.Id) {
+		if strings.Contains(prevClicks, foundDeal.Id) && c.Query("dbg") != "1" {
 			// This user has already clicked once for this deal!
 			c.Redirect(302, foundDeal.Link)
 			return

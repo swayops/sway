@@ -2867,6 +2867,29 @@ func TestClicks(t *testing.T) {
 		t.Fatal("Unexpected number of clicks!")
 		return
 	}
+
+	// Lets try an actual click and make sure it increments
+	r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink)+"?dbg=1", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if lastBreakdown["total"].Clicks != 2 {
+		t.Fatal("Unexpected number of clicks!")
+		return
+	}
 }
 
 type Count struct {

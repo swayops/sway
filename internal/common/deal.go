@@ -214,7 +214,11 @@ func (d *Deal) Click() {
 		d.Reporting[key] = data
 	}
 
-	data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
+	if d.IsActive() {
+		data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
+	} else if d.IsComplete() {
+		data.ApprovedClicks = append(data.ApprovedClicks, &Click{TS: int32(time.Now().Unix())})
+	}
 }
 
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {
