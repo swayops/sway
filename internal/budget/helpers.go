@@ -55,3 +55,16 @@ func GetProratedBudget(budget float64) float64 {
 
 	return (budget / float64(days)) * float64(daysUntilEnd)
 }
+
+func GetMargins(total, dspFee, exchangeFee, agencyFee float64) (dsp, exchange, agency, influencer float64) {
+	// DSP and Exchange fee taken away from the prinicpal
+	dsp = total * dspFee
+	exchange = total * exchangeFee
+
+	// Talent agency payout will be taken away from the influencer portion
+	influencerPool := total - (dsp + exchange)
+	agency = influencerPool * agencyFee
+	influencer = influencerPool - agency
+	return
+
+}

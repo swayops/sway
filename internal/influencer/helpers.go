@@ -39,7 +39,7 @@ func degradeRep(val int32, rep float64) float64 {
 	return rep
 }
 
-func getMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Facebook, tw *twitter.Twitter, insta *instagram.Instagram) float64 {
+func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Facebook, tw *twitter.Twitter, insta *instagram.Instagram) float64 {
 	// Expected value on average a post generates
 	var maxYield float64
 	if cmp.YouTube && yt != nil {

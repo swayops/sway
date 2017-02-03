@@ -141,10 +141,20 @@ func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) 
 }
 
 func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
-	// Lets figure out the number of available deals
-	dealsEmpty := 0
+	// Lets figure out the number of available deals AND the approximate budget
+	// that is used up
+	var (
+		pendingSpend float64
+		dealsEmpty   int
+	)
+
 	for _, deal := range cmp.Deals {
-		if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+		if deal.IsActive() {
+			// Value is set when the influencer was first
+			// offered the deal.. we assume they will complete
+			// it and reach their likely earnings!
+			pendingSpend += deal.LikelyEarnings
+		} else if deal.IsAvailable() {
 			dealsEmpty += 1
 		}
 	}
@@ -153,9 +163,16 @@ func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 		return 0, 0
 	}
 
+	// Lets subtract the pending spend that will come in soon from
+	// active deals
+	filteredSpendable := spendable - pendingSpend
+	if filteredSpendable < 0 {
+		return 0, 0
+	}
+
 	// For even distribution.. lets give a target spendable for each available
 	// deal
-	target := spendable / float64(dealsEmpty)
+	target := filteredSpendable / float64(dealsEmpty)
 
 	// 30% margin left and right of target
 	margin := 0.3 * target

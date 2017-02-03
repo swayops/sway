@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
@@ -72,6 +73,9 @@ type Deal struct {
 	// and is saved to show how much the influencer was offered
 	// when the deal was assigned
 	Spendable float64 `json:"spendable,omitempty"`
+	// Field set by GetAvailableDeals specifying how much the influencer
+	// COULD earn on this deal
+	LikelyEarnings float64 `json:"likelyEarnings,omitempty"`
 
 	// Keyed on DAY.. showing stats calculated by DAY
 	Reporting map[string]*Stats `json:"stats,omitempty"`
@@ -93,12 +97,41 @@ type Stats struct {
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 	Views    int32 `json:"views,omitempty"`
-	Clicks   int32 `json:"clicks,omitempty"`
 	Perks    int32 `json:"perks,omitempty"`
+
+	LegacyClicks int32 `json:"clicks,omitempty"`
+
+	PendingClicks  []*Click `json:"pendingClicks,omitempty"`
+	ApprovedClicks []*Click `json:"approvedClicks,omitempty"`
+}
+
+type Click struct {
+	TS int32 `json:"ts,omitempty"`
 }
 
 func (st *Stats) TotalMarkup() float64 {
 	return st.DSP + st.Exchange + st.Agency
+}
+
+func (st *Stats) GetClicks() int32 {
+	return int32(len(st.ApprovedClicks)) + st.LegacyClicks
+}
+
+func (d *Deal) SanitizeClicks(completion int32) map[string]*Stats {
+	// Takes in a completion time and calculates which ones were AFTER the completion time!
+	reporting := make(map[string]*Stats)
+
+	for key, data := range d.Reporting {
+		for _, click := range data.PendingClicks {
+			if click.TS >= completion {
+				data.ApprovedClicks = append(data.ApprovedClicks, click)
+			}
+		}
+		data.PendingClicks = nil
+		reporting[key] = data
+	}
+
+	return reporting
 }
 
 func (d *Deal) TotalStats() *Stats {
@@ -109,7 +142,7 @@ func (d *Deal) TotalStats() *Stats {
 		total.Comments += data.Comments
 		total.Shares += data.Shares
 		total.Views += data.Views
-		total.Clicks += data.Clicks
+		total.ApprovedClicks = append(total.ApprovedClicks, data.ApprovedClicks...)
 		total.Influencer += data.Influencer
 		total.Agency += data.Agency
 	}
@@ -181,7 +214,11 @@ func (d *Deal) Click() {
 		d.Reporting[key] = data
 	}
 
-	data.Clicks += 1
+	if d.IsActive() {
+		data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
+	} else if d.IsComplete() {
+		data.ApprovedClicks = append(data.ApprovedClicks, &Click{TS: int32(time.Now().Unix())})
+	}
 }
 
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {
@@ -233,7 +270,7 @@ func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 		data.Comments += stats.Comments
 		data.Shares += stats.Shares
 		data.Views += stats.Views
-		data.Clicks += stats.Clicks
+		data.ApprovedClicks = append(data.ApprovedClicks, stats.ApprovedClicks...)
 
 		data.Perks += stats.Perks
 	}
@@ -266,6 +303,10 @@ func (d *Deal) IsActive() bool {
 
 func (d *Deal) IsComplete() bool {
 	return d.Assigned > 0 && d.Completed > 0 && d.InfluencerId != ""
+}
+
+func (d *Deal) IsAvailable() bool {
+	return d.Assigned == 0 && d.Completed == 0 && d.InfluencerId == ""
 }
 
 func (d *Deal) ConvertToClear() *Deal {

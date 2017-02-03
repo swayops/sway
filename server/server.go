@@ -300,6 +300,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Public endpoint
 	r.GET("/cl/:id", click(srv))
+	r.GET("/c/:id", click(srv))
+
 	r.GET("/optout/:email", optoutScrap(srv))
 	r.GET("/value/:platform/:handle", influencerValue(srv))
 
@@ -449,6 +451,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceAttributer", forceAttributer(srv))
 	adminGroup.GET("/forceTimeline", forceTimeline(srv))
 	adminGroup.GET("/syncHack", syncAllStats(srv))
+	adminGroup.GET("/assignLikelyEarnings", assignLikelyEarnings(srv))
+	adminGroup.GET("/getTotalClicks/:hours", getTotalClicks(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))

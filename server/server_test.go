@@ -2642,7 +2642,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 }
 
 func getTestClick(url string) string {
-	idx := strings.Index(url, "/cl/")
+	idx := strings.Index(url, "/c/")
 	return url[idx:]
 }
 
@@ -2651,7 +2651,7 @@ func TestClicks(t *testing.T) {
 	defer putClient(rst)
 
 	// Make sure click endpoint accessible without signing in
-	r := rst.DoTesting(t, "GET", "/cl/JxA", nil, nil)
+	r := rst.DoTesting(t, "GET", "/c/JxA", nil, nil)
 	if r.Status == 401 {
 		t.Fatal("Unexpected unauthorized error!")
 		return
@@ -2684,7 +2684,6 @@ func TestClicks(t *testing.T) {
 	doDeal(rst, t, inf.ExpID, "2", false)
 
 	// Influencer has assigned deals.. lets try clicking!
-	// It shouldn't allow it!
 	var load auth.Influencer
 	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &load)
 	if r.Status != 200 {
@@ -2712,7 +2711,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "/cl/") {
+	if !strings.Contains(load.ActiveDeals[0].ShortenedLink, "/c/") {
 		t.Fatal("Unexpected shortened link")
 		return
 	}
@@ -2729,7 +2728,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Make sure there are no clicks
+	// Make sure there are no clicks in reporting
 	var breakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &breakdown)
 	if r.Status != 200 {
@@ -2739,6 +2738,26 @@ func TestClicks(t *testing.T) {
 
 	if breakdown["total"].Clicks > 0 {
 		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	// There should be a pending click for the deal however!
+	var pendingClick common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &pendingClick)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	clicks := 0
+	for _, deal := range pendingClick.Deals {
+		for _, stats := range deal.Reporting {
+			clicks += len(stats.PendingClicks)
+		}
+	}
+
+	if clicks != 1 {
+		t.Fatal("Expected one pending click")
 		return
 	}
 
@@ -2769,7 +2788,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(getTestClick(newLoad.CompletedDeals[0].ShortenedLink), "/cl/") {
+	if !strings.Contains(getTestClick(newLoad.CompletedDeals[0].ShortenedLink), "/c/") {
 		t.Fatal("Bad shortened link")
 		return
 	}
@@ -2782,6 +2801,32 @@ func TestClicks(t *testing.T) {
 
 	if !strings.Contains(r.URL, "blank.org") {
 		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	// Make sure pending click was emptied out but approved is there!
+	var approvedClick common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &approvedClick)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	var pending, approved int
+	for _, deal := range approvedClick.Deals {
+		for _, stats := range deal.Reporting {
+			pending += len(stats.PendingClicks)
+			approved += len(stats.ApprovedClicks)
+		}
+	}
+
+	if pending != 0 {
+		t.Fatal("Expected zero pending click")
+		return
+	}
+
+	if approved != 1 {
+		t.Fatal("Expected one approved click")
 		return
 	}
 
@@ -2819,6 +2864,29 @@ func TestClicks(t *testing.T) {
 	}
 
 	if lastBreakdown["total"].Clicks != 1 {
+		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	// Lets try an actual click and make sure it increments
+	r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink)+"?dbg=1", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if !strings.Contains(r.URL, "blank.org") {
+		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if lastBreakdown["total"].Clicks != 2 {
 		t.Fatal("Unexpected number of clicks!")
 		return
 	}

@@ -26,6 +26,12 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	DEFAULT_DSP_FEE      = 0.2
+	DEFAULT_EXCHANGE_FEE = 0.2
+	DEFAULT_AGENCY_FEE   = 0.2
+)
+
 var (
 	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
 	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
@@ -691,7 +697,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		for _, deal := range cmp.Deals {
 			// Query is only passed in from getDeal so an influencer can view deals they're
 			// currently assigned to
-			if (query || (deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "")) && !dealFound {
+			if (query || (deal.IsAvailable())) && !dealFound {
 				if forcedDeal != "" && deal.Id != forcedDeal {
 					continue
 				}
@@ -753,13 +759,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 					dealFound = true
 				}
 			}
-		}
 
-		for _, d := range inf.CompletedDeals {
-			if d.CampaignId == targetDeal.CampaignId {
-				dealFound = true
+			for _, d := range inf.CompletedDeals {
+				if d.CampaignId == targetDeal.CampaignId {
+					dealFound = true
+				}
 			}
 		}
+
 		if dealFound {
 			rejections[cmp.Id] = "DEAL_FOUND"
 			continue
@@ -815,9 +822,24 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				continue
 			}
 		}
+
+		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+		if targetDeal.LikelyEarnings == 0 {
+			// Only set if it's not already set! FYI this value gets set when the user
+			// hits /assignDeal to accept the deal
+
+			// Subtract default margins to give influencers an accurate likely earning value
+			// NOTE: Mimics logic in depleteBudget functionality of sway engine
+			_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
+			// Setting likely earnings ONLY when the deal is offered to the influencer
+			// This value will be saved and maintained for all further deals that are offered
+			// for this campaign
+			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+		}
+
 		if store != nil {
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
-
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 				// NOTE: Skip this for whitelisted campaigns!
 
@@ -825,7 +847,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				// given what the campaign's influencer goal is and how
 				// many funds we have left
 				min, max := cmp.GetTargetYield(targetDeal.Spendable)
-				maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 				if maxYield < min || maxYield > max || maxYield == 0 {
 					rejections[cmp.Id] = "MAX_YIELD"
 					continue

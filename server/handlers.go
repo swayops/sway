@@ -1261,7 +1261,7 @@ func getBio(s *Server) gin.HandlerFunc {
 		)
 		for _, deal := range inf.CompletedDeals {
 			total := deal.TotalStats()
-			dealEng := int64(total.Likes + total.Comments + total.Shares + total.Clicks)
+			dealEng := int64(total.Likes + total.Comments + total.Shares + total.GetClicks())
 
 			eng += dealEng
 
@@ -2228,7 +2228,7 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 					comments += stats.Comments
 					shares += stats.Shares
 					views += stats.Views
-					clicks += stats.Clicks
+					clicks += stats.GetClicks()
 				}
 			}
 
@@ -3448,7 +3448,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 
 		var foundDeal *common.Deal
 		for _, deal := range cmp.Deals {
-			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+			if deal.IsAvailable() {
 				foundDeal = deal
 				break
 			}
@@ -3920,15 +3920,10 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if foundDeal.Completed == 0 {
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
-
 		infId := foundDeal.InfluencerId
 		// Stored as a comma separated list of dealIDs satisfied
 		prevClicks := misc.GetCookie(c.Request, "click")
-		if strings.Contains(prevClicks, foundDeal.Id) {
+		if strings.Contains(prevClicks, foundDeal.Id) && c.Query("dbg") != "1" {
 			// This user has already clicked once for this deal!
 			c.Redirect(302, foundDeal.Link)
 			return
@@ -3942,18 +3937,31 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		var added bool
+
+		// Lets search in completed deals first!
 		for _, infDeal := range inf.CompletedDeals {
-			if foundDeal.Id == infDeal.Id && infDeal.Completed > 0 {
+			if foundDeal.Id == infDeal.Id {
 				infDeal.Click()
 				added = true
 				break
 			}
 		}
 
+		if !added {
+			// Ok lets check active deals if deal wasn't found in completed!
+			for _, infDeal := range inf.ActiveDeals {
+				if foundDeal.Id == infDeal.Id {
+					infDeal.Click()
+					added = true
+					break
+				}
+			}
+		}
+
 		// SAVE!
 		// Also saves influencers!
 		if added {
-			if err := saveAllCompletedDeals(s, inf); err != nil {
+			if err := saveAllDeals(s, inf); err != nil {
 				c.Redirect(302, foundDeal.Link)
 				return
 			}
@@ -4028,7 +4036,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							d.Comments = total.Comments
 							d.Shares = total.Shares
 							d.Views = total.Views
-							d.Clicks = total.Clicks
+							d.Clicks = total.GetClicks()
 
 							// Check for virality
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
@@ -4675,5 +4683,59 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func assignLikelyEarnings(s *Server) gin.HandlerFunc {
+	// Handler to port over currently active deals to have
+	// LikelyEarnings stored (since that's stored via the
+	// assignDeal function)
+	return func(c *gin.Context) {
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, deal := range inf.ActiveDeals {
+				if deal.LikelyEarnings == 0 {
+					cmp := common.GetCampaign(deal.CampaignId, s.db, s.Cfg)
+					if cmp == nil {
+						log.Println("campaign not found")
+						continue
+					}
+					maxYield := influencer.GetMaxYield(cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+					_, _, _, infPayout := budget.GetMargins(maxYield, 0.2, 0.2, 0.2)
+					deal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+				}
+			}
+			if len(inf.ActiveDeals) > 0 {
+				saveAllActiveDeals(s, inf)
+			}
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+func getTotalClicks(s *Server) gin.HandlerFunc {
+	// Return all clicks that happened in the last X hours
+	return func(c *gin.Context) {
+		hours, _ := strconv.Atoi(c.Param("hours"))
+		if hours == 0 {
+			c.String(400, "Invalid hours value")
+			return
+		}
+
+		total := make(map[string]int)
+
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, deal := range inf.CompletedDeals {
+				for _, stats := range deal.Reporting {
+					for _, cl := range stats.ApprovedClicks {
+						if misc.WithinLast(cl.TS, int32(hours)) {
+							total[deal.CampaignId] += 1
+						}
+					}
+				}
+			}
+		}
+
+		c.JSON(200, total)
 	}
 }

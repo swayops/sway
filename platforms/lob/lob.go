@@ -110,8 +110,9 @@ func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) 
 		return nil, ErrAddr
 	}
 
-	if strings.ToLower(addr.Country) == "un" {
-		// Accounting for Chrome auto-fill putting United States as Un
+	cy := strings.ToLower(addr.Country)
+	if cy == "un" || cy == "united states" || cy == "usa" {
+		// Accounting for different versions of US
 		addr.Country = "US"
 	}
 

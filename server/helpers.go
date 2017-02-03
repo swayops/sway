@@ -389,6 +389,62 @@ func saveAllCompletedDeals(s *Server, inf influencer.Influencer) error {
 	return nil
 }
 
+func saveAllDeals(s *Server, inf influencer.Influencer) error {
+	// Saves the deals FROM the influencer TO the campaign!
+	if err := s.db.Update(func(tx *bolt.Tx) error {
+		// Save the influencer since we just updated it's social media data
+		if err := saveInfluencer(s, tx, inf); err != nil {
+			log.Println("Errored saving influencer", err)
+			return err
+		}
+
+		cmpB := tx.Bucket([]byte(s.Cfg.Bucket.Campaign))
+		// Lets update all active deals first!
+		for _, deal := range inf.ActiveDeals {
+			var cmp *common.Campaign
+			err := json.Unmarshal((cmpB).Get([]byte(deal.CampaignId)), &cmp)
+			if err != nil {
+				log.Println("Err unmarshalling campaign", err)
+				continue
+			}
+			if _, ok := cmp.Deals[deal.Id]; ok {
+				// Replace the old deal saved with the new one
+				cmp.Deals[deal.Id] = deal
+			}
+
+			// Save the campaign!
+			if err := saveCampaign(tx, cmp, s); err != nil {
+				return err
+			}
+		}
+
+		// Since we just updated the deal metrics for the influencer,
+		// lets also update the deal values in the campaign
+		for _, deal := range inf.CompletedDeals {
+			var cmp *common.Campaign
+			err := json.Unmarshal((cmpB).Get([]byte(deal.CampaignId)), &cmp)
+			if err != nil {
+				log.Println("Err unmarshalling campaign", err)
+				continue
+			}
+			if _, ok := cmp.Deals[deal.Id]; ok {
+				// Replace the old deal saved with the new one
+				cmp.Deals[deal.Id] = deal
+			}
+
+			// Save the campaign!
+			if err := saveCampaign(tx, cmp, s); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		log.Println("Error when saving influencer", err)
+		return err
+	}
+	return nil
+}
+
 func saveAllActiveDeals(s *Server, inf influencer.Influencer) error {
 	if err := s.db.Update(func(tx *bolt.Tx) error {
 		// Save the influencer since we just updated it's social media data

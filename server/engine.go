@@ -83,9 +83,13 @@ func newSwayEngine(srv *Server) error {
 				srv.Alert("Error hitting Google geo!", nil)
 			}
 
-			// Ping click URL
+			// Ping click URLs
 			if err := misc.Request("GET", "https://swayops.com/cl/fakeID", "", nil); err != nil {
-				srv.Alert("Error hitting Click URL!", err)
+				srv.Alert("Error hitting First Click URL!", err)
+			}
+
+			if err := misc.Request("GET", "https://swayops.com/c/fakeID", "", nil); err != nil {
+				srv.Alert("Error hitting Second Click URL!", err)
 			}
 		}
 	}()
@@ -333,14 +337,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
 			if spentDelta > 0 {
-				// DSP and Exchange fee taken away from the prinicpal
-				dspMarkup := spentDelta * dspFee
-				exchangeMarkup := spentDelta * exchangeFee
-
-				// Talent agency payout will be taken away from the influencer portion
-				influencerPool := spentDelta - (dspMarkup + exchangeMarkup)
-				agencyPayout := influencerPool * agencyFee
-				infPayout := influencerPool - agencyPayout
+				dspMarkup, exchangeMarkup, agencyPayout, infPayout := budget.GetMargins(spentDelta, dspFee, exchangeFee, agencyFee)
 
 				inf.PendingPayout += infPayout
 
