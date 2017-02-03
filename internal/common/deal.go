@@ -322,6 +322,7 @@ func (d *Deal) ConvertToClear() *Deal {
 	d.Reporting = nil
 	d.Perk = nil
 	d.Spendable = 0
+	d.LikelyEarnings = 0
 
 	return d
 }
