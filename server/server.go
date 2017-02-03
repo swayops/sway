@@ -450,6 +450,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceTimeline", forceTimeline(srv))
 	adminGroup.GET("/syncHack", syncAllStats(srv))
 	adminGroup.GET("/assignLikelyEarnings", assignLikelyEarnings(srv))
+	adminGroup.GET("/getTotalClicks/:hours", getTotalClicks(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))

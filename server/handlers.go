@@ -4712,3 +4712,30 @@ func assignLikelyEarnings(s *Server) gin.HandlerFunc {
 		c.JSON(200, misc.StatusOK(""))
 	}
 }
+
+func getTotalClicks(s *Server) gin.HandlerFunc {
+	// Return all clicks that happened in the last X hours
+	return func(c *gin.Context) {
+		hours, _ := strconv.Atoi(c.Param("hours"))
+		if hours == 0 {
+			c.String(400, "Invalid hours value")
+			return
+		}
+
+		total := make(map[string]int)
+
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, deal := range inf.CompletedDeals {
+				for _, stats := range deal.Reporting {
+					for _, cl := range stats.ApprovedClicks {
+						if misc.WithinLast(cl.TS, int32(hours)) {
+							total[deal.CampaignId] += 1
+						}
+					}
+				}
+			}
+		}
+
+		c.JSON(200, total)
+	}
+}
