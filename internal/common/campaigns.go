@@ -163,9 +163,16 @@ func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 		return 0, 0
 	}
 
+	// Lets subtract the pending spend that will come in soon from
+	// active deals
+	filteredSpendable := spendable - pendingSpend
+	if filteredSpendable < 0 {
+		return 0, 0
+	}
+
 	// For even distribution.. lets give a target spendable for each available
 	// deal
-	target := (pendingSpend + spendable) / float64(dealsEmpty)
+	target := filteredSpendable / float64(dealsEmpty)
 
 	// 30% margin left and right of target
 	margin := 0.3 * target
