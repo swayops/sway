@@ -143,6 +143,7 @@ func (d *Deal) TotalStats() *Stats {
 		total.Shares += data.Shares
 		total.Views += data.Views
 		total.ApprovedClicks = append(total.ApprovedClicks, data.ApprovedClicks...)
+		total.LegacyClicks += data.LegacyClicks
 		total.Influencer += data.Influencer
 		total.Agency += data.Agency
 	}
@@ -270,7 +271,9 @@ func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 		data.Comments += stats.Comments
 		data.Shares += stats.Shares
 		data.Views += stats.Views
+
 		data.ApprovedClicks = append(data.ApprovedClicks, stats.ApprovedClicks...)
+		data.LegacyClicks += stats.LegacyClicks
 
 		data.Perks += stats.Perks
 	}
