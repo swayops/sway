@@ -697,7 +697,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		for _, deal := range cmp.Deals {
 			// Query is only passed in from getDeal so an influencer can view deals they're
 			// currently assigned to
-			if (query || (deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "")) && !dealFound {
+			if (query || (deal.IsAvailable())) && !dealFound {
 				if forcedDeal != "" && deal.Id != forcedDeal {
 					continue
 				}
@@ -822,17 +822,20 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			}
 		}
 
-		maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
-
-		// Subtract default margins to give influencers an accurate likely earning value
-		// NOTE: Mimics logic in depleteBudget functionality of sway engine
-		_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
-		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
-
 		if store != nil {
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 				// NOTE: Skip this for whitelisted campaigns!
+
+				maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+				// Subtract default margins to give influencers an accurate likely earning value
+				// NOTE: Mimics logic in depleteBudget functionality of sway engine
+				_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
+				// Setting likely earnings ONLY when the deal is offered to the influencer
+				// This value will be saved and maintained for all further deals that are offered
+				// for this campaign
+				targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 
 				// OPTIMIZATION: Goal is to distribute funds evenly
 				// given what the campaign's influencer goal is and how

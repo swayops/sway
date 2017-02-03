@@ -299,6 +299,10 @@ func (d *Deal) IsComplete() bool {
 	return d.Assigned > 0 && d.Completed > 0 && d.InfluencerId != ""
 }
 
+func (d *Deal) IsAvailable() bool {
+	return d.Assigned == 0 && d.Completed == 0 && d.InfluencerId == ""
+}
+
 func (d *Deal) ConvertToClear() *Deal {
 	// Used to switch from ACTIVE deal to CLEAR deal
 	d.InfluencerId = ""

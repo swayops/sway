@@ -74,7 +74,7 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 		// Check if there's an available deal
 		var dealFound bool
 		for _, deal := range cmp.Deals {
-			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+			if deal.IsAvailable() {
 				dealFound = true
 				break
 			}

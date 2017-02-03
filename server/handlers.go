@@ -3341,7 +3341,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 
 		var foundDeal *common.Deal
 		for _, deal := range cmp.Deals {
-			if deal.Assigned == 0 && deal.Completed == 0 && deal.InfluencerId == "" {
+			if deal.IsAvailable() {
 				foundDeal = deal
 				break
 			}
