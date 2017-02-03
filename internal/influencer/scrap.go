@@ -97,7 +97,7 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 
 		if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
 			min, max := cmp.GetTargetYield(store.Spendable)
-			maxYield := getMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+			maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 			if maxYield < min || maxYield > max || maxYield == 0 {
 				return false
 			}

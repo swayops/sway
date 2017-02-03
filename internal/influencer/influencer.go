@@ -759,13 +759,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 					dealFound = true
 				}
 			}
-		}
 
-		for _, d := range inf.CompletedDeals {
-			if d.CampaignId == targetDeal.CampaignId {
-				dealFound = true
+			for _, d := range inf.CompletedDeals {
+				if d.CampaignId == targetDeal.CampaignId {
+					dealFound = true
+				}
 			}
 		}
+
 		if dealFound {
 			rejections[cmp.Id] = "DEAL_FOUND"
 			continue
@@ -822,20 +823,25 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			}
 		}
 
+		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+		if targetDeal.LikelyEarnings == 0 {
+			// Only set if it's not already set! FYI this value gets set when the user
+			// hits /assignDeal to accept the deal
+
+			// Subtract default margins to give influencers an accurate likely earning value
+			// NOTE: Mimics logic in depleteBudget functionality of sway engine
+			_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
+			// Setting likely earnings ONLY when the deal is offered to the influencer
+			// This value will be saved and maintained for all further deals that are offered
+			// for this campaign
+			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+		}
+
 		if store != nil {
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 				// NOTE: Skip this for whitelisted campaigns!
-
-				maxYield := getMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
-
-				// Subtract default margins to give influencers an accurate likely earning value
-				// NOTE: Mimics logic in depleteBudget functionality of sway engine
-				_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
-				// Setting likely earnings ONLY when the deal is offered to the influencer
-				// This value will be saved and maintained for all further deals that are offered
-				// for this campaign
-				targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 
 				// OPTIMIZATION: Goal is to distribute funds evenly
 				// given what the campaign's influencer goal is and how

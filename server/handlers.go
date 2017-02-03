@@ -4578,3 +4578,30 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 		c.JSON(200, misc.StatusOK(""))
 	}
 }
+
+func assignLikelyEarnings(s *Server) gin.HandlerFunc {
+	// Handler to port over currently active deals to have
+	// LikelyEarnings stored (since that's stored via the
+	// assignDeal function)
+	return func(c *gin.Context) {
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, deal := range inf.ActiveDeals {
+				if deal.LikelyEarnings == 0 {
+					cmp := common.GetCampaign(deal.CampaignId, s.db, s.Cfg)
+					if cmp == nil {
+						log.Println("campaign not found")
+						continue
+					}
+					maxYield := influencer.GetMaxYield(cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+					_, _, _, infPayout := budget.GetMargins(maxYield, 0.2, 0.2, 0.2)
+					deal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+				}
+			}
+			if len(inf.ActiveDeals) > 0 {
+				saveAllActiveDeals(s, inf)
+			}
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
