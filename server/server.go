@@ -259,6 +259,8 @@ func getInfAppRoutes(srv *Server) func(c *gin.Context) {
 			return
 		case "favicon.ico":
 			serve = favIcoFile
+		case "views":
+			c.File(filepath.Join(srv.Cfg.InfAppPath, "app", "views", parts[1]))
 		case "static":
 			staticGzer(c)
 			return
