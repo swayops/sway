@@ -26,12 +26,6 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const (
-	DEFAULT_DSP_FEE      = 0.2
-	DEFAULT_EXCHANGE_FEE = 0.2
-	DEFAULT_AGENCY_FEE   = 0.2
-)
-
 var (
 	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
 	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
@@ -831,7 +825,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 			// Subtract default margins to give influencers an accurate likely earning value
 			// NOTE: Mimics logic in depleteBudget functionality of sway engine
-			_, _, _, infPayout := budget.GetMargins(maxYield, DEFAULT_DSP_FEE, DEFAULT_EXCHANGE_FEE, DEFAULT_AGENCY_FEE)
+			_, _, _, infPayout := budget.GetMargins(maxYield, -1, -1, -1)
 			// Setting likely earnings ONLY when the deal is offered to the influencer
 			// This value will be saved and maintained for all further deals that are offered
 			// for this campaign

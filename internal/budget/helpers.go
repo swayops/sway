@@ -56,7 +56,25 @@ func GetProratedBudget(budget float64) float64 {
 	return (budget / float64(days)) * float64(daysUntilEnd)
 }
 
+const (
+	DEFAULT_DSP_FEE      = 0.2
+	DEFAULT_EXCHANGE_FEE = 0.2
+	DEFAULT_AGENCY_FEE   = 0.2
+)
+
 func GetMargins(total, dspFee, exchangeFee, agencyFee float64) (dsp, exchange, agency, influencer float64) {
+	if dspFee == -1 {
+		dspFee = DEFAULT_DSP_FEE
+	}
+
+	if exchangeFee == -1 {
+		exchangeFee = DEFAULT_EXCHANGE_FEE
+	}
+
+	if agencyFee == -1 {
+		agencyFee = DEFAULT_AGENCY_FEE
+	}
+
 	// DSP and Exchange fee taken away from the prinicpal
 	dsp = total * dspFee
 	exchange = total * exchangeFee

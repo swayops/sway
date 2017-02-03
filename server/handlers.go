@@ -4608,6 +4608,9 @@ func influencerValue(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Not factoring in margins for now
+		// _, _, _, inf := budget.GetMargins(value, -1, -1, -1)
+
 		c.String(200, strconv.FormatFloat(value, 'f', 6, 64))
 		return
 	}
@@ -4700,7 +4703,7 @@ func assignLikelyEarnings(s *Server) gin.HandlerFunc {
 						continue
 					}
 					maxYield := influencer.GetMaxYield(cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
-					_, _, _, infPayout := budget.GetMargins(maxYield, 0.2, 0.2, 0.2)
+					_, _, _, infPayout := budget.GetMargins(maxYield, -1, -1, -1)
 					deal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 				}
 			}
