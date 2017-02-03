@@ -819,20 +819,23 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
-		if targetDeal.LikelyEarnings == 0 {
-			// Only set if it's not already set! FYI this value gets set when the user
-			// hits /assignDeal to accept the deal
+		// Subtract default margins to give influencers an accurate likely earning value
+		// NOTE: Mimics logic in depleteBudget functionality of sway engine
+		_, _, _, infPayout := budget.GetMargins(maxYield, -1, -1, -1)
 
-			// Subtract default margins to give influencers an accurate likely earning value
-			// NOTE: Mimics logic in depleteBudget functionality of sway engine
-			_, _, _, infPayout := budget.GetMargins(maxYield, -1, -1, -1)
-			// Setting likely earnings ONLY when the deal is offered to the influencer
-			// This value will be saved and maintained for all further deals that are offered
-			// for this campaign
-			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
-		}
+		// Note: For query lookups, the most up-to date value is shown to influencers.
+		// However, we only save the LikelyEarnings value that is saved when the influencer
+		// hit "/assignDeal"
+		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 
 		if store != nil {
+			if targetDeal.LikelyEarnings > store.Spendable {
+				// This is to ensure we don't have a situation where we display
+				// likely earnings as being over the "Total" value when the influencer
+				// queries for assigned deals
+				targetDeal.LikelyEarnings = store.Spendable * 0.9
+			}
+
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 				// NOTE: Skip this for whitelisted campaigns!
