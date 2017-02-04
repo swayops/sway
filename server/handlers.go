@@ -2020,13 +2020,6 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 
 		var deals []*common.Deal
 		for _, d := range inf.ActiveDeals {
-			// Lets update the spendable!
-			store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, d.CampaignId, "")
-			if err == nil && store != nil {
-				d.Spendable = misc.TruncateFloat(store.Spendable, 2)
-			} else {
-				d.Spendable = 0
-			}
 			deals = append(deals, d)
 		}
 

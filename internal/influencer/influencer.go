@@ -833,7 +833,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = store.Spendable * 0.9
+				targetDeal.LikelyEarnings = store.Spendable * 0.7
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
