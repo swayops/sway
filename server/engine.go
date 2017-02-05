@@ -197,9 +197,7 @@ func run(srv *Server) error {
 
 	log.Println("Scraps emailed. Sent:", scrapsEmailed)
 
-	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed > 0 || len(depletions) > 0 {
-		srv.Digest(updatedInf, foundDeals, depletions, sigsFound, dealsEmailed, scrapsEmailed, start)
-	}
+	srv.Digest(updatedInf, foundDeals, depletions, sigsFound, dealsEmailed, scrapsEmailed, start)
 
 	return nil
 }
@@ -381,6 +379,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 				}
 
 				// Used for digest email!
+				// NOTE: Only email if spent is more than 50 cents
 				depletions = append(depletions, &Depleted{
 					Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
 					Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),

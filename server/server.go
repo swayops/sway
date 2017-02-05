@@ -554,6 +554,10 @@ func (srv *Server) Digest(updatedInf, foundDeals int32, depletions []*Depleted, 
 		totalSpent += d.Spent
 	}
 
+	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed == 0 && totalSpent < 1 {
+		return
+	}
+
 	load := map[string]interface{}{
 		"startTime":     start.String(),
 		"updatedInf":    updatedInf,
