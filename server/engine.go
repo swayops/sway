@@ -200,12 +200,7 @@ func run(srv *Server) error {
 	srv.Digest(updatedInf, foundDeals, depletions, sigsFound, dealsEmailed, scrapsEmailed, start)
 
 	if srv.Stats != nil {
-		srv.Stats.mux.Lock()
-		srv.Stats = &ServerStats{
-			InfluencersUpdated: updatedInf,
-			LastRun:            time.Now().Unix(),
-		}
-		srv.Stats.mux.Unlock()
+		srv.Stats.Update(updatedInf, time.Now().Unix())
 	}
 
 	return nil

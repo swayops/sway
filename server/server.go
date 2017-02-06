@@ -58,6 +58,13 @@ type ServerStats struct {
 	InfluencersUpdated int32 `json:"infUpdated,omitempty"` // Influencers updated in the last engine run
 }
 
+func (ss *ServerStats) Update(updated int32, lastRun int64) {
+	ss.mux.Lock()
+	ss.LastRun = lastRun
+	ss.InfluencersUpdated = updated
+	ss.mux.Unlock()
+}
+
 // New returns a new Server or an error
 // TODO: fix major bug of closing db on exit
 func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
