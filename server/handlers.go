@@ -4735,3 +4735,10 @@ func getTotalClicks(s *Server) gin.HandlerFunc {
 		c.JSON(200, total)
 	}
 }
+
+func getServerStats(s *Server) gin.HandlerFunc {
+	// Returns stored server stats
+	return func(c *gin.Context) {
+		c.JSON(200, s.Stats.Get())
+	}
+}

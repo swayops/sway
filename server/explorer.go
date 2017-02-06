@@ -161,7 +161,7 @@ func explore(srv *Server) (int32, error) {
 		// dealTimeout.. put it back in the pool!
 		if deal.Completed == 0 {
 			hoursSinceAssigned := (now - deal.Assigned) / 3600
-			if hoursSinceAssigned > 24*(timeoutDays-7) && hoursSinceAssigned <= (24*(timeoutDays-7))+engineRunTime {
+			if hoursSinceAssigned > 24*(timeoutDays-7) && hoursSinceAssigned <= (24*(timeoutDays-7))+EngineRunTime {
 				// Lets warn the influencer that they have 7 days left!
 				// NOTE.. the engine run time offset is so that it only runs once per engine
 				// run

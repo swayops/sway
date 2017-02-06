@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -47,6 +48,31 @@ type Server struct {
 	Keywords []string // List of available keywords
 
 	LimitSet *common.LimitSet
+
+	Stats ServerStats // stores most recent server (engine) stats
+}
+
+type ServerStats struct {
+	mux                sync.RWMutex
+	LastRun            int64 `json:"lastRun,omitempty"`    // Last engine run time
+	InfluencersUpdated int32 `json:"infUpdated,omitempty"` // Influencers updated in the last engine run
+}
+
+func (ss *ServerStats) Get() (stats *ServerStats) {
+	ss.mux.RLock()
+	stats = &ServerStats{
+		LastRun:            ss.LastRun,
+		InfluencersUpdated: ss.InfluencersUpdated,
+	}
+	ss.mux.RUnlock()
+	return
+}
+
+func (ss *ServerStats) Update(updated int32, lastRun int64) {
+	ss.mux.Lock()
+	ss.LastRun = lastRun
+	ss.InfluencersUpdated = updated
+	ss.mux.Unlock()
 }
 
 // New returns a new Server or an error
@@ -453,6 +479,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/syncHack", syncAllStats(srv))
 	adminGroup.GET("/assignLikelyEarnings", assignLikelyEarnings(srv))
 	adminGroup.GET("/getTotalClicks/:hours", getTotalClicks(srv))
+	adminGroup.GET("/serverStats", getServerStats(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
