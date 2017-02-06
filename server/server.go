@@ -55,7 +55,14 @@ type Server struct {
 type ServerStats struct {
 	mux                sync.RWMutex
 	LastRun            int64 `json:"lastRun,omitempty"`    // Last engine run time
+	Bootup             int64 `json:"bootup,omitempty"`     // Time the server was booted up
 	InfluencersUpdated int32 `json:"infUpdated,omitempty"` // Influencers updated in the last engine run
+}
+
+func NewStats() ServerStats {
+	return ServerStats{
+		Bootup: time.Now().Unix(),
+	}
 }
 
 func (ss *ServerStats) Get() (stats *ServerStats) {
@@ -63,6 +70,7 @@ func (ss *ServerStats) Get() (stats *ServerStats) {
 	stats = &ServerStats{
 		LastRun:            ss.LastRun,
 		InfluencersUpdated: ss.InfluencersUpdated,
+		Bootup:             ss.Bootup,
 	}
 	ss.mux.RUnlock()
 	return
@@ -91,6 +99,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
 		LimitSet:  common.NewLimitSet(),
+		Stats:     NewStats(),
 	}
 
 	stripe.Key = cfg.Stripe.Key
