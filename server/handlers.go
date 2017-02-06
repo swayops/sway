@@ -4739,10 +4739,6 @@ func getTotalClicks(s *Server) gin.HandlerFunc {
 func getServerStats(s *Server) gin.HandlerFunc {
 	// Returns stored server stats
 	return func(c *gin.Context) {
-		if s.Stats != nil {
-			c.JSON(200, s.Stats.Get())
-		} else {
-			c.String(400, "Internal error")
-		}
+		c.JSON(200, s.Stats.Get())
 	}
 }

@@ -199,9 +199,7 @@ func run(srv *Server) error {
 
 	srv.Digest(updatedInf, foundDeals, depletions, sigsFound, dealsEmailed, scrapsEmailed, start)
 
-	if srv.Stats != nil {
-		srv.Stats.Update(updatedInf, time.Now().Unix())
-	}
+	srv.Stats.Update(updatedInf, time.Now().Unix())
 
 	return nil
 }

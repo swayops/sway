@@ -49,7 +49,7 @@ type Server struct {
 
 	LimitSet *common.LimitSet
 
-	Stats *ServerStats // stores most recent server (engine) stats
+	Stats ServerStats // stores most recent server (engine) stats
 }
 
 type ServerStats struct {
@@ -58,12 +58,14 @@ type ServerStats struct {
 	InfluencersUpdated int32 `json:"infUpdated,omitempty"` // Influencers updated in the last engine run
 }
 
-func (ss *ServerStats) Get() ServerStats {
-	var stats ServerStats
+func (ss *ServerStats) Get() (stats *ServerStats) {
 	ss.mux.RLock()
-	stats = *ss
+	stats = &ServerStats{
+		LastRun:            ss.LastRun,
+		InfluencersUpdated: ss.InfluencersUpdated,
+	}
 	ss.mux.RUnlock()
-	return stats
+	return
 }
 
 func (ss *ServerStats) Update(updated int32, lastRun int64) {
@@ -89,7 +91,6 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
 		LimitSet:  common.NewLimitSet(),
-		Stats:     &ServerStats{},
 	}
 
 	stripe.Key = cfg.Stripe.Key
