@@ -58,6 +58,14 @@ type ServerStats struct {
 	InfluencersUpdated int32 `json:"infUpdated,omitempty"` // Influencers updated in the last engine run
 }
 
+func (ss *ServerStats) Get() ServerStats {
+	var stats ServerStats
+	ss.mux.RLock()
+	stats = *ss
+	ss.mux.RUnlock()
+	return stats
+}
+
 func (ss *ServerStats) Update(updated int32, lastRun int64) {
 	ss.mux.Lock()
 	ss.LastRun = lastRun

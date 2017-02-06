@@ -18,7 +18,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const engineRunTime = 2
+const EngineRunTime = 2
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
@@ -44,8 +44,8 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Run engine every 3 hours
-	runTicker := time.NewTicker(engineRunTime * time.Hour)
+	// Run engine every X hours
+	runTicker := time.NewTicker(EngineRunTime * time.Hour)
 	go func() {
 		for range runTicker.C {
 			if err := run(srv); err != nil {
