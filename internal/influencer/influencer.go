@@ -100,10 +100,10 @@ type Influencer struct {
 	// Completed and approved deals by the influencer
 	CompletedDeals []*common.Deal `json:"completedDeals,omitempty"`
 
-	// Number of times the influencer has unassigned themself from a deal
-	Cancellations int32 `json:"cancellations,omitempty"`
-	// Number of times the influencer has timed out on a deal
-	Timeouts int32 `json:"timeouts,omitempty"`
+	// Array of campaigns this influencer has cancelled for
+	Cancellations []string `json:"cancel,omitempty"`
+	// Array of campaigns this influencer has timed out for
+	Timeouts []string `json:"tos,omitempty"`
 
 	// Sway Rep scores by date
 	Rep        map[string]float64 `json:"historicRep,omitempty"`
@@ -528,8 +528,8 @@ func (inf *Influencer) setSwayRep() {
 
 	rep = rep * (1 + float64(len(inf.CompletedDeals))*float64(0.5))
 
-	rep = degradeRep(inf.Timeouts, rep)
-	rep = degradeRep(inf.Cancellations, rep)
+	rep = degradeRep(len(inf.Timeouts), rep)
+	rep = degradeRep(len(inf.Cancellations), rep)
 
 	if inf.Rep == nil {
 		inf.Rep = make(map[string]float64)
@@ -756,6 +756,18 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 			for _, d := range inf.CompletedDeals {
 				if d.CampaignId == targetDeal.CampaignId {
+					dealFound = true
+				}
+			}
+
+			for _, cid := range inf.Timeouts {
+				if cid == targetDeal.CampaignId {
+					dealFound = true
+				}
+			}
+
+			for _, cid := range inf.Cancellations {
+				if cid == targetDeal.CampaignId {
 					dealFound = true
 				}
 			}

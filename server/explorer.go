@@ -159,7 +159,9 @@ func explore(srv *Server) (int32, error) {
 
 		// If the deal has not been approved and it has gone past the
 		// dealTimeout.. put it back in the pool!
-		if deal.Completed == 0 {
+
+		// Lets exclude timeouts for signal for now
+		if deal.Completed == 0 && deal.AdvertiserId != "81" {
 			hoursSinceAssigned := (now - deal.Assigned) / 3600
 			if hoursSinceAssigned > 24*(timeoutDays-7) && hoursSinceAssigned <= (24*(timeoutDays-7))+EngineRunTime {
 				// Lets warn the influencer that they have 7 days left!
