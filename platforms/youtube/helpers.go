@@ -162,7 +162,12 @@ func getUserStats(id string, cfg *config.Config) (float64, float64, float64, str
 		url = data.Items[0].Snippet.Thumbnails.Medium.URL
 	}
 
-	return views / float64(videos), comments / videos, subs, url, nil
+	var avgViews, avgComments float64
+	if videos > 0 {
+		avgViews = views / videos
+		avgComments = comments / videos
+	}
+	return avgViews, avgComments, subs, url, nil
 }
 
 func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLikes, avgDislikes float64, images []string, err error) {
