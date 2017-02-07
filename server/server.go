@@ -381,6 +381,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getScrapStats", scrapStats(srv))
 	adminGroup.GET("/unapproveDeal/:influencerId/:dealId", unapproveDeal(srv))
 
+	adminGroup.GET("/dumpDatabases", dumpDatabases(srv))
+
 	// AdAgency
 	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
 		putAdAgency, nil)
