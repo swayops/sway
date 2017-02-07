@@ -3010,6 +3010,8 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 }
 
 type PerkWithCmpInfo struct {
+	DealID       string `json:"dealID"`
+	InfluencerID string `json:"infID"`
 	AdvertiserID string `json:"advID"`
 	CampaignID   string `json:"cmpID"`
 	CampaignName string `json:"cmpName"`
@@ -3031,6 +3033,8 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 				for _, d := range cmp.Deals {
 					if d.Perk != nil && !d.Perk.Status {
 						perks = append(perks, PerkWithCmpInfo{
+							DealID:       d.Id,
+							InfluencerID: d.InfluencerId,
 							AdvertiserID: cmp.AdvertiserId,
 							CampaignID:   cmp.Id,
 							CampaignName: cmp.Name,

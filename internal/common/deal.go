@@ -323,6 +323,7 @@ func (d *Deal) ConvertToClear() *Deal {
 	d.Perk = nil
 	d.Spendable = 0
 	d.LikelyEarnings = 0
+	d.InfluencerName = ""
 
 	return d
 }

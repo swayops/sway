@@ -50,6 +50,19 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 				return ErrDealActive
 			}
 
+			// If there's a perk given to this deal.. lets
+			// add it back to the campaign count
+			if cmp.Perks != nil && deal.Perk != nil {
+				// Add the count back
+				cmp.Perks.Count += deal.Perk.Count
+
+				if cmp.Perks.IsCoupon() && deal.Perk.Code != "" {
+					// Add the coupon code back!
+					cmp.Perks.Codes = append(cmp.Perks.Codes, deal.Perk.Code)
+				}
+
+			}
+
 			// Flush all attribuets for the deal
 			deal = deal.ConvertToClear()
 			cmp.Deals[dealId] = deal
@@ -66,9 +79,9 @@ func clearDeal(s *Server, dealId, influencerId, campaignId string, timeout bool)
 
 		inf.ActiveDeals = activeDeals
 		if timeout {
-			inf.Timeouts += 1
+			inf.Timeouts = append(inf.Timeouts, cmp.Id)
 		} else {
-			inf.Cancellations += 1
+			inf.Cancellations = append(inf.Cancellations, cmp.Id)
 		}
 
 		// Save the Influencer
