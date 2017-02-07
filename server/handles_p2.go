@@ -3,7 +3,6 @@ package server
 import (
 	"archive/tar"
 	"compress/gzip"
-	"io"
 	"log"
 	"time"
 
@@ -16,65 +15,58 @@ import (
 func dumpDatabases(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			pr, pw = io.Pipe()
-			gzw    = gzip.NewWriter(pw)
-			tw     = tar.NewWriter(gzw)
-			ts     = "dbs-" + time.Now().UTC().Format(`2006-01-02-15-04`)
+			gzw = gzip.NewWriter(c.Writer)
+			tw  = tar.NewWriter(gzw)
+			ts  = "dbs-" + time.Now().UTC().Format(`2006-01-02-15-04`)
 		)
-		defer pr.Close()
 
-		go func() {
-			defer func() {
-				// should never ever ever happen, but if it does, don't leak our crap
-				if v := recover(); v != nil {
-					log.Printf("that's not good: %T %v", v, v)
-				}
+		defer func() {
+			// should never ever ever happen, but if it does, don't leak our crap
+			if v := recover(); v != nil {
+				log.Printf("that's not good: %T %v", v, v)
+			}
 
-				tw.Close()
-				gzw.Close()
-				pw.Close()
-			}()
-
-			s.db.View(func(tx *bolt.Tx) (err error) {
-				hdr := &tar.Header{
-					Name: "data/sway.db",
-					Mode: 0600,
-					Size: tx.Size(),
-				}
-
-				if err = tw.WriteHeader(hdr); err != nil {
-					log.Printf("error dumping sway.db: %v", err)
-					return
-				}
-				if _, err = tx.WriteTo(tw); err != nil {
-					log.Printf("error dumping sway.db: %v", err)
-					return
-				}
-
-				return
-			})
-
-			s.budgetDb.View(func(tx *bolt.Tx) (err error) {
-				hdr := &tar.Header{
-					Name: "data/budget.db",
-					Mode: 0600,
-					Size: tx.Size(),
-				}
-
-				if err = tw.WriteHeader(hdr); err != nil {
-					log.Printf("error dumping sway.db: %v", err)
-					return
-				}
-				if _, err = tx.WriteTo(tw); err != nil {
-					log.Printf("error dumping sway.db: %v", err)
-					return
-				}
-
-				return
-			})
+			tw.Close()
+			gzw.Close()
 		}()
-
 		c.Header("Content-Disposition", `attachment; filename="`+ts+`.tar.gz"`)
-		io.Copy(c.Writer, pr)
+
+		s.db.View(func(tx *bolt.Tx) (err error) {
+			hdr := &tar.Header{
+				Name: "data/sway.db",
+				Mode: 0600,
+				Size: tx.Size(),
+			}
+
+			if err = tw.WriteHeader(hdr); err != nil {
+				log.Printf("error dumping sway.db: %v", err)
+				return
+			}
+			if _, err = tx.WriteTo(tw); err != nil {
+				log.Printf("error dumping sway.db: %v", err)
+				return
+			}
+
+			return
+		})
+
+		s.budgetDb.View(func(tx *bolt.Tx) (err error) {
+			hdr := &tar.Header{
+				Name: "data/budget.db",
+				Mode: 0600,
+				Size: tx.Size(),
+			}
+
+			if err = tw.WriteHeader(hdr); err != nil {
+				log.Printf("error dumping budget.db: %v", err)
+				return
+			}
+			if _, err = tx.WriteTo(tw); err != nil {
+				log.Printf("error dumping budget.db: %v", err)
+				return
+			}
+
+			return
+		})
 	}
 }
