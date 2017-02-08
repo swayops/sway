@@ -1133,7 +1133,7 @@ func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) err
 	return nil
 }
 
-func (inf *Influencer) DealUpdate(deal *common.Deal, cfg *config.Config) error {
+func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) error {
 	if cfg.Sandbox {
 		return nil
 	}
@@ -1148,8 +1148,8 @@ func (inf *Influencer) DealUpdate(deal *common.Deal, cfg *config.Config) error {
 		firstName = parts[0]
 	}
 
-	email := templates.CampaignStatusEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s is no longer available!", deal.Company), inf.EmailAddress, inf.Name,
+	email := templates.CampaignStatusEmail.Render(map[string]interface{}{"Name": firstName, "Company": cmp.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your deal for %s is no longer available!", cmp.Company), inf.EmailAddress, inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
@@ -1158,9 +1158,9 @@ func (inf *Influencer) DealUpdate(deal *common.Deal, cfg *config.Config) error {
 	if err := cfg.Loggers.Log("email", map[string]interface{}{
 		"tag":  "deal update",
 		"id":   inf.Id,
-		"cids": []string{deal.CampaignId},
+		"cids": []string{cmp.Id},
 	}); err != nil {
-		log.Println("Failed to log deal udpate!", inf.Id, deal.CampaignId)
+		log.Println("Failed to log deal udpate!", inf.Id, cmp.Id)
 	}
 
 	return nil

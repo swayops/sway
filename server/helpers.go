@@ -926,13 +926,13 @@ func emailStatusUpdate(s *Server, cid string, dbg bool) {
 				continue
 			}
 
-			if err := inf.DealUpdate(deal, s.Cfg); err != nil {
-				s.Alert("Failed to give influencer a campaign update: "+inf.Id, err)
+			if err := clearDeal(s, deal.Id, inf.Id, cmp.Id, false); err != nil {
+				s.Alert("Failed to clear deal for influencer: "+inf.Id, err)
 				continue
 			}
 
-			if err := clearDeal(s, deal.Id, inf.Id, cmp.Id, false); err != nil {
-				s.Alert("Failed to clear deal for influencer: "+inf.Id, err)
+			if err := inf.DealUpdate(cmp, s.Cfg); err != nil {
+				s.Alert("Failed to give influencer a campaign update: "+inf.Id, err)
 				continue
 			}
 

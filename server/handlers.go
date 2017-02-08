@@ -2032,9 +2032,22 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		dealId := c.Param("dealId")
 		influencerId := c.Param("influencerId")
 		campaignId := c.Param("campaignId")
+
 		if err := clearDeal(s, dealId, influencerId, campaignId, false); err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
+		}
+
+		// Lets email the influencer telling them the deal is OVAH!
+		inf, ok := s.auth.Influencers.Get(influencerId)
+		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
+
+		if ok && cmp != nil {
+			if err := inf.DealUpdate(cmp, s.Cfg); err != nil {
+				s.Alert("Failed to give influencer a deal update: "+inf.Id, err)
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
 		}
 
 		c.JSON(200, misc.StatusOK(dealId))
