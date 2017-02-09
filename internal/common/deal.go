@@ -312,6 +312,32 @@ func (d *Deal) IsAvailable() bool {
 	return d.Assigned == 0 && d.Completed == 0 && d.InfluencerId == ""
 }
 
+func (d *Deal) GetInstructions() []string {
+	var instructions []string
+	if d.ShortenedLink != "" {
+		instructions = append(instructions, "Put this link in your bio/caption: "+d.ShortenedLink)
+	}
+
+	if len(d.Tags) > 0 {
+		var tgPart string
+		tgPart += "Hashtags to do: "
+		for idx, tg := range d.Tags {
+			if idx != 0 {
+				tgPart += ", "
+			}
+			tgPart += "#" + tg
+		}
+		tgPart += ", #ad"
+		instructions = append(instructions, tgPart)
+	}
+
+	if d.Mention != "" {
+		instructions = append(instructions, "Mentions to do: "+d.Mention)
+	}
+
+	return instructions
+}
+
 func (d *Deal) ConvertToClear() *Deal {
 	// Used to switch from ACTIVE deal to CLEAR deal
 	d.InfluencerId = ""
