@@ -21,6 +21,7 @@ import (
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/subscriptions"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
 
@@ -1108,4 +1109,13 @@ func getAllCampaigns(db *bolt.DB, cfg *config.Config) []*common.Campaign {
 	}
 
 	return campaignList
+}
+
+func getPerkHandout(d *common.Deal, cmp *common.Campaign) string {
+	var capitalPlatforms []string
+	for _, pl := range d.Platforms {
+		capitalPlatforms = append(capitalPlatforms, strings.Title(pl))
+	}
+
+	return templates.Handout.Render(map[string]interface{}{"Name": d.InfluencerName, "Company": cmp.Company, "Task": d.Task, "Instructions": d.GetInstructions(), "Platforms": capitalPlatforms})
 }

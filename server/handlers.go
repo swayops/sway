@@ -2996,7 +2996,8 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 }
 
 func getPendingCampaigns(s *Server) gin.HandlerFunc {
-	// Have we received the perks from advertiser?
+	// Have we received the perks from advertiser? Are there any campaigns that have NOT
+	// been approved by admin yet?
 	return func(c *gin.Context) {
 		var campaigns []*common.Campaign
 		if err := s.db.View(func(tx *bolt.Tx) error {
@@ -3028,6 +3029,7 @@ type PerkWithCmpInfo struct {
 	AdvertiserID string `json:"advID"`
 	CampaignID   string `json:"cmpID"`
 	CampaignName string `json:"cmpName"`
+	Doc          string `json:"doc"` // HTML Representation of printout
 	*common.Perk
 }
 
@@ -3044,7 +3046,7 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 				}
 
 				for _, d := range cmp.Deals {
-					if d.Perk != nil && !d.Perk.Status {
+					if d.IsActive() && d.Perk != nil && !d.Perk.Status {
 						perks = append(perks, PerkWithCmpInfo{
 							DealID:       d.Id,
 							InfluencerID: d.InfluencerId,
@@ -3052,6 +3054,7 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 							CampaignID:   cmp.Id,
 							CampaignName: cmp.Name,
 							Perk:         d.Perk,
+							Doc:          getPerkHandout(d, &cmp),
 						})
 					}
 				}
