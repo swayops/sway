@@ -371,7 +371,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAllTalentAgencies", getAllTalentAgencies(srv))
 	adminGroup.POST("/setBan/:influencerId/:state", setBan(srv))
 	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
-	adminGroup.GET("/setFraud/:campaignId/:influencerId/:state", setFraud(srv))
 	adminGroup.GET("/setKeyword/:influencerId/:kw", addKeyword(srv))
 	adminGroup.GET("/addDeals/:campaignId/:count", addDealCount(srv))
 	adminGroup.GET("/setSignature/:influencerId/:sigId", setSignature(srv))
@@ -382,6 +381,10 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/unapproveDeal/:influencerId/:dealId", unapproveDeal(srv))
 
 	adminGroup.GET("/dumpDatabases", dumpDatabases(srv))
+
+	adminGroup.GET("/setBan/:influencerId/:state", setBan(srv))
+	adminGroup.GET("/setFraud/:campaignId/:influencerId/:state", setFraud(srv))
+	adminGroup.GET("/setStrike/:campaignId/:influencerId/:reasons", setStrike(srv))
 
 	// AdAgency
 	createRoutes(verifyGroup, srv, "/adAgency", "id", scopes["adAgency"], auth.AdAgencyItem, getAdAgency, nil,
@@ -563,14 +566,24 @@ func (srv *Server) Notify(subject, msg string) {
 	}
 }
 
-func (srv *Server) Fraud(cid, infId, url, reason string) {
+func (srv *Server) Fraud(cid, infId, url string, reasons []string) {
 	if srv.Cfg.Sandbox {
 		return
 	}
 
-	msg := fmt.Sprintf("Please check the post at %s as there was fraud detected with the following reason: %s for the campaign id %s and influencer id %s", url, reason, cid, infId)
+	allowURL := fmt.Sprintf("setFraud/%s/%s/true", cid, infId)
+	strikeURL := fmt.Sprintf("setStrike/%s/%s/%s", cid, infId, strings.Join(reasons, ","))
+	banURL := fmt.Sprintf("setBan/%s/true", infId)
 
-	email := templates.FraudEmail.Render(map[string]interface{}{"msg": msg})
+	email := templates.FraudEmail.Render(map[string]interface{}{
+		"CampaignID":   cid,
+		"InfluencerID": infId,
+		"URL":          url,
+		"Reasons":      reasons,
+		"AllowURL":     allowURL,
+		"StrikeURL":    strikeURL,
+		"BanURL":       banURL,
+	})
 
 	for _, addr := range mailingList {
 		if resp, err := srv.Cfg.MailClient().SendMessage(email, fmt.Sprintf("Fraud detected for campaign %s and influencer id %s", cid, infId), addr, "Important Person",

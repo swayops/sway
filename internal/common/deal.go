@@ -34,6 +34,9 @@ type Deal struct {
 	// This is also saved/reset in the un/assign handlers
 	Platforms []string `json:"platforms,omitempty"`
 
+	// Stores whether the influencer has been emailed about
+	// their deal being picked up
+	PickedUp bool `json:"pickedUp,omitempty"`
 	// Determines whether there will be fraud checking
 	SkipFraud bool `json:"skipFraud,omitempty"`
 	// Timestamp for when the deal was picked up by an influencer
