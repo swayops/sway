@@ -82,7 +82,19 @@ func explore(srv *Server) (int32, error) {
 		}
 
 		if inf.IsBanned() {
-			// This foo got banned!
+			// This foo got banned lets clear the deal!
+			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
+				log.Println("Error clearing deal!", deal.Id)
+				continue
+			}
+
+			if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
+				"action": "banned cleared deal",
+				"deal":   deal,
+			}); err != nil {
+				log.Println("Failed to log banned cleared deal!", inf.Id, deal.CampaignId)
+			}
+
 			continue
 		}
 
