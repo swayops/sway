@@ -95,6 +95,8 @@ type Influencer struct {
 	// Extracted from Imagga
 	Keywords []string `json:"keywords,omitempty"`
 
+	Strikes []*Strike `json:"strikes,omitempty"`
+
 	// Active accepted deals by the influencer that have not yet been completed
 	ActiveDeals []*common.Deal `json:"activeDeals,omitempty"`
 	// Completed and approved deals by the influencer
@@ -133,6 +135,12 @@ type Influencer struct {
 	// Stores whether the influencer has already been notified once about
 	// their profile going from public to private
 	PrivateNotify int32 `json:"private,omitempty"`
+}
+
+type Strike struct {
+	CampaignID string `json:"campaignID,omitempty"`
+	Reasons    string `json:"reasons,omitempty"`
+	TS         int64  `json:"ts,omitempty"`
 }
 
 func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
@@ -271,7 +279,7 @@ func (inf *Influencer) NewYouTube(id string, keywords []string, cfg *config.Conf
 }
 
 func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
-	if inf.Banned {
+	if inf.IsBanned() {
 		return false, nil
 	}
 
@@ -644,7 +652,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		infDeals []*common.Deal
 	)
 
-	if inf.Banned {
+	if inf.IsBanned() {
 		return infDeals
 	}
 
@@ -1127,7 +1135,40 @@ func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) err
 		"id":   inf.Id,
 		"cids": []string{deal.CampaignId},
 	}); err != nil {
-		log.Println("Failed to log deal heads up!", inf.Id, deal.CampaignId)
+		log.Println("Failed to log deal completion", inf.Id, deal.CampaignId)
+	}
+
+	return nil
+}
+
+func (inf *Influencer) DealPickedUp(deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.PickedUpEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your post for %s has been picked up!", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal picked up",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log deal picked up!", inf.Id, deal.CampaignId)
 	}
 
 	return nil
@@ -1315,21 +1356,33 @@ func (inf *Influencer) Audited() bool {
 	return len(inf.Categories) > 0 && (inf.Male || inf.Female)
 }
 
-func (inf *Influencer) IsViral(deal *common.Deal, stats *common.Stats) bool {
-	if deal.Tweet != nil && inf.Twitter != nil {
-		return isViral(stats.Likes, inf.Twitter.AvgLikes)
-	} else if deal.Facebook != nil && inf.Facebook != nil {
-		return isViral(stats.Likes, inf.Facebook.AvgLikes)
-	} else if deal.Instagram != nil && inf.Instagram != nil {
-		return isViral(stats.Likes, inf.Instagram.AvgLikes)
-	} else if deal.YouTube != nil && inf.YouTube != nil {
-		return isViral(stats.Likes, inf.YouTube.AvgLikes)
+func (inf *Influencer) IsBanned() bool {
+	return inf.Banned || len(inf.Strikes) >= 3
+}
+
+func (inf *Influencer) IsViral(tweet *twitter.Tweet, instaPost *instagram.Post, fbPost *facebook.Post, ytPost *youtube.Post) bool {
+	if tweet != nil && inf.Twitter != nil {
+		return isViral(tweet.Favorites, inf.Twitter.AvgLikes) ||
+			isViral(tweet.Retweets, inf.Twitter.AvgRetweets)
+	} else if fbPost != nil && inf.Facebook != nil {
+		return isViral(fbPost.Likes, inf.Facebook.AvgLikes) ||
+			isViral(fbPost.Comments, inf.Facebook.AvgComments) ||
+			isViral(fbPost.Shares, inf.Facebook.AvgShares)
+
+	} else if instaPost != nil && inf.Instagram != nil {
+		return isViral(instaPost.Likes, inf.Instagram.AvgLikes) ||
+			isViral(instaPost.Comments, inf.Instagram.AvgComments)
+	} else if ytPost != nil && inf.YouTube != nil {
+		return isViral(ytPost.Likes, inf.YouTube.AvgLikes) ||
+			isViral(ytPost.Comments, inf.YouTube.AvgComments) ||
+			isViral(ytPost.Dislikes, inf.YouTube.AvgDislikes) ||
+			isViral(ytPost.Views, inf.YouTube.AvgViews)
 	}
 	return false
 }
 
-func isViral(likes int32, avg float64) bool {
-	// If this post made >200% of average likes
+func isViral(val, avg float64) bool {
+	// If this post made >30% higher than average likes
 	// it's viral
-	return likes > 0 && float64(likes)/avg > 2
+	return val > 0 && val/avg > 1.3
 }
