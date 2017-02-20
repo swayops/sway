@@ -416,6 +416,33 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 			}
 		}
 
+		// Lets update bonus deals too!
+		if deal.Bonus != nil {
+			for _, tw := range deal.Bonus.Tweet {
+				if _, err = tw.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+
+			for _, post := range deal.Bonus.Facebook {
+				if err = post.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+
+			for _, post := range deal.Bonus.Instagram {
+				if _, err = post.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+
+			for _, post := range deal.Bonus.YouTube {
+				if err = post.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+		}
+
 		if ban != nil {
 			// This person deleted a deal!
 			// Insert into BAN.log and let admin

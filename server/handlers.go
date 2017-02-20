@@ -1509,43 +1509,63 @@ var (
 	InvalidPostURL = errors.New("Invalid post URL!")
 )
 
+type Bonus struct {
+	CampaignID   string `json:"cmpID,omitempty"`
+	InfluencerID string `json:"infID,omitempty"`
+	PostURL      string `json:"url,omitempty"`
+}
+
 func addBonus(s *Server) gin.HandlerFunc {
 	// Adds bonus value to an existing completed deal
 	return func(c *gin.Context) {
-		infId := c.Param("influencerId")
-		if infId == "" {
+		var (
+			bonus Bonus
+			err   error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&bonus); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		if bonus.InfluencerID == "" {
 			c.JSON(500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
-		cid := c.Param("campaignId")
-		if cid == "" {
+		if bonus.CampaignID == "" {
 			c.JSON(500, misc.StatusErr("invalid campaign id"))
 			return
 		}
 
-		inf, ok := s.auth.Influencers.Get(infId)
+		inf, ok := s.auth.Influencers.Get(bonus.InfluencerID)
 		if !ok {
 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
 		// Force update saves all new posts and updates to recent data
-		err := inf.ForceUpdate(s.Cfg)
+		err = inf.ForceUpdate(s.Cfg)
 		if err != nil {
 			c.JSON(500, misc.StatusErr("internal error with influencer update"))
 			return
 		}
 
-		postURL, err := url.QueryUnescape(c.Param("url"))
-		if postURL == "" || err != nil {
+		parsed, err := url.Parse(bonus.PostURL)
+		if err != nil {
+			c.JSON(500, misc.StatusErr("invalid post URL"))
+			return
+		}
+
+		bonus.PostURL = parsed.Host + parsed.Path
+		if bonus.PostURL == "" {
 			c.JSON(500, misc.StatusErr("invalid post URL"))
 			return
 		}
 
 		var foundDeal *common.Deal
 		for _, d := range inf.CompletedDeals {
-			if d.CampaignId == cid {
+			if d.CampaignId == bonus.CampaignID {
 				foundDeal = d
 			}
 		}
@@ -1558,7 +1578,7 @@ func addBonus(s *Server) gin.HandlerFunc {
 		var foundURL bool
 		if inf.Twitter != nil {
 			for _, tw := range inf.Twitter.LatestTweets {
-				if strings.Contains(tw.PostURL, postURL) {
+				if strings.Contains(tw.PostURL, bonus.PostURL) {
 					foundDeal.AddBonus(tw, nil, nil, nil)
 					foundURL = true
 					break
@@ -1568,7 +1588,7 @@ func addBonus(s *Server) gin.HandlerFunc {
 
 		if inf.Facebook != nil {
 			for _, fb := range inf.Facebook.LatestPosts {
-				if strings.Contains(fb.PostURL, postURL) {
+				if strings.Contains(fb.PostURL, bonus.PostURL) {
 					foundDeal.AddBonus(nil, fb, nil, nil)
 					foundURL = true
 					break
@@ -1578,7 +1598,7 @@ func addBonus(s *Server) gin.HandlerFunc {
 
 		if inf.Instagram != nil {
 			for _, in := range inf.Instagram.LatestPosts {
-				if strings.Contains(in.PostURL, postURL) {
+				if strings.Contains(in.PostURL, bonus.PostURL) {
 					foundDeal.AddBonus(nil, nil, in, nil)
 					foundURL = true
 					break
@@ -1588,7 +1608,7 @@ func addBonus(s *Server) gin.HandlerFunc {
 
 		if inf.YouTube != nil {
 			for _, yt := range inf.YouTube.LatestPosts {
-				if strings.Contains(yt.PostURL, postURL) {
+				if strings.Contains(yt.PostURL, bonus.PostURL) {
 					foundDeal.AddBonus(nil, nil, nil, yt)
 					foundURL = true
 					break
@@ -1606,7 +1626,7 @@ func addBonus(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		c.JSON(200, misc.StatusOK(bonus.InfluencerID))
 	}
 }
 
