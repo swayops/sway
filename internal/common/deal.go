@@ -140,6 +140,7 @@ func (d *Deal) AddBonus(tweet *twitter.Tweet, fbPost *facebook.Post, instaPost *
 	}
 
 	if tweet != nil {
+		log.Println("ADDING BONUS!", tweet.Favorites)
 		d.Bonus.Tweet = append(d.Bonus.Tweet, tweet)
 	}
 

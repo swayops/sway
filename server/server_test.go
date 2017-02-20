@@ -5274,7 +5274,7 @@ func TestBonus(t *testing.T) {
 	bonus := Bonus{
 		CampaignID: newLoad.CompletedDeals[0].CampaignId,
 		InfluencerID: inf.ExpID,
-		PostURL: newLoad.Twitter.LatestTweets[0].PostURL,
+		PostURL: newLoad.Twitter.LatestTweets[len(newLoad.Twitter.LatestTweets)-3].PostURL,
 	}
 
 	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
@@ -5329,6 +5329,30 @@ func TestBonus(t *testing.T) {
 	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
 	if r.Status == 200 {
 		t.Fatalf("Bad status code: %s", r.Value)
+		return
+	}
+
+	var advDeals []*FeedCell
+	r = rst.DoTesting(t, "GET", "/getAdvertiserContentFeed/"+newLoad.CompletedDeals[0].AdvertiserId, nil, &advDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(advDeals) != 2 {
+		t.Fatal("Incorrect content feed deals!")
+		return
+	}
+
+	var bonusDeals int
+	for _, d := range advDeals {
+		if d.Bonus {
+			bonusDeals += 1
+		}
+	}
+
+	if bonusDeals != 1 {
+		t.Fatal("No bonus deals!")
 		return
 	}
 }

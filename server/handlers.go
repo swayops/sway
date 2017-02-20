@@ -4196,8 +4196,34 @@ type FeedCell struct {
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 
+	Bonus bool `json:"bonus,omitempty"`
+
 	// Links to a DP for the social media profile
 	SocialImage string `json:"socialImage,omitempty"`
+}
+
+func (d *FeedCell) UseTweet(tw *twitter.Tweet) {
+	d.Caption = tw.Text
+	d.Published = int32(tw.CreatedAt.Unix())
+	d.URL = tw.PostURL
+}
+
+func (d *FeedCell) UseInsta(insta *instagram.Post) {
+	d.Caption = insta.Caption
+	d.Published = insta.Published
+	d.URL = insta.PostURL
+}
+
+func (d *FeedCell) UseFB(fb *facebook.Post) {
+	d.Caption = fb.Caption
+	d.Published = int32(fb.Published.Unix())
+	d.URL = fb.PostURL
+}
+
+func (d *FeedCell) UseYT(yt *youtube.Post) {
+	d.Caption = yt.Description
+	d.Published = yt.Published
+	d.URL = yt.PostURL
 }
 
 func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
@@ -4209,7 +4235,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var feed []*FeedCell
+		var feed []FeedCell
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -4220,11 +4246,10 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 				if cmp.AdvertiserId == adv.ID {
 					for _, deal := range cmp.Deals {
 						if deal.Completed > 0 {
-							d := &FeedCell{
+							d := FeedCell{
 								CampaignID:   cmp.Id,
 								CampaignName: cmp.Name,
 								Username:     deal.InfluencerName,
-								URL:          deal.PostUrl,
 								InfluencerID: deal.InfluencerId,
 							}
 
@@ -4235,7 +4260,6 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							d.Views = total.Views
 							d.Clicks = total.GetClicks()
 
-							// Check for virality
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
 							if !ok {
 								log.Println("Influencer not found!", deal.InfluencerId)
@@ -4243,32 +4267,85 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							}
 
 							if deal.Tweet != nil {
-								d.Caption = deal.Tweet.Text
-								d.Published = int32(deal.Tweet.CreatedAt.Unix())
+								d.UseTweet(deal.Tweet)
 								if inf.Twitter != nil {
 									d.SocialImage = inf.Twitter.ProfilePicture
 								}
 							} else if deal.Facebook != nil {
-								d.Caption = deal.Facebook.Caption
-								d.Published = int32(deal.Facebook.Published.Unix())
+								d.UseFB(deal.Facebook)
 								if inf.Facebook != nil {
 									d.SocialImage = inf.Facebook.ProfilePicture
 								}
 							} else if deal.Instagram != nil {
-								d.Caption = deal.Instagram.Caption
-								d.Published = deal.Instagram.Published
+								d.UseInsta(deal.Instagram)
 								if inf.Instagram != nil {
 									d.SocialImage = inf.Instagram.ProfilePicture
 								}
 							} else if deal.YouTube != nil {
-								d.Caption = deal.YouTube.Description
-								d.Published = deal.YouTube.Published
+								d.UseYT(deal.YouTube)
 								if inf.YouTube != nil {
 									d.SocialImage = inf.YouTube.ProfilePicture
 								}
 							}
 
 							feed = append(feed, d)
+
+							// Lets add extra cells for any bonus posts
+							if deal.Bonus != nil {
+								d.Bonus = true
+								// Lets copy the cell so we can re-use values!
+								for _, tw := range deal.Bonus.Tweet {
+									dupeCell := d
+									dupeCell.UseTweet(tw)
+									log.Println("TESTing", tw.Favorites)
+									dupeCell.Likes = int32(tw.Favorites)
+									dupeCell.Comments = 0
+									dupeCell.Shares = int32(tw.Retweets)
+									dupeCell.Views = 0
+									dupeCell.Clicks = 0
+
+									feed = append(feed, dupeCell)
+								}
+
+								for _, post := range deal.Bonus.Facebook {
+									dupeCell := d
+									dupeCell.UseFB(post)
+
+									dupeCell.Likes = int32(post.Likes)
+									dupeCell.Comments = int32(post.Comments)
+									dupeCell.Shares = int32(post.Shares)
+									dupeCell.Views = 0
+									dupeCell.Clicks = 0
+
+									feed = append(feed, dupeCell)
+								}
+
+								for _, post := range deal.Bonus.Instagram {
+									dupeCell := d
+									dupeCell.UseInsta(post)
+
+									dupeCell.Likes = int32(post.Likes)
+									dupeCell.Comments = int32(post.Comments)
+									dupeCell.Shares = 0
+									dupeCell.Views = 0
+									dupeCell.Clicks = 0
+
+									feed = append(feed, dupeCell)
+								}
+
+								for _, post := range deal.Bonus.YouTube {
+									dupeCell := d
+									dupeCell.UseYT(post)
+
+									dupeCell.Likes = int32(post.Likes)
+									dupeCell.Comments = int32(post.Comments)
+									dupeCell.Shares = 0
+									dupeCell.Views = int32(post.Views)
+									dupeCell.Clicks = 0
+
+									feed = append(feed, dupeCell)
+								}
+							}
 						}
 					}
 				}
