@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1501,6 +1502,111 @@ func addDealCount(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+var (
+	InvalidPostURL = errors.New("Invalid post URL!")
+)
+
+func addBonus(s *Server) gin.HandlerFunc {
+	// Adds bonus value to an existing completed deal
+	return func(c *gin.Context) {
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		cid := c.Param("campaignId")
+		if cid == "" {
+			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		// Force update saves all new posts and updates to recent data
+		err := inf.ForceUpdate(s.Cfg)
+		if err != nil {
+			c.JSON(500, misc.StatusErr("internal error with influencer update"))
+			return
+		}
+
+		postURL, err := url.QueryUnescape(c.Param("url"))
+		if postURL == "" || err != nil {
+			c.JSON(500, misc.StatusErr("invalid post URL"))
+			return
+		}
+
+		var foundDeal *common.Deal
+		for _, d := range inf.CompletedDeals {
+			if d.CampaignId == cid {
+				foundDeal = d
+			}
+		}
+
+		if foundDeal == nil {
+			c.JSON(500, misc.StatusErr("deal not found"))
+			return
+		}
+
+		var foundURL bool
+		if inf.Twitter != nil {
+			for _, tw := range inf.Twitter.LatestTweets {
+				if strings.Contains(tw.PostURL, postURL) {
+					foundDeal.AddBonus(tw, nil, nil, nil)
+					foundURL = true
+					break
+				}
+			}
+		}
+
+		if inf.Facebook != nil {
+			for _, fb := range inf.Facebook.LatestPosts {
+				if strings.Contains(fb.PostURL, postURL) {
+					foundDeal.AddBonus(nil, fb, nil, nil)
+					foundURL = true
+					break
+				}
+			}
+		}
+
+		if inf.Instagram != nil {
+			for _, in := range inf.Instagram.LatestPosts {
+				if strings.Contains(in.PostURL, postURL) {
+					foundDeal.AddBonus(nil, nil, in, nil)
+					foundURL = true
+					break
+				}
+			}
+		}
+
+		if inf.YouTube != nil {
+			for _, yt := range inf.YouTube.LatestPosts {
+				if strings.Contains(yt.PostURL, postURL) {
+					foundDeal.AddBonus(nil, nil, nil, yt)
+					foundURL = true
+					break
+				}
+			}
+		}
+
+		if !foundURL {
+			c.JSON(500, misc.StatusErr("invalid post URL"))
+			return
+		}
+
+		if err := saveAllCompletedDeals(s, inf); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
 	}
 }
 
