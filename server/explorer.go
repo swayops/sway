@@ -84,7 +84,7 @@ func explore(srv *Server) (int32, error) {
 		if inf.IsBanned() {
 			// This foo got banned lets clear the deal!
 			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
-				log.Println("Error clearing deal!", deal.Id)
+				log.Println("Error clearing deal!", deal.Id, err)
 				continue
 			}
 
@@ -582,7 +582,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > minRatio {
+				if checkRatio(post.Likes, post.Comments) {
 					fraud = append(fraud, "Likes to comments ratio is suspicious")
 				}
 
@@ -728,7 +728,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > minRatio {
+				if checkRatio(post.Likes, post.Comments) {
 					fraud = append(fraud, "Likes to comments ratio is suspicious")
 				}
 
@@ -867,7 +867,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > minRatio {
+				if checkRatio(post.Likes, post.Comments) {
 					fraud = append(fraud, "Likes to comments ratio is suspicious")
 				}
 
@@ -909,6 +909,10 @@ func containsFold(haystack, needle string) bool {
 	haystack = strings.TrimSpace(haystack)
 	needle = strings.TrimSpace(needle)
 	return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
+}
+
+func checkRatio(likes, comments float64) bool {
+	return comments/likes > minRatio
 }
 
 func pickupDeal(deal *common.Deal, inf influencer.Influencer, srv *Server) error {
