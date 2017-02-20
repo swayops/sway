@@ -27,8 +27,8 @@ var (
 const (
 	timeoutDays    = 25
 	timeoutSeconds = int32(60*60*24) * timeoutDays
-	waitingPeriod  = int32(3) // Wait 3 hours before we accept a deal
-	minRatio       = 0.04     // Minimum comments to like ratio as a percentage
+	waitingPeriod  = int32(16) // Wait 16 hours before we accept a deal
+	minRatio       = 0.04      // Minimum comments to like ratio as a percentage
 )
 
 func explore(srv *Server) (int32, error) {
@@ -81,8 +81,20 @@ func explore(srv *Server) (int32, error) {
 			continue
 		}
 
-		if inf.Banned {
-			// This foo got banned!
+		if inf.IsBanned() {
+			// This foo got banned lets clear the deal!
+			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
+				log.Println("Error clearing deal!", deal.Id, err)
+				continue
+			}
+
+			if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
+				"action": "banned cleared deal",
+				"deal":   deal,
+			}); err != nil {
+				log.Println("Failed to log banned cleared deal!", inf.Id, deal.CampaignId)
+			}
+
 			continue
 		}
 
@@ -329,10 +341,6 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
-		if misc.WithinLast(int32(tw.CreatedAt.Unix()), waitingPeriod) {
-			continue
-		}
-
 		postTags := tw.Hashtags()
 
 		var (
@@ -408,20 +416,45 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			}
 
 			if !deal.SkipFraud {
+				// If we're not skipping fraud yet we need to wait for X hours
+				// before picking up the deal so we can do fraud engagement checks
+				if misc.WithinLast(int32(tw.CreatedAt.Unix()), waitingPeriod) {
+					// Tell the user that we have picked up their deal but waiting for admin
+					// approval aka fraud check
+					if err := pickupDeal(deal, inf, srv); err != nil {
+						log.Println("Error emailing deal was picked up to influencer", err)
+					}
+					return nil
+				}
+
 				// Before returning the post.. lets check for some fraud
+				var fraud []string
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
+					var fraudHashFound bool
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag "+tg)
-							return nil
+							fraudHashFound = true
 						}
 					}
 					if containsFold(tw.Text, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, "Fraud hashtag "+tg)
-						return nil
+						fraudHashFound = true
 					}
+
+					if fraudHashFound {
+						fraud = append(fraud, fmt.Sprintf("fraudulent hashtag (%s)", tg))
+					}
+				}
+
+				// Lets check if engagements are WAY different than their average!
+				if inf.IsViral(tw, nil, nil, nil) {
+					fraud = append(fraud, "Engagements 30 percent higher than average!")
+				}
+
+				if len(fraud) > 0 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, tw.PostURL, fraud)
+					return nil
 				}
 			}
 
@@ -454,10 +487,6 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
-		// if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
-		// 	continue
-		// }
-
 		postTags := post.Hashtags()
 
 		var (
@@ -525,27 +554,47 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 			}
 
 			if !deal.SkipFraud {
+				if misc.WithinLast(int32(post.Published.Unix()), waitingPeriod) {
+					if err := pickupDeal(deal, inf, srv); err != nil {
+						log.Println("Error emailing deal was picked up to influencer", err)
+					}
+					return nil
+				}
+
 				// Before returning the post.. lets check for some fraud
+				var fraud []string
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
+					var fraudHashFound bool
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
-							return nil
+							fraudHashFound = true
 						}
 					}
 					if containsFold(post.Caption, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
-						return nil
+						fraudHashFound = true
+					}
+
+					if fraudHashFound {
+						fraud = append(fraud, fmt.Sprintf("fraudulent hashtag (%s)", tg))
 					}
 				}
 
 				// What's the likes to comments ratio?
-				// if post.Comments/post.Likes > minRatio {
-				// 	srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
-				// 	return nil
-				// }
+				if checkRatio(post.Likes, post.Comments) {
+					fraud = append(fraud, "Likes to comments ratio is suspicious")
+				}
+
+				// Lets check if engagements are WAY different than their average!
+				if inf.IsViral(nil, nil, post, nil) {
+					fraud = append(fraud, "Engagements 30 percent higher than average!")
+				}
+
+				if len(fraud) > 0 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, fraud)
+					return nil
+				}
 			}
 
 			return post
@@ -579,11 +628,6 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 	rejections := make(map[string]string)
 
 	for _, post := range inf.Instagram.LatestPosts {
-		// if misc.WithinLast(int32(post.Published), waitingPeriod) {
-		// 	rejections[post.Caption] = "WAITING_PERIOD"
-		// 	continue
-		// }
-
 		var (
 			foundHash, foundMention, foundLink bool
 			approvedFacets, consideredFacets   float64
@@ -653,27 +697,50 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			}
 
 			if !deal.SkipFraud {
+				if misc.WithinLast(int32(post.Published), waitingPeriod) {
+					rejections[post.Caption] = "WAITING_PERIOD"
+					if err := pickupDeal(deal, inf, srv); err != nil {
+						log.Println("Error emailing deal was picked up to influencer", err)
+					}
+					return nil
+				}
+
 				// Before returning the post.. lets check for some fraud
+				var fraud []string
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
+					var fraudHashFound bool
+
 					for _, hashtag := range post.Hashtags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
-							return nil
+							fraudHashFound = true
 						}
 					}
+
 					if containsFold(post.Caption, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
-						return nil
+						fraudHashFound = true
+					}
+
+					if fraudHashFound {
+						fraud = append(fraud, fmt.Sprintf("fraudulent hashtag (%s)", tg))
 					}
 				}
 
 				// What's the likes to comments ratio?
-				// if post.Comments/post.Likes > minRatio {
-				// 	srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
-				// 	return nil
-				// }
+				if checkRatio(post.Likes, post.Comments) {
+					fraud = append(fraud, "Likes to comments ratio is suspicious")
+				}
+
+				// Lets check if engagements are WAY different than their average!
+				if inf.IsViral(nil, post, nil, nil) {
+					fraud = append(fraud, "Engagements 30 percent higher than average!")
+				}
+
+				if len(fraud) > 0 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, fraud)
+					return nil
+				}
 			}
 
 			return post
@@ -705,10 +772,6 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
-		// if misc.WithinLast(post.Published, waitingPeriod) {
-		// 	continue
-		// }
-
 		postTags := post.Hashtags()
 
 		var (
@@ -776,25 +839,45 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 			}
 
 			if !deal.SkipFraud {
+				if misc.WithinLast(post.Published, waitingPeriod) {
+					if err := pickupDeal(deal, inf, srv); err != nil {
+						log.Println("Error emailing deal was picked up to influencer", err)
+					}
+					return nil
+				}
+
 				// Before returning the post.. lets check for some fraud
+				var fraud []string
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
+					var fraudHashFound bool
 					for _, hashtag := range postTags {
 						if strings.EqualFold(hashtag, tg) {
-							srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
-							return nil
+							fraudHashFound = true
 						}
 					}
 					if containsFold(post.Description, tg) {
-						srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Fraud hashtag "+tg)
-						return nil
+						fraudHashFound = true
+					}
+
+					if fraudHashFound {
+						fraud = append(fraud, fmt.Sprintf("fraudulent hashtag (%s)", tg))
 					}
 				}
 
 				// What's the likes to comments ratio?
-				if post.Comments/post.Likes > minRatio {
-					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, "Comments to likes ratio")
+				if checkRatio(post.Likes, post.Comments) {
+					fraud = append(fraud, "Likes to comments ratio is suspicious")
+				}
+
+				// Lets check if engagements are WAY different than their average!
+				if inf.IsViral(nil, nil, nil, post) {
+					fraud = append(fraud, "Engagements 30 percent higher than average!")
+				}
+
+				if len(fraud) > 0 {
+					srv.Fraud(deal.CampaignId, deal.InfluencerId, post.PostURL, fraud)
 					return nil
 				}
 			}
@@ -826,4 +909,29 @@ func containsFold(haystack, needle string) bool {
 	haystack = strings.TrimSpace(haystack)
 	needle = strings.TrimSpace(needle)
 	return strings.Contains(strings.ToLower(haystack), strings.ToLower(needle))
+}
+
+func checkRatio(likes, comments float64) bool {
+	return comments/likes > minRatio
+}
+
+func pickupDeal(deal *common.Deal, inf influencer.Influencer, srv *Server) error {
+	if deal.PickedUp {
+		return nil
+	}
+
+	if err := inf.DealPickedUp(deal, srv.Cfg); err != nil {
+		return err
+	}
+
+	deal.PickedUp = true
+
+	for _, infDeal := range inf.ActiveDeals {
+		if deal.Id == infDeal.Id {
+			deal.PickedUp = true
+			break
+		}
+	}
+
+	return saveAllActiveDeals(srv, inf)
 }

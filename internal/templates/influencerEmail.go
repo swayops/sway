@@ -172,6 +172,31 @@ const completionTmpl = `
 </div>
 `
 
+const pickedUpTmpl = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}}!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Your deal for {{Company}} has been noticed by Sway! However, the post is still awaiting admin approval so please allow up to 24 hours for the post to show up in your Sway Stats on the <a href="https://inf.swayops.com/login">Influencer Dashboard</a>. <br><br>
+
+		We will notify you via email as well once the post has been approved by Sway.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Feel free to call or email me with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 const campaignStatusEmail = `
 <div>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
@@ -262,6 +287,7 @@ var (
 	InfluencerTimeoutEmail = MustacheMust(timeOutEmail)
 	CheckEmail             = MustacheMust(checkTmpl)
 	DealCompletionEmail    = MustacheMust(completionTmpl)
+	PickedUpEmail          = MustacheMust(pickedUpTmpl)
 	CampaignStatusEmail    = MustacheMust(campaignStatusEmail)
 	DealRejectionEmail     = MustacheMust(dealRejectionEmail)
 	PrivateEmail           = MustacheMust(privateEmail)

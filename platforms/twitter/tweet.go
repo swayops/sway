@@ -90,8 +90,8 @@ func (tws Tweets) LatestLocation() *geo.GeoRecord {
 type Tweet struct {
 	Id string `json:"id_str"`
 
-	Retweets  uint32 `json:"retweet_count"`
-	Favorites uint32 `json:"favorite_count"`
+	Retweets  float64 `json:"retweet_count"`
+	Favorites float64 `json:"favorite_count"`
 
 	CreatedAt TwitterTime `json:"created_at"`
 

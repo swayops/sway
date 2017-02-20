@@ -1398,6 +1398,64 @@ func setBan(s *Server) gin.HandlerFunc {
 	}
 }
 
+func setStrike(s *Server) gin.HandlerFunc {
+	// Sets the banned value for the influencer id
+	return func(c *gin.Context) {
+		reasons := c.Params.ByName("reasons")
+		if reasons == "" {
+			c.JSON(400, misc.StatusErr("Please submit a valid reason"))
+			return
+		}
+
+		var (
+			infId      = c.Param("influencerId")
+			campaignId = c.Param("campaignId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		if campaignId == "" {
+			c.JSON(500, misc.StatusErr("Invalid campaign ID"))
+			return
+		}
+
+		// Add a strike
+		strike := &influencer.Strike{
+			CampaignID: campaignId,
+			Reasons:    reasons,
+			TS:         time.Now().Unix(),
+		}
+
+		// Make sure it's not there already!
+		for _, st := range inf.Strikes {
+			if st.CampaignID == strike.CampaignID {
+				c.JSON(500, misc.StatusErr("Strike has already been recorded!"))
+				return
+			}
+		}
+
+		inf.Strikes = append(inf.Strikes, strike)
+
+		// Allow the deal by skipping fraud
+		for _, d := range inf.ActiveDeals {
+			if d.CampaignId == campaignId {
+				d.SkipFraud = true
+			}
+		}
+
+		if err := saveAllActiveDeals(s, inf); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 func addKeyword(s *Server) gin.HandlerFunc {
 	// Manually add kw
 	return func(c *gin.Context) {
@@ -1720,7 +1778,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 			incPosts, _ = strconv.ParseBool(c.Query("incPosts"))
 		)
 		for _, inf := range s.auth.Influencers.GetAll() {
-			if inf.Banned {
+			if inf.IsBanned() {
 				continue
 			}
 
@@ -3089,8 +3147,9 @@ func transferSpendable(s *Server) gin.HandlerFunc {
 }
 
 type GreedyInfluencer struct {
-	Id   string `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
+	Id    string `json:"id,omitempty"`
+	Name  string `json:"name,omitempty"`
+	SigID string `json:"sigId,omitempty"`
 
 	Address   *lob.AddressLoad `json:"address,omitempty"`
 	Followers int64            `json:"followers,omitempty"`
@@ -3113,6 +3172,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 					RequestedCheck: inf.RequestedCheck,
 					CompletedDeals: inf.GetPostURLs(inf.LastCheck),
 					Followers:      inf.GetFollowers(),
+					SigID:          inf.SignatureId,
 				}
 				influencers = append(influencers, tmpGreedy)
 			}
@@ -3416,7 +3476,7 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if inf.Banned {
+		if inf.IsBanned() {
 			c.JSON(500, misc.StatusErr(ErrSorry.Error()))
 			return
 		}
@@ -4136,8 +4196,6 @@ type FeedCell struct {
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 
-	Viral bool `json:"viral,omitempty"`
-
 	// Links to a DP for the social media profile
 	SocialImage string `json:"socialImage,omitempty"`
 }
@@ -4179,8 +4237,9 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 
 							// Check for virality
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
-							if ok {
-								d.Viral = inf.IsViral(deal, total)
+							if !ok {
+								log.Println("Influencer not found!", deal.InfluencerId)
+								continue
 							}
 
 							if deal.Tweet != nil {
