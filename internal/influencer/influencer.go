@@ -1163,6 +1163,10 @@ func (inf *Influencer) DealPickedUp(deal *common.Deal, cfg *config.Config) error
 		return ErrEmail
 	}
 
+	// Tmp Check
+	cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your post for %s has been picked up!", deal.Company), "shahzil@swayops.com", inf.Name,
+		[]string{""})
+
 	if err := cfg.Loggers.Log("email", map[string]interface{}{
 		"tag":  "deal picked up",
 		"id":   inf.Id,
