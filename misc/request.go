@@ -52,6 +52,7 @@ func Ping(endpoint string) error {
 		return err
 	}
 
+	resp.Body.Close()
 	if resp.StatusCode != 200 {
 		return ErrStatus
 	}
