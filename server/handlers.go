@@ -4297,7 +4297,6 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 								for _, tw := range deal.Bonus.Tweet {
 									dupeCell := d
 									dupeCell.UseTweet(tw)
-									log.Println("TESTing", tw.Favorites)
 									dupeCell.Likes = int32(tw.Favorites)
 									dupeCell.Comments = 0
 									dupeCell.Shares = int32(tw.Retweets)
