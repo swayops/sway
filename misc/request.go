@@ -2,6 +2,7 @@ package misc
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -9,7 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var client http.Client
+var (
+	client    http.Client
+	ErrStatus = errors.New("non-200 status code")
+)
 
 func Request(method, endpoint, reqData string, respData interface{}) error {
 	endpoint = strings.Replace(endpoint, " ", "%20", -1)
@@ -34,6 +38,24 @@ func Request(method, endpoint, reqData string, respData interface{}) error {
 		log.Println("Error when unmarshalling from:", endpoint, err)
 		return err
 	}
+	return nil
+}
+
+func Ping(endpoint string) error {
+	endpoint = strings.Replace(endpoint, " ", "%20", -1)
+
+	r, _ := http.NewRequest("GET", endpoint, nil)
+
+	resp, err := client.Do(r)
+	if err != nil {
+		log.Println("Error when hitting:", endpoint, err)
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		return ErrStatus
+	}
+
 	return nil
 }
 

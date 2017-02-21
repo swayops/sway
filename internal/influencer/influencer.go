@@ -289,7 +289,9 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 
 	// Always allow updates if they have an active deal
 	// i.e. skip this if statement
-	if len(inf.ActiveDeals) == 0 {
+
+	// If the profile picture has become inactive lets update as well!
+	if len(inf.ActiveDeals) == 0 && inf.IsProfilePictureActive() {
 		// If you've been updated in the last 7-11 days and
 		// have no active deals.. screw you!
 		// NO SOUP FOR YOU!
@@ -547,6 +549,41 @@ func (inf *Influencer) GetNetworks() []string {
 		networks = append(networks, "YouTube")
 	}
 	return networks
+}
+
+func (inf *Influencer) IsProfilePictureActive() bool {
+	// Checks to see if any of the profile pictures are returning
+	// a 404
+
+	// We can skip this check if the influencer has no completed
+	// deals (since we only show profile picture and need to check
+	// it's validity when it shows up in an advertiser conten feed)
+	if len(inf.CompletedDeals) == 0 {
+		return true
+	}
+
+	if inf.Facebook != nil && inf.Facebook.ProfilePicture != "" {
+		if misc.Ping(inf.Facebook.ProfilePicture) != nil {
+			return false
+		}
+	}
+	if inf.Instagram != nil && inf.Instagram.ProfilePicture != "" {
+		if misc.Ping(inf.Instagram.ProfilePicture) != nil {
+			return false
+		}
+	}
+	if inf.Twitter != nil && inf.Twitter.ProfilePicture != "" {
+		if misc.Ping(inf.Twitter.ProfilePicture) != nil {
+			return false
+		}
+	}
+	if inf.YouTube != nil && inf.YouTube.ProfilePicture != "" {
+		if misc.Ping(inf.YouTube.ProfilePicture) != nil {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (inf *Influencer) GetPostURLs(ts int32) []string {
