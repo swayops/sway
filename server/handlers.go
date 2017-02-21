@@ -1394,6 +1394,8 @@ func setBan(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		s.Notify("Influencer has been banned!", fmt.Sprintf("Influencer %s has been banned", infId))
+
 		c.JSON(200, misc.StatusOK(infId))
 	}
 }
@@ -1451,6 +1453,8 @@ func setStrike(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+
+		s.Notify("Strike given!", fmt.Sprintf("Influencer %s has been given a strike (and the post has been allowed) for campaign %s", infId, campaignId))
 
 		c.JSON(200, misc.StatusOK(infId))
 	}
@@ -1725,6 +1729,8 @@ func setFraud(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+
+		s.Notify("Deal post allowed!", fmt.Sprintf("Deal for campaign %s and influencer %s has been allowed", cid, infId))
 
 		c.JSON(200, misc.StatusOK(infId))
 	}
