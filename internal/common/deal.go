@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"strings"
 	"time"
@@ -16,6 +17,10 @@ import (
 
 const (
 	engagementViewRatio = 0.04
+)
+
+var (
+	InvalidPostURL = errors.New("Invalid post URL!")
 )
 
 // This deal represents a possible bid
@@ -58,6 +63,8 @@ type Deal struct {
 	Facebook  *facebook.Post  `json:"facebook,omitempty"`
 	Instagram *instagram.Post `json:"instagram,omitempty"`
 	YouTube   *youtube.Post   `json:"youtube,omitempty"`
+
+	Bonus *Bonus `json:"bonus,omitempty"`
 
 	PostUrl string `json:"postUrl,omitempty"`
 
@@ -118,6 +125,35 @@ func (st *Stats) TotalMarkup() float64 {
 
 func (st *Stats) GetClicks() int32 {
 	return int32(len(st.ApprovedClicks)) + st.LegacyClicks
+}
+
+type Bonus struct {
+	Tweet     []*twitter.Tweet  `json:"tweet,omitempty"`
+	Facebook  []*facebook.Post  `json:"facebook,omitempty"`
+	Instagram []*instagram.Post `json:"instagram,omitempty"`
+	YouTube   []*youtube.Post   `json:"youtube,omitempty"`
+}
+
+func (d *Deal) AddBonus(tweet *twitter.Tweet, fbPost *facebook.Post, instaPost *instagram.Post, ytPost *youtube.Post) {
+	if d.Bonus == nil {
+		d.Bonus = &Bonus{}
+	}
+
+	if tweet != nil {
+		d.Bonus.Tweet = append(d.Bonus.Tweet, tweet)
+	}
+
+	if fbPost != nil {
+		d.Bonus.Facebook = append(d.Bonus.Facebook, fbPost)
+	}
+
+	if instaPost != nil {
+		d.Bonus.Instagram = append(d.Bonus.Instagram, instaPost)
+	}
+
+	if ytPost != nil {
+		d.Bonus.YouTube = append(d.Bonus.YouTube, ytPost)
+	}
 }
 
 func (d *Deal) SanitizeClicks(completion int32) map[string]*Stats {

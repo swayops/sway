@@ -361,6 +361,37 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 	return private, nil
 }
 
+func (inf *Influencer) ForceUpdate(cfg *config.Config) (err error) {
+	if inf.Banned {
+		return nil
+	}
+
+	if inf.Facebook != nil {
+		if err = inf.Facebook.UpdateData(cfg, true); err != nil {
+			return err
+		}
+	}
+	if inf.Instagram != nil {
+		if err = inf.Instagram.UpdateData(cfg, true); err != nil {
+			return err
+		}
+	}
+	if inf.Twitter != nil {
+		if err = inf.Twitter.UpdateData(cfg, true); err != nil {
+			return err
+		}
+	}
+	if inf.YouTube != nil {
+		if err = inf.YouTube.UpdateData(cfg, true); err != nil {
+			return err
+		}
+	}
+
+	inf.LastSocialUpdate = int32(time.Now().Unix())
+
+	return nil
+}
+
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]common.Campaign) (err error) {
 	// Update data for all completed deal posts
 	var (
@@ -390,6 +421,33 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 		} else if deal.YouTube != nil {
 			if err = deal.YouTube.UpdateData(cfg); err != nil {
 				return err
+			}
+		}
+
+		// Lets update bonus deals too!
+		if deal.Bonus != nil {
+			for _, tw := range deal.Bonus.Tweet {
+				if _, err = tw.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+
+			for _, post := range deal.Bonus.Facebook {
+				if err = post.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+
+			for _, post := range deal.Bonus.Instagram {
+				if _, err = post.UpdateData(cfg); err != nil {
+					return err
+				}
+			}
+
+			for _, post := range deal.Bonus.YouTube {
+				if err = post.UpdateData(cfg); err != nil {
+					return err
+				}
 			}
 		}
 

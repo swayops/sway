@@ -5222,6 +5222,141 @@ func TestTimeline(t *testing.T) {
 	}
 }
 
+func TestBonus(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:      true,
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "justinbieber",
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Do a deal but DON'T approve yet!
+	doDeal(rst, t, inf.ExpID, "2", true)
+
+	// check that the deal is approved
+	var newLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &newLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(newLoad.CompletedDeals) == 0 {
+		t.Fatal("Unexpected numnber of completed deals!")
+		return
+	}
+
+	if newLoad.Twitter == nil || len(newLoad.Twitter.LatestTweets) < 3 {
+		t.Fatal("No tweets!")
+		return
+	}
+
+	// Lets try adding a bonus post!
+	bonus := Bonus{
+		CampaignID: newLoad.CompletedDeals[0].CampaignId,
+		InfluencerID: inf.ExpID,
+		PostURL: newLoad.Twitter.LatestTweets[len(newLoad.Twitter.LatestTweets)-3].PostURL,
+	}
+
+	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code: %s", r.Value)
+		return
+	}
+
+	// check that the deal has a bonus post
+	var lastLoad influencer.Influencer
+	r = rst.DoTesting(t, "GET", "/influencer/"+inf.ExpID, nil, &lastLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	returnedBonus := lastLoad.CompletedDeals[0].Bonus
+	if returnedBonus == nil {
+		t.Fatal("No bonus value!")
+		return
+	}
+
+	if len(returnedBonus.Tweet) == 0 {
+		t.Fatal("No twitter bonus value!")
+		return
+	}
+
+	if returnedBonus.Tweet[0].PostURL != bonus.PostURL {
+		t.Fatal("Incorrect post URL value!")
+		return
+	}
+
+	// Lets try adding a bad bonus post!
+	bonus = Bonus{
+		CampaignID: newLoad.CompletedDeals[0].CampaignId,
+		InfluencerID: inf.ExpID,
+		PostURL: "www.",
+	}
+
+	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
+	if r.Status == 200 {
+		t.Fatalf("Bad status code: %s", r.Value)
+		return
+	}
+
+	bonus = Bonus{
+		CampaignID: "999",
+		InfluencerID: inf.ExpID,
+		PostURL: newLoad.Twitter.LatestTweets[0].PostURL,
+	}
+
+	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
+	if r.Status == 200 {
+		t.Fatalf("Bad status code: %s", r.Value)
+		return
+	}
+
+	var advDeals []*FeedCell
+	r = rst.DoTesting(t, "GET", "/getAdvertiserContentFeed/"+newLoad.CompletedDeals[0].AdvertiserId, nil, &advDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(advDeals) != 2 {
+		t.Fatal("Incorrect content feed deals!")
+		return
+	}
+
+	var bonusDeals int
+	for _, d := range advDeals {
+		if d.Bonus {
+			bonusDeals += 1
+		}
+	}
+
+	if bonusDeals != 1 {
+		t.Fatal("No bonus deals!")
+		return
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")
