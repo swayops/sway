@@ -5265,7 +5265,7 @@ func TestBonus(t *testing.T) {
 		return
 	}
 
-	if newLoad.Twitter == nil || len(newLoad.Twitter.LatestTweets) == 0 {
+	if newLoad.Twitter == nil || len(newLoad.Twitter.LatestTweets) < 3 {
 		t.Fatal("No tweets!")
 		return
 	}
