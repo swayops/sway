@@ -4208,28 +4208,40 @@ type FeedCell struct {
 	SocialImage string `json:"socialImage,omitempty"`
 }
 
-func (d *FeedCell) UseTweet(tw *twitter.Tweet) {
+func (d *FeedCell) UseTweet(tw *twitter.Tweet, profile *twitter.Twitter) {
 	d.Caption = tw.Text
 	d.Published = int32(tw.CreatedAt.Unix())
 	d.URL = tw.PostURL
+	d.SocialImage = profile.ProfilePicture
 }
 
-func (d *FeedCell) UseInsta(insta *instagram.Post) {
+func (d *FeedCell) UseInsta(insta *instagram.Post, profile *instagram.Instagram) {
 	d.Caption = insta.Caption
 	d.Published = insta.Published
 	d.URL = insta.PostURL
+	if insta.Thumbnail != "" {
+		d.SocialImage = insta.Thumbnail
+	} else {
+		d.SocialImage = profile.ProfilePicture
+	}
 }
 
-func (d *FeedCell) UseFB(fb *facebook.Post) {
+func (d *FeedCell) UseFB(fb *facebook.Post, profile *facebook.Facebook) {
 	d.Caption = fb.Caption
 	d.Published = int32(fb.Published.Unix())
 	d.URL = fb.PostURL
+	d.SocialImage = profile.ProfilePicture
 }
 
-func (d *FeedCell) UseYT(yt *youtube.Post) {
+func (d *FeedCell) UseYT(yt *youtube.Post, profile *youtube.YouTube) {
 	d.Caption = yt.Description
 	d.Published = yt.Published
 	d.URL = yt.PostURL
+	if yt.Thumbnail != "" {
+		d.SocialImage = yt.Thumbnail
+	} else {
+		d.SocialImage = profile.ProfilePicture
+	}
 }
 
 func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
@@ -4273,25 +4285,13 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							}
 
 							if deal.Tweet != nil {
-								d.UseTweet(deal.Tweet)
-								if inf.Twitter != nil {
-									d.SocialImage = inf.Twitter.ProfilePicture
-								}
+								d.UseTweet(deal.Tweet, inf.Twitter)
 							} else if deal.Facebook != nil {
-								d.UseFB(deal.Facebook)
-								if inf.Facebook != nil {
-									d.SocialImage = inf.Facebook.ProfilePicture
-								}
+								d.UseFB(deal.Facebook, inf.Facebook)
 							} else if deal.Instagram != nil {
-								d.UseInsta(deal.Instagram)
-								if inf.Instagram != nil {
-									d.SocialImage = inf.Instagram.ProfilePicture
-								}
+								d.UseInsta(deal.Instagram, inf.Instagram)
 							} else if deal.YouTube != nil {
-								d.UseYT(deal.YouTube)
-								if inf.YouTube != nil {
-									d.SocialImage = inf.YouTube.ProfilePicture
-								}
+								d.UseYT(deal.YouTube, inf.YouTube)
 							}
 
 							feed = append(feed, d)
@@ -4302,7 +4302,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 								// Lets copy the cell so we can re-use values!
 								for _, tw := range deal.Bonus.Tweet {
 									dupeCell := d
-									dupeCell.UseTweet(tw)
+									dupeCell.UseTweet(tw, inf.Twitter)
 									dupeCell.Likes = int32(tw.Favorites)
 									dupeCell.Comments = 0
 									dupeCell.Shares = int32(tw.Retweets)
@@ -4314,7 +4314,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 
 								for _, post := range deal.Bonus.Facebook {
 									dupeCell := d
-									dupeCell.UseFB(post)
+									dupeCell.UseFB(post, inf.Facebook)
 
 									dupeCell.Likes = int32(post.Likes)
 									dupeCell.Comments = int32(post.Comments)
@@ -4327,7 +4327,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 
 								for _, post := range deal.Bonus.Instagram {
 									dupeCell := d
-									dupeCell.UseInsta(post)
+									dupeCell.UseInsta(post, inf.Instagram)
 
 									dupeCell.Likes = int32(post.Likes)
 									dupeCell.Comments = int32(post.Comments)
@@ -4340,7 +4340,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 
 								for _, post := range deal.Bonus.YouTube {
 									dupeCell := d
-									dupeCell.UseYT(post)
+									dupeCell.UseYT(post, inf.YouTube)
 
 									dupeCell.Likes = int32(post.Likes)
 									dupeCell.Comments = int32(post.Comments)

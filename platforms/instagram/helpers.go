@@ -14,7 +14,9 @@ import (
 )
 
 type Meta struct {
-	Code int `json:"code"`
+	ErrorType    string `json:"error_type,omitempty"`
+	Code         int    `json:"code,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
 }
 
 const (
@@ -202,6 +204,7 @@ func getPostInfo(id string, cfg *config.Config) (postInfo PostInfo, err error) {
 
 		if post.Images != nil && post.Images.Resolution != nil {
 			images = append(images, post.Images.Resolution.URL)
+			p.Thumbnail = post.Images.Resolution.URL
 		}
 
 		posts = append(posts, p)

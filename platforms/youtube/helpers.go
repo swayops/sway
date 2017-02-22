@@ -211,8 +211,10 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 			if v.Snippet.Thumbnails != nil {
 				if v.Snippet.Thumbnails.MaxRes.URL != "" {
 					images = append(images, v.Snippet.Thumbnails.MaxRes.URL)
+					p.Thumbnail = v.Snippet.Thumbnails.MaxRes.URL
 				} else if v.Snippet.Thumbnails.High.URL != "" {
 					images = append(images, v.Snippet.Thumbnails.High.URL)
+					p.Thumbnail = v.Snippet.Thumbnails.High.URL
 				}
 			}
 
