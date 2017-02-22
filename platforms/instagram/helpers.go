@@ -21,7 +21,7 @@ const (
 	postCount    = 30.0
 	searchesUrl  = "%susers/search?q=%s&access_token=%s"
 	followersUrl = "%susers/%s/?access_token=%s"
-	postUrl      = "%susers/%s/media/recent/?access_token=%s&count=10"
+	postUrl      = "%susers/%s/media/recent/?access_token=%s&count=30"
 	postIdUrl    = "%smedia/%s?access_token=%s"
 )
 

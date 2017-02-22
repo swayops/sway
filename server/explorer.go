@@ -182,8 +182,8 @@ func explore(srv *Server) (int32, error) {
 				if err := inf.DealHeadsUp(deal, srv.Cfg); err != nil {
 					srv.Alert(fmt.Sprintf("Error emailing deal heads up to %s for deal %s", inf.Id, deal.Id), err)
 				}
-			} else if minTs > deal.Assigned {
-				// Ok lets time out!
+			} else if minTs > deal.Assigned && !deal.PickedUp {
+				// Ok lets time out UNLESS the deal has been picked up and is waiting admin approval!
 				if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 					return foundDeals, err
 				}
