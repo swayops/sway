@@ -269,7 +269,7 @@ func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
 		data.Views += views
 	} else {
 		// Estimate views if there are none
-		data.Views += int32(float64(likes+comments+shares) / engagementViewRatio)
+		data.Views += GetViews(likes, comments, shares)
 	}
 }
 
@@ -480,4 +480,8 @@ func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
 		return deals, err
 	}
 	return deals, err
+}
+
+func GetViews(likes, comments, shares int32) int32 {
+	return int32(float64(likes+comments+shares) / engagementViewRatio)
 }

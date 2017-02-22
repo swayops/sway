@@ -4306,8 +4306,8 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 									dupeCell.Likes = int32(tw.Favorites)
 									dupeCell.Comments = 0
 									dupeCell.Shares = int32(tw.Retweets)
-									dupeCell.Views = 0
 									dupeCell.Clicks = 0
+									dupeCell.Views = common.GetViews(dupeCell.Likes, dupeCell.Comments, dupeCell.Shares)
 
 									feed = append(feed, dupeCell)
 								}
@@ -4319,8 +4319,8 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 									dupeCell.Likes = int32(post.Likes)
 									dupeCell.Comments = int32(post.Comments)
 									dupeCell.Shares = int32(post.Shares)
-									dupeCell.Views = 0
 									dupeCell.Clicks = 0
+									dupeCell.Views = common.GetViews(dupeCell.Likes, dupeCell.Comments, dupeCell.Shares)
 
 									feed = append(feed, dupeCell)
 								}
@@ -4332,8 +4332,8 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 									dupeCell.Likes = int32(post.Likes)
 									dupeCell.Comments = int32(post.Comments)
 									dupeCell.Shares = 0
-									dupeCell.Views = 0
 									dupeCell.Clicks = 0
+									dupeCell.Views = common.GetViews(dupeCell.Likes, dupeCell.Comments, dupeCell.Shares)
 
 									feed = append(feed, dupeCell)
 								}
