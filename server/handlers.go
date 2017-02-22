@@ -1606,13 +1606,6 @@ func addBonus(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		// Force update saves all new posts and updates to recent data
-		err = inf.ForceUpdate(s.Cfg)
-		if err != nil {
-			c.JSON(500, misc.StatusErr("internal error with influencer update"))
-			return
-		}
-
 		parsed, err := url.Parse(bonus.PostURL)
 		if err != nil {
 			c.JSON(500, misc.StatusErr("invalid post URL"))
@@ -1634,6 +1627,13 @@ func addBonus(s *Server) gin.HandlerFunc {
 
 		if foundDeal == nil {
 			c.JSON(500, misc.StatusErr("deal not found"))
+			return
+		}
+
+		// Force update saves all new posts and updates to recent data
+		err = inf.ForceUpdate(s.Cfg)
+		if err != nil {
+			c.JSON(500, misc.StatusErr("internal error with influencer update"))
 			return
 		}
 
