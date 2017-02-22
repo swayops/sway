@@ -13,7 +13,8 @@ type Post struct {
 	Description string `json:"desc"`
 	Published   int32  `json:"published"` // Epoch ts
 
-	PostURL string `json:"url"` // Link to the post
+	PostURL   string `json:"url"` // Link to the post
+	Thumbnail string `json:"thumbnail"`
 
 	// Stats
 	Views    float64 `json:"views"`

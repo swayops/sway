@@ -271,6 +271,7 @@ func updateInfluencers(s *Server) (int32, error) {
 		if inf.LastSocialUpdate != oldUpdate {
 			// Only sleep if the influencer was actually updated!
 			time.Sleep(1 * time.Second)
+			updated += 1
 		}
 
 		// Update data for all completed deal posts
@@ -290,7 +291,6 @@ func updateInfluencers(s *Server) (int32, error) {
 			time.Sleep(1 * time.Second)
 		}
 
-		updated += 1
 	}
 
 	return updated, nil

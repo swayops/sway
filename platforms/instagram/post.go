@@ -24,7 +24,8 @@ type Post struct {
 	Caption  string   `json:"caption,omitempty"`
 	Hashtags []string `json:"hashtags,omitempty"`
 
-	PostURL string `json:"postUrl,omitempty"` // Link to the post
+	PostURL   string `json:"postUrl,omitempty"`   // Link to the post
+	Thumbnail string `json:"thumbnail,omitempty"` // Link to the post
 
 	Published int32 `json:"published,omitempty"` //epoch ts
 
@@ -41,25 +42,12 @@ type Post struct {
 }
 
 type DataByPost struct {
-	Data *PostStats `json:"data"`
+	Data *PostData `json:"data"`
 	Meta *struct {
 		ErrorType    string `json:"error_type,omitempty"`
 		Code         int    `json:"code,omitempty"`
 		ErrorMessage string `json:"error_message,omitempty"`
 	} `json:"meta"`
-}
-
-type PostStats struct {
-	Comments *PostComments `json:"comments"`
-	Likes    *PostLikes    `json:"likes"`
-}
-
-type PostComments struct {
-	Count float64 `json:"count"`
-}
-
-type PostLikes struct {
-	Count float64 `json:"count"`
 }
 
 func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
@@ -97,6 +85,10 @@ func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 
 	if post.Data.Likes != nil {
 		pt.Likes = post.Data.Likes.Count
+	}
+
+	if post.Data.Images != nil && post.Data.Images.Resolution != nil && pt.Thumbnail == "" {
+		pt.Thumbnail = post.Data.Images.Resolution.URL
 	}
 
 	pt.LastUpdated = int32(time.Now().Unix())

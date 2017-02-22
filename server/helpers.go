@@ -385,6 +385,7 @@ func saveAllCompletedDeals(s *Server, inf influencer.Influencer) error {
 				log.Println("Err unmarshalling campaign", err)
 				continue
 			}
+
 			if _, ok := cmp.Deals[deal.Id]; ok {
 				// Replace the old deal saved with the new one
 				cmp.Deals[deal.Id] = deal
