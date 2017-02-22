@@ -203,19 +203,13 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 				PostURL:     fmt.Sprintf(postTemplate, v.Id.VideoId),
 			}
 
-			p.Views, p.Likes, p.Dislikes, p.Comments, p.Description, err = getVideoStats(v.Id.VideoId, cfg)
+			p.Views, p.Likes, p.Dislikes, p.Comments, p.Description, p.Thumbnail, err = getVideoStats(v.Id.VideoId, cfg)
 			if err != nil {
 				return
 			}
 
-			if v.Snippet.Thumbnails != nil {
-				if v.Snippet.Thumbnails.MaxRes.URL != "" {
-					images = append(images, v.Snippet.Thumbnails.MaxRes.URL)
-					p.Thumbnail = v.Snippet.Thumbnails.MaxRes.URL
-				} else if v.Snippet.Thumbnails.High.URL != "" {
-					images = append(images, v.Snippet.Thumbnails.High.URL)
-					p.Thumbnail = v.Snippet.Thumbnails.High.URL
-				}
+			if p.Thumbnail != "" {
+				images = append(images, p.Thumbnail)
 			}
 
 			if !misc.WithinLast(p.Published, 24) {
@@ -236,7 +230,7 @@ func getPosts(name string, count int, cfg *config.Config) (posts []*Post, avgLik
 	return
 }
 
-func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float64, desc string, err error) {
+func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, dislikes, comments float64, desc, thumbnail string, err error) {
 	endpoint := fmt.Sprintf(postUrl, cfg.YouTube.Endpoint, videoId, cfg.YouTube.ClientId)
 
 	var vData UserData
@@ -284,6 +278,14 @@ func getVideoStats(videoId string, cfg *config.Config) (views float64, likes, di
 
 	if i.Snippet != nil && i.Snippet.Description != "" {
 		desc = strings.Replace(i.Snippet.Description, "\n", " ", -1)
+	}
+
+	if i.Snippet != nil && i.Snippet.Thumbnails != nil {
+		if i.Snippet.Thumbnails.MaxRes.URL != "" {
+			thumbnail = i.Snippet.Thumbnails.MaxRes.URL
+		} else if i.Snippet.Thumbnails.High.URL != "" {
+			thumbnail = i.Snippet.Thumbnails.High.URL
+		}
 	}
 
 	return

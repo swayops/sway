@@ -38,7 +38,7 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	// 	return nil
 	// }
 
-	views, likes, dislikes, comments, desc, err := getVideoStats(pt.Id, cfg)
+	views, likes, dislikes, comments, desc, thumbnail, err := getVideoStats(pt.Id, cfg)
 	if err != nil {
 		return err
 	}
@@ -48,6 +48,7 @@ func (pt *Post) UpdateData(cfg *config.Config) error {
 	pt.Dislikes = dislikes
 	pt.Views = views
 	pt.Comments = comments
+	pt.Thumbnail = thumbnail
 
 	pt.LastUpdated = int32(time.Now().Unix())
 
