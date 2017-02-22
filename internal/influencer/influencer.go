@@ -402,11 +402,11 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 	)
 
 	for _, deal := range inf.CompletedDeals {
-		if _, ok = activeCampaigns[deal.CampaignId]; !ok {
-			// Don't update deals for campaigns that aren't
-			// active anymore! NO POINT!
-			continue
-		}
+		// if _, ok = activeCampaigns[deal.CampaignId]; !ok {
+		// 	// Don't update deals for campaigns that aren't
+		// 	// active anymore! NO POINT!
+		// 	continue
+		// }
 
 		if deal.Tweet != nil {
 			if ban, err = deal.Tweet.UpdateData(cfg); err != nil {
