@@ -397,7 +397,7 @@ func (inf *Influencer) ForceUpdate(cfg *config.Config) (err error) {
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]common.Campaign) (err error) {
 	// Update data for all completed deal posts
 	var (
-		ok  bool
+		// ok  bool
 		ban error
 	)
 
