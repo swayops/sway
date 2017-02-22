@@ -140,18 +140,62 @@ func (d *Deal) AddBonus(tweet *twitter.Tweet, fbPost *facebook.Post, instaPost *
 	}
 
 	if tweet != nil {
+		// Lets make sure this post doesn't already exist!
+		for _, d := range d.Bonus.Tweet {
+			if d.Id == tweet.Id {
+				return
+			}
+		}
+
+		if d.Tweet != nil && d.Tweet.Id == tweet.Id {
+			return
+		}
+
 		d.Bonus.Tweet = append(d.Bonus.Tweet, tweet)
 	}
 
 	if fbPost != nil {
+		// Lets make sure this post doesn't already exist!
+		for _, d := range d.Bonus.Facebook {
+			if d.Id == fbPost.Id {
+				return
+			}
+		}
+
+		if d.Facebook != nil && d.Facebook.Id == fbPost.Id {
+			return
+		}
+
 		d.Bonus.Facebook = append(d.Bonus.Facebook, fbPost)
 	}
 
 	if instaPost != nil {
+		// Lets make sure this post doesn't already exist!
+		for _, d := range d.Bonus.Instagram {
+			if d.Id == instaPost.Id {
+				return
+			}
+		}
+
+		if d.Instagram != nil && d.Instagram.Id == instaPost.Id {
+			return
+		}
+
 		d.Bonus.Instagram = append(d.Bonus.Instagram, instaPost)
 	}
 
 	if ytPost != nil {
+		// Lets make sure this post doesn't already exist!
+		for _, d := range d.Bonus.YouTube {
+			if d.Id == ytPost.Id {
+				return
+			}
+		}
+
+		if d.YouTube != nil && d.YouTube.Id == ytPost.Id {
+			return
+		}
+
 		d.Bonus.YouTube = append(d.Bonus.YouTube, ytPost)
 	}
 }
