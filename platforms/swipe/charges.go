@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/card"
 	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/currency"
 	"github.com/stripe/stripe-go/customer"
@@ -76,6 +77,24 @@ func Update(id string, cc *CC) error {
 	return nil
 }
 
+func Delete(id string) error {
+	cust, err := customer.Get(id, nil)
+	if err != nil {
+		return ErrCustomer
+	}
+
+	if cust.Sources != nil && len(cust.Sources.Values) > 0 && cust.Sources.Values[0].Card != nil {
+		_, err := card.Del(cust.Sources.Values[0].Card.ID, &stripe.CardParams{Customer: cust.ID})
+		if err != nil {
+			return err
+		}
+	} else {
+		return ErrCreditCard
+	}
+
+	return nil
+}
+
 type History struct {
 	Name          string `json:"name"`
 	ID            string `json:"id"`
@@ -140,6 +159,8 @@ type CC struct {
 	CVC        string `json:"cvc"`
 	ExpMonth   string `json:"expMonth"`
 	ExpYear    string `json:"expYear"`
+
+	Delete bool `json:"del,omitempty"`
 }
 
 func (c *CC) Check() error {
@@ -191,11 +212,9 @@ func (c *CC) Check() error {
 }
 
 func GetCleanCreditCard(id string) (*CC, error) {
-	cc := &CC{}
-
 	cust, err := customer.Get(id, nil)
 	if err != nil {
-		return cc, ErrCustomer
+		return nil, ErrCustomer
 	}
 
 	if cust.Sources != nil && len(cust.Sources.Values) > 0 && cust.Sources.Values[0].Card != nil {
@@ -207,7 +226,7 @@ func GetCleanCreditCard(id string) (*CC, error) {
 			lastName = parts[1]
 		}
 
-		cc = &CC{
+		cc := &CC{
 			FirstName: firstName,
 			LastName:  lastName,
 
@@ -222,7 +241,9 @@ func GetCleanCreditCard(id string) (*CC, error) {
 			ExpMonth:   strconv.Itoa(int(card.Month)),
 			ExpYear:    strconv.Itoa(int(card.Year) - 2000),
 		}
+
+		return cc, nil
 	}
 
-	return cc, nil
+	return nil, nil
 }

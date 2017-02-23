@@ -397,16 +397,19 @@ func (inf *Influencer) ForceUpdate(cfg *config.Config) (err error) {
 func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns map[string]common.Campaign) (err error) {
 	// Update data for all completed deal posts
 	var (
-		// ok  bool
+		ok  bool
 		ban error
 	)
 
 	for _, deal := range inf.CompletedDeals {
-		// if _, ok = activeCampaigns[deal.CampaignId]; !ok {
-		// 	// Don't update deals for campaigns that aren't
-		// 	// active anymore! NO POINT!
-		// 	continue
-		// }
+		if _, ok = activeCampaigns[deal.CampaignId]; !ok {
+			// Update deals that aren't active anymore once in a blue moon
+			// just to save some requests
+			if misc.Random(0, 100) > 10 {
+				// 90% of the time bail!
+				continue
+			}
+		}
 
 		if deal.Tweet != nil {
 			if ban, err = deal.Tweet.UpdateData(cfg); err != nil {
