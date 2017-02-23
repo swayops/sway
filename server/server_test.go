@@ -3698,11 +3698,9 @@ func TestStripe(t *testing.T) {
 	}
 
 	// Lets try deleting the credit card!
-	log.Println("SENDING DELETE ONE")
 	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, Customer: advertiser1.Customer, CCLoad: &swipe.CC{Delete: true}}}
 	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv1.ExpID, &advUpd1, nil)
 	if r.Status != 200 {
-		log.Println("TEST", string(r.Value))
 		t.Fatal("Bad status code!")
 	}
 

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"log"
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/platforms/swipe"
@@ -111,7 +110,6 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 				return err
 			}
 		} else {
-			log.Println("DELETING")
 			if adv.CCLoad.Delete {
 				// Delete flag passed in!
 				err = swipe.Delete(adv.Customer)
