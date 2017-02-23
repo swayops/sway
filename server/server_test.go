@@ -3697,6 +3697,28 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Customer ID wrongfully updated")
 	}
 
+	// Lets try deleting the credit card!
+	advUpd1 = &auth.User{Advertiser: &auth.Advertiser{DspFee: 0.1, Customer: advertiser1.Customer, CCLoad: &swipe.CC{Delete: true}}}
+	r = rst.DoTesting(t, "PUT", "/advertiser/"+adv1.ExpID, &advUpd1, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	var delBillingInfo BillingInfo
+	r = rst.DoTesting(t, "GET", "/billingInfo/"+adv1.ExpID, nil, &delBillingInfo)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	if delBillingInfo.CreditCard != nil {
+		t.Fatal("Credit card still there")
+	}
+
+	// Make sure the customer id is still the same
+	if delBillingInfo.ID != adv1BillingInfo.ID {
+		t.Fatal("Customer ID wrongfully updated")
+	}
+
 	// Create a campaign WITHOUT Agency having IO status but a CC attached!
 	adv := getSignupUser()
 	adv.ParentID = ag.ExpID

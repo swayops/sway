@@ -110,11 +110,20 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 				return err
 			}
 		} else {
-			// Credit card is being updated
-			err = swipe.Update(adv.Customer, adv.CCLoad)
-			if err != nil {
-				adv.CCLoad = nil
-				return err
+			if adv.CCLoad.Delete {
+				// Delete flag passed in!
+				err = swipe.Delete(adv.Customer)
+				if err != nil {
+					adv.CCLoad = nil
+					return err
+				}
+			} else {
+				// Credit card is being updated
+				err = swipe.Update(adv.Customer, adv.CCLoad)
+				if err != nil {
+					adv.CCLoad = nil
+					return err
+				}
 			}
 		}
 
@@ -172,7 +181,7 @@ func (adv *Advertiser) Check() error {
 		return ErrInvalidFee
 	}
 
-	if adv.CCLoad != nil {
+	if adv.CCLoad != nil && !adv.CCLoad.Delete {
 		if err := adv.CCLoad.Check(); err != nil {
 			return err
 		}
