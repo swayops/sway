@@ -173,7 +173,7 @@ func explore(srv *Server) (int32, error) {
 		// dealTimeout.. put it back in the pool!
 
 		// Lets exclude timeouts for signal for now
-		if deal.Completed == 0 && deal.AdvertiserId != "81" {
+		if deal.Completed == 0 && deal.AdvertiserId != "81" && !deal.PickedUp {
 			hoursSinceAssigned := (now - deal.Assigned) / 3600
 			if hoursSinceAssigned > 24*(timeoutDays-7) && hoursSinceAssigned <= (24*(timeoutDays-7))+EngineRunTime {
 				// Lets warn the influencer that they have 7 days left!
@@ -182,7 +182,7 @@ func explore(srv *Server) (int32, error) {
 				if err := inf.DealHeadsUp(deal, srv.Cfg); err != nil {
 					srv.Alert(fmt.Sprintf("Error emailing deal heads up to %s for deal %s", inf.Id, deal.Id), err)
 				}
-			} else if minTs > deal.Assigned && !deal.PickedUp {
+			} else if minTs > deal.Assigned {
 				// Ok lets time out UNLESS the deal has been picked up and is waiting admin approval!
 				if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 					return foundDeals, err
