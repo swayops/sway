@@ -885,7 +885,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Match Campaign Geo Targeting with Influencer Geo //
-		if !geo.IsGeoMatch(cmp.Geos, location) {
+		if !geo.IsGeoMatch(cmp.Geos, location) && !query {
 			rejections[cmp.Id] = "GEO_MATCH"
 			continue
 		}
