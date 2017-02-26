@@ -925,14 +925,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// Fill in and check available spendable
 		store, err := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
-		if err != nil || store == nil || store.Spendable < 5 || store.Spent > store.Budget {
-			if !query {
-				// Influencer may query for their assigned deal.. but we don't want to
-				// hide the deal if there's no spendable.. we just want to tell them that
-				// there's 0 spendable
-				rejections[cmp.Id] = "BUDGET"
-				continue
-			}
+		if err != nil || store == nil || store.Spendable == 0 {
+			// if !query {
+			// 	// Influencer may query for their assigned deal.. but we don't want to
+			// 	// hide the deal if there's no spendable.. we just want to tell them that
+			// 	// there's 0 spendable
+			rejections[cmp.Id] = "BUDGET"
+			continue
+			// }
 		}
 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
