@@ -336,19 +336,21 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
 			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
-			if spentDelta > 0 {
-				dspMarkup, exchangeMarkup, agencyPayout, infPayout := budget.GetMargins(spentDelta, dspFee, exchangeFee, agencyFee)
 
-				inf.PendingPayout += infPayout
+			dspMarkup, exchangeMarkup, agencyPayout, infPayout := budget.GetMargins(spentDelta, dspFee, exchangeFee, agencyFee)
 
-				// Update payment values for this completed deal
-				// THIS IS WHAT WE'LL USE FOR BILLING!
-				for _, cDeal := range inf.CompletedDeals {
-					if cDeal.Id == deal.Id {
-						cDeal.Incr(m.Likes, m.Dislikes, m.Comments, m.Shares, m.Views)
-						cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
+			inf.PendingPayout += infPayout
 
-						// Log the incrs!
+			// Update payment values for this completed deal
+			// THIS IS WHAT WE'LL USE FOR BILLING!
+			for _, cDeal := range inf.CompletedDeals {
+				if cDeal.Id == deal.Id {
+					cDeal.Incr(m.Likes, m.Dislikes, m.Comments, m.Shares, m.Views)
+					cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
+					cDeal.ApproveAllClicks()
+
+					// Log the incrs!
+					if infPayout+agencyPayout+dspMarkup+exchangeMarkup > 0 {
 						if err := s.Cfg.Loggers.Log("stats", map[string]interface{}{
 							"action":     "deplete",
 							"infId":      cDeal.InfluencerId,

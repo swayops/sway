@@ -677,6 +677,11 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 		store.deductSpendable(float64(comments) * YT_COMMENT)
 	}
 
+	if len(total.PendingClicks) > 0 {
+		// Lets pay for all the pending clicks!
+		store.deductSpendable(float64(len(total.PendingClicks)) * CLICK)
+	}
+
 	spentDelta := oldSpendable - store.Spendable
 	store.Spent += spentDelta
 

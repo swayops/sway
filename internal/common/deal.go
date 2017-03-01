@@ -202,19 +202,33 @@ func (d *Deal) AddBonus(tweet *twitter.Tweet, fbPost *facebook.Post, instaPost *
 
 func (d *Deal) SanitizeClicks(completion int32) map[string]*Stats {
 	// Takes in a completion time and calculates which ones were AFTER the completion time!
+	// Deletes all pending clicks that were before completion
 	reporting := make(map[string]*Stats)
 
 	for key, data := range d.Reporting {
+		var filtered []*Click
 		for _, click := range data.PendingClicks {
 			if click.TS >= completion {
-				data.ApprovedClicks = append(data.ApprovedClicks, click)
+				filtered = append(filtered, click)
 			}
 		}
-		data.PendingClicks = nil
+		data.PendingClicks = filtered
 		reporting[key] = data
 	}
 
 	return reporting
+}
+
+func (d *Deal) ApproveAllClicks() {
+	// Moves all pending clicks to approved!
+	for _, data := range d.Reporting {
+		for _, click := range data.PendingClicks {
+			data.ApprovedClicks = append(data.ApprovedClicks, click)
+		}
+		data.PendingClicks = nil
+	}
+
+	return
 }
 
 func (d *Deal) TotalStats() *Stats {
@@ -226,6 +240,7 @@ func (d *Deal) TotalStats() *Stats {
 		total.Shares += data.Shares
 		total.Views += data.Views
 		total.ApprovedClicks = append(total.ApprovedClicks, data.ApprovedClicks...)
+		total.PendingClicks = append(total.PendingClicks, data.PendingClicks...)
 		total.LegacyClicks += data.LegacyClicks
 		total.Influencer += data.Influencer
 		total.Agency += data.Agency
@@ -298,11 +313,7 @@ func (d *Deal) Click() {
 		d.Reporting[key] = data
 	}
 
-	if d.IsActive() {
-		data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
-	} else if d.IsComplete() {
-		data.ApprovedClicks = append(data.ApprovedClicks, &Click{TS: int32(time.Now().Unix())})
-	}
+	data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
 }
 
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {

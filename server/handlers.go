@@ -4021,6 +4021,72 @@ func getForecast(s *Server) gin.HandlerFunc {
 	}
 }
 
+type Inventory struct {
+	ID        string `json:"id,omitempty"`
+	Facebook  string `json:"facebook,omitempty"`
+	Instagram string `json:"instagram,omitempty"`
+	Twitter   string `json:"twitter,omitempty"`
+	YouTube   string `json:"youtube,omitempty"`
+
+	Followers int64 `json:"followers,omitempty"`
+}
+
+func getInventoryByState(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Gets influencers and scraps that are in a particular state
+		var targetGeo []*geo.GeoRecord
+		targetGeo = append(targetGeo, &geo.GeoRecord{State: c.Param("state"), Country: "US"})
+
+		var inv []*Inventory
+		for _, inf := range s.auth.Influencers.GetAll() {
+			if !geo.IsGeoMatch(targetGeo, inf.GetLatestGeo()) {
+				continue
+			}
+
+			inf := inf.Clean()
+			inv = append(inv, &Inventory{
+				ID:        inf.Id,
+				Facebook:  inf.FbUsername,
+				Instagram: inf.InstaUsername,
+				Twitter:   inf.TwitterUsername,
+				YouTube:   inf.YTUsername,
+				Followers: inf.GetFollowers(),
+			},
+			)
+		}
+
+		scraps, err := getAllScraps(s)
+		if err == nil {
+			for _, sc := range scraps {
+				if !geo.IsGeoMatch(targetGeo, sc.Geo) {
+					continue
+				}
+
+				tmp := &Inventory{Followers: sc.Followers}
+				if sc.Facebook {
+					tmp.Facebook = sc.Name
+				}
+
+				if sc.Instagram {
+					tmp.Instagram = sc.Name
+				}
+
+				if sc.YouTube {
+					tmp.YouTube = sc.Name
+				}
+
+				if sc.Twitter {
+					tmp.Twitter = sc.Name
+				}
+
+				inv = append(inv, tmp)
+			}
+		}
+
+		c.JSON(200, inv)
+	}
+}
+
 func uploadImage(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var upd UploadImage
@@ -4134,6 +4200,15 @@ func click(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		ip := c.ClientIP()
+		ua := c.Request.UserAgent()
+		// Has this user's IP and UA combination been seen before?
+		if s.ClickSet.Exists(ip, ua) && !s.Cfg.Sandbox {
+			// This user has already clicked once for this deal!
+			c.Redirect(302, foundDeal.Link)
+			return
+		}
+
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
 			log.Println("Influencer not found for click!", infId, campaignId)
@@ -4166,6 +4241,8 @@ func click(s *Server) gin.HandlerFunc {
 		// SAVE!
 		// Also saves influencers!
 		if added {
+			s.ClickSet.Set(ip, ua)
+
 			if err := saveAllDeals(s, inf); err != nil {
 				c.Redirect(302, foundDeal.Link)
 				return
@@ -4174,10 +4251,12 @@ func click(s *Server) gin.HandlerFunc {
 			if prevClicks != "" {
 				prevClicks += "," + foundDeal.Id
 			} else {
-				prevClicks += foundDeal.Id
+				prevClicks += misc.PseudoUUID() + ":" + foundDeal.Id
 			}
 
 			// One click per 30 days allowed per deal!
+			// Format of prev clicks:
+			// UUID:DEALID1,DEALID2,DEALID3
 			misc.SetCookie(c.Writer, domain, "click", prevClicks, !s.Cfg.Sandbox, 24*30*time.Hour)
 		}
 

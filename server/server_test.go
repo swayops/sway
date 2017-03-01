@@ -1390,7 +1390,6 @@ func TestPerks(t *testing.T) {
 
 	// Lets make sure perk count is 9 now!
 	if cmpPerks.Perks.PendingCount != 0 {
-		log.Println("PENDING COUNT", cmpPerks.Perks.PendingCount)
 		t.Fatal("pending count incorrect!")
 		return
 	}
@@ -2804,7 +2803,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Make sure pending click was emptied out but approved is there!
+	// Make sure pending click is still there
 	var approvedClick common.Campaign
 	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &approvedClick)
 	if r.Status != 200 {
@@ -2821,12 +2820,12 @@ func TestClicks(t *testing.T) {
 	}
 
 	if pending != 0 {
-		t.Fatal("Expected zero pending click")
+		t.Fatal("Expected 0 pending click")
 		return
 	}
 
 	if approved != 1 {
-		t.Fatal("Expected one approved click")
+		t.Fatal("Expected 1 approved click")
 		return
 	}
 
@@ -2868,7 +2867,8 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Lets try an actual click and make sure it increments
+	// Lets try an actual click and make sure it shows up in pending and
+	// stats remain as 1
 	r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink)+"?dbg=1", nil, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -2877,6 +2877,75 @@ func TestClicks(t *testing.T) {
 
 	if !strings.Contains(r.URL, "blank.org") {
 		t.Fatal("Incorrect redirect")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if lastBreakdown["total"].Clicks != 1 {
+		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	// Make sure pending click is there
+	var pendingCheck common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &pendingCheck)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	pending, approved = 0, 0
+	for _, deal := range pendingCheck.Deals {
+		for _, stats := range deal.Reporting {
+			pending += len(stats.PendingClicks)
+			approved += len(stats.ApprovedClicks)
+		}
+	}
+
+	if pending != 1 {
+		t.Fatal("Unexpected number of pending clicks!")
+		return
+	}
+
+	if approved != 1 {
+		t.Fatal("Unexpected number of approved clicks!")
+		return
+	}
+
+	// Lets run depletion.. should transfer over clicks!
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	var lastCheck common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &lastCheck)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	pending, approved = 0, 0
+	for _, deal := range lastCheck.Deals {
+		for _, stats := range deal.Reporting {
+			pending += len(stats.PendingClicks)
+			approved += len(stats.ApprovedClicks)
+		}
+	}
+
+	if pending != 0 {
+		t.Fatal("Unexpected number of pending clicks!")
+		return
+	}
+
+	if approved != 2 {
+		t.Fatal("Unexpected number of approved clicks!")
 		return
 	}
 
