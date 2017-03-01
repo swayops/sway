@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	UPDATE   = 30 * time.Minute
-	TWO_DAYS = 2 * 24 * 60 * 60 // 2 days in secs
+	UPDATE     = 30 * time.Minute
+	FOUR_HOURS = 4 * 60 * 60 // 4 hrs in secs
 )
 
 type Set struct {
@@ -36,14 +36,14 @@ func (s *Set) Set(ip, ua string) {
 }
 
 func (s *Set) clean() {
-	// Every 30 minutes clear out any values that are older than 2 days
-	ticker := time.NewTicker(30 * time.Minute)
+	// Every 30 minutes clear out any values that are older than 4 hours
+	ticker := time.NewTicker(UPDATE)
 	go func() {
 		for range ticker.C {
 			now := int32(time.Now().Unix())
 			s.l.Lock()
 			for key, ts := range s.m {
-				if now > ts+TWO_DAYS {
+				if now > ts+FOUR_HOURS {
 					delete(s.m, key)
 				}
 			}
