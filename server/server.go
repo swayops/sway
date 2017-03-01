@@ -49,6 +49,8 @@ type Server struct {
 
 	LimitSet *common.LimitSet
 
+	ClickSet *common.Set
+
 	Stats ServerStats // stores most recent server (engine) stats
 }
 
@@ -99,6 +101,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
 		LimitSet:  common.NewLimitSet(),
+		ClickSet:  common.NewSet(),
 		Stats:     NewStats(),
 	}
 
@@ -425,6 +428,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/getKeywords", getKeywords(srv))
+	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
 
 	r.Static("images", srv.Cfg.ImagesDir)

@@ -38,7 +38,7 @@ func explore(srv *Server) (int32, error) {
 
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
-	activeDeals, err := common.GetAllActiveDeals(srv.db, srv.Cfg)
+	activeDeals, err := common.GetAllDeals(srv.db, srv.Cfg, true, false)
 	if err != nil {
 		return 0, err
 	}
@@ -173,7 +173,7 @@ func explore(srv *Server) (int32, error) {
 		// dealTimeout.. put it back in the pool!
 
 		// Lets exclude timeouts for signal for now
-		if deal.Completed == 0 && deal.AdvertiserId != "81" && !deal.PickedUp {
+		if deal.Completed == 0 && !deal.PickedUp {
 			hoursSinceAssigned := (now - deal.Assigned) / 3600
 			if hoursSinceAssigned > 24*(timeoutDays-7) && hoursSinceAssigned <= (24*(timeoutDays-7))+EngineRunTime {
 				// Lets warn the influencer that they have 7 days left!
@@ -228,7 +228,7 @@ func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 
 		d.Completed = int32(time.Now().Unix())
 
-		// Lets move over any clicks that may have been pending to APPROVED
+		// Lets delete all clicks that were done before completion
 		if completion == 0 {
 			completion = d.Completed
 		}
