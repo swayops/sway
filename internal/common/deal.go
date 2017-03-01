@@ -462,7 +462,7 @@ func (d *Deal) ConvertToActive() *Deal {
 	return d
 }
 
-func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
+func GetAllDeals(db *bolt.DB, cfg *config.Config, active, complete bool) ([]*Deal, error) {
 	// Retrieves all active deals in the system!
 	var err error
 	deals := []*Deal{}
@@ -480,7 +480,11 @@ func GetAllActiveDeals(db *bolt.DB, cfg *config.Config) ([]*Deal, error) {
 			}
 
 			for _, deal := range cmp.Deals {
-				if deal.IsActive() {
+				if deal.IsActive() && active {
+					deals = append(deals, deal)
+				}
+
+				if deal.IsComplete() && complete {
 					deals = append(deals, deal)
 				}
 			}

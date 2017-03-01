@@ -38,7 +38,7 @@ func explore(srv *Server) (int32, error) {
 
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
-	activeDeals, err := common.GetAllActiveDeals(srv.db, srv.Cfg)
+	activeDeals, err := common.GetAllDeals(srv.db, srv.Cfg, true, false)
 	if err != nil {
 		return 0, err
 	}
