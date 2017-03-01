@@ -222,9 +222,7 @@ func (d *Deal) SanitizeClicks(completion int32) map[string]*Stats {
 func (d *Deal) ApproveAllClicks() {
 	// Moves all pending clicks to approved!
 	for _, data := range d.Reporting {
-		for _, click := range data.PendingClicks {
-			data.ApprovedClicks = append(data.ApprovedClicks, click)
-		}
+		data.ApprovedClicks = append(data.ApprovedClicks, data.PendingClicks...)
 		data.PendingClicks = nil
 	}
 

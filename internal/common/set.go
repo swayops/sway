@@ -54,9 +54,9 @@ func (s *Set) clean() {
 
 func (s *Set) Exists(ip, ua string) bool {
 	key := FromIPAndUserAgent(ip, ua)
-	s.l.Lock()
+	s.l.RLock()
 	_, ok := s.m[key]
-	s.l.Unlock()
+	s.l.RUnlock()
 
 	return ok
 }
