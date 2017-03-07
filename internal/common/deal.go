@@ -116,7 +116,8 @@ type Stats struct {
 }
 
 type Click struct {
-	TS int32 `json:"ts,omitempty"`
+	UUID string `json:"uuid,omitempty"`
+	TS   int32  `json:"ts,omitempty"`
 }
 
 func (st *Stats) TotalMarkup() float64 {
@@ -300,7 +301,7 @@ func (d *Deal) PerkIncr() {
 	data.Perks += 1
 }
 
-func (d *Deal) Click() {
+func (d *Deal) Click(uuid string) {
 	if d.Reporting == nil {
 		d.Reporting = make(map[string]*Stats)
 	}
@@ -311,7 +312,7 @@ func (d *Deal) Click() {
 		d.Reporting[key] = data
 	}
 
-	data.PendingClicks = append(data.PendingClicks, &Click{TS: int32(time.Now().Unix())})
+	data.PendingClicks = append(data.PendingClicks, &Click{UUID: uuid, TS: int32(time.Now().Unix())})
 }
 
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {
