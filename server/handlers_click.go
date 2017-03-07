@@ -139,6 +139,7 @@ func click(s *Server) gin.HandlerFunc {
 			if err := s.Cfg.Loggers.Log("clicks", map[string]interface{}{
 				"dealId":     foundDeal.Id,
 				"campaignId": foundDeal.CampaignId,
+				"uuid":       uuid,
 				"cookie":     cookie,
 			}); err != nil {
 				log.Println("Failed to log click!", foundDeal.Id, foundDeal.CampaignId)
