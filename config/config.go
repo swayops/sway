@@ -185,6 +185,8 @@ type Config struct {
 	LogsPath string `json:"logsPath"`
 
 	ClickUrl string `json:"clickUrl"`
+
+	ConverterURL string `json:"converterURL"`
 }
 
 func (c *Config) AllBuckets(bk interface{}) []string {

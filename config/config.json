@@ -90,5 +90,7 @@
 	"jsonXlsxPath": "./config/json2xlsx.py",
 	"imagesDir": "./images/",
 	"imageUrlPath": "images/",
-	"logsPath": "./logs/"
+	"logsPath": "./logs/",
+
+	"converterURL": "http://localhost:8008/click/"
 }
