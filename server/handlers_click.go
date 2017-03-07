@@ -136,10 +136,19 @@ func click(s *Server) gin.HandlerFunc {
 			// UUID:DEALID1,DEALID2,DEALID3
 			misc.SetCookie(c.Writer, domain, "click", cookie, !s.Cfg.Sandbox, 24*30*time.Hour)
 
+			if err := s.Cfg.Loggers.Log("clicks", map[string]interface{}{
+				"dealId":     foundDeal.Id,
+				"campaignId": foundDeal.CampaignId,
+				"cookie":     cookie,
+			}); err != nil {
+				log.Println("Failed to log click!", foundDeal.Id, foundDeal.CampaignId)
+			}
+
 			if !strings.Contains(s.Cfg.ConverterURL, "localhost") {
 				go func() {
 					if err := misc.Ping(s.Cfg.ConverterURL + uuid + "/" + foundDeal.Id + "/" + foundDeal.CampaignId + "/" + foundDeal.AdvertiserId); err != nil {
 						s.Alert("Failed to ping converter for "+foundDeal.AdvertiserId, err)
+					}
 				}()
 			}
 		}

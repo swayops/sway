@@ -54,7 +54,7 @@ func New(loc string) (_ *Config, err error) {
 
 	jl, err := jlog.NewFromCfg(&jlog.Config{
 		Path:    c.LogsPath,
-		Loggers: []string{"ban", "deals", "stats", "charge", "email"},
+		Loggers: []string{"ban", "deals", "stats", "charge", "email", "clicks"},
 	})
 	if err != nil {
 		log.Println("Config err!", err)
