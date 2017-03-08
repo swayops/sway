@@ -137,6 +137,14 @@ func run(srv *Server) error {
 	// budget and reporting DBs
 	start := time.Now()
 
+	// Lets just check for any completed signatures right off the bat!
+	if sigsFound, err = auditTaxes(srv); err != nil {
+		srv.Alert("Error auditing taxes!", err)
+		return err
+	}
+
+	log.Println("Taxes audited. Found:", sigsFound)
+
 	// Lets confirm that there are budget keys
 	// for the new month before we kick this off.
 	// This is for the case that it's the first
@@ -175,13 +183,6 @@ func run(srv *Server) error {
 	}
 
 	log.Println("Budgets depleted. Depleted:", len(depletions))
-
-	if sigsFound, err = auditTaxes(srv); err != nil {
-		srv.Alert("Error auditing taxes!", err)
-		return err
-	}
-
-	log.Println("Taxes audited. Found:", sigsFound)
 
 	if dealsEmailed, err = emailDeals(srv); err != nil {
 		srv.Alert("Error emailing deals!", err)

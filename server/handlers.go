@@ -3311,6 +3311,37 @@ func approveCheck(s *Server) gin.HandlerFunc {
 	}
 }
 
+func emptyPayout(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Empties out influencer's pending payout
+		infId := c.Param("influencerId")
+		if infId == "" {
+			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		inf.PendingPayout = 0
+		inf.RequestedCheck = 0
+		inf.LastCheck = int32(time.Now().Unix())
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Save the influencer
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 func approveCampaign(s *Server) gin.HandlerFunc {
 	// Used once we have approved the campaign!
 	return func(c *gin.Context) {

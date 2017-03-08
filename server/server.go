@@ -500,6 +500,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getTotalClicks/:hours", getTotalClicks(srv))
 	adminGroup.GET("/exportClicks/:days", exportClicks(srv))
 	adminGroup.GET("/serverStats", getServerStats(srv))
+	adminGroup.GET("/emptyPayout/:influencerId", emptyPayout(srv))
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
