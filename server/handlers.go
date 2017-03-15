@@ -3059,7 +3059,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 		}
 
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, campaignId, "")
-		if err != nil || store == nil && (store.Spendable == 0 && store.Spent > store.Budget && !cmp.IsProductBasedBudget()) {
+		if err != nil || store.IsClosed(cmp) {
 			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
 			return
 		}

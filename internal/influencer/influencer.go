@@ -924,7 +924,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 
 		// Fill in and check available spendable
 		store, err := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
-		if err != nil || store == nil || (store.Spendable == 0 && !cmp.IsProductBasedBudget()) {
+		if err != nil || store.IsClosed(cmp) {
 			// if !query {
 			// 	// Influencer may query for their assigned deal.. but we don't want to
 			// 	// hide the deal if there's no spendable.. we just want to tell them that
@@ -1034,7 +1034,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			infDeals = append(infDeals, targetDeal)
 		}
 	}
-	log.Println("REJECTIONS", rejections, infDeals)
+
 	return infDeals
 }
 
