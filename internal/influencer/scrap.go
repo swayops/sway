@@ -89,9 +89,14 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 			return false
 		}
 
+		// If it's a perk campaign make sure there are perks available
+		if cmp.Perks != nil && cmp.Perks.Count == 0 {
+			return false
+		}
+
 		// Optimization
 		store, err := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
-		if err != nil || store == nil || store.Spendable == 0 || store.Spent > store.Budget {
+		if err != nil || store == nil || (store.Spendable == 0 && !cmp.IsProductBasedBudget()) {
 			return false
 		}
 

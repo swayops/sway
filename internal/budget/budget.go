@@ -160,7 +160,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// so we need to calculate what the given
 			// (monthly) budget would be for the days left.
 			monthlyBudget = GetProratedBudget(cmp.Budget)
-			if cfg.Sandbox {
+			if cfg.Sandbox && !cmp.IsProductBasedBudget() {
 				monthlyBudget = cmp.Budget
 			}
 		} else {
@@ -181,8 +181,8 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			Spendable: spendable,
 		}
 
-		// Charge the campaign for budget unless it's an IO campaign!
-		if !isIO {
+		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
+		if !isIO && !cmp.IsProductBasedBudget() {
 			// CHARGE!
 			if cust == "" {
 				return ErrCC

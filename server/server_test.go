@@ -5448,6 +5448,199 @@ func TestBonus(t *testing.T) {
 	}
 }
 
+func TestProductBudget(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create an influencer
+	inf := getSignupUser()
+	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
+		InfluencerLoad: influencer.InfluencerLoad{
+			TwitterId: "cnn",
+			Address: &lob.AddressLoad{
+				AddressOne: "8 Saint Elias",
+				City:       "Trabuco Canyon",
+				State:      "CA",
+				Country:    "US",
+			},
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:      0.2,
+		ExchangeFee: 0.1,
+		CCLoad:      creditCard,
+		SubLoad:     getSubscription(3, 100, true),
+	}
+
+
+	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Create a campaign with NO BUDGET and NO PERKS!
+	// Should reject!
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       0,
+		Name:         "Insert cool campaign name",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	if r.Status != 400 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets try a campaign with no budget and perks!
+	// Should accept
+	cmp = common.Campaign{
+		Status:       true,
+		AdvertiserId: adv.ExpID,
+		Budget:       0,
+		Name:         "Insert cool campaign name",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "haha.org",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Perks:        &common.Perk{Name: "Nike Air Shoes", Type: 1, Count: 5},
+
+	}
+
+	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets make sure we got the proper budget
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cmpLoad.Budget != 0 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	var fullStore map[string]budget.Store
+	r = rst.DoTesting(t, "GET", "/getStore", nil, &fullStore)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	store, ok := fullStore[st.ID]
+	if !ok {
+		t.Fatal("Campaign store not found!")
+		return
+	}
+
+	if store.Spendable != 0 {
+		t.Fatal("Bad spendable")
+		return
+	}
+
+	if store.Spent != 0 {
+		t.Fatal("Bad spent value")
+	}
+
+	// approve campaign
+	r = rst.DoTesting(t, "GET", "/approveCampaign/"+st.ID, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if cmpLoad.Budget != 0 {
+		t.Fatal("Missing timeline attribute")
+		return
+	}
+
+	// Accept a deal
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	deals = getDeals(st.ID, deals)
+	if len(deals) == 0 {
+		t.Fatal("Unexpected number of deals.. should have atleast one!")
+	}
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+st.ID+"/"+deals[0].Id+"/twitter", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// force approve
+	r = rst.DoTesting(t, "GET", "/forceApprove/"+inf.ExpID+"/"+st.ID+"", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Deplete the budget
+	r = rst.DoTesting(t, "GET", "/forceDeplete", nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	deal, ok := cmpLoad.Deals[deals[0].Id]
+	if !ok {
+		t.Fatal("Deal not found!")
+		return
+	}
+
+	if deal.Completed == 0 {
+		t.Fatal("Deal not completed!")
+		return
+	}
+
+	// Lets make sure it has some stats!
+	total := deal.TotalStats()
+	if total.Likes == 0 || total.Views == 0 {
+		t.Fatal("Missing social media stats for completed post")
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")
