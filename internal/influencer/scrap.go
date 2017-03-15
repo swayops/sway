@@ -95,8 +95,8 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 		}
 
 		// Optimization
-		store, err := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
-		if err != nil || store.IsClosed(cmp) {
+		store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
+		if store.IsClosed(&cmp) {
 			return false
 		}
 

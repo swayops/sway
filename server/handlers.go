@@ -3007,7 +3007,10 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var fApp ForceApproval
+		var (
+			fApp ForceApproval
+			err  error
+		)
 
 		defer c.Request.Body.Close()
 		if err := json.NewDecoder(c.Request.Body).Decode(&fApp); err != nil {
@@ -3058,8 +3061,8 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, campaignId, "")
-		if err != nil || store.IsClosed(cmp) {
+		store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, campaignId, "")
+		if store.IsClosed(&cmp) {
 			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
 			return
 		}

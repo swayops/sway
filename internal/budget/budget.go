@@ -82,7 +82,7 @@ func (st *Store) GetDelta() float64 {
 	return delta
 }
 
-func (st *Store) IsClosed(cmp common.Campaign) bool {
+func (st *Store) IsClosed(cmp *common.Campaign) bool {
 	// Is the store closed for business?
 	return st == nil || (st.Spendable == 0 && !cmp.IsProductBasedBudget())
 }
