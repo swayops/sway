@@ -776,7 +776,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 	// Used purely for debugging.. may want to do something with it
 	// eventually
 	rejections := make(map[string]string)
-
 	for _, cmp := range store {
 		// Store only contains campaigns with active advertisers with proper
 		// subscriptions!
@@ -924,8 +923,8 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		}
 
 		// Fill in and check available spendable
-		store, err := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
-		if err != nil || store == nil || store.Spendable == 0 {
+		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
+		if store.IsClosed(&cmp) {
 			// if !query {
 			// 	// Influencer may query for their assigned deal.. but we don't want to
 			// 	// hide the deal if there's no spendable.. we just want to tell them that
@@ -946,7 +945,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 		// hit "/assignDeal"
 		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 
-		if store != nil {
+		if store != nil && !cmp.IsProductBasedBudget() {
 			if targetDeal.LikelyEarnings > store.Spendable {
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer

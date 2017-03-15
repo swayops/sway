@@ -69,7 +69,11 @@ type Campaign struct {
 }
 
 func (cmp *Campaign) IsValid() bool {
-	return cmp.Budget > 0 && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
+	return (cmp.Budget > 0 || cmp.IsProductBasedBudget()) && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
+}
+
+func (cmp *Campaign) IsProductBasedBudget() bool {
+	return cmp.Budget == 0 && cmp.Perks != nil
 }
 
 func (cmp *Campaign) HasMailedPerk() bool {

@@ -82,6 +82,11 @@ func (st *Store) GetDelta() float64 {
 	return delta
 }
 
+func (st *Store) IsClosed(cmp *common.Campaign) bool {
+	// Is the store closed for business?
+	return st == nil || (st.Spendable == 0 && !cmp.IsProductBasedBudget())
+}
+
 func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *common.Campaign, cfg *config.Config) error {
 	var (
 		balanceDeduction float64
@@ -160,7 +165,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			// so we need to calculate what the given
 			// (monthly) budget would be for the days left.
 			monthlyBudget = GetProratedBudget(cmp.Budget)
-			if cfg.Sandbox {
+			if cfg.Sandbox && !cmp.IsProductBasedBudget() {
 				monthlyBudget = cmp.Budget
 			}
 		} else {
@@ -181,8 +186,8 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			Spendable: spendable,
 		}
 
-		// Charge the campaign for budget unless it's an IO campaign!
-		if !isIO {
+		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
+		if !isIO && !cmp.IsProductBasedBudget() {
 			// CHARGE!
 			if cust == "" {
 				return ErrCC

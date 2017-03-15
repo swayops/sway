@@ -210,6 +210,10 @@ var ErrStore = errors.New("Empty budget store!")
 func shouldRun(s *Server) bool {
 	// Iterate over all active campaigns
 	for _, cmp := range s.Campaigns.GetStore() {
+		if cmp.IsProductBasedBudget() {
+			return true
+		}
+
 		// Get this month's store for this campaign
 		// If there's even one that's AVAILABLE
 		// it means billing HAS run so lets

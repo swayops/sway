@@ -40,6 +40,10 @@ func degradeRep(val int, rep float64) float64 {
 }
 
 func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Facebook, tw *twitter.Twitter, insta *instagram.Instagram) float64 {
+	if cmp.IsProductBasedBudget() {
+		return 0
+	}
+
 	// Expected value on average a post generates
 	var maxYield float64
 	if cmp.YouTube && yt != nil {

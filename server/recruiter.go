@@ -63,7 +63,7 @@ func emailScraps(srv *Server) (int32, error) {
 		var spendable float64
 		store, err := budget.GetBudgetInfo(srv.budgetDb, srv.Cfg, cmp.Id, "")
 		// Only email them campaigns with more than $5
-		if err != nil || store == nil || store.Spendable < 5 || store.Spent > store.Budget {
+		if err != nil || store == nil || (store.Spendable < 5 && !cmp.IsProductBasedBudget()) {
 			if srv.Cfg.Sandbox {
 				// Don't throw out for sandbox requests.. because earlier tests (before TestScraps)
 				// empty out the spendable.. so campaigns are always thrown out!
@@ -75,7 +75,7 @@ func emailScraps(srv *Server) (int32, error) {
 			spendable = store.Spendable
 		}
 
-		if spendable == 0 {
+		if spendable == 0 && !cmp.IsProductBasedBudget() {
 			continue
 		}
 
