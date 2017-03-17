@@ -54,8 +54,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 	var scrapsTouched int64
 	// Set keywords, geo, gender, and followers for scraps!
 	for _, sc := range scraps {
-		if sc.Attributed || sc.Attempts > 3 {
-			// This scrap already has attrs set
+		if sc.IsProfilePictureActive() && (sc.Attributed || sc.Attempts > 3) {
+			// This scrap already has attrs set AND their profile pic is active
 			continue
 		}
 

@@ -69,6 +69,31 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, budgetDb *
 	return getBiggestBudget(considered)
 }
 
+func (sc *Scrap) IsProfilePictureActive() bool {
+	if sc.FBData != nil && sc.FBData.ProfilePicture != "" {
+		if misc.Ping(sc.FBData.ProfilePicture) != nil {
+			return false
+		}
+	}
+	if sc.InstaData != nil && sc.InstaData.ProfilePicture != "" {
+		if misc.Ping(sc.InstaData.ProfilePicture) != nil {
+			return false
+		}
+	}
+	if sc.TWData != nil && sc.TWData.ProfilePicture != "" {
+		if misc.Ping(sc.TWData.ProfilePicture) != nil {
+			return false
+		}
+	}
+	if sc.YTData != nil && sc.YTData.ProfilePicture != "" {
+		if misc.Ping(sc.YTData.ProfilePicture) != nil {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
 	if !forecast {
 		// Check if there's an available deal
