@@ -554,6 +554,22 @@ func (inf *Influencer) GetNetworks() []string {
 	return networks
 }
 
+func (inf *Influencer) GetProfilePicture() string {
+	if inf.Facebook != nil && inf.Facebook.ProfilePicture != "" {
+		return inf.Facebook.ProfilePicture
+	}
+	if inf.Instagram != nil && inf.Instagram.ProfilePicture != "" {
+		return inf.Instagram.ProfilePicture
+	}
+	if inf.Twitter != nil && inf.Twitter.ProfilePicture != "" {
+		return inf.Twitter.ProfilePicture
+	}
+	if inf.YouTube != nil && inf.YouTube.ProfilePicture != "" {
+		return inf.YouTube.ProfilePicture
+	}
+	return ""
+}
+
 func (inf *Influencer) IsProfilePictureActive() bool {
 	// Checks to see if any of the profile pictures are returning
 	// a 404

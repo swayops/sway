@@ -3403,7 +3403,13 @@ func getForecast(s *Server) gin.HandlerFunc {
 		}
 
 		influencers, reach := getForecastForCmp(s, cmp)
-		c.JSON(200, gin.H{"influencers": influencers, "reach": reach})
+
+		if c.Query("breakdown") != "" {
+			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers})
+		} else {
+			// Default to totals
+			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach})
+		}
 	}
 }
 

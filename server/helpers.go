@@ -17,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
@@ -693,8 +694,53 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 	return influencerPool
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64) {
+type ForecastUser struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+
+	Instagram *ForecastData `json:"instagram,omitempty"`
+	YouTube   *ForecastData `json:"youtube,omitempty"`
+	Twitter   *ForecastData `json:"twitter,omitempty"`
+	Facebook  *ForecastData `json:"facebook,omitempty"`
+}
+
+type ForecastData struct {
+	ProfilePicture string `json:"profilePicture"`
+	URL            string `json:"url"`
+	Followers      int64  `json:"followers"`
+	AvgEngs        int64  `json:"avgEngs"`
+}
+
+func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
 	// Lite version of the original GetAVailableDeals just for forecasting
+	spendable := budget.GetProratedBudget(cmp.Budget)
+
+	// Calculate max deals for this campaign
+	var maxDeals int
+	if cmp.Perks != nil {
+		maxDeals = cmp.Perks.Count
+	} else if len(cmp.Whitelist) > 0 {
+		maxDeals = len(cmp.Whitelist)
+	} else {
+		if cmp.Goal > 0 {
+			if cmp.Goal > spendable {
+				maxDeals = 1
+			} else {
+				maxDeals = int(spendable / cmp.Goal)
+			}
+		} else {
+			// Default goal of spendable divided by 5 (so 5 deals per campaign)
+			maxDeals = int(spendable / 5)
+		}
+	}
+
+	target := spendable / float64(maxDeals)
+	margin := 0.3 * target
+
+	// Pre calculate target yield
+	min, max := target-margin, target+margin
+
 	for _, inf := range s.auth.Influencers.GetAll() {
 		if inf.IsBanned() {
 			continue
@@ -756,29 +802,72 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 			}
 		}
 
+		// MAX YIELD
+		maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
+			// NOTE: Skip this for whitelisted campaigns!
+
+			// OPTIMIZATION: Goal is to distribute funds evenly
+			// given what the campaign's influencer goal is and how
+			// many funds we have left
+			if maxYield < min || maxYield > max || maxYield == 0 {
+				continue
+			}
+		}
+
+		user := &ForecastUser{
+			ID:    inf.Id,
+			Name:  inf.Name,
+			Email: inf.EmailAddress,
+		}
+
 		// Social Media Checks
 		socialMediaFound := false
 		if cmp.YouTube && inf.YouTube != nil {
 			socialMediaFound = true
+			user.YouTube = &ForecastData{
+				ProfilePicture: inf.YouTube.ProfilePicture,
+				URL:            inf.YouTube.GetProfileURL(),
+				Followers:      int64(inf.YouTube.Subscribers),
+				AvgEngs:        int64(inf.YouTube.AvgComments + inf.YouTube.AvgViews + inf.YouTube.AvgLikes + inf.YouTube.AvgDislikes),
+			}
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
 			socialMediaFound = true
+			user.Instagram = &ForecastData{
+				ProfilePicture: inf.Instagram.ProfilePicture,
+				URL:            inf.Instagram.GetProfileURL(),
+				Followers:      int64(inf.Instagram.Followers),
+				AvgEngs:        int64(inf.Instagram.AvgComments + inf.Instagram.AvgLikes),
+			}
 		}
 
 		if cmp.Twitter && inf.Twitter != nil {
 			socialMediaFound = true
+			user.Twitter = &ForecastData{
+				ProfilePicture: inf.Twitter.ProfilePicture,
+				URL:            inf.Twitter.GetProfileURL(),
+				Followers:      int64(inf.Twitter.Followers),
+				AvgEngs:        int64(inf.Twitter.AvgLikes + inf.Twitter.AvgRetweets),
+			}
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
 			socialMediaFound = true
+			user.Facebook = &ForecastData{
+				ProfilePicture: inf.Facebook.ProfilePicture,
+				URL:            inf.Facebook.GetProfileURL(),
+				Followers:      int64(inf.Facebook.Followers),
+				AvgEngs:        int64(inf.Facebook.AvgComments + inf.Facebook.AvgLikes + inf.Facebook.AvgShares),
+			}
 		}
 
 		if !socialMediaFound {
 			continue
 		}
 
-		influencers += 1
+		influencers = append(influencers, user)
 		reach += inf.GetFollowers()
 	}
 
@@ -789,8 +878,43 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers, reach int64
 	}
 
 	for _, sc := range scraps {
-		if sc.Match(cmp, s.budgetDb, s.Cfg, true) {
-			influencers += 1
+		if sc.Match(cmp, s.budgetDb, s.Cfg, true, spendable) {
+			user := &ForecastUser{
+				ID:    "sc-" + sc.Id,
+				Name:  sc.Name,
+				Email: sc.EmailAddress,
+			}
+
+			if sc.FBData != nil {
+				user.Facebook = &ForecastData{
+					ProfilePicture: sc.FBData.ProfilePicture,
+					URL:            sc.FBData.GetProfileURL(),
+					Followers:      int64(sc.FBData.Followers),
+				}
+			}
+			if sc.InstaData != nil {
+				user.Instagram = &ForecastData{
+					ProfilePicture: sc.InstaData.ProfilePicture,
+					URL:            sc.InstaData.GetProfileURL(),
+					Followers:      int64(sc.InstaData.Followers),
+				}
+			}
+			if sc.TWData != nil {
+				user.Instagram = &ForecastData{
+					ProfilePicture: sc.TWData.ProfilePicture,
+					URL:            sc.TWData.GetProfileURL(),
+					Followers:      int64(sc.TWData.Followers),
+				}
+			}
+			if sc.YTData != nil {
+				user.Instagram = &ForecastData{
+					ProfilePicture: sc.YTData.ProfilePicture,
+					URL:            sc.YTData.GetProfileURL(),
+					Followers:      int64(sc.YTData.Subscribers),
+				}
+			}
+
+			influencers = append(influencers, user)
 			reach += sc.Followers
 		}
 	}
