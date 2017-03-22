@@ -3921,6 +3921,18 @@ func getScraps(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getScrap(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		scrap, err := getScrapFromID(s, c.Param("id"))
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, scrap)
+	}
+}
+
 func forceScrapEmail(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {
