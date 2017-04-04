@@ -23,8 +23,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 	var updated int64
 	// Iterate over all influencers and add keywords for them (if they don't have any)
 	for _, inf := range srv.auth.Influencers.GetAll() {
-		if len(inf.Keywords) > 0 {
-			// Only append keywords if they don't have any
+		if len(inf.Keywords) > 0 || (inf.Instagram != nil && inf.Instagram.Bio == "") {
+			// Only append keywords if they don't have any AND when there's no bio
 			continue
 		}
 
@@ -54,8 +54,8 @@ func attributer(srv *Server, force bool) (int64, error) {
 	var scrapsTouched int64
 	// Set keywords, geo, gender, and followers for scraps!
 	for _, sc := range scraps {
-		if sc.IsProfilePictureActive() && (sc.Attributed || sc.Attempts > 3) {
-			// This scrap already has attrs set AND their profile pic is active
+		if sc.IsProfilePictureActive() && (sc.Attributed || sc.Attempts > 3) && (sc.InstaData == nil || sc.InstaData.Bio != "") {
+			// This scrap already has attrs set AND their profile pic is active AND their insta has a bio
 			continue
 		}
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/boltdb/bolt"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/platforms/swipe"
 )
 
@@ -108,6 +109,15 @@ func (adv *Advertiser) setToUser(_ *Auth, u *User) error {
 			if err != nil {
 				adv.CCLoad = nil
 				return err
+			}
+
+			// First time a BIG advertiser gets a CC.. lets give them the $0 Enterprise!
+			if adv.AgencyID == "53" {
+				adv.SubLoad = &swipe.Subscription{
+					Plan:    subscriptions.ENTERPRISE,
+					Price:   0,
+					Monthly: true,
+				}
 			}
 		} else {
 			if adv.CCLoad.Delete {
