@@ -17,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
-	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
@@ -714,32 +713,32 @@ type ForecastData struct {
 
 func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
 	// Lite version of the original GetAVailableDeals just for forecasting
-	spendable := budget.GetProratedBudget(cmp.Budget)
+	// spendable := budget.GetProratedBudget(cmp.Budget)
 
 	// Calculate max deals for this campaign
-	var maxDeals int
-	if cmp.Perks != nil {
-		maxDeals = cmp.Perks.Count
-	} else if len(cmp.Whitelist) > 0 {
-		maxDeals = len(cmp.Whitelist)
-	} else {
-		if cmp.Goal > 0 {
-			if cmp.Goal > spendable {
-				maxDeals = 1
-			} else {
-				maxDeals = int(spendable / cmp.Goal)
-			}
-		} else {
-			// Default goal of spendable divided by 5 (so 5 deals per campaign)
-			maxDeals = int(spendable / 5)
-		}
-	}
+	// var maxDeals int
+	// if cmp.Perks != nil {
+	// 	maxDeals = cmp.Perks.Count
+	// } else if len(cmp.Whitelist) > 0 {
+	// 	maxDeals = len(cmp.Whitelist)
+	// } else {
+	// 	if cmp.Goal > 0 {
+	// 		if cmp.Goal > spendable {
+	// 			maxDeals = 1
+	// 		} else {
+	// 			maxDeals = int(spendable / cmp.Goal)
+	// 		}
+	// 	} else {
+	// 		// Default goal of spendable divided by 5 (so 5 deals per campaign)
+	// 		maxDeals = int(spendable / 5)
+	// 	}
+	// }
 
-	target := spendable / float64(maxDeals)
-	margin := 0.3 * target
+	// target := spendable / float64(maxDeals)
+	// margin := 0.3 * target
 
 	// Pre calculate target yield
-	min, max := target-margin, target+margin
+	// min, max := target-margin, target+margin
 
 	for _, inf := range s.auth.Influencers.GetAll() {
 		if inf.IsBanned() {
@@ -803,17 +802,17 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		}
 
 		// MAX YIELD
-		maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
-		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
-			// NOTE: Skip this for whitelisted campaigns!
+		// maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+		// if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
+		// 	// NOTE: Skip this for whitelisted campaigns!
 
-			// OPTIMIZATION: Goal is to distribute funds evenly
-			// given what the campaign's influencer goal is and how
-			// many funds we have left
-			if maxYield < min || maxYield > max || maxYield == 0 {
-				continue
-			}
-		}
+		// 	// OPTIMIZATION: Goal is to distribute funds evenly
+		// 	// given what the campaign's influencer goal is and how
+		// 	// many funds we have left
+		// 	if maxYield < min || maxYield > max || maxYield == 0 {
+		// 		continue
+		// 	}
+		// }
 
 		user := &ForecastUser{
 			ID:    inf.Id,
@@ -878,7 +877,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 	}
 
 	for _, sc := range scraps {
-		if sc.Match(cmp, s.budgetDb, s.Cfg, true, spendable) {
+		if sc.Match(cmp, s.budgetDb, s.Cfg, true) {
 			user := &ForecastUser{
 				ID:    "sc-" + sc.Id,
 				Name:  sc.Name,

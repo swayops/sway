@@ -7,7 +7,6 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/swayops/sway/config"
-	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/subscriptions"
@@ -61,7 +60,7 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, budgetDb *
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []*common.Campaign
 	for _, cmp := range cmps {
-		if sc.Match(cmp, budgetDb, cfg, false, 0) {
+		if sc.Match(cmp, budgetDb, cfg, false) {
 			considered = append(considered, &cmp)
 		}
 	}
@@ -111,7 +110,7 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 	return true
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool, spendable float64) bool {
+func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
@@ -138,21 +137,21 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 	}
 
 	// Optimization
-	if spendable == 0 {
-		store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
-		if store.IsClosed(&cmp) {
-			return false
-		}
-		spendable = store.Spendable
-	}
+	// if spendable == 0 {
+	// 	store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
+	// 	if store.IsClosed(&cmp) {
+	// 		return false
+	// 	}
+	// 	spendable = store.Spendable
+	// }
 
-	if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
-		min, max := cmp.GetTargetYield(spendable)
-		maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
-		if maxYield < min || maxYield > max || maxYield == 0 {
-			return false
-		}
-	}
+	// if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
+	// 	min, max := cmp.GetTargetYield(spendable)
+	// 	maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+	// 	if maxYield < min || maxYield > max || maxYield == 0 {
+	// 		return false
+	// 	}
+	// }
 
 	if len(cmp.Whitelist) > 0 {
 		return false
