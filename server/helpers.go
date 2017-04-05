@@ -698,13 +698,6 @@ type ForecastUser struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	Instagram *ForecastData `json:"instagram,omitempty"`
-	YouTube   *ForecastData `json:"youtube,omitempty"`
-	Twitter   *ForecastData `json:"twitter,omitempty"`
-	Facebook  *ForecastData `json:"facebook,omitempty"`
-}
-
-type ForecastData struct {
 	ProfilePicture string `json:"profilePicture"`
 	URL            string `json:"url"`
 	Followers      int64  `json:"followers"`
@@ -824,42 +817,44 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		socialMediaFound := false
 		if cmp.YouTube && inf.YouTube != nil {
 			socialMediaFound = true
-			user.YouTube = &ForecastData{
-				ProfilePicture: inf.YouTube.ProfilePicture,
-				URL:            inf.YouTube.GetProfileURL(),
-				Followers:      int64(inf.YouTube.Subscribers),
-				AvgEngs:        int64(inf.YouTube.AvgComments + inf.YouTube.AvgViews + inf.YouTube.AvgLikes + inf.YouTube.AvgDislikes),
+			if inf.YouTube.ProfilePicture != "" {
+				user.ProfilePicture = inf.YouTube.ProfilePicture
 			}
+			user.Followers += int64(inf.YouTube.Subscribers)
+			user.AvgEngs += int64(inf.YouTube.AvgComments + inf.YouTube.AvgViews + inf.YouTube.AvgLikes + inf.YouTube.AvgDislikes)
+			user.URL = inf.YouTube.GetProfileURL()
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
 			socialMediaFound = true
-			user.Instagram = &ForecastData{
-				ProfilePicture: inf.Instagram.ProfilePicture,
-				URL:            inf.Instagram.GetProfileURL(),
-				Followers:      int64(inf.Instagram.Followers),
-				AvgEngs:        int64(inf.Instagram.AvgComments + inf.Instagram.AvgLikes),
+			if inf.Instagram.ProfilePicture != "" {
+				user.ProfilePicture = inf.Instagram.ProfilePicture
 			}
+			user.Followers += int64(inf.Instagram.Followers)
+			user.AvgEngs += int64(inf.Instagram.AvgComments + inf.Instagram.AvgLikes)
+			user.URL = inf.Instagram.GetProfileURL()
 		}
 
 		if cmp.Twitter && inf.Twitter != nil {
 			socialMediaFound = true
-			user.Twitter = &ForecastData{
-				ProfilePicture: inf.Twitter.ProfilePicture,
-				URL:            inf.Twitter.GetProfileURL(),
-				Followers:      int64(inf.Twitter.Followers),
-				AvgEngs:        int64(inf.Twitter.AvgLikes + inf.Twitter.AvgRetweets),
+			if inf.Twitter.ProfilePicture != "" {
+				user.ProfilePicture = inf.Twitter.ProfilePicture
 			}
+
+			user.Followers += int64(inf.Twitter.Followers)
+			user.AvgEngs += int64(inf.Twitter.AvgLikes + inf.Twitter.AvgRetweets)
+			user.URL = inf.Twitter.GetProfileURL()
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
 			socialMediaFound = true
-			user.Facebook = &ForecastData{
-				ProfilePicture: inf.Facebook.ProfilePicture,
-				URL:            inf.Facebook.GetProfileURL(),
-				Followers:      int64(inf.Facebook.Followers),
-				AvgEngs:        int64(inf.Facebook.AvgComments + inf.Facebook.AvgLikes + inf.Facebook.AvgShares),
+
+			if inf.Facebook.ProfilePicture != "" {
+				user.ProfilePicture = inf.Facebook.ProfilePicture
 			}
+			user.Followers += int64(inf.Facebook.Followers)
+			user.AvgEngs += int64(inf.Facebook.AvgComments + inf.Facebook.AvgLikes + inf.Facebook.AvgShares)
+			user.URL = inf.Facebook.GetProfileURL()
 		}
 
 		if !socialMediaFound {
@@ -885,32 +880,41 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			}
 
 			if sc.FBData != nil {
-				user.Facebook = &ForecastData{
-					ProfilePicture: sc.FBData.ProfilePicture,
-					URL:            sc.FBData.GetProfileURL(),
-					Followers:      int64(sc.FBData.Followers),
+				if sc.FBData.ProfilePicture != "" {
+					user.ProfilePicture = sc.FBData.ProfilePicture
 				}
+
+				user.Followers += int64(sc.FBData.Followers)
+				user.AvgEngs += int64(sc.FBData.AvgComments + sc.FBData.AvgLikes + sc.FBData.AvgShares)
+				user.URL = sc.FBData.GetProfileURL()
 			}
+
 			if sc.InstaData != nil {
-				user.Instagram = &ForecastData{
-					ProfilePicture: sc.InstaData.ProfilePicture,
-					URL:            sc.InstaData.GetProfileURL(),
-					Followers:      int64(sc.InstaData.Followers),
+				if sc.InstaData.ProfilePicture != "" {
+					user.ProfilePicture = sc.InstaData.ProfilePicture
 				}
+				user.Followers += int64(sc.InstaData.Followers)
+				user.AvgEngs += int64(sc.InstaData.AvgComments + sc.InstaData.AvgLikes)
+				user.URL = sc.InstaData.GetProfileURL()
 			}
+
 			if sc.TWData != nil {
-				user.Instagram = &ForecastData{
-					ProfilePicture: sc.TWData.ProfilePicture,
-					URL:            sc.TWData.GetProfileURL(),
-					Followers:      int64(sc.TWData.Followers),
+				if sc.TWData.ProfilePicture != "" {
+					user.ProfilePicture = sc.TWData.ProfilePicture
 				}
+
+				user.Followers += int64(sc.TWData.Followers)
+				user.AvgEngs += int64(sc.TWData.AvgLikes + sc.TWData.AvgRetweets)
+				user.URL = sc.TWData.GetProfileURL()
 			}
+
 			if sc.YTData != nil {
-				user.Instagram = &ForecastData{
-					ProfilePicture: sc.YTData.ProfilePicture,
-					URL:            sc.YTData.GetProfileURL(),
-					Followers:      int64(sc.YTData.Subscribers),
+				if sc.YTData.ProfilePicture != "" {
+					user.ProfilePicture = sc.YTData.ProfilePicture
 				}
+				user.Followers += int64(sc.YTData.Subscribers)
+				user.AvgEngs += int64(sc.YTData.AvgComments + sc.YTData.AvgViews + sc.YTData.AvgLikes + sc.YTData.AvgDislikes)
+				user.URL = sc.YTData.GetProfileURL()
 			}
 
 			influencers = append(influencers, user)

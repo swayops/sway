@@ -584,12 +584,12 @@ func TestDeals(t *testing.T) {
 	}
 
 	fInf := forecast.Breakdown[0]
-	if fInf.Email == "" || fInf.Name == "" || fInf.ID == "" || fInf.Twitter == nil {
+	if fInf.Email == "" || fInf.Name == "" || fInf.ID == "" {
 		t.Fatal("Bad forecast data!")
 		return
 	}
 
-	if fInf.Twitter.AvgEngs == 0 || fInf.Twitter.Followers == 0 || fInf.Twitter.ProfilePicture == "" || fInf.Twitter.URL=="" {
+	if fInf.AvgEngs == 0 || fInf.Followers == 0 || fInf.ProfilePicture == "" || fInf.URL=="" {
 		t.Fatal("Bad forecast twitter data!")
 		return
 	}
