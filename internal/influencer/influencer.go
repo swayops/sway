@@ -291,7 +291,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 	// i.e. skip this if statement
 
 	// If the profile picture has become inactive lets update as well!
-	if len(inf.ActiveDeals) == 0 && inf.IsProfilePictureActive() {
+	if len(inf.ActiveDeals) == 0 && inf.IsProfilePictureActive() && (inf.Instagram == nil || inf.Instagram.Bio != "") {
 		// If you've been updated in the last 7-11 days and
 		// have no active deals.. screw you!
 		// NO SOUP FOR YOU!
@@ -323,11 +323,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 	// we don't need to save all those massive post lists..
 	// hence why we have the savePosts bool!
 	savePosts := len(inf.ActiveDeals) > 0
-	if inf.Facebook != nil {
-		if err = inf.Facebook.UpdateData(cfg, savePosts); err != nil {
-			return private, err
-		}
-	}
+
 	if inf.Instagram != nil {
 		if err = inf.Instagram.UpdateData(cfg, savePosts); err != nil {
 			if inf.Instagram.Followers > 0 && instagram.Status(cfg) {
@@ -340,6 +336,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 			return private, err
 		}
 	}
+
 	if inf.Twitter != nil {
 		if err = inf.Twitter.UpdateData(cfg, savePosts); err != nil {
 			if inf.Twitter.Followers > 0 && twitter.Status(cfg) {
@@ -352,8 +349,15 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 			return private, err
 		}
 	}
+
 	if inf.YouTube != nil {
 		if err = inf.YouTube.UpdateData(cfg, savePosts); err != nil {
+			return private, err
+		}
+	}
+
+	if inf.Facebook != nil {
+		if err = inf.Facebook.UpdateData(cfg, savePosts); err != nil {
 			return private, err
 		}
 	}
@@ -552,6 +556,22 @@ func (inf *Influencer) GetNetworks() []string {
 		networks = append(networks, "YouTube")
 	}
 	return networks
+}
+
+func (inf *Influencer) GetProfilePicture() string {
+	if inf.Facebook != nil && inf.Facebook.ProfilePicture != "" {
+		return inf.Facebook.ProfilePicture
+	}
+	if inf.Instagram != nil && inf.Instagram.ProfilePicture != "" {
+		return inf.Instagram.ProfilePicture
+	}
+	if inf.Twitter != nil && inf.Twitter.ProfilePicture != "" {
+		return inf.Twitter.ProfilePicture
+	}
+	if inf.YouTube != nil && inf.YouTube.ProfilePicture != "" {
+		return inf.YouTube.ProfilePicture
+	}
+	return ""
 }
 
 func (inf *Influencer) IsProfilePictureActive() bool {

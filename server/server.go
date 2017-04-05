@@ -380,6 +380,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.POST("/addBonus", addBonus(srv))
 
 	adminGroup.POST("/setScrap", setScrap(srv))
+	adminGroup.GET("/getScrap/:id", getScrap(srv))
 	adminGroup.GET("/getScraps", getScraps(srv))
 	adminGroup.GET("/getScrapStats", scrapStats(srv))
 	adminGroup.GET("/unapproveDeal/:influencerId/:dealId", unapproveDeal(srv))

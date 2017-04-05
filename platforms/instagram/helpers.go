@@ -244,15 +244,17 @@ type UserData struct {
 	Id      string  `json:"id"`
 	Counts  *Counts `json:"counts"`
 	DP      string  `json:"profile_picture"`
+	Bio     string  `json:"bio"`
 }
 
 type Counts struct {
 	Followers float64 `json:"followed_by"`
 }
 
-func getUserInfo(id string, cfg *config.Config) (flw float64, url, dp string, err error) {
+func getUserInfo(id string, cfg *config.Config) (flw float64, url, dp, bio string, err error) {
 	// followers: https://api.instagram.com/v1/users/15930549/?client_id=5941ed0c28874764a5d86fb47984aceb&count=25
 	endpoint := fmt.Sprintf(followersUrl, cfg.Instagram.Endpoint, id, getToken(cfg.Instagram.AccessTokens))
+
 	var user BasicUser
 	err = misc.Request("GET", endpoint, "", &user)
 	if err != nil {
@@ -275,6 +277,7 @@ func getUserInfo(id string, cfg *config.Config) (flw float64, url, dp string, er
 		if user.Data.Counts != nil {
 			flw = float64(user.Data.Counts.Followers)
 		}
+		bio = user.Data.Bio
 	} else {
 		err = ErrUnknown
 		return

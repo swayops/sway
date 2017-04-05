@@ -145,14 +145,6 @@ func run(srv *Server) error {
 
 	log.Println("Taxes audited. Found:", sigsFound)
 
-	// Lets confirm that there are budget keys
-	// for the new month before we kick this off.
-	// This is for the case that it's the first
-	// of the month and billing hasnt run yet
-	if !shouldRun(srv) {
-		return nil
-	}
-
 	// Update all influencer stats/completed deal stats
 	// If anything fails to update.. just stop here
 	// This ensures that Deltas aren't accounted for twice
@@ -161,6 +153,14 @@ func run(srv *Server) error {
 		// Insert a file informant check
 		srv.Alert("Stats update failed!", err)
 		return err
+	}
+
+	// Lets confirm that there are budget keys
+	// for the new month before we kick this off.
+	// This is for the case that it's the first
+	// of the month and billing hasnt run yet
+	if !shouldRun(srv) {
+		return nil
 	}
 
 	log.Println("Completed influencer update. Updated:", updatedInf)

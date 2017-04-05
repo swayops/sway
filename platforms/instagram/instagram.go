@@ -19,6 +19,7 @@ type Instagram struct {
 	UserId   string `json:"userId"`
 
 	FullName string `json:"fullName"`
+	Bio      string `json:"bio"`
 
 	AvgLikes      float64 `json:"avgLikes,omitempty"`    // Per post
 	AvgComments   float64 `json:"avgComments,omitempty"` // Per post
@@ -67,7 +68,7 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
 	// 	return nil
 	// }
-	if fl, link, dp, err := getUserInfo(in.UserId, cfg); err == nil {
+	if fl, link, dp, bio, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
 			in.FollowerDelta = (fl - in.Followers)
@@ -75,6 +76,7 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 		in.Followers = fl
 		in.LinkInBio = link
 		in.ProfilePicture = dp
+		in.Bio = bio
 	} else {
 		return err
 	}

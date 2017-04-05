@@ -110,6 +110,27 @@ func getAllScraps(s *Server) (scraps []*influencer.Scrap, err error) {
 	return
 }
 
+func getScrapFromID(s *Server, id string) (*influencer.Scrap, error) {
+	var (
+		v  []byte
+		sc influencer.Scrap
+	)
+
+	if err := s.db.View(func(tx *bolt.Tx) error {
+		v = tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).Get([]byte(id))
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(v, &sc); err != nil {
+		log.Println("error when unmarshalling scrap", string(v))
+		return nil, err
+	}
+
+	return &sc, nil
+}
+
 func saveScrap(s *Server, sc *influencer.Scrap) error {
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		if sc.Id == "" {

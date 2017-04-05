@@ -61,12 +61,29 @@ func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, budgetDb *
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []*common.Campaign
 	for _, cmp := range cmps {
-		if sc.Match(cmp, budgetDb, cfg, false) {
+		if sc.Match(cmp, budgetDb, cfg, false, 0) {
 			considered = append(considered, &cmp)
 		}
 	}
 
 	return getBiggestBudget(considered)
+}
+
+func (sc *Scrap) GetProfilePicture() string {
+	if sc.FBData != nil && sc.FBData.ProfilePicture != "" {
+		return sc.FBData.ProfilePicture
+	}
+	if sc.InstaData != nil && sc.InstaData.ProfilePicture != "" {
+		return sc.InstaData.ProfilePicture
+	}
+	if sc.TWData != nil && sc.TWData.ProfilePicture != "" {
+		return sc.TWData.ProfilePicture
+	}
+	if sc.YTData != nil && sc.YTData.ProfilePicture != "" {
+		return sc.YTData.ProfilePicture
+	}
+
+	return ""
 }
 
 func (sc *Scrap) IsProfilePictureActive() bool {
@@ -94,7 +111,7 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 	return true
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
+func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool, spendable float64) bool {
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
@@ -118,19 +135,22 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 		if cmp.Perks != nil && cmp.Perks.Count == 0 {
 			return false
 		}
+	}
 
-		// Optimization
+	// Optimization
+	if spendable == 0 {
 		store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
 		if store.IsClosed(&cmp) {
 			return false
 		}
+		spendable = store.Spendable
+	}
 
-		if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
-			min, max := cmp.GetTargetYield(store.Spendable)
-			maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
-			if maxYield < min || maxYield > max || maxYield == 0 {
-				return false
-			}
+	if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
+		min, max := cmp.GetTargetYield(spendable)
+		maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+		if maxYield < min || maxYield > max || maxYield == 0 {
+			return false
 		}
 	}
 
