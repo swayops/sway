@@ -10,8 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// this is for new handlers because handlers.go is becoming a monster
-
 func dumpDatabases(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -29,6 +27,8 @@ func dumpDatabases(s *Server) gin.HandlerFunc {
 			tw.Close()
 			gzw.Close()
 		}()
+
+		c.Header("Content-Type", "application/x-gzip")
 		c.Header("Content-Disposition", `attachment; filename="`+ts+`.tar.gz"`)
 
 		s.db.View(func(tx *bolt.Tx) (err error) {
