@@ -705,6 +705,15 @@ type ForecastUser struct {
 }
 
 func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
+	// Some easy bail outs
+	if !cmp.Instagram && !cmp.Twitter && !cmp.YouTube && !cmp.Facebook {
+		return
+	}
+
+	if !cmp.Male && !cmp.Female {
+		return
+	}
+
 	// Lite version of the original GetAVailableDeals just for forecasting
 	// spendable := budget.GetProratedBudget(cmp.Budget)
 
@@ -785,15 +794,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			continue
 		}
 
-		// Whitelist check!
-		if len(cmp.Whitelist) > 0 {
-			_, ok := cmp.Whitelist[inf.EmailAddress]
-			if !ok {
-				// There was a whitelist and they're not in it!
-				continue
-			}
-		}
-
 		// MAX YIELD
 		// maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 		// if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
@@ -809,7 +809,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 
 		user := &ForecastUser{
 			ID:    inf.Id,
-			Name:  inf.Name,
+			Name:  strings.Title(inf.Name),
 			Email: inf.EmailAddress,
 		}
 
@@ -860,7 +860,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		if !socialMediaFound {
 			continue
 		}
-
 		influencers = append(influencers, user)
 		reach += inf.GetFollowers()
 	}
@@ -875,7 +874,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		if sc.Match(cmp, s.budgetDb, s.Cfg, true) {
 			user := &ForecastUser{
 				ID:    "sc-" + sc.Id,
-				Name:  sc.Name,
+				Name:  strings.Title(sc.Name),
 				Email: sc.EmailAddress,
 			}
 

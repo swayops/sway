@@ -38,10 +38,10 @@ type Scrap struct {
 	Categories []string `json:"categories,omitempty"`
 	Keywords   []string `json:"keywords,omitempty"`
 
-	// Have all attrs been set already?
-	Attributed bool `json:"scAttr,omitempty"`
-	// How many times have we tried getting data on this user?
-	Attempts int32 `json:"attempts,omitempty"`
+	// Last time attrs were set
+	Updated int32 `json:"updated,omitempty"`
+	// How many times have we tried (and failed) getting data on this user?
+	Fails int32 `json:"fails,omitempty"`
 
 	// Set internally
 	Id         string  `json:"id,omitempty"`
@@ -134,6 +134,15 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 		if cmp.Perks != nil && cmp.Perks.Count == 0 {
 			return false
 		}
+
+		// Whitelist check!
+		if len(cmp.Whitelist) > 0 {
+			_, ok := cmp.Whitelist[sc.EmailAddress]
+			if !ok {
+				// There was a whitelist and they're not in it!
+				return false
+			}
+		}
 	}
 
 	// Optimization
@@ -152,10 +161,6 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 	// 		return false
 	// 	}
 	// }
-
-	if len(cmp.Whitelist) > 0 {
-		return false
-	}
 
 	// Social Media Checks
 	socialMediaFound := false

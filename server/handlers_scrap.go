@@ -94,7 +94,7 @@ func scrapStats(s *Server) gin.HandlerFunc {
 
 		stats := ScrapStats{Total: len(scraps)}
 		for _, sc := range scraps {
-			if sc.Attributed {
+			if sc.Updated > 0 {
 				stats.Attributed += 1
 			}
 

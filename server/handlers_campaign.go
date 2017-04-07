@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -776,9 +777,15 @@ func getForecast(s *Server) gin.HandlerFunc {
 		}
 
 		influencers, reach := getForecastForCmp(s, cmp)
-
-		if c.Query("breakdown") != "" {
-			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers})
+		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
+			bd := int(bd)
+			if bd == -1 {
+				bd = len(influencers)
+			}
+			if bd > len(influencers) {
+				bd = len(influencers)
+			}
+			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
 		} else {
 			// Default to totals
 			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach})

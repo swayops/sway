@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"log"
 	"strconv"
 	"time"
@@ -9,7 +8,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/influencer"
+	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/genderize"
 	"github.com/swayops/sway/platforms/imagga"
@@ -45,7 +44,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 	}
 
 	// Iterate over all scraps and add keywords for them (if they don't have any)
-	scraps, err := getAllNewScraps(srv)
+	scraps, err := getAllScraps(srv)
 	if err != nil {
 		return updated, err
 	}
@@ -54,15 +53,10 @@ func attributer(srv *Server, force bool) (int64, error) {
 	var scrapsTouched int64
 	// Set keywords, geo, gender, and followers for scraps!
 	for _, sc := range scraps {
-		if sc.IsProfilePictureActive() && (sc.Attributed || sc.Attempts > 3) && (sc.InstaData == nil || sc.InstaData.Bio != "") {
-			// This scrap already has attrs set AND their profile pic is active AND their insta has a bio
+		if sc.IsProfilePictureActive() && (sc.Fails > 3 || misc.WithinLast(sc.Updated, 24*misc.Random(7, 12))) {
+			// If the scrap has an active profile pic AND (they have either failed
+			// multiples OR been updated in the last 7-12 days.. bail!)
 			continue
-		}
-
-		// Lets save the attempt right off the bat
-		sc.Attempts += 1
-		if err := saveScrap(srv, sc); err != nil {
-			srv.Alert("Error saving scrap", err)
 		}
 
 		var (
@@ -78,6 +72,11 @@ func attributer(srv *Server, force bool) (int64, error) {
 			if err != nil {
 				if !force {
 					time.Sleep(1 * time.Second)
+				}
+				// Lets save the fail
+				sc.Fails += 1
+				if err := saveScrap(srv, sc); err != nil {
+					srv.Alert("Error saving scrap", err)
 				}
 				continue
 			}
@@ -106,6 +105,11 @@ func attributer(srv *Server, force bool) (int64, error) {
 				if !force {
 					time.Sleep(1 * time.Second)
 				}
+				// Lets save the fail
+				sc.Fails += 1
+				if err := saveScrap(srv, sc); err != nil {
+					srv.Alert("Error saving scrap", err)
+				}
 				continue
 			}
 
@@ -121,6 +125,11 @@ func attributer(srv *Server, force bool) (int64, error) {
 			if err != nil {
 				if !force {
 					time.Sleep(1 * time.Second)
+				}
+				// Lets save the fail
+				sc.Fails += 1
+				if err := saveScrap(srv, sc); err != nil {
+					srv.Alert("Error saving scrap", err)
 				}
 				continue
 			}
@@ -143,6 +152,11 @@ func attributer(srv *Server, force bool) (int64, error) {
 			if err != nil {
 				if !force {
 					time.Sleep(1 * time.Second)
+				}
+				// Lets save the fail
+				sc.Fails += 1
+				if err := saveScrap(srv, sc); err != nil {
+					srv.Alert("Error saving scrap", err)
 				}
 				continue
 			}
@@ -178,7 +192,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 			sc.Male, sc.Female = genderize.GetGender(firstName)
 		}
 
-		sc.Attributed = true
+		sc.Updated = int32(time.Now().Unix())
 
 		if err := saveScrap(srv, sc); err != nil {
 			srv.Alert("Error saving scrap", err)
@@ -259,7 +273,7 @@ func assignGeo(srv *Server) (err error) {
 	}
 
 	for _, sc := range scraps {
-		if sc.Geo != nil || sc.Attempts > 3 {
+		if sc.Geo != nil || sc.Fails > 3 {
 			continue
 		}
 
@@ -282,25 +296,4 @@ func assignGeo(srv *Server) (err error) {
 		time.Sleep(1 * time.Second)
 	}
 	return nil
-}
-
-func getAllNewScraps(s *Server) (scraps []*influencer.Scrap, err error) {
-	// Gets all scraps that have not been attribuetd
-	if err = s.db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
-			var sc influencer.Scrap
-			if err := json.Unmarshal(v, &sc); err != nil {
-				log.Println("error when unmarshalling scrap", string(v))
-				return nil
-			}
-			if !sc.Attributed {
-				scraps = append(scraps, &sc)
-			}
-			return
-		})
-		return nil
-	}); err != nil {
-		return
-	}
-	return
 }
