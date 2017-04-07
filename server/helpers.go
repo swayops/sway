@@ -706,7 +706,7 @@ type ForecastUser struct {
 
 func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
 	// Some easy bail outs
-	if !cmp.Instagram && !cmp.Facebook && !cmp.YouTube && !cmp.Facebook {
+	if !cmp.Instagram && !cmp.Twitter && !cmp.YouTube && !cmp.Facebook {
 		return
 	}
 

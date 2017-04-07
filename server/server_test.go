@@ -4299,7 +4299,7 @@ func TestAttributer(t *testing.T) {
 
 	for _, sc := range getScraps {
 		if sc.EmailAddress == "nba@a.b" || sc.EmailAddress == "insta@a.b" || sc.EmailAddress == "jb@a.b" {
-			if !sc.Attributed {
+			if sc.Updated == 0 {
 				t.Fatal("Scrap should be attributed!")
 				return
 			}
@@ -4330,8 +4330,8 @@ func TestAttributer(t *testing.T) {
 				return
 			}
 
-			if sc.Attempts != 1 {
-				t.Fatal("Incorrect attempts")
+			if sc.Fails != 0 {
+				t.Fatal("Incorrect fails")
 				return
 			}
 

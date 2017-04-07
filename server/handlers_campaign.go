@@ -761,7 +761,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 }
 
 func getForecast(s *Server) gin.HandlerFunc {
-
 	return func(c *gin.Context) {
 		// Gets influencer count and reach for an incoming campaign struct
 		// NOTE: Ignores budget values

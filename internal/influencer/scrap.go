@@ -38,10 +38,10 @@ type Scrap struct {
 	Categories []string `json:"categories,omitempty"`
 	Keywords   []string `json:"keywords,omitempty"`
 
-	// Have all attrs been set already?
-	Attributed bool `json:"scAttr,omitempty"`
-	// How many times have we tried getting data on this user?
-	Attempts int32 `json:"attempts,omitempty"`
+	// Last time attrs were set
+	Updated int32 `json:"updated,omitempty"`
+	// How many times have we tried (and failed) getting data on this user?
+	Fails int32 `json:"fails,omitempty"`
 
 	// Set internally
 	Id         string  `json:"id,omitempty"`
