@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/rand"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -778,14 +777,9 @@ func getForecast(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		cmp.Whitelist = nil
-
-		ignoreScraps, _ := strconv.ParseBool(c.Query("trim"))
-		influencers, reach := getForecastForCmp(s, cmp, ignoreScraps)
-
+		influencers, reach := getForecastForCmp(s, cmp)
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
 			bd := int(bd)
-			sort.Slice(influencers, func(i int, j int) bool { return influencers[j].Followers < influencers[i].Followers })
 			if bd == -1 {
 				bd = len(influencers)
 			}

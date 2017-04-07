@@ -572,7 +572,7 @@ func TestDeals(t *testing.T) {
 		Reach       int64 `json:"reach"`
 		Influencers       int64 `json:"influencers"`
 	}
-	r := rst.DoTesting(t, "POST", "/getForecast?breakdown=true", &cmp, &forecast)
+	r := rst.DoTesting(t, "POST", "/getForecast?breakdown=250", &cmp, &forecast)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!", string(r.Value))
 		return

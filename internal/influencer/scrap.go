@@ -134,6 +134,15 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 		if cmp.Perks != nil && cmp.Perks.Count == 0 {
 			return false
 		}
+
+		// Whitelist check!
+		if len(cmp.Whitelist) > 0 {
+			_, ok := cmp.Whitelist[sc.EmailAddress]
+			if !ok {
+				// There was a whitelist and they're not in it!
+				return false
+			}
+		}
 	}
 
 	// Optimization
@@ -152,10 +161,6 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 	// 		return false
 	// 	}
 	// }
-
-	if len(cmp.Whitelist) > 0 {
-		return false
-	}
 
 	// Social Media Checks
 	socialMediaFound := false

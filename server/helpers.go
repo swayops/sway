@@ -704,7 +704,16 @@ type ForecastUser struct {
 	AvgEngs        int64  `json:"avgEngs"`
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign, ignoreScraps bool) (influencers []*ForecastUser, reach int64) {
+func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
+	// Some easy bail outs
+	if !cmp.Instagram && !cmp.Facebook && !cmp.YouTube && !cmp.Facebook {
+		return
+	}
+
+	if !cmp.Male && !cmp.Female {
+		return
+	}
+
 	// Lite version of the original GetAVailableDeals just for forecasting
 	// spendable := budget.GetProratedBudget(cmp.Budget)
 
@@ -783,15 +792,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign, ignoreScraps bool) (influ
 			continue
 		} else if !cmp.Male && !cmp.Female {
 			continue
-		}
-
-		// Whitelist check!
-		if len(cmp.Whitelist) > 0 {
-			_, ok := cmp.Whitelist[inf.EmailAddress]
-			if !ok {
-				// There was a whitelist and they're not in it!
-				continue
-			}
 		}
 
 		// MAX YIELD
@@ -916,9 +916,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, ignoreScraps bool) (influ
 				user.URL = sc.YTData.GetProfileURL()
 			}
 
-			if !ignoreScraps {
-				influencers = append(influencers, user)
-			}
+			influencers = append(influencers, user)
 			reach += sc.Followers
 		}
 	}
