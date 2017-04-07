@@ -762,6 +762,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 }
 
 func getForecast(s *Server) gin.HandlerFunc {
+
 	return func(c *gin.Context) {
 		// Gets influencer count and reach for an incoming campaign struct
 		// NOTE: Ignores budget values
@@ -778,7 +779,9 @@ func getForecast(s *Server) gin.HandlerFunc {
 		}
 
 		cmp.Whitelist = nil
-		influencers, reach := getForecastForCmp(s, cmp)
+
+		ignoreScraps, _ := strconv.ParseBool(c.Query("trim"))
+		influencers, reach := getForecastForCmp(s, cmp, ignoreScraps)
 
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
 			bd := int(bd)

@@ -704,7 +704,7 @@ type ForecastUser struct {
 	AvgEngs        int64  `json:"avgEngs"`
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
+func getForecastForCmp(s *Server, cmp common.Campaign, ignoreScraps bool) (influencers []*ForecastUser, reach int64) {
 	// Lite version of the original GetAVailableDeals just for forecasting
 	// spendable := budget.GetProratedBudget(cmp.Budget)
 
@@ -860,7 +860,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		if !socialMediaFound {
 			continue
 		}
-
 		influencers = append(influencers, user)
 		reach += inf.GetFollowers()
 	}
@@ -917,7 +916,9 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 				user.URL = sc.YTData.GetProfileURL()
 			}
 
-			influencers = append(influencers, user)
+			if !ignoreScraps {
+				influencers = append(influencers, user)
+			}
 			reach += sc.Followers
 		}
 	}
