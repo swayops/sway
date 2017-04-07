@@ -780,9 +780,13 @@ func getForecast(s *Server) gin.HandlerFunc {
 		influencers, reach := getForecastForCmp(s, cmp)
 
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
+			bd := int(bd)
 			sort.Slice(influencers, func(i int, j int) bool { return influencers[j].Followers < influencers[i].Followers })
 			if bd == -1 {
-				bd = int64(len(influencers))
+				bd = len(influencers)
+			}
+			if bd > len(influencers) {
+				bd = len(influencers)
 			}
 			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
 		} else {
