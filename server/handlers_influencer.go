@@ -933,6 +933,20 @@ func getCategories(s *Server) gin.HandlerFunc {
 			}
 		}
 
+		// Lets go over scraps now!
+		scraps, err := getAllScraps(s)
+		if err != nil {
+			return
+		}
+		for _, sc := range scraps {
+			for _, cat := range sc.Categories {
+				if val := findCat(out, cat); val != nil {
+					val.Influencers += 1
+					val.Reach += sc.Followers
+				}
+			}
+		}
+
 		c.JSON(200, out)
 	}
 }
