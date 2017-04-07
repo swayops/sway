@@ -777,6 +777,7 @@ func getForecast(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		cmp.Whitelist = nil
 		influencers, reach := getForecastForCmp(s, cmp)
 
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
