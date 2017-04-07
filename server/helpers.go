@@ -809,7 +809,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 
 		user := &ForecastUser{
 			ID:    inf.Id,
-			Name:  inf.Name,
+			Name:  strings.Title(inf.Name),
 			Email: inf.EmailAddress,
 		}
 
@@ -874,7 +874,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		if sc.Match(cmp, s.budgetDb, s.Cfg, true) {
 			user := &ForecastUser{
 				ID:    "sc-" + sc.Id,
-				Name:  sc.Name,
+				Name:  strings.Title(sc.Name),
 				Email: sc.EmailAddress,
 			}
 
