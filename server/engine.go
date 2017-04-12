@@ -35,6 +35,14 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	srv.Audiences.Set(srv.db, srv.Cfg)
+	audTicker := time.NewTicker(20 * time.Minute)
+	go func() {
+		for range audTicker.C {
+			srv.Audiences.Set(srv.db, srv.Cfg)
+		}
+	}()
+
 	// Keep a live struct for all influencers in the platform
 	srv.auth.Influencers.Set(getAllInfluencers(srv))
 	infTicker := time.NewTicker(5 * time.Minute)
@@ -465,7 +473,7 @@ func emailDeals(s *Server) (int32, error) {
 			emailed bool
 			err     error
 		)
-		if emailed, err = inf.Email(s.Campaigns, s.budgetDb, s.Cfg); err != nil {
+		if emailed, err = inf.Email(s.Campaigns, s.Audiences, s.budgetDb, s.Cfg); err != nil {
 			log.Println("Error emailing influencer!", err)
 			continue
 		}

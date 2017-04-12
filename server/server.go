@@ -44,6 +44,7 @@ type Server struct {
 	auth     *auth.Auth
 
 	Campaigns *common.Campaigns
+	Audiences *common.Audiences
 
 	Keywords []string // List of available keywords
 
@@ -100,6 +101,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		budgetDb:  budgetDb,
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
+		Audiences: common.NewAudiences(),
 		LimitSet:  common.NewLimitSet(),
 		ClickSet:  common.NewSet(),
 		Stats:     NewStats(),
@@ -505,6 +507,10 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
+
+	// Audiences
+	adminGroup.POST("/audience", audience(srv))
+	adminGroup.GET("/audience", getAudiences(srv))
 }
 
 func (srv *Server) startEngine() error {

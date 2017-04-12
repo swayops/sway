@@ -761,7 +761,7 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -942,6 +942,23 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, budgetDb *
 			}
 		}
 
+		// Audience check!
+		if len(cmp.Audiences) > 0 {
+			var isInAudience bool
+
+			for _, targetAudience := range cmp.Audiences {
+				if audiences.IsAllowed(targetAudience, inf.EmailAddress) {
+					isInAudience = true
+					break
+				}
+			}
+
+			if !isInAudience {
+				rejections[cmp.Id] = "CMP_AUDIENCE"
+				continue
+			}
+		}
+
 		// Fill in and check available spendable
 		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
 		if store.IsClosed(&cmp) {
@@ -1063,7 +1080,7 @@ var (
 	ErrTimeout = errors.New("Last email too early")
 )
 
-func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg *config.Config) (bool, error) {
+func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config) (bool, error) {
 	// Depending on the emails they've gotten already..
 	// send them a follow up email
 
@@ -1073,7 +1090,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, budgetDb *bolt.DB, cfg
 		return false, nil
 	}
 
-	deals := inf.GetAvailableDeals(campaigns, budgetDb, "", "", nil, false, cfg)
+	deals := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}

@@ -421,6 +421,7 @@ func delCampaign(s *Server) gin.HandlerFunc {
 type CampaignUpdate struct {
 	Geos       []*geo.GeoRecord `json:"geos,omitempty"`
 	Categories []string         `json:"categories,omitempty"`
+	Audiences  []string         `json:"audiences,omitempty"`
 	Keywords   []string         `json:"keywords,omitempty"`
 	Status     *bool            `json:"status,omitempty"`
 	Budget     *float64         `json:"budget,omitempty"`
@@ -530,6 +531,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Geos = upd.Geos
 		cmp.Categories = common.LowerSlice(upd.Categories)
 		cmp.Keywords = common.LowerSlice(upd.Keywords)
+		cmp.Audiences = upd.Audiences
 
 		// Copy the plan from the Advertiser
 		cmp.Plan = adv.Plan

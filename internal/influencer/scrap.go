@@ -56,11 +56,11 @@ type Scrap struct {
 	YTData    *youtube.YouTube     `json:"ytData,omitempty"`
 }
 
-func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, budgetDb *bolt.DB, cfg *config.Config) *common.Campaign {
+func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config) *common.Campaign {
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []*common.Campaign
 	for _, cmp := range cmps {
-		if sc.Match(cmp, budgetDb, cfg, false) {
+		if sc.Match(cmp, audiences, budgetDb, cfg, false) {
 			considered = append(considered, &cmp)
 		}
 	}
@@ -110,7 +110,7 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 	return true
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
+func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
@@ -141,6 +141,16 @@ func (sc *Scrap) Match(cmp common.Campaign, budgetDb *bolt.DB, cfg *config.Confi
 			if !ok {
 				// There was a whitelist and they're not in it!
 				return false
+			}
+		}
+
+		// Audience check!
+		if len(cmp.Audiences) > 0 {
+			for _, targetAudience := range cmp.Audiences {
+				if !audiences.IsAllowed(targetAudience, sc.EmailAddress) {
+					// There was an audience target and they're not in it!
+					return false
+				}
 			}
 		}
 	}

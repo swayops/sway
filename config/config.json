@@ -28,7 +28,8 @@
 		"token": "token",
 		"campaign": "campaign",
 		"scrap": "scrap",
-		"url": "url"
+		"url": "url",
+		"audience": "audience"
 	},
 
 	"mandrill": {
