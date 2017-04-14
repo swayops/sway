@@ -46,7 +46,7 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
-		cmp := sc.GetMatchingCampaign(cmps, srv.budgetDb, srv.Cfg)
+		cmp := sc.GetMatchingCampaign(cmps, srv.Audiences, srv.budgetDb, srv.Cfg)
 		if cmp == nil {
 			continue
 		}

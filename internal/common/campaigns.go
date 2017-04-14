@@ -53,6 +53,7 @@ type Campaign struct {
 	// Categories the client is targeting
 	Categories []string `json:"categories,omitempty"`
 	Keywords   []string `json:"keywords,omitempty"`
+	Audiences  []string `json:"audiences,omitempty"` // Audience IDs the client is targeting
 
 	Perks *Perk `json:"perks,omitempty"`
 

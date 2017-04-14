@@ -156,6 +156,7 @@ type Config struct {
 		Campaign string `json:"campaign"`
 		Scrap    string `json:"scrap"`
 		URL      string `json:"url"`
+		Audience string `json:"audience"`
 	} `json:"bucket"`
 
 	SharpSpring struct {

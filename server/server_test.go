@@ -5653,6 +5653,171 @@ func TestProductBudget(t *testing.T) {
 	}
 }
 
+func TestAudiences(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an audience
+
+	// Emails should be trimmed!
+	members := map[string]bool{
+		"jOhn@seanjohn.com": true,
+		"blah@fubu.com  ": true,
+	}
+	aud := common.Audience{
+		Name: "My test audience",
+		Members: members,
+	}
+
+	r = rst.DoTesting(t, "POST", "/audience", &aud, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets get that audience!
+	var audienceStore map[string]common.Audience
+	r = rst.DoTesting(t, "GET", "/audience", nil, &audienceStore)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	aud, ok := audienceStore["1"]
+	if !ok {
+		t.Fatal("Failed to add audience!")
+		return
+	}
+
+	_, ok = aud.Members["blah@fubu.com"]
+	if !ok {
+		t.Fatal("Failed to trim email!")
+		return
+	}
+
+	_, ok = aud.Members["john@seanjohn.com"]
+	if !ok {
+		t.Fatal("Failed to trim email!")
+		return
+	}
+
+	// Create a campaign with audience targeting
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:   0.2,
+		AgencyID: "2",
+	}
+
+		adv.Advertiser.CCLoad = creditCard
+		adv.Advertiser.SubLoad = getSubscription(3, 100, true)
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/signUp", adv, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: st.ID,
+		Budget:       1000,
+		Name:         "Audience campaign",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "http://www.blank.org?s=t",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		Audiences: []string{"1"},
+	}
+
+	var status Status
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &status)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!", string(r.Value))
+		return
+	}
+
+	var cmpLoad common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+status.ID, nil, &cmpLoad)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] !="1" {
+		t.Fatal("Failed to target audience!")
+		return
+	}
+	
+
+	// Lets create an influencer that SHOULD get a deal because they are in the 
+	// audience!
+	inf := getSignupUserWithEmail("john@seanjohn.com")
+	inf.InfluencerLoad = &auth.InfluencerLoad{
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:      true,
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code! %s", r.Value)
+		return
+	}
+
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	deals = getDeals(status.ID, deals)
+	if len(deals) != 1 {
+		t.Fatal("Failed to receive deal!")
+		return
+	}
+
+	// Lets create an influencer that's NOT in the audience!
+	inf = getSignupUserWithEmail("john@notinmyaudience.com")
+	inf.InfluencerLoad = &auth.InfluencerLoad{
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:      true,
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "cnn",
+		},
+	}
+
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code! %s", r.Value)
+		return
+	}
+
+	var secondDeals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &secondDeals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	secondDeals = getDeals(status.ID, secondDeals)
+	if len(secondDeals) != 0 {
+		t.Fatal("Got deal for influencer not in audience!")
+		return
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")

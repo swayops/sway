@@ -676,7 +676,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals := inf.GetAvailableDeals(campaigns, s.budgetDb, "", "", nil, false, s.Cfg)
+		deals := inf.GetAvailableDeals(campaigns, s.Audiences, s.budgetDb, "", "", nil, false, s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}
@@ -794,6 +794,16 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			continue
 		}
 
+		// Audience check!
+		if len(cmp.Audiences) > 0 {
+			for _, targetAudience := range cmp.Audiences {
+				if !s.Audiences.IsAllowed(targetAudience, inf.EmailAddress) {
+					// There was an audience target and they're not in it!
+					continue
+				}
+			}
+		}
+
 		// MAX YIELD
 		// maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 		// if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
@@ -871,7 +881,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 	}
 
 	for _, sc := range scraps {
-		if sc.Match(cmp, s.budgetDb, s.Cfg, true) {
+		if sc.Match(cmp, s.Audiences, s.budgetDb, s.Cfg, true) {
 			user := &ForecastUser{
 				ID:    "sc-" + sc.Id,
 				Name:  strings.Title(sc.Name),
