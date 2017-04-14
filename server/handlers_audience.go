@@ -74,7 +74,7 @@ func audience(s *Server) gin.HandlerFunc {
 				return err
 			}
 
-			s.Audiences.SetAudience(aud.Id, aud)
+			s.Audiences.SetAudience(aud.Id, &aud)
 
 			return misc.PutBucketBytes(tx, s.Cfg.Bucket.Audience, aud.Id, b)
 		}); err != nil {

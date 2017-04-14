@@ -23,12 +23,12 @@ type Audience struct {
 
 type Audiences struct {
 	mux   sync.RWMutex
-	store map[string]Audience
+	store map[string]*Audience
 }
 
 func NewAudiences() *Audiences {
 	return &Audiences{
-		store: make(map[string]Audience),
+		store: make(map[string]*Audience),
 	}
 }
 
@@ -45,7 +45,7 @@ func (p *Audiences) Set(db *bolt.DB, cfg *config.Config) error {
 	return nil
 }
 
-func (p *Audiences) SetAudience(ID string, aud Audience) error {
+func (p *Audiences) SetAudience(ID string, aud *Audience) error {
 	p.mux.Lock()
 	p.store[ID] = aud
 	p.mux.Unlock()
@@ -65,8 +65,8 @@ func (p *Audiences) IsAllowed(id, email string) bool {
 	return allowed
 }
 
-func (p *Audiences) GetStore(ID string) map[string]Audience {
-	store := make(map[string]Audience)
+func (p *Audiences) GetStore(ID string) map[string]*Audience {
+	store := make(map[string]*Audience)
 	p.mux.RLock()
 	for audID, aud := range p.store {
 		if ID == "" || ID == aud.Id {
@@ -77,8 +77,8 @@ func (p *Audiences) GetStore(ID string) map[string]Audience {
 	return store
 }
 
-func GetAudience(db *bolt.DB, cfg *config.Config) (map[string]Audience, error) {
-	audiences := make(map[string]Audience)
+func GetAudience(db *bolt.DB, cfg *config.Config) (map[string]*Audience, error) {
+	audiences := make(map[string]*Audience)
 	if err := db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(cfg.Bucket.Audience)).ForEach(func(k, v []byte) (err error) {
 			var aud Audience
@@ -87,7 +87,7 @@ func GetAudience(db *bolt.DB, cfg *config.Config) (map[string]Audience, error) {
 				return nil
 			}
 
-			audiences[aud.Id] = aud
+			audiences[aud.Id] = &aud
 			return
 		})
 		return nil
