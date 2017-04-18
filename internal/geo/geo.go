@@ -24,7 +24,7 @@ type GeoRecord struct {
 type GoogleRequest struct {
 	Results []struct {
 		AddressComponents []struct {
-			LongName  string   `json:"long_name"`
+			// LongName  string   `json:"long_name"`
 			ShortName string   `json:"short_name"`
 			Types     []string `json:"types"`
 		} `json:"address_components"`
@@ -52,11 +52,11 @@ func GetGeoFromCoords(lat, long float64, ts int32) *GeoRecord {
 				for _, cat := range val.Types {
 					// if cat == "postal_code" {
 					// 	geo.Zip = val.LongName
-					if cat == "administrative_area_level_1" {
+					if cat == "administrative_area_level_1" && len(val.ShortName) == 2 {
 						geo.State = val.ShortName
 						// } else if cat == "locality" {
 						// 	geo.City = val.LongName
-					} else if cat == "country" {
+					} else if cat == "country" && len(val.ShortName) == 2 {
 						geo.Country = val.ShortName
 					}
 				}
@@ -71,7 +71,7 @@ func GetGeoFromCoords(lat, long float64, ts int32) *GeoRecord {
 	}
 
 	if !IsValidGeo(geo) {
-		log.Println("Google returned invalid geo!")
+		log.Println("Google returned invalid geo!", fmt.Sprintf(GOOGLE_GEO, fLat, fLong))
 		return nil
 	}
 
