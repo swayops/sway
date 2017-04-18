@@ -510,6 +510,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Audiences
 	adminGroup.POST("/audience", audience(srv))
+	adminGroup.DELETE("/audience/:id", delAudience(srv))
 	verifyGroup.GET("/audience", getAudiences(srv))
 	verifyGroup.GET("/audience/:id", getAudiences(srv))
 }

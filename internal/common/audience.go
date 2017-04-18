@@ -77,6 +77,12 @@ func (p *Audiences) GetStore(ID string) map[string]*Audience {
 	return store
 }
 
+func (p *Audiences) Delete(ID string)  {
+	p.mux.Lock()
+	delete(p.store, ID)
+	p.mux.Unlock()
+}
+
 func GetAudience(db *bolt.DB, cfg *config.Config) (map[string]*Audience, error) {
 	audiences := make(map[string]*Audience)
 	if err := db.View(func(tx *bolt.Tx) error {

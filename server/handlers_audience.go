@@ -93,3 +93,20 @@ func getAudiences(s *Server) gin.HandlerFunc {
 		c.JSON(200, s.Audiences.GetStore(c.Param("id")))
 	}
 }
+
+func delAudience(s *Server) gin.HandlerFunc {
+	// Optional "ID" param to filter to one audience, otherwise it returns
+	// all audiences
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		s.Audiences.Delete(id)
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			return tx.Bucket([]byte(s.Cfg.Bucket.Audience)).Delete([]byte(id))
+		}); err != nil {
+			misc.AbortWithErr(c, 500, err)
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
