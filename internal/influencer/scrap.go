@@ -3,6 +3,7 @@ package influencer
 import (
 	"log"
 	"math"
+	"strings"
 
 	"github.com/boltdb/bolt"
 
@@ -197,9 +198,17 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 	if len(cmp.Keywords) > 0 {
 		kwFound := false
 	L1:
-		for _, scKw := range sc.Keywords {
-			for _, kw := range cmp.Keywords {
+		for _, kw := range cmp.Keywords {
+			for _, scKw := range sc.Keywords {
 				if kw == scKw {
+					kwFound = true
+					break L1
+				}
+			}
+
+			if sc.InstaData != nil && sc.InstaData.Bio != "" {
+				bio := strings.ToLower(sc.InstaData.Bio)
+				if strings.Contains(bio, kw) {
 					kwFound = true
 					break L1
 				}

@@ -231,7 +231,7 @@ func shouldRun(s *Server) bool {
 			return true
 		}
 	}
-	s.Alert("No active campaigns with budget!", ErrStore)
+	// s.Alert("No active campaigns with budget!", ErrStore)
 	return false
 }
 

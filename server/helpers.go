@@ -773,6 +773,14 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 						break L2
 					}
 				}
+
+				if inf.Instagram != nil && inf.Instagram.Bio != "" {
+					bio := strings.ToLower(inf.Instagram.Bio)
+					if strings.Contains(bio, kw) {
+						kwFound = true
+						break L2
+					}
+				}
 			}
 			if !kwFound {
 				continue

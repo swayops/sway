@@ -409,10 +409,10 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 		if _, ok = activeCampaigns[deal.CampaignId]; !ok {
 			// Update deals that aren't active anymore once in a blue moon
 			// just to save some requests
-			if misc.Random(0, 100) > 10 {
-				// 90% of the time bail!
-				continue
-			}
+			// if misc.Random(0, 100) > 10 {
+			// 90% of the time bail!
+			continue
+			// }
 		}
 
 		if deal.Tweet != nil {
@@ -854,9 +854,17 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		if len(cmp.Keywords) > 0 {
 			kwFound := false
 		L2:
-			for _, infKw := range inf.Keywords {
-				for _, kw := range cmp.Keywords {
+			for _, kw := range cmp.Keywords {
+				for _, infKw := range inf.Keywords {
 					if kw == infKw {
+						kwFound = true
+						break L2
+					}
+				}
+
+				if inf.Instagram != nil && inf.Instagram.Bio != "" {
+					bio := strings.ToLower(inf.Instagram.Bio)
+					if strings.Contains(bio, kw) {
 						kwFound = true
 						break L2
 					}
