@@ -511,6 +511,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Audiences
 	adminGroup.POST("/audience", audience(srv))
 	adminGroup.GET("/audience", getAudiences(srv))
+	adminGroup.GET("/audience/:id", getAudiences(srv))
 }
 
 func (srv *Server) startEngine() error {

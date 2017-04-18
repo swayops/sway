@@ -90,6 +90,6 @@ func getAudiences(s *Server) gin.HandlerFunc {
 	// Optional "ID" param to filter to one audience, otherwise it returns
 	// all audiences
 	return func(c *gin.Context) {
-		c.JSON(200, s.Audiences.GetStore(c.Query("id")))
+		c.JSON(200, s.Audiences.GetStore(c.Param("id")))
 	}
 }
