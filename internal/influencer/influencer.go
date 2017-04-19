@@ -863,8 +863,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				}
 
 				if inf.Instagram != nil && inf.Instagram.Bio != "" {
-					bio := strings.ToLower(inf.Instagram.Bio)
-					if strings.Contains(bio, kw) {
+					if common.IsExactMatch(inf.Instagram.Bio, kw) {
 						kwFound = true
 						break L2
 					}

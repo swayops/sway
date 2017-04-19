@@ -63,3 +63,28 @@ func Map(s []string) map[string]bool {
 	}
 	return out
 }
+
+var wordBoundaries = [255]bool{
+	' ': true,
+	'.': true,
+	',': true,
+	':': true,
+	'@': true,
+	'+': true,
+}
+
+func IsExactMatch(haystack, needle string) bool {
+	haystack, needle = strings.ToLower(haystack), strings.ToLower(needle)
+	if idx := strings.Index(haystack, needle); idx > -1 {
+		if idx != 0 && !wordBoundaries[haystack[idx-1]] {
+			return false
+		}
+
+		if end := idx + len(needle); end != len(haystack) && !wordBoundaries[haystack[end]] {
+			return false
+		}
+
+		return true
+	}
+	return false
+}
