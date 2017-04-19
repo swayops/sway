@@ -1797,11 +1797,51 @@ SKIP_APPROVE_2:
 	}
 
 	if len(couponCmp.Deals) != len(cmpUpdate.Perks.Codes) {
-		t.Fatal("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!", len(cmpUpdate.Perks.Codes),len(couponCmp.Deals) )
 		return
 	}
 
 	if couponCmp.Perks.Count != len(cmpUpdate.Perks.Codes) {
+		t.Fatal("Unexpected number of perks!")
+		return
+	}
+
+	// Lets try DECREASING the number of perks!
+	cmpUpdate = CampaignUpdate{
+		Geos:       cmp.Geos,
+		Categories: cmp.Categories,
+		Status:     &cmp.Status,
+		Budget:     &cmp.Budget,
+		Male:       &cmp.Male,
+		Female:     &cmp.Female,
+		Name:       &cmp.Name,
+		Perks:      &common.Perk{Type: 2, Codes: updatedCodes[:len(updatedCodes)-1]},
+	}
+
+	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, &cmpUpdate, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+	}
+
+	// Lets check the number of deals and shit!
+	var freshCampaign common.Campaign
+	r = rst.DoTesting(t, "GET", "/campaign/"+st.ID+"?deals=true", nil, &freshCampaign)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code: %+v", r)
+		return
+	}
+
+	if len(freshCampaign.Deals) != len(cmpUpdate.Perks.Codes) {
+		t.Fatal("Unexpected number of deals!", len(cmpUpdate.Perks.Codes),len(freshCampaign.Deals) )
+		return
+	}
+
+	if freshCampaign.Perks.Count != len(updatedCodes) -1 {
+		t.Fatal("Unexpected number of perks!")
+		return
+	}
+
+	if freshCampaign.Perks.Count != len(cmpUpdate.Perks.Codes) {
 		t.Fatal("Unexpected number of perks!")
 		return
 	}
@@ -1880,7 +1920,7 @@ SKIP_APPROVE_2:
 		return
 	}
 
-	if doneDeal.Perk.Code != "LASTLASTCOUPON" {
+	if doneDeal.Perk.Code != "LASTCOUPON" {
 		t.Fatal("Bad coupon code")
 		return
 	}
@@ -1915,7 +1955,7 @@ SKIP_APPROVE_2:
 		t.Fatal("Perk status should be true")
 	}
 
-	if couponCmp.Perks.Count != (updCampaign.Perks.Count + 1) {
+	if freshCampaign.Perks.Count != (updCampaign.Perks.Count + 1) {
 		t.Fatal("Count did not decrease by one")
 		return
 	}
@@ -1953,7 +1993,7 @@ SKIP_APPROVE_2:
 	}
 
 	if len(updCampaign.Deals) != len(cmpUpdate.Perks.Codes) {
-		t.Fatal("Unexpected number of deals!")
+		t.Fatal("Unexpected number of deals!", len(updCampaign.Deals), len(cmpUpdate.Perks.Codes))
 		return
 	}
 

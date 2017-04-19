@@ -833,7 +833,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Filter Checks
-		if len(cmp.Categories) > 0 {
+		if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 {
 			catFound := false
 		L1:
 			for _, cat := range cmp.Categories {
@@ -841,6 +841,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 					if infCat == cat {
 						catFound = true
 						break L1
+					}
+				}
+			}
+
+			if !catFound {
+				for _, targetAudience := range cmp.Audiences {
+					if audiences.IsAllowed(targetAudience, inf.EmailAddress) {
+						catFound = true
+						break
 					}
 				}
 			}
@@ -945,23 +954,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			if !ok {
 				// There was a whitelist and they're not in it!
 				rejections[cmp.Id] = "CMP_WHITELIST"
-				continue
-			}
-		}
-
-		// Audience check!
-		if len(cmp.Audiences) > 0 {
-			var isInAudience bool
-
-			for _, targetAudience := range cmp.Audiences {
-				if audiences.IsAllowed(targetAudience, inf.EmailAddress) {
-					isInAudience = true
-					break
-				}
-			}
-
-			if !isInAudience {
-				rejections[cmp.Id] = "CMP_AUDIENCE"
 				continue
 			}
 		}

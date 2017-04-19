@@ -143,16 +143,6 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 				return false
 			}
 		}
-
-		// Audience check!
-		if len(cmp.Audiences) > 0 {
-			for _, targetAudience := range cmp.Audiences {
-				if !audiences.IsAllowed(targetAudience, sc.EmailAddress) {
-					// There was an audience target and they're not in it!
-					return false
-				}
-			}
-		}
 	}
 
 	// Optimization
@@ -233,7 +223,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 	}
 
 	// Category Checks
-	if len(cmp.Categories) > 0 {
+	if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 {
 		catFound := false
 	L2:
 		for _, cat := range cmp.Categories {
@@ -241,6 +231,17 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 				if cat == scCat {
 					catFound = true
 					break L2
+				}
+			}
+		}
+
+		// Audience check!
+		if !catFound {
+			for _, targetAudience := range cmp.Audiences {
+				if audiences.IsAllowed(targetAudience, sc.EmailAddress) {
+					// There was an audience target and they're  in it!
+					catFound = true
+					break
 				}
 			}
 		}

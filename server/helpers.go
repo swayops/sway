@@ -176,6 +176,28 @@ func addDeals(cmp *common.Campaign, maxDeals int, s *Server, tx *bolt.Tx) *commo
 	return cmp
 }
 
+func resetDeals(cmp *common.Campaign, maxDeals int, s *Server, tx *bolt.Tx) *common.Campaign {
+	cmp.Deals = make(map[string]*common.Deal)
+	for i := 0; i < maxDeals; i++ {
+		d := &common.Deal{
+			Id:           misc.PseudoUUID(),
+			CampaignId:   cmp.Id,
+			AdvertiserId: cmp.AdvertiserId,
+		}
+
+		shortenedID := common.ShortenID(d, tx, s.Cfg)
+		if shortenedID == "" {
+			s.Alert("Error shortening ID", ErrClick)
+			continue
+		}
+
+		d.ShortenedLink = getClickUrl(shortenedID, s.Cfg)
+		cmp.Deals[d.Id] = d
+	}
+
+	return cmp
+}
+
 func getAdvertiserFees(a *auth.Auth, advId string) (float64, float64) {
 	if g := a.GetAdvertiser(advId); g != nil {
 		return g.DspFee, g.ExchangeFee
@@ -747,7 +769,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			continue
 		}
 
-		if len(cmp.Categories) > 0 {
+		if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 {
 			catFound := false
 		L1:
 			for _, cat := range cmp.Categories {
@@ -758,6 +780,18 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 					}
 				}
 			}
+
+			// Audience check!
+			if !catFound {
+				for _, targetAudience := range cmp.Audiences {
+					if s.Audiences.IsAllowed(targetAudience, inf.EmailAddress) {
+						// There was an audience target and they're in it
+						catFound = true
+						break
+					}
+				}
+			}
+
 			if !catFound {
 				continue
 			}
@@ -799,16 +833,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			continue
 		} else if !cmp.Male && !cmp.Female {
 			continue
-		}
-
-		// Audience check!
-		if len(cmp.Audiences) > 0 {
-			for _, targetAudience := range cmp.Audiences {
-				if !s.Audiences.IsAllowed(targetAudience, inf.EmailAddress) {
-					// There was an audience target and they're not in it!
-					continue
-				}
-			}
 		}
 
 		// MAX YIELD

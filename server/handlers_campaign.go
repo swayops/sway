@@ -588,28 +588,39 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			// Only update if the campaign already has perks..
 			if cmp.Perks.IsCoupon() && upd.Perks.IsCoupon() {
 				// If the saved perk is a coupon.. lets add more!
-				existingCoupons := cmp.Perks.Codes
+				existingCoupons := make(map[string]int)
+				for _, cp := range cmp.Perks.Codes {
+					existingCoupons[cp] += 1
+				}
 
 				// Get all the coupons saved in the deals
 				var inUse bool
 				for _, d := range cmp.Deals {
 					if d.Perk != nil && d.Perk.Code != "" {
-						existingCoupons = append(existingCoupons, d.Perk.Code)
+						existingCoupons[d.Perk.Code] += 1
 						inUse = true
 					}
 				}
 
-				// Only add the codes which are not already saved!
-				// var filteredList []string
-				// for _, newCouponCode := range upd.Perks.Codes {
-				// 	if !common.IsInList(existingCoupons, newCouponCode) {
-				// 		filteredList = append(filteredList, newCouponCode)
-				// 	}
-				// }
+				newCouponMap := make(map[string]int)
+				for _, newCouponCode := range upd.Perks.Codes {
+					newCouponMap[newCouponCode] += 1
+				}
 
-				dealsToAdd := len(upd.Perks.Codes) - len(existingCoupons)
-				if dealsToAdd >= 0 {
-					cmp.Perks.Codes = append(cmp.Perks.Codes, upd.Perks.Codes...)
+				var filteredList []string
+				for cp, newVal := range newCouponMap {
+					oldVal, _ := existingCoupons[cp]
+					if oldVal != newVal && newVal > oldVal {
+						for i := 0; i < newVal-oldVal; i++ {
+							filteredList = append(filteredList, cp)
+						}
+					}
+				}
+
+				dealsToAdd := len(filteredList)
+				if dealsToAdd > 0 {
+					// There are new coupons being added!
+					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
 					cmp.Perks.Count += dealsToAdd
 
 					// Add deals for perks we added
@@ -621,7 +632,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 						return
 					}
 				} else {
-					// Deals are beign taken away!
+					// Coupons are beign taken away since filtered returned nothing!
 
 					if inUse {
 						c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
@@ -632,6 +643,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					cmp.Perks.Count = len(upd.Perks.Codes)
 
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+						resetDeals(&cmp, cmp.Perks.Count, s, tx)
 						return saveCampaign(tx, &cmp, s)
 					}); err != nil {
 						misc.AbortWithErr(c, 500, err)
