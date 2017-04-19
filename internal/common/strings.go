@@ -64,23 +64,27 @@ func Map(s []string) map[string]bool {
 	return out
 }
 
+var wordBoundaries = [255]bool{
+	' ': true,
+	'.': true,
+	',': true,
+	':': true,
+	'@': true,
+	'+': true,
+}
+
 func IsExactMatch(haystack, needle string) bool {
-	haystack = strings.ToLower(haystack)
-	needle = strings.ToLower(needle)
-
-	if idx := strings.Index(haystack, needle); idx >= 0 {
-		var before, after bool
-		if idx-1 < 0 || string(haystack[idx-1]) == " " {
-			before = true
+	haystack, needle = strings.ToLower(haystack), strings.ToLower(needle)
+	if idx := strings.Index(haystack, needle); idx > -1 {
+		if idx != 0 && !wordBoundaries[haystack[idx-1]] {
+			return false
 		}
 
-		if idx+len(needle) >= len(haystack) || string(haystack[idx+len(needle)]) == " " {
-			after = true
+		if end := idx + len(needle); end != len(haystack) && !wordBoundaries[haystack[end]] {
+			return false
 		}
 
-		if before && after {
-			return true
-		}
+		return true
 	}
 	return false
 }
