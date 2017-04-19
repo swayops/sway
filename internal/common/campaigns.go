@@ -188,8 +188,8 @@ func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 	// deal
 	target := filteredSpendable / float64(dealsEmpty)
 
-	// 30% margin left and right of target
-	margin := 0.3 * target
+	// 50% margin left and right of target
+	margin := 0.50 * target
 	return target - margin, target + margin
 }
 
