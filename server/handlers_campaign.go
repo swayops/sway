@@ -591,9 +591,11 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				existingCoupons := cmp.Perks.Codes
 
 				// Get all the coupons saved in the deals
+				var inUse bool
 				for _, d := range cmp.Deals {
 					if d.Perk != nil && d.Perk.Code != "" {
 						existingCoupons = append(existingCoupons, d.Perk.Code)
+						inUse = true
 					}
 				}
 
@@ -613,6 +615,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					// Add deals for perks we added
 					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 						addDeals(&cmp, dealsToAdd, s, tx)
+						return saveCampaign(tx, &cmp, s)
+					}); err != nil {
+						misc.AbortWithErr(c, 500, err)
+						return
+					}
+				} else {
+					// Deals are beign taken away!
+
+					if inUse {
+						c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
+						return
+					}
+
+					cmp.Perks.Codes = upd.Perks.Codes
+					cmp.Perks.Count = len(upd.Perks.Codes)
+
+					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 						return saveCampaign(tx, &cmp, s)
 					}); err != nil {
 						misc.AbortWithErr(c, 500, err)
