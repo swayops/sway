@@ -598,16 +598,16 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				}
 
 				// Only add the codes which are not already saved!
-				var filteredList []string
-				for _, newCouponCode := range upd.Perks.Codes {
-					if !common.IsInList(existingCoupons, newCouponCode) {
-						filteredList = append(filteredList, newCouponCode)
-					}
-				}
+				// var filteredList []string
+				// for _, newCouponCode := range upd.Perks.Codes {
+				// 	if !common.IsInList(existingCoupons, newCouponCode) {
+				// 		filteredList = append(filteredList, newCouponCode)
+				// 	}
+				// }
 
-				dealsToAdd := len(filteredList)
-				if dealsToAdd > 0 {
-					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
+				dealsToAdd := len(upd.Perks.Codes) - len(existingCoupons)
+				if dealsToAdd >= 0 {
+					cmp.Perks.Codes = append(cmp.Perks.Codes, upd.Perks.Codes...)
 					cmp.Perks.Count += dealsToAdd
 
 					// Add deals for perks we added
