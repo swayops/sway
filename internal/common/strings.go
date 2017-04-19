@@ -63,3 +63,24 @@ func Map(s []string) map[string]bool {
 	}
 	return out
 }
+
+func IsExactMatch(haystack, needle string) bool {
+	haystack = strings.ToLower(haystack)
+	needle = strings.ToLower(needle)
+
+	if idx := strings.Index(haystack, needle); idx >= 0 {
+		var before, after bool
+		if idx-1 < 0 || string(haystack[idx-1]) == " " {
+			before = true
+		}
+
+		if idx+len(needle) >= len(haystack) || string(haystack[idx+len(needle)]) == " " {
+			after = true
+		}
+
+		if before && after {
+			return true
+		}
+	}
+	return false
+}
