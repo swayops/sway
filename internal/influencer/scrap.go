@@ -56,12 +56,12 @@ type Scrap struct {
 	YTData    *youtube.YouTube     `json:"ytData,omitempty"`
 }
 
-func (sc *Scrap) GetMatchingCampaign(cmps map[string]common.Campaign, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config) *common.Campaign {
+func (sc *Scrap) GetMatchingCampaign(campaigns map[string]common.Campaign, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config) common.Campaign {
 	// Get all campaigns that match the platform setting for the campaign
-	var considered []*common.Campaign
-	for _, cmp := range cmps {
+	var considered []common.Campaign
+	for _, cmp := range campaigns {
 		if sc.Match(cmp, audiences, budgetDb, cfg, false) {
-			considered = append(considered, &cmp)
+			considered = append(considered, cmp)
 		}
 	}
 
@@ -207,7 +207,9 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 		}
 	}
 
-	if !geo.IsGeoMatch(cmp.Geos, sc.Geo) {
+	output := geo.IsGeoMatch(cmp.Geos, sc.Geo)
+	log.Println(cmp.Id, output)
+	if !output {
 		return false
 	}
 
@@ -343,19 +345,18 @@ func (sc *Scrap) Email(cmp *common.Campaign, spendable float64, cfg *config.Conf
 	return false
 }
 
-func getBiggestBudget(considered []*common.Campaign) *common.Campaign {
+func getBiggestBudget(considered []common.Campaign) (highest common.Campaign) {
 	if len(considered) == 0 {
-		return nil
+		return
 	}
 
-	var highest *common.Campaign
 	for _, cmp := range considered {
-		if highest == nil || cmp.Budget > highest.Budget {
+		if highest.Id == "" || cmp.Budget > highest.Budget {
 			highest = cmp
 		}
 	}
 
-	return highest
+	return
 }
 
 func roundUp(input float64, places int) (newVal float64) {
