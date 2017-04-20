@@ -118,3 +118,48 @@ func scrapStats(s *Server) gin.HandlerFunc {
 		c.JSON(200, stats)
 	}
 }
+
+func getScrapByHandle(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		scraps, err := getAllScraps(s)
+		if err != nil {
+			c.JSON(400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		handle := c.Param("id")
+		platform := c.Param("platform")
+
+		var found *influencer.Scrap
+		for _, sc := range scraps {
+			switch platform {
+			case "instagram":
+				if sc.InstaData != nil && sc.InstaData.UserName == handle {
+					found = sc
+					break
+				}
+			case "facebook":
+				if sc.FBData != nil && sc.FBData.Id == handle {
+					found = sc
+					break
+				}
+			case "youtube":
+				if sc.YTData != nil && sc.YTData.UserName == handle {
+					found = sc
+					break
+				}
+			case "twitter":
+				if sc.TWData != nil && sc.TWData.Id == handle {
+					found = sc
+					break
+				}
+			}
+		}
+
+		c.JSON(200, found)
+	}
+}
