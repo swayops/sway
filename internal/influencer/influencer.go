@@ -990,18 +990,18 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
-			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
-				// NOTE: Skip this for whitelisted campaigns!
+			// if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
+			// 	// NOTE: Skip this for whitelisted campaigns!
 
-				// OPTIMIZATION: Goal is to distribute funds evenly
-				// given what the campaign's influencer goal is and how
-				// many funds we have left
-				min, max := cmp.GetTargetYield(targetDeal.Spendable)
-				if maxYield < min || maxYield > max || maxYield == 0 {
-					rejections[cmp.Id] = "MAX_YIELD"
-					continue
-				}
-			}
+			// 	// OPTIMIZATION: Goal is to distribute funds evenly
+			// 	// given what the campaign's influencer goal is and how
+			// 	// many funds we have left
+			// 	min, max := cmp.GetTargetYield(targetDeal.Spendable)
+			// 	if maxYield < min || maxYield > max || maxYield == 0 {
+			// 		rejections[cmp.Id] = "MAX_YIELD"
+			// 		continue
+			// 	}
+			// }
 		}
 
 		if !query {
