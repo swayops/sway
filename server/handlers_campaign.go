@@ -749,7 +749,8 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				var spendable float64
 				spendable, err = budget.ClearSpendable(s.budgetDb, s.Cfg, &cmp)
 				if err != nil {
-					log.Println("Error clearing out spendable")
+					c.JSON(500, misc.StatusErr(err.Error()))
+					return
 				}
 
 				// If we cleared out some spendable.. lets increment the balance with it
