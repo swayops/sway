@@ -146,6 +146,17 @@ func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) 
 	}
 }
 
+func (cmp *Campaign) GetEmptyDeals() float64 {
+	// Gets number of deals that are empty
+	var empty float64
+	for _, deal := range cmp.Deals {
+		if deal.IsAvailable() {
+			empty += 1
+		}
+	}
+	return empty
+}
+
 func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 	// Lets figure out the number of available deals AND the approximate budget
 	// that is used up
