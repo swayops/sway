@@ -1287,3 +1287,50 @@ func getPerkHandout(d *common.Deal, cmp *common.Campaign) string {
 
 	return templates.Handout.Render(map[string]interface{}{"Name": d.InfluencerName, "Company": cmp.Company, "Task": d.Task, "Instructions": d.GetInstructions(), "Platforms": capitalPlatforms})
 }
+
+type InfCategory struct {
+	Category    string `json:"cat,omitempty"`
+	Influencers int64  `json:"infs,omitempty"`
+	Reach       int64  `json:"reach,omitempty"`
+}
+
+func findCat(haystack []*InfCategory, cat string) *InfCategory {
+	for _, i := range haystack {
+		if i.Category == cat {
+			return i
+		}
+	}
+	return nil
+}
+
+func getAllCategories(s *Server) []*InfCategory {
+	out := make([]*InfCategory, 0, len(common.CATEGORIES))
+	for k, _ := range common.CATEGORIES {
+		out = append(out, &InfCategory{Category: k})
+	}
+
+	for _, inf := range s.auth.Influencers.GetAll() {
+		for _, cat := range inf.Categories {
+			if val := findCat(out, cat); val != nil {
+				val.Influencers += 1
+				val.Reach += inf.GetFollowers()
+			}
+		}
+	}
+
+	// Lets go over scraps now!
+	scraps, err := getAllScraps(s)
+	if err != nil {
+		return out
+	}
+	for _, sc := range scraps {
+		for _, cat := range sc.Categories {
+			if val := findCat(out, cat); val != nil {
+				val.Influencers += 1
+				val.Reach += sc.Followers
+			}
+		}
+	}
+
+	return out
+}

@@ -46,7 +46,7 @@ type Server struct {
 	Campaigns *common.Campaigns
 	Audiences *common.Audiences
 
-	Keywords []string // List of available keywords
+	Categories []*InfCategory // List of available categories and their reach
 
 	LimitSet *common.LimitSet
 
@@ -117,7 +117,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		return nil, err
 	}
 
-	srv.Keywords = getAllKeywords(srv)
+	srv.Categories = getAllCategories(srv)
 
 	go srv.auth.PurgeInvalidTokens()
 
@@ -430,7 +430,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getTargetYield/:id", getTargetYield(srv))
 	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
-	verifyGroup.GET("/getKeywords", getKeywords(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
 
