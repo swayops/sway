@@ -560,6 +560,38 @@ func addKeyword(s *Server) gin.HandlerFunc {
 	}
 }
 
+func skipGeo(s *Server) gin.HandlerFunc {
+	// Manually add kw
+	return func(c *gin.Context) {
+		skip, err := strconv.ParseBool(c.Params.ByName("state"))
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		var (
+			infId = c.Param("influencerId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		inf.SkipGeo = skip
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(infId))
+	}
+}
+
 func setSignature(s *Server) gin.HandlerFunc {
 	// Manually set sig id
 	return func(c *gin.Context) {
