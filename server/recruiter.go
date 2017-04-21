@@ -30,14 +30,16 @@ func emailScraps(srv *Server) (int32, error) {
 		return 0, ErrWait
 	}
 
+	maxEmails := srv.Campaigns.GetAvailableDealCount()
+
 	// Influencers who have signed up
 	signUps := srv.auth.Influencers.GetAllEmails()
 
 	now := int32(time.Now().Unix())
 	var count int32
 	for _, sc := range scraps {
-		if count >= 15 {
-			// Only send 15 emails max per run
+		if count >= maxEmails {
+			// Only send max depending on how many deals available
 			break
 		}
 

@@ -146,9 +146,9 @@ func (cmp *Campaign) AddToTimeline(msg string, unique bool, cfg *config.Config) 
 	}
 }
 
-func (cmp *Campaign) GetEmptyDeals() float64 {
+func (cmp *Campaign) GetEmptyDeals() int32 {
 	// Gets number of deals that are empty
-	var empty float64
+	var empty int32
 	for _, deal := range cmp.Deals {
 		if deal.IsAvailable() {
 			empty += 1
@@ -268,6 +268,16 @@ func (p *Campaigns) GetStore() map[string]Campaign {
 	}
 	p.mux.RUnlock()
 	return store
+}
+
+func (p *Campaigns) GetAvailableDealCount() int32 {
+	var count int32
+	p.mux.RLock()
+	for _, cmp := range p.store {
+		count += cmp.GetEmptyDeals()
+	}
+	p.mux.RUnlock()
+	return count
 }
 
 func (p *Campaigns) Get(id string) (Campaign, bool) {
