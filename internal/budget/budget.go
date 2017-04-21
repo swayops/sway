@@ -37,12 +37,12 @@ var (
 )
 
 type Store struct {
-	Budget    float64   `json:"budget,omitempty"`
-	Pending   float64   `json:"pending,omitempty"`  // If the budget was lowered, this budget will be used next month
-	Leftover  float64   `json:"leftover,omitempty"` // Left over budget from last month
 	Spendable float64   `json:"spendable,omitempty"`
-	Spent     float64   `json:"spent,omitempty"`
+	Spent     float64   `json:"spent,omitempty"`   // Amount spent since last billing
 	Charges   []*Charge `json:"charges,omitempty"` // Used for billing
+
+	SpendHistory map[string]float64 `json:"spendHistory,omitempty"`
+	NextBill     int64              `json:"nextBill,omitempty"` // When will this campaign be charged for again?
 }
 
 type Charge struct {
@@ -141,16 +141,14 @@ func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *comm
 	return nil
 }
 
-func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, leftover, pending float64, billing, isIO bool, cust string) (float64, error) {
-	// Creates budget keys for NEW campaigns and campaigns on the FIRST OF THE MONTH!
-	var spendable float64
+func Create(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
+	// Creates budget keys for NEW campaigns
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		key := getBudgetKey()
-		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
+		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
 
 		var st map[string]*Store
 		if len(b) == 0 {
-			// First save of the month!
+			// First save for this advertiser!
 			st = make(map[string]*Store)
 		} else {
 			if err = json.Unmarshal(b, &st); err != nil {
@@ -158,32 +156,8 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			}
 		}
 
-		monthlyBudget := cmp.Budget
-		if !billing {
-			// TODAY IS NOT BILLING DAY! (first of the month)
-			// This function could be run could be mid-month.. (new campaign)
-			// so we need to calculate what the given
-			// (monthly) budget would be for the days left.
-			monthlyBudget = GetProratedBudget(cmp.Budget)
-			if cfg.Sandbox && !cmp.IsProductBasedBudget() {
-				monthlyBudget = cmp.Budget
-			}
-		} else {
-			// TODAY IS BILLING DAY! (first of the month)
-			// Is there a newBudget (pending) value (i.e. a lower budget)?
-			if pending > 0 {
-				// The budget was indeed lowered last month!
-				// Use this as the new monthly budget
-				monthlyBudget = pending
-			}
-		}
-
-		// NOTE: This will automatically reset Pending too
-		spendable = leftover + monthlyBudget
 		store := &Store{
-			Budget:    cmp.Budget,
-			Leftover:  leftover,
-			Spendable: spendable,
+			Spendable: cmp.Budget,
 		}
 
 		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
@@ -193,7 +167,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 				return ErrCC
 			}
 
-			if err := store.Bill(cust, monthlyBudget, tx, cmp, cfg); err != nil {
+			if err := store.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
 				return err
 			}
 		}
@@ -207,7 +181,7 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			"store":      store,
 			"io":         isIO,
 		}); err != nil {
-			log.Println("Failed to log budget insertion!", cmp.Id, store.Budget, store.Spendable)
+			log.Println("Failed to log budget insertion!", cmp.Id, cmp.Budget, store.Spendable)
 			return err
 		}
 
@@ -215,126 +189,19 @@ func CreateBudgetKey(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, left
 			return err
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
 			return err
 		}
 
 		return nil
 	}); err != nil {
-		return 0, err
+		return err
 	}
-	return spendable, nil
-}
-
-func AdjustBudget(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, newBudget float64, isIO bool, cust string) (float64, error) {
-	st, err := GetStore(db, cfg, "")
-	if err != nil {
-		return 0, err
-	}
-
-	store, ok := st[cmp.Id]
-	if !ok {
-		return 0, ErrNotFound
-	}
-
-	var tbaBudget float64
-
-	oldBudget := store.Budget
-	if newBudget > oldBudget {
-		// If the budget has been INCREASED... increase spendable and fees
-		diffBudget := newBudget - oldBudget
-
-		// The "to be added" value is based on the delta
-		// between old and new budget and how many days are left
-		// So if increase is $30 and the month has 10 days left..
-		// $10 will be added to the budget
-		tbaBudget = GetProratedBudget(diffBudget)
-
-		// Take out margins from spendable
-		// NOTE: Leftover is not added to spendable because it already
-		// should have been added last time billing ran!
-		newStore := &Store{
-			Budget:    oldBudget + tbaBudget,
-			Leftover:  store.Leftover,
-			Spendable: store.Spendable + tbaBudget,
-			Spent:     store.Spent,
-			Charges:   store.Charges,
-		}
-
-		if !isIO {
-			// CHARGE!
-			if cust == "" {
-				return 0, ErrCC
-			}
-
-			if err := db.Update(func(tx *bolt.Tx) (err error) {
-				if err := newStore.Bill(cust, tbaBudget, tx, cmp, cfg); err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
-				return 0, err
-			}
-		}
-
-		st[cmp.Id] = newStore
-
-		// Log the budget increase!
-		if err := cfg.Loggers.Log("stats", map[string]interface{}{
-			"action":      "increase",
-			"campaignId":  cmp.Id,
-			"store":       newStore,
-			"addedBudget": tbaBudget,
-		}); err != nil {
-			log.Println("Failed to log budget decrease!", cmp.Id, tbaBudget, store.Budget, store.Spendable, err)
-			return 0, err
-		}
-
-	} else if newBudget < oldBudget {
-		// If the budget has DECREASED...
-		// Save the budget in pending for when a transfer is made on the 1st
-		newStore := &Store{
-			Budget:    store.Budget,
-			Leftover:  store.Leftover,
-			Spendable: store.Spendable,
-			Spent:     store.Spent,
-			Charges:   store.Charges,
-			Pending:   newBudget,
-		}
-
-		st[cmp.Id] = newStore
-
-		// Log the budget decrease!
-		if err := cfg.Loggers.Log("stats", map[string]interface{}{
-			"action":     "decrease",
-			"campaignId": cmp.Id,
-			"store":      newStore,
-		}); err != nil {
-			log.Println("Failed to log budget decrease!", cmp.Id, store.Pending, store.Budget, store.Spendable, err)
-			return 0, err
-		}
-	}
-
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		var b []byte
-		if b, err = json.Marshal(&st); err != nil {
-			return
-		}
-
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
-			return
-		}
-		return
-	}); err != nil {
-		log.Println("Error when creating budget key", err)
-		return 0, err
-	}
-
-	return tbaBudget, nil
+	return nil
 }
 
 func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
-	st, err := GetStore(db, cfg, "")
+	st, err := GetAdvertiserStore(db, cfg, "")
 	if err != nil {
 		return err
 	}
@@ -344,21 +211,18 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 		return ErrNotFound
 	}
 
-	spendable := GetProratedBudget(cmp.Budget) - store.Spent
+	spendable := cmp.Budget - store.Spent
 	if spendable < 0 {
 		spendable = 0
 	}
 
 	newStore := &Store{
-		Budget:    store.Budget,
-		Leftover:  store.Leftover,
 		Spent:     store.Spent,
 		Charges:   store.Charges,
-		Pending:   store.Pending,
 		Spendable: spendable,
 	}
 
-	if !isIO {
+	if !isIO && !cmp.IsProductBasedBudget() {
 		// CHARGE!
 		if cust == "" {
 			return ErrCC
@@ -382,151 +246,7 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 			return
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
-			return
-		}
-		return
-	}); err != nil {
-		log.Println("Error when saving budget key", err)
-		return err
-	}
-
-	return nil
-}
-
-func Credit(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string, credit float64) error {
-	st, err := GetStore(db, cfg, "")
-	if err != nil {
-		return err
-	}
-
-	store, ok := st[cmp.Id]
-	if !ok {
-		return ErrNotFound
-	}
-
-	spendable := credit + store.Spendable
-	if spendable < 0 {
-		spendable = 0
-	}
-
-	newStore := &Store{
-		Budget:    store.Budget,
-		Leftover:  store.Leftover,
-		Spent:     store.Spent,
-		Charges:   store.Charges,
-		Pending:   store.Pending,
-		Spendable: spendable,
-	}
-
-	if !isIO {
-		// CHARGE!
-		if cust == "" {
-			return ErrCC
-		}
-
-		if err := db.Update(func(tx *bolt.Tx) (err error) {
-			if err := newStore.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
-				return err
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
-	}
-
-	st[cmp.Id] = newStore
-
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		var b []byte
-		if b, err = json.Marshal(&st); err != nil {
-			return
-		}
-
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
-			return
-		}
-		return
-	}); err != nil {
-		log.Println("Error when saving budget key", err)
-		return err
-	}
-
-	return nil
-}
-
-func TransferSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) error {
-	// Transfers spendable from last month to this month
-
-	oldStore, err := GetStore(db, cfg, GetLastMonthBudgetKey())
-	if err != nil {
-		return err
-	}
-
-	cmpStore, ok := oldStore[cmp.Id]
-	if !ok {
-		return ErrNotFound
-	}
-
-	if cmpStore.Spendable == 0 {
-		return ErrNotFound
-	}
-
-	oldSpendable := cmpStore.Spendable
-
-	// Lets give this spendable for thsi month!
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		key := getBudgetKey()
-		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
-
-		var newStore map[string]*Store
-		if len(b) == 0 {
-			// First save of the month!
-			newStore = make(map[string]*Store)
-		} else {
-			if err = json.Unmarshal(b, &newStore); err != nil {
-				return ErrUnmarshal
-			}
-		}
-
-		store := &Store{
-			Budget:    cmp.Budget,
-			Spendable: oldSpendable,
-		}
-
-		newStore[cmp.Id] = store
-
-		if b, err = json.Marshal(&newStore); err != nil {
-			return err
-		}
-
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	// Save everything except the spendable for last month! It's 0 now muahahaha
-	lastMonthStore := &Store{
-		Budget:   cmpStore.Budget,
-		Leftover: cmpStore.Leftover,
-		Spent:    cmpStore.Spent,
-		Charges:  cmpStore.Charges,
-		Pending:  cmpStore.Pending,
-	}
-
-	oldStore[cmp.Id] = lastMonthStore
-
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		var b []byte
-		if b, err = json.Marshal(&oldStore); err != nil {
-			return
-		}
-
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, GetLastMonthBudgetKey(), b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
 			return
 		}
 		return
@@ -539,7 +259,7 @@ func TransferSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) er
 }
 
 func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (float64, error) {
-	st, err := GetStore(db, cfg, "")
+	st, err := GetAdvertiserStore(db, cfg, cmp.AdvertiserId)
 	if err != nil {
 		return 0, err
 	}
@@ -551,11 +271,8 @@ func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (floa
 
 	// Save everything except the spendable! It's 0 now muahahaha
 	newStore := &Store{
-		Budget:   store.Budget,
-		Leftover: store.Leftover,
-		Spent:    store.Spent,
-		Charges:  store.Charges,
-		Pending:  store.Pending,
+		Spent:   store.Spent,
+		Charges: store.Charges,
 	}
 
 	st[cmp.Id] = newStore
@@ -566,7 +283,7 @@ func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (floa
 			return
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, getBudgetKey(), b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
 			return
 		}
 		return
@@ -578,8 +295,8 @@ func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (floa
 	return store.Spendable, nil
 }
 
-func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid string, forceDate string) (*Store, error) {
-	st, err := GetStore(db, cfg, forceDate)
+func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid, advid string) (*Store, error) {
+	st, err := GetAdvertiserStore(db, cfg, advid)
 	if err != nil {
 		return nil, err
 	}
@@ -589,17 +306,36 @@ func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid string, forceDate string
 	return nil, ErrNotFound
 }
 
-func GetStore(db *bolt.DB, cfg *config.Config, forceDate string) (map[string]*Store, error) {
+func GetStore(db *bolt.DB, cfg *config.Config) (map[string]*Store, error) {
+	// Gets budget store keyed off of Campaign ID for a given month
+	var store map[string]*Store
+	if err := db.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte(cfg.Bucket.Budget)).ForEach(func(k, v []byte) (err error) {
+			var st map[string]*Store
+			if err := json.Unmarshal(v, &st); err != nil {
+				log.Println("error when unmarshalling budget", string(v))
+				return nil
+			}
+
+			for k, v := range st {
+				store[k] = v
+			}
+			return
+		})
+		return nil
+	}); err != nil {
+		return store, err
+	}
+
+	return store, nil
+}
+
+func GetAdvertiserStore(db *bolt.DB, cfg *config.Config, advID string) (map[string]*Store, error) {
 	// Gets budget store keyed off of Campaign ID for a given month
 	var st map[string]*Store
 
 	if err := db.View(func(tx *bolt.Tx) (err error) {
-		key := forceDate
-		if key == "" {
-			key = getBudgetKey()
-		}
-
-		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
+		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(advID))
 		if err = json.Unmarshal(b, &st); err != nil {
 			return ErrUnmarshal
 		}
@@ -693,10 +429,9 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	return store, spentDelta, m
 }
 
-func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error {
+func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cmp *common.Campaign) error {
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		key := getBudgetKey()
-		b := tx.Bucket([]byte(cfg.BudgetBuckets.Budget)).Get([]byte(key))
+		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
 
 		var st map[string]*Store
 		if len(b) == 0 {
@@ -708,12 +443,12 @@ func SaveStore(db *bolt.DB, cfg *config.Config, store *Store, cid string) error 
 			}
 		}
 
-		st[cid] = store
+		st[cmp.Id] = store
 		if b, err = json.Marshal(&st); err != nil {
 			return
 		}
 
-		if err = misc.PutBucketBytes(tx, cfg.BudgetBuckets.Budget, key, b); err != nil {
+		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
 			return
 		}
 

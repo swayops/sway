@@ -49,24 +49,5 @@ func dumpDatabases(s *Server) gin.HandlerFunc {
 
 			return
 		})
-
-		s.budgetDb.View(func(tx *bolt.Tx) (err error) {
-			hdr := &tar.Header{
-				Name: "data/budget.db",
-				Mode: 0600,
-				Size: tx.Size(),
-			}
-
-			if err = tw.WriteHeader(hdr); err != nil {
-				log.Printf("error dumping budget.db: %v", err)
-				return
-			}
-			if _, err = tx.WriteTo(tw); err != nil {
-				log.Printf("error dumping budget.db: %v", err)
-				return
-			}
-
-			return
-		})
 	}
 }

@@ -961,7 +961,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Fill in and check available spendable
-		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
+		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, targetDeal.AdvertiserId)
 		if store.IsClosed(&cmp) {
 			// if !query {
 			// 	// Influencer may query for their assigned deal.. but we don't want to

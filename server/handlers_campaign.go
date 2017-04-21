@@ -197,15 +197,14 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if cmp.Status {
-				var spendable float64
 				// Create their budget key IF the campaign is on
 				// NOTE: Create budget key requires cmp.Id be set
-				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
+				if err = budget.Create(s.db, s.Cfg, &cmp, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
 					return
 				}
 
-				addDealsToCampaign(&cmp, s, tx, spendable)
+				addDealsToCampaign(&cmp, s, tx, cmp.Budget)
 
 				// Lets add to timeline!
 				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
@@ -332,7 +331,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						common.SetAttribute(mCmp.Timeline)
 					}
 
-					store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+					store, _ := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, "")
 					if store != nil {
 						mCmp.Spent = store.Spent
 						mCmp.Remaining = store.Spendable
@@ -551,20 +550,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			var spendable float64
-			if spendable, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
-				log.Println("Error creating budget key!", err)
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			if spendable > 0 {
-				s.db.Update(func(tx *bolt.Tx) error {
-					addDealsToCampaign(&cmp, s, tx, spendable)
-					return nil
-				})
-			}
-
 			cmp.Budget = *upd.Budget
 		}
 
@@ -702,26 +687,25 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			if *upd.Status && cmp.Status != *upd.Status {
 				// If the campaign has been toggled to on..
-				store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+				store, _ := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, "")
 				if store == nil {
 					// This means the campaign has no store.. cmp was craeted with a status of
 					// off so a budget key was NOT created.. so we have to create it now!
 					// NOTE: Create budget key requires cmp.Id be set
 
-					var spendable float64
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
+					if err = budget.Create(s.db, s.Cfg, &cmp, ag.IsIO, adv.Customer); err != nil {
 						s.Alert("Error initializing budget key for "+adv.Name, err)
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}
 
-					addDealsToCampaign(&cmp, s, tx, spendable)
+					addDealsToCampaign(&cmp, s, tx, cmp.Budget)
 
 				} else {
 					// This campaign does have a store.. so it was active sometime this month.
 					// Lets just give it the spendable we must have taken from it when it turned
 					// off
-					err = budget.ReplenishSpendable(s.budgetDb, s.Cfg, &cmp, ag.IsIO, adv.Customer)
+					err = budget.ReplenishSpendable(s.db, s.Cfg, &cmp, ag.IsIO, adv.Customer)
 					if err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
@@ -747,7 +731,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// If the status has been toggled to off..
 				// Clear out the spendable from the DB and add that value to the balance
 				var spendable float64
-				spendable, err = budget.ClearSpendable(s.budgetDb, s.Cfg, &cmp)
+				spendable, err = budget.ClearSpendable(s.db, s.Cfg, &cmp)
 				if err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
 					return
@@ -755,7 +739,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 				// If we cleared out some spendable.. lets increment the balance with it
 				if spendable > 0 {
-					if err = s.budgetDb.Update(func(tx *bolt.Tx) (err error) {
+					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 						return budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg)
 					}); err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))

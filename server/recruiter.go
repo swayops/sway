@@ -46,7 +46,7 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
-		cmp := sc.GetMatchingCampaign(cmps, srv.Audiences, srv.budgetDb, srv.Cfg)
+		cmp := sc.GetMatchingCampaign(cmps, srv.Audiences, srv.db, srv.Cfg)
 		if cmp.Id == "" {
 			continue
 		}
@@ -61,7 +61,7 @@ func emailScraps(srv *Server) (int32, error) {
 		}
 
 		var spendable float64
-		store, err := budget.GetBudgetInfo(srv.budgetDb, srv.Cfg, cmp.Id, "")
+		store, err := budget.GetBudgetInfo(srv.db, srv.Cfg, cmp.Id, "")
 		// Only email them campaigns with more than $5
 		if err != nil || store == nil || (store.Spendable < 5 && !cmp.IsProductBasedBudget()) {
 			if srv.Cfg.Sandbox {

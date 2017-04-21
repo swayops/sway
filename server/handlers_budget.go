@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -29,7 +28,13 @@ func getCampaignStore(s *Server) gin.HandlerFunc {
 
 func getBudgetInfo(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, c.Param("id"), "")
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, misc.StatusErr(ErrCampaign.Error()))
+			return
+		}
+
+		store, err := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -40,7 +45,7 @@ func getBudgetInfo(s *Server) gin.HandlerFunc {
 
 func getStore(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		store, err := budget.GetStore(s.budgetDb, s.Cfg, "")
+		store, err := budget.GetStore(s.db, s.Cfg)
 		if err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -57,17 +62,6 @@ func getStore(s *Server) gin.HandlerFunc {
 		} else {
 			c.JSON(200, store)
 		}
-	}
-}
-
-func getLastMonthsStore(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		store, err := budget.GetStore(s.budgetDb, s.Cfg, budget.GetLastMonthBudgetKey())
-		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-		c.JSON(200, store)
 	}
 }
 
@@ -103,7 +97,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 		}
 
 		// Now that it's a new month.. get last month's budget store
-		store, err := budget.GetStore(s.budgetDb, s.Cfg, key)
+		store, err := budget.GetStore(s.db, s.Cfg)
 		if err != nil || len(store) == 0 {
 			// Insert file informant check
 			c.JSON(500, misc.StatusErr(ErrEmptyStore))
@@ -425,22 +419,10 @@ func runBilling(s *Server) gin.HandlerFunc {
 				// It will also look to check if there's a pending (lowered)
 				// budget that was saved to db last month.. and that should be
 				// used now
-				var (
-					leftover, pending float64
-				)
-
-				store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, key)
-				if err == nil && store != nil {
-					leftover = store.Spendable
-					pending = store.Pending
-				} else {
-					log.Println("Last months store not found for", cmp.Id)
-				}
 
 				// Create their budget key for this month in the DB
 				// NOTE: last month's leftover spendable will be carried over
-				var spendable float64
-				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, leftover, pending, true, ag.IsIO, adv.Customer); err != nil {
+				if err = budget.Create(s.db, s.Cfg, cmp,ag.IsIO, adv.Customer); err != nil {
 					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
 					// Don't return because an agency that switched from IO to CC that has
 					// advertisers with no CC will always error here.. just alert!
@@ -448,7 +430,7 @@ func runBilling(s *Server) gin.HandlerFunc {
 				}
 
 				// Add fresh deals for this month
-				addDealsToCampaign(cmp, s, tx, spendable)
+				addDealsToCampaign(cmp, s, tx, cmp.Budget)
 
 				if err = saveCampaign(tx, cmp, s); err != nil {
 					log.Println("Error saving campaign for billing", err)
@@ -463,167 +445,6 @@ func runBilling(s *Server) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, misc.StatusOK(""))
-	}
-}
-
-func creditValue(s *Server) gin.HandlerFunc {
-	// Credits a campaign with a certain value (determined by query param
-	// whether the campaign should be charged or not)
-	return func(c *gin.Context) {
-		if !isSecureAdmin(c, s) {
-			return
-		}
-
-		cid := c.Param("campaignId")
-		if cid == "" {
-			c.JSON(500, misc.StatusErr("invalid campaign id"))
-			return
-		}
-
-		cmp := common.GetCampaign(cid, s.db, s.Cfg)
-		if cmp == nil {
-			c.JSON(500, ErrCampaign)
-			return
-		}
-
-		value, err := strconv.ParseFloat(c.Param("value"), 64)
-		if err != nil || value == 0 {
-			c.JSON(500, misc.StatusErr("invalid value"))
-			return
-		}
-
-		credit, err := strconv.ParseBool(c.Param("credit"))
-		if err != nil {
-			c.JSON(500, misc.StatusErr("invalid credit"))
-			return
-		}
-
-		// Lets make sure this campaign has an active advertiser, active agency,
-		// is set to on, is approved and has a budget!
-		if !cmp.Status {
-			c.JSON(500, misc.StatusErr("campaign is off"))
-			return
-		}
-
-		if cmp.Approved == 0 {
-			c.JSON(500, misc.StatusErr("Campaign is not approved "+cmp.Id))
-			return
-		}
-
-		if cmp.Budget == 0 {
-			c.JSON(500, misc.StatusErr("Campaign has no budget "+cmp.Id))
-			return
-		}
-
-		var (
-			ag  *auth.AdAgency
-			adv *auth.Advertiser
-		)
-
-		if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
-			c.JSON(500, misc.StatusErr("invalid ad agency"))
-			return
-		}
-
-		if !ag.Status {
-			c.JSON(500, misc.StatusErr("invalid ad agency"))
-			return
-		}
-
-		if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
-			c.JSON(500, misc.StatusErr("invalid advertiser"))
-			return
-		}
-
-		if !adv.Status {
-			c.JSON(500, misc.StatusErr("invalid advertiser"))
-			return
-		}
-
-		// Lets make sure they have an active subscription!
-		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
-		if err != nil {
-			s.Alert("Stripe subscription lookup error for "+adv.ID, err)
-			c.JSON(500, misc.StatusErr("invalid susbcription"))
-			return
-		}
-
-		if !allowed {
-			c.JSON(500, misc.StatusErr("invalid susbcription"))
-			return
-		}
-
-		if err := s.db.Update(func(tx *bolt.Tx) error {
-			store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-			if err == nil && store != nil {
-				// This campaign has a budget for this month! just charge budget
-
-				// IsIO replaced by incoming CREDIT value so the admin can decide whether
-				// they want to charge or not
-				if err := budget.Credit(s.budgetDb, s.Cfg, cmp, credit, adv.Customer, value); err != nil {
-					s.Alert("Error charging budget key while billing for "+cmp.Id, err)
-					return err
-				}
-
-				// We just charged for budget so lets add deals for that
-				addDealsToCampaign(cmp, s, tx, cmp.Budget)
-			} else {
-				// This campaign does not have a budget for this month. Create key!
-
-				var spendable float64
-				// Sending pending as VALUE so that the client gets credited/charged with the
-				// incoming value
-
-				// IsIO replaced by incoming CREDIT value so the admin can decide whether
-				// they want to charge or not
-				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, cmp, 0, value, true, credit, adv.Customer); err != nil {
-					s.Alert("Error initializing budget key while billing for "+cmp.Id, err)
-					return err
-				}
-
-				// Add fresh deals for this month
-				addDealsToCampaign(cmp, s, tx, spendable)
-			}
-
-			if err = saveCampaign(tx, cmp, s); err != nil {
-				log.Println("Error saving campaign for billing", err)
-				return err
-			}
-			return nil
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-		c.JSON(200, misc.StatusOK(""))
-	}
-}
-
-func transferSpendable(s *Server) gin.HandlerFunc {
-	// Transfers spendable from last month to this month
-	return func(c *gin.Context) {
-		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
-		if cmp == nil {
-			c.JSON(500, ErrCampaign)
-			return
-		}
-
-		if err := budget.TransferSpendable(s.budgetDb, s.Cfg, cmp); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		c.JSON(200, misc.StatusOK(cmp.Id))
-	}
-}
-
-func getProratedBudget(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		value, err := strconv.ParseFloat(c.Param("budget"), 64)
-		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
-			return
-		}
-		c.JSON(200, gin.H{"budget": budget.GetProratedBudget(value)})
 	}
 }
 
@@ -673,7 +494,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 		}
 		info.History = history
 
-		s.budgetDb.View(func(tx *bolt.Tx) error {
+		s.db.View(func(tx *bolt.Tx) error {
 			info.InactiveBalance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
 			return nil
 		})
@@ -702,7 +523,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 		// Add up all spent and spendable values for the advertiser to
 		// determine active budget
 		for _, cmp := range campaigns {
-			budg, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp, "")
+			budg, err := budget.GetBudgetInfo(s.db, s.Cfg, cmp, "")
 			if err != nil {
 				log.Println("Err retrieving budget", cmp)
 				continue
@@ -745,7 +566,7 @@ func assignLikelyEarnings(s *Server) gin.HandlerFunc {
 func getBalance(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var balance float64
-		if err := s.budgetDb.View(func(tx *bolt.Tx) (err error) {
+		if err := s.db.View(func(tx *bolt.Tx) (err error) {
 			balance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
 			return nil
 		}); err != nil {
@@ -769,7 +590,7 @@ func getTargetYield(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+		store, err := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, "")
 		if store == nil || err != nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return

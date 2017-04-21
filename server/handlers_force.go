@@ -157,7 +157,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, campaignId, "")
+		store, _ := budget.GetBudgetInfo(s.db, s.Cfg, campaignId, "")
 		if store.IsClosed(&cmp) {
 			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
 			return

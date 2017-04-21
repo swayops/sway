@@ -147,7 +147,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 
 	// Optimization
 	// if spendable == 0 {
-	// 	store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
+	// 	store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, cmp.AdvertiserId)
 	// 	if store.IsClosed(&cmp) {
 	// 		return false
 	// 	}
