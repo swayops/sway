@@ -393,49 +393,39 @@ type SimpleActive struct {
 	Twitter   string `json:"twitterUsername,omitempty"`
 	YouTube   string `json:"youtubeUsername,omitempty"`
 
+	Name  string `json:"name,omitempty"`
 	Email string `json:"email,omitempty"`
 }
 
 func getAllActiveDeals(s *Server) gin.HandlerFunc {
 	// Retrieves all active deals in the system
 	return func(c *gin.Context) {
-		if c.Query("simple") != "" {
-			var deals []*SimpleActive
-			for _, cmp := range s.Campaigns.GetStore() {
-				for _, deal := range cmp.Deals {
-					if deal.IsActive() {
-						inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
-						if !ok {
-							continue
-						}
-
-						infClean := inf.Clean()
-
-						deals = append(deals, &SimpleActive{
-							CampaignId:   cmp.Id,
-							InfluencerId: deal.InfluencerId,
-							Platforms:    deal.Platforms,
-							Facebook:     infClean.FbUsername,
-							Instagram:    infClean.InstaUsername,
-							Twitter:      infClean.TwitterUsername,
-							YouTube:      infClean.YTUsername,
-							Email:        infClean.EmailAddress,
-						})
+		var deals []*SimpleActive
+		for _, cmp := range s.Campaigns.GetStore() {
+			for _, deal := range cmp.Deals {
+				if deal.IsActive() {
+					inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+					if !ok {
+						continue
 					}
+
+					infClean := inf.Clean()
+
+					deals = append(deals, &SimpleActive{
+						CampaignId:   cmp.Id,
+						InfluencerId: deal.InfluencerId,
+						Platforms:    deal.Platforms,
+						Facebook:     infClean.FbUsername,
+						Instagram:    infClean.InstaUsername,
+						Twitter:      infClean.TwitterUsername,
+						YouTube:      infClean.YTUsername,
+						Email:        infClean.EmailAddress,
+						Name:         infClean.Name,
+					})
 				}
 			}
-			c.JSON(200, deals)
-		} else {
-			var deals []*common.Deal
-			for _, cmp := range s.Campaigns.GetStore() {
-				for _, deal := range cmp.Deals {
-					if deal.IsActive() {
-						deals = append(deals, deal)
-					}
-				}
-			}
-			c.JSON(200, deals)
 		}
+		c.JSON(200, deals)
 	}
 }
 
