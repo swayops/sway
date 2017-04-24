@@ -434,6 +434,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
+	verifyGroup.GET("/dirtyHack/:id", dirtyHack(srv))
 
 	r.Static("images", srv.Cfg.ImagesDir)
 
