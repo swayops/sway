@@ -112,11 +112,10 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Notify advertisers that billing is about to run in 5 days!
-	billingNotifyTicker := time.NewTicker(24 * time.Hour)
+	billingTicker := time.NewTicker(24 * time.Hour)
 	go func() {
-		for range billingNotifyTicker.C {
-			if err := billingNotify(srv); err != nil {
+		for range billingTicker.C {
+			if err := billing(srv); err != nil {
 				srv.Alert("Err running billing notifier", err)
 			}
 		}
@@ -324,7 +323,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 	// Iterate over all active campaigns
 	for _, cmp := range s.Campaigns.GetStore() {
 		// Get this month's store for this campaign
-		store, err := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
+		store, err := budget.GetCampaignStore(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || store == nil {
 			if !s.Cfg.Sandbox {
 				log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))

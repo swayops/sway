@@ -141,6 +141,85 @@ func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *comm
 	return nil
 }
 
+func RemoteBill(db *bolt.DB, cfg *config.Config, cid, advid string, isIO bool) error {
+	// Creates budget keys for NEW campaigns
+	if err := db.Update(func(tx *bolt.Tx) (err error) {
+		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
+
+		var st map[string]*Store
+		if len(b) == 0 {
+			// First save for this advertiser!
+			st = make(map[string]*Store)
+		} else {
+			if err = json.Unmarshal(b, &st); err != nil {
+				return ErrUnmarshal
+			}
+		}
+
+		oldStore, ok := st[cid]
+		if !ok {
+			return ErrNotFound
+		}
+
+		// Take today's date and add a month
+		now := time.Now()
+		nextBill := now.AddDate(0, 1, 0)
+
+		if len(oldStore.SpendHistory) == 0 {
+			oldStore.SpendHistory = make(map[string]float64)
+		}
+
+		oldStore.SpendHistory[GetSpendHistoryKey()] = oldStore.Spent
+
+		store := &Store{
+			Spendable: cmp.Budget + oldStore.Spendable,
+			Spent:     0,
+			Charges:   oldStore.Charges,
+
+			NextBill:     nextBill.Unix(),
+			SpendHistory: oldStore.SpendHistory,
+		}
+
+		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
+		if !isIO && !cmp.IsProductBasedBudget() {
+			// CHARGE!
+			if cust == "" {
+				return ErrCC
+			}
+
+			if err := store.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
+				return err
+			}
+		}
+
+		st[cmp.Id] = store
+
+		// Log the budget!
+		if err := cfg.Loggers.Log("stats", map[string]interface{}{
+			"action":     "refresh",
+			"campaignId": cmp.Id,
+			"store":      store,
+			"io":         isIO,
+		}); err != nil {
+			log.Println("Failed to log budget insertion!", cmp.Id, cmp.Budget, store.Spendable)
+			return err
+		}
+
+		if b, err = json.Marshal(&st); err != nil {
+			return err
+		}
+
+		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
 func Create(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
 	// Creates budget keys for NEW campaigns
 	if err := db.Update(func(tx *bolt.Tx) (err error) {
@@ -156,8 +235,13 @@ func Create(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cu
 			}
 		}
 
+		// Take today's date and add a month
+		now := time.Now()
+		nextBill := now.AddDate(0, 1, 0)
+
 		store := &Store{
 			Spendable: cmp.Budget,
+			NextBill:  nextBill.Unix(),
 		}
 
 		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
@@ -295,7 +379,7 @@ func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (floa
 	return store.Spendable, nil
 }
 
-func GetBudgetInfo(db *bolt.DB, cfg *config.Config, cid, advid string) (*Store, error) {
+func GetCampaignStore(db *bolt.DB, cfg *config.Config, cid, advid string) (*Store, error) {
 	st, err := GetAdvertiserStore(db, cfg, advid)
 	if err != nil {
 		return nil, err

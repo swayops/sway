@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"net/http"
@@ -134,6 +135,18 @@ func WithinLast(timestamp, hours int32) bool {
 	// Is the timestamp within the last X hours?
 	now := int32(time.Now().Unix())
 	if timestamp >= (now - (hours * hour)) {
+		return true
+	}
+	return false
+}
+
+func WithinHours(timestamp, min, max int32) bool {
+	// Is the timestamp within the next min to max hours?
+	now := int32(time.Now().Unix())
+	minTs := now + (min * hour)
+	maxTs := now + (max * hour)
+	fmt.Println(minTs, maxTs)
+	if timestamp >= minTs && timestamp < maxTs {
 		return true
 	}
 	return false

@@ -1,15 +1,17 @@
 package budget
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 const format = "01-2006"
 
-func getBudgetKey() string {
-	return time.Now().UTC().Format(format)
-}
+func GetSpendHistoryKey() string {
+	now := time.Now()
+	last := now.AddDate(0, -1, 0)
 
-func GetCurrentBudgetKey() string {
-	return getBudgetKey()
+	return fmt.Sprintf("%s-%s", last.Format("20060102"), now.Format("20060102"))
 }
 
 func GetLastMonthBudgetKey() string {
