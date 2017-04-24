@@ -360,16 +360,9 @@ func TestNewInfluencer(t *testing.T) {
 		return
 	}
 
-	if len(cats) == 0 {
+	if len(cats) != len(common.CATEGORIES) {
 		t.Fatal("No categories!")
 		return
-	}
-
-	for _, i := range cats {
-		if i.Category == "business" && i.Influencers != 2 && i.Reach == 0 {
-			t.Fatal("Unexpected category count!")
-			return
-		}
 	}
 
 	// this decreases the user id counter since the user id didn't increase in the
