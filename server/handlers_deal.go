@@ -392,6 +392,8 @@ type SimpleActive struct {
 	Instagram string `json:"instaUsername,omitempty"`
 	Twitter   string `json:"twitterUsername,omitempty"`
 	YouTube   string `json:"youtubeUsername,omitempty"`
+
+	Email string `json:"email,omitempty"`
 }
 
 func getAllActiveDeals(s *Server) gin.HandlerFunc {
@@ -417,6 +419,7 @@ func getAllActiveDeals(s *Server) gin.HandlerFunc {
 							Instagram:    infClean.InstaUsername,
 							Twitter:      infClean.TwitterUsername,
 							YouTube:      infClean.YTUsername,
+							Email:        infClean.EmailAddress,
 						})
 					}
 				}
