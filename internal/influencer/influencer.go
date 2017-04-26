@@ -1346,6 +1346,57 @@ func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) erro
 	return nil
 }
 
+func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	perks := "N/A"
+	instructions := "N/A"
+	coupon := "N/A"
+	hasPerks := false
+	hasCoupon := false
+
+	if cmp.Perks != nil {
+		hasPerks = true
+		perks = cmp.Perks.Name
+		if cmp.Perks.Instructions != "" {
+			instructions = cmp.Perks.Instructions
+		}
+		if deal.Perk.Code != "" {
+			coupon = deal.Perk.Code
+			hasCoupon = true
+		}
+	}
+
+	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal instructions",
+		"id":   inf.Id,
+		"cids": []string{cmp.Id},
+	}); err != nil {
+		log.Println("Failed to log deal instructions!", inf.Id, cmp.Id)
+	}
+
+	return nil
+}
+
 func (inf *Influencer) DealRejection(reason, postURL string, deal *common.Deal, cfg *config.Config) error {
 	if cfg.Sandbox || reason == "" {
 		return nil

@@ -207,9 +207,8 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 		// Assign the deal & Save the Campaign
 		// DEALS are located in the INFLUENCER struct AND the CAMPAIGN struct
+		var cmp *common.Campaign
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var cmp *common.Campaign
-
 			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 			if err != nil {
 				return err
@@ -320,6 +319,14 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
 		}
+
+		go func() {
+			// Lets send them deal instructions if there are any!
+			if cmp != nil && foundDeal != nil {
+				s.Notify("Deal accepted!", fmt.Sprintf("%s just accepted a deal for %s", inf.Name, cmp.Name))
+				assignDealEmail(s, cmp, foundDeal, &inf)
+			}
+		}()
 
 		c.JSON(200, foundDeal)
 	}
