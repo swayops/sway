@@ -1391,6 +1391,12 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		return ErrEmail
 	}
 
+	resp, err = cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
 	if err := cfg.Loggers.Log("email", map[string]interface{}{
 		"tag":  "deal instructions",
 		"id":   inf.Id,
