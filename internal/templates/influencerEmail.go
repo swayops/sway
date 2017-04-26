@@ -297,7 +297,10 @@ const dealInstructionsEmail = `
 	    	<td align="left" valign="left">
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
 		    	<b>Task description:</b> {{Task}} <br/>
+		    	<b>Please post to ONLY one of the following networks:</b> {{Networks}} <br/>
+
 		    	{{#HasPerks}}
+					<br/>
 			    	<b>Perks:</b> {{Perks}} <br/>
 		 		{{/HasPerks}}
 
@@ -305,6 +308,10 @@ const dealInstructionsEmail = `
 			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
 			 		<b>Instructions:</b> {{Instructions}} <br/>
 		 		{{/HasCoupon}}
+		 		<br/>
+		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
+				<b>Hashtags to do:</b> {{Tags}}<br/>
+				<b>Mentions to do:</b> {{Mentions}}<br/>
 	    	</td>
 	    </tr>
 		</table>

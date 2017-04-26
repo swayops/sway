@@ -1379,7 +1379,12 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		}
 	}
 
-	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon})
+	tags := []string{"#ad"}
+	for _, cmpTag := range deal.Tags {
+		tags = append(tags, "#"+cmpTag)
+	}
+
+	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon})
 	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
