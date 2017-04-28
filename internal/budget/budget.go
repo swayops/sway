@@ -64,24 +64,6 @@ func (st *Store) AddCharge(amount, fromBalance float64) {
 	}
 }
 
-func (st *Store) GetDelta() float64 {
-	// Goes over spend values for the month and compares them with the charges.
-	// Returns the dollar value for the amount that was SPENT but not CHARGED
-	var charged float64
-	for _, charge := range st.Charges {
-		// Lets include the balance used AND the amount charged
-		// Both are considered valid money sources before IO kicks in
-		charged += charge.Amount + charge.FromBalance
-	}
-
-	delta := st.Spent - charged
-	if delta < 0 {
-		return 0
-	}
-
-	return delta
-}
-
 func (st *Store) IsClosed(cmp *common.Campaign) bool {
 	// Is the store closed for business?
 	return st == nil || (st.Spendable == 0 && !cmp.IsProductBasedBudget())
@@ -141,151 +123,147 @@ func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *comm
 	return nil
 }
 
-func RemoteBill(db *bolt.DB, cfg *config.Config, cid, advid string, isIO bool) error {
+func RemoteBill(tx *bolt.Tx, cfg *config.Config, cmp *common.Campaign, cust string, isIO bool) error {
 	// Creates budget keys for NEW campaigns
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
+	b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
 
-		var st map[string]*Store
-		if len(b) == 0 {
-			// First save for this advertiser!
-			st = make(map[string]*Store)
-		} else {
-			if err = json.Unmarshal(b, &st); err != nil {
-				return ErrUnmarshal
-			}
+	var (
+		st  map[string]*Store
+		err error
+	)
+	if len(b) == 0 {
+		// First save for this advertiser!
+		st = make(map[string]*Store)
+	} else {
+		if err = json.Unmarshal(b, &st); err != nil {
+			return ErrUnmarshal
+		}
+	}
+
+	oldStore, ok := st[cmp.Id]
+	if !ok {
+		return ErrNotFound
+	}
+
+	// Take today's date and add a month
+	now := time.Now()
+	nextBill := now.AddDate(0, 1, 0)
+
+	if len(oldStore.SpendHistory) == 0 {
+		oldStore.SpendHistory = make(map[string]float64)
+	}
+
+	oldStore.SpendHistory[GetSpendHistoryKey()] = oldStore.Spent
+
+	store := &Store{
+		Spendable: cmp.Budget + oldStore.Spendable,
+		Spent:     0,
+		Charges:   oldStore.Charges,
+
+		NextBill:     nextBill.Unix(),
+		SpendHistory: oldStore.SpendHistory,
+	}
+
+	// Charge the campaign for budget unless it's an IO campaign OR product based budget!
+	if !isIO && !cmp.IsProductBasedBudget() {
+		// CHARGE!
+		if cust == "" {
+			return ErrCC
 		}
 
-		oldStore, ok := st[cid]
-		if !ok {
-			return ErrNotFound
-		}
-
-		// Take today's date and add a month
-		now := time.Now()
-		nextBill := now.AddDate(0, 1, 0)
-
-		if len(oldStore.SpendHistory) == 0 {
-			oldStore.SpendHistory = make(map[string]float64)
-		}
-
-		oldStore.SpendHistory[GetSpendHistoryKey()] = oldStore.Spent
-
-		store := &Store{
-			Spendable: cmp.Budget + oldStore.Spendable,
-			Spent:     0,
-			Charges:   oldStore.Charges,
-
-			NextBill:     nextBill.Unix(),
-			SpendHistory: oldStore.SpendHistory,
-		}
-
-		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
-		if !isIO && !cmp.IsProductBasedBudget() {
-			// CHARGE!
-			if cust == "" {
-				return ErrCC
-			}
-
-			if err := store.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
-				return err
-			}
-		}
-
-		st[cmp.Id] = store
-
-		// Log the budget!
-		if err := cfg.Loggers.Log("stats", map[string]interface{}{
-			"action":     "refresh",
-			"campaignId": cmp.Id,
-			"store":      store,
-			"io":         isIO,
-		}); err != nil {
-			log.Println("Failed to log budget insertion!", cmp.Id, cmp.Budget, store.Spendable)
+		if err := store.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
 			return err
 		}
+	}
 
-		if b, err = json.Marshal(&st); err != nil {
-			return err
-		}
+	st[cmp.Id] = store
 
-		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
-			return err
-		}
-
-		return nil
+	// Log the budget!
+	if err := cfg.Loggers.Log("stats", map[string]interface{}{
+		"action":     "refresh",
+		"campaignId": cmp.Id,
+		"store":      store,
+		"io":         isIO,
 	}); err != nil {
+		log.Println("Failed to log budget insertion!", cmp.Id, cmp.Budget, store.Spendable)
 		return err
 	}
+
+	if b, err = json.Marshal(&st); err != nil {
+		return err
+	}
+
+	if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func Create(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
+func Create(tx *bolt.Tx, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
 	// Creates budget keys for NEW campaigns
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
+	b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(cmp.AdvertiserId))
 
-		var st map[string]*Store
-		if len(b) == 0 {
-			// First save for this advertiser!
-			st = make(map[string]*Store)
-		} else {
-			if err = json.Unmarshal(b, &st); err != nil {
-				return ErrUnmarshal
-			}
+	var (
+		st  map[string]*Store
+		err error
+	)
+	if len(b) == 0 {
+		// First save for this advertiser!
+		st = make(map[string]*Store)
+	} else {
+		if err = json.Unmarshal(b, &st); err != nil {
+			return ErrUnmarshal
+		}
+	}
+
+	// Take today's date and add a month
+	now := time.Now()
+	nextBill := now.AddDate(0, 1, 0)
+
+	store := &Store{
+		Spendable: cmp.Budget,
+		NextBill:  nextBill.Unix(),
+	}
+
+	// Charge the campaign for budget unless it's an IO campaign OR product based budget!
+	if !isIO && !cmp.IsProductBasedBudget() {
+		// CHARGE!
+		if cust == "" {
+			return ErrCC
 		}
 
-		// Take today's date and add a month
-		now := time.Now()
-		nextBill := now.AddDate(0, 1, 0)
-
-		store := &Store{
-			Spendable: cmp.Budget,
-			NextBill:  nextBill.Unix(),
-		}
-
-		// Charge the campaign for budget unless it's an IO campaign OR product based budget!
-		if !isIO && !cmp.IsProductBasedBudget() {
-			// CHARGE!
-			if cust == "" {
-				return ErrCC
-			}
-
-			if err := store.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
-				return err
-			}
-		}
-
-		st[cmp.Id] = store
-
-		// Log the budget!
-		if err := cfg.Loggers.Log("stats", map[string]interface{}{
-			"action":     "insertion",
-			"campaignId": cmp.Id,
-			"store":      store,
-			"io":         isIO,
-		}); err != nil {
-			log.Println("Failed to log budget insertion!", cmp.Id, cmp.Budget, store.Spendable)
+		if err := store.Bill(cust, cmp.Budget, tx, cmp, cfg); err != nil {
 			return err
 		}
+	}
 
-		if b, err = json.Marshal(&st); err != nil {
-			return err
-		}
+	st[cmp.Id] = store
 
-		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
-			return err
-		}
-
-		return nil
+	// Log the budget!
+	if err := cfg.Loggers.Log("stats", map[string]interface{}{
+		"action":     "insertion",
+		"campaignId": cmp.Id,
+		"store":      store,
+		"io":         isIO,
 	}); err != nil {
+		log.Println("Failed to log budget insertion!", cmp.Id, cmp.Budget, store.Spendable)
 		return err
 	}
+
+	if b, err = json.Marshal(&st); err != nil {
+		return err
+	}
+
+	if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
-	st, err := GetAdvertiserStore(db, cfg, "")
+func ReplenishSpendable(tx *bolt.Tx, cfg *config.Config, cmp *common.Campaign, isIO bool, cust string) error {
+	st, err := GetAdvertiserStore(tx, cfg, cmp.AdvertiserId)
 	if err != nil {
 		return err
 	}
@@ -312,38 +290,27 @@ func ReplenishSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign, i
 			return ErrCC
 		}
 
-		if err := db.Update(func(tx *bolt.Tx) (err error) {
-			if err := newStore.Bill(cust, spendable, tx, cmp, cfg); err != nil {
-				return err
-			}
-			return nil
-		}); err != nil {
+		if err := newStore.Bill(cust, spendable, tx, cmp, cfg); err != nil {
 			return err
 		}
 	}
 
 	st[cmp.Id] = newStore
 
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		var b []byte
-		if b, err = json.Marshal(&st); err != nil {
-			return
-		}
+	var b []byte
+	if b, err = json.Marshal(&st); err != nil {
+		return err
+	}
 
-		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
-			return
-		}
-		return
-	}); err != nil {
-		log.Println("Error when saving budget key", err)
+	if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (float64, error) {
-	st, err := GetAdvertiserStore(db, cfg, cmp.AdvertiserId)
+func ClearSpendable(tx *bolt.Tx, cfg *config.Config, cmp *common.Campaign) (float64, error) {
+	st, err := GetAdvertiserStore(tx, cfg, cmp.AdvertiserId)
 	if err != nil {
 		return 0, err
 	}
@@ -361,26 +328,20 @@ func ClearSpendable(db *bolt.DB, cfg *config.Config, cmp *common.Campaign) (floa
 
 	st[cmp.Id] = newStore
 
-	if err := db.Update(func(tx *bolt.Tx) (err error) {
-		var b []byte
-		if b, err = json.Marshal(&st); err != nil {
-			return
-		}
+	var b []byte
+	if b, err = json.Marshal(&st); err != nil {
+		return 0, err
+	}
 
-		if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
-			return
-		}
-		return
-	}); err != nil {
-		log.Println("Error when saving budget key", err)
+	if err = misc.PutBucketBytes(tx, cfg.Bucket.Budget, cmp.AdvertiserId, b); err != nil {
 		return 0, err
 	}
 
 	return store.Spendable, nil
 }
 
-func GetCampaignStore(db *bolt.DB, cfg *config.Config, cid, advid string) (*Store, error) {
-	st, err := GetAdvertiserStore(db, cfg, advid)
+func GetCampaignStore(tx *bolt.Tx, cfg *config.Config, cid, advid string) (*Store, error) {
+	st, err := GetAdvertiserStore(tx, cfg, advid)
 	if err != nil {
 		return nil, err
 	}
@@ -390,45 +351,51 @@ func GetCampaignStore(db *bolt.DB, cfg *config.Config, cid, advid string) (*Stor
 	return nil, ErrNotFound
 }
 
-func GetStore(db *bolt.DB, cfg *config.Config) (map[string]*Store, error) {
-	// Gets budget store keyed off of Campaign ID for a given month
-	var store map[string]*Store
-	if err := db.View(func(tx *bolt.Tx) error {
-		tx.Bucket([]byte(cfg.Bucket.Budget)).ForEach(func(k, v []byte) (err error) {
-			var st map[string]*Store
-			if err := json.Unmarshal(v, &st); err != nil {
-				log.Println("error when unmarshalling budget", string(v))
-				return nil
-			}
-
-			for k, v := range st {
-				store[k] = v
-			}
-			return
-		})
+func GetCampaignStoreFromDb(db *bolt.DB, cfg *config.Config, cid, advid string) (*Store, error) {
+	var (
+		budgetStore *Store
+	)
+	if err := db.View(func(tx *bolt.Tx) (err error) {
+		budgetStore, err = GetCampaignStore(tx, cfg, cid, advid)
+		if err != nil {
+			return err
+		}
 		return nil
-	}); err != nil {
-		return store, err
+	}); err != nil || budgetStore == nil {
+		return nil, ErrNotFound
 	}
-
-	return store, nil
+	return budgetStore, nil
 }
 
-func GetAdvertiserStore(db *bolt.DB, cfg *config.Config, advID string) (map[string]*Store, error) {
+func GetAdvertiserStore(tx *bolt.Tx, cfg *config.Config, advID string) (map[string]*Store, error) {
 	// Gets budget store keyed off of Campaign ID for a given month
 	var st map[string]*Store
 
-	if err := db.View(func(tx *bolt.Tx) (err error) {
-		b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(advID))
-		if err = json.Unmarshal(b, &st); err != nil {
-			return ErrUnmarshal
-		}
-		return
-	}); err != nil {
-		return nil, err
+	b := tx.Bucket([]byte(cfg.Bucket.Budget)).Get([]byte(advID))
+	if err := json.Unmarshal(b, &st); err != nil {
+		return nil, ErrUnmarshal
 	}
 
 	return st, nil
+}
+
+func GetStore(tx *bolt.Tx, cfg *config.Config) (map[string]*Store, error) {
+	// Gets budget store keyed off of Campaign ID for a given month
+	store := make(map[string]*Store)
+	tx.Bucket([]byte(cfg.Bucket.Budget)).ForEach(func(k, v []byte) (err error) {
+		var st map[string]*Store
+		if err := json.Unmarshal(v, &st); err != nil {
+			log.Println("error when unmarshalling budget", string(v))
+			return nil
+		}
+
+		for k, v := range st {
+			store[k] = v
+		}
+		return
+	})
+
+	return store, nil
 }
 
 type Metrics struct {

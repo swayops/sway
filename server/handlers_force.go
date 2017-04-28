@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 )
@@ -157,7 +158,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		store, _ := budget.GetBudgetInfo(s.db, s.Cfg, campaignId, "")
+		store, _ := budget.GetCampaignStoreFromDb(s.db, s.Cfg, campaignId, cmp.AdvertiserId)
 		if store.IsClosed(&cmp) {
 			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
 			return
@@ -273,6 +274,62 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		c.JSON(200, misc.StatusOK(""))
+	}
+}
+
+var ErrSub = errors.New("Subscription not found!")
+
+func forceBill(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		ag := s.auth.GetAdAgency(cmp.AgencyId)
+		if ag == nil {
+			c.JSON(500, ErrNoAgency)
+			return
+		}
+
+		adv := s.auth.GetAdvertiser(cmp.AdvertiserId)
+		if adv == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		// Lets make sure they have an active subscription!
+		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
+		if err != nil || !allowed {
+			c.JSON(500, ErrSub)
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if err = budget.RemoteBill(tx, s.Cfg, cmp, adv.Customer, ag.IsIO); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			c.JSON(500, err)
+			return
+		}
+
+		// Save the Campaign
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Add fresh deals for this month
+			addDealsToCampaign(cmp, s, tx, cmp.Budget)
+			return saveCampaign(tx, cmp, s)
+		}); err != nil {
+			c.JSON(500, err)
+			return
+		}
 		c.JSON(200, misc.StatusOK(""))
 	}
 }

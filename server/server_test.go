@@ -2583,6 +2583,8 @@ type Status struct {
 	ID string `json:"id"`
 }
 
+const DEFAULT_BUDGET = 1000
+
 func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (cid string) {
 	// Create a campaign
 	adv := getSignupUser()
@@ -2606,7 +2608,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: st.ID,
-		Budget:       1000,
+		Budget:       DEFAULT_BUDGET,
 		Name:         "shiyeeeet",
 		Twitter:      true,
 		Male:         true,
@@ -4161,7 +4163,8 @@ func TestStripe(t *testing.T) {
 		t.Fatal("Timestamp value incorrect")
 	}
 
-	// Lets increase the budget and make sure TWO charges show up
+	// Lets increase the budget and make sure NO charges show up
+	// as a charge should only show up on billing day
 	budgetVal := float64(5000)
 	upd := &CampaignUpdate{Budget: &budgetVal}
 	r = rst.DoTesting(t, "PUT", "/campaign/"+newSt.ID, upd, nil)
@@ -4176,7 +4179,7 @@ func TestStripe(t *testing.T) {
 		return
 	}
 
-	if len(store.Charges) != 2 {
+	if len(store.Charges) != 1 {
 		t.Fatal("Bad len on charges")
 	}
 
@@ -5326,7 +5329,7 @@ func TestTimeline(t *testing.T) {
 
 	r = rst.DoTesting(t, "PUT", "/campaign/"+st.ID, &cmpUpdate, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 		return
 	}
 
@@ -5902,7 +5905,7 @@ func TestBilling(t *testing.T) {
 		}
 
 		adAg := getSignupUserWithName("Some Ad Agency Name" + strconv.Itoa(i))
-		adAg.AdAgency = &auth.AdAgency{Status: true, IsIO: true}
+		adAg.AdAgency = &auth.AdAgency{Status: true, IsIO: false}
 		r = rst.DoTesting(t, "POST", "/signUp", adAg, nil)
 		if r.Status != 200 {
 			t.Fatal("Bad status code!")
@@ -5917,80 +5920,6 @@ func TestBilling(t *testing.T) {
 			return
 		}
 
-		if i == 6 {
-			oldStore := budget.Store{}
-			r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &oldStore)
-			if r.Status != 200 {
-				t.Fatal("Bad status code!")
-			}
-
-			var oldLoad common.Campaign
-			r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &oldLoad)
-			if r.Status != 200 {
-				t.Fatal("Bad status code!")
-			}
-
-			// For the second last campaign lets increase the budget!
-			trueVal := true
-
-			name := "The day wlker"
-			budgetVal := float64(5000)
-			upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
-			r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
-			if r.Status != 200 {
-				t.Fatal("Bad status code!")
-				return
-			}
-
-			var load common.Campaign
-			r = rst.DoTesting(t, "GET", "/campaign/"+cid+"?deals=true", nil, &load)
-			if r.Status != 200 {
-				t.Fatal("Bad status code!")
-			}
-
-			if load.Budget != 5000 {
-				t.Fatal("Campaign budget did not increment!")
-			}
-
-			// Lets see if it's new store was affected!
-			store := budget.Store{}
-			r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &store)
-			if r.Status != 200 {
-				t.Fatal("Bad status code!")
-			}
-
-			// if store.Budget <= oldStore.Budget {
-			// 	t.Fatal("New store budget did not increase!")
-			// }
-
-			if store.Spendable <= oldStore.Spendable {
-				t.Fatal("Spendable did not increase!")
-			}
-		}
-
-		// if i == 7 {
-		// 	decreaseCid = cid
-		// 	// For the last campaign lets decrease the budget!
-		// 	trueVal := true
-		// 	budgetVal := float64(150)
-		// 	name := "The day wlker"
-		// 	upd := &CampaignUpdate{Status: &trueVal, Male: &trueVal, Female: &trueVal, Budget: &budgetVal, Name: &name}
-		// 	r = rst.DoTesting(t, "PUT", "/campaign/"+cid, upd, nil)
-		// 	if r.Status != 200 {
-		// 		t.Fatal("Bad status code!")
-		// 		return
-		// 	}
-
-		// 	var load common.Campaign
-		// 	r = rst.DoTesting(t, "GET", "/campaign/"+cid, nil, &load)
-		// 	if r.Status != 200 {
-		// 		t.Fatal("Bad status code!")
-		// 	}
-
-		// 	if load.Budget != 150 {
-		// 		t.Fatal("Campaign budget did not decrease!")
-		// 	}
-		// }
 		addedCids = append(addedCids, cid)
 	}
 
@@ -6026,37 +5955,46 @@ func TestBilling(t *testing.T) {
 		cids[cid] = store
 	}
 
-	// LETS RUN BILLING!
-	r = rst.DoTesting(t, "GET", "/billing?force=1&dbg=1", nil, nil)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!", string(r.Value))
-	}
 
-	// Lets see what happened to stores!
-	for cid, _ := range cids {
+	// Lets see what happens to stores when we bill!
+	for cid, oldStore := range cids {
+		// LETS RUN BILLING!
+		r = rst.DoTesting(t, "GET", "/forceBill/"+cid, nil, nil)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!", string(r.Value))
+		}
+
 		var newStore budget.Store
 		r = rst.DoTesting(t, "GET", "/getBudgetInfo/"+cid, nil, &newStore)
 		if r.Status != 200 {
 			t.Fatal("Bad status code!")
 		}
 
-		if newStore.Spent > 0 {
+		if newStore.Spent != 0 {
 			t.Fatal("Bad new store values!")
 		}
 
-		// if int32(store.Spendable) != int32(newStore.Leftover) {
-		// 	t.Fatal("Didn't carry over leftover from last month!")
-		// }
+		// Spendable should have been increased!
+		if newStore.Spendable < DEFAULT_BUDGET {
+			t.Fatal("Bad Spendable values!")
+		}
 
-		// if int32(newStore.Spendable) != int32(newStore.Leftover+newStore.Budget) {
-		// 	t.Fatal("Incorrect spendable calculation!")
-		// }
+		if newStore.NextBill == 0 || newStore.NextBill == oldStore.NextBill {
+			t.Fatal("Bill date did not change!")
+		}
 
-		// if cid == decreaseCid {
-		// 	// This is the campaign that was decreased!
-		// 	if newStore.Budget != 150 {
-		// 		t.Fatal("Store does not have updated budget!")
-		// 	}
-		// }
+		if len(newStore.SpendHistory) != 1 {
+			t.Fatal("Bad spend history!")
+		}
+
+		val, _ := newStore.SpendHistory[budget.GetSpendHistoryKey()]
+		if val == 0 {
+			t.Fatal("Bad spend history value!")
+		}
+
+		if len(newStore.Charges) != 2 {
+			t.Fatal("Wrong number of charges!")
+		}
+		log.Println("DONE")
 	}
 }

@@ -456,7 +456,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
 	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
-	adminGroup.GET("/billing", runBilling(srv))
+	adminGroup.GET("/forceBill/:id", forceBill(srv))
 
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
@@ -537,7 +537,12 @@ func (srv *Server) Alert(msg string, err error) {
 
 	log.Println(msg, err)
 
-	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+
+	email := templates.ErrorEmail.Render(map[string]interface{}{"error": errMsg, "msg": msg})
 	for _, addr := range mailingList {
 		if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", addr, "Important Person",
 			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {

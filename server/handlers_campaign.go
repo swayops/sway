@@ -199,7 +199,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			if cmp.Status {
 				// Create their budget key IF the campaign is on
 				// NOTE: Create budget key requires cmp.Id be set
-				if err = budget.Create(s.db, s.Cfg, &cmp, ag.IsIO, cuser.Advertiser.Customer); err != nil {
+				if err = budget.Create(tx, s.Cfg, &cmp, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
 					return
 				}
@@ -331,7 +331,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						common.SetAttribute(mCmp.Timeline)
 					}
 
-					store, _ := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, "")
+					store, _ := budget.GetCampaignStore(tx, s.Cfg, cmp.Id, cmp.AdvertiserId)
 					if store != nil {
 						mCmp.Spent = store.Spent
 						mCmp.Remaining = store.Spendable
@@ -687,25 +687,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			if *upd.Status && cmp.Status != *upd.Status {
 				// If the campaign has been toggled to on..
-				store, _ := budget.GetBudgetInfo(s.db, s.Cfg, cmp.Id, "")
+				store, _ := budget.GetCampaignStore(tx, s.Cfg, cmp.Id, cmp.AdvertiserId)
 				if store == nil {
 					// This means the campaign has no store.. cmp was craeted with a status of
 					// off so a budget key was NOT created.. so we have to create it now!
 					// NOTE: Create budget key requires cmp.Id be set
-
-					if err = budget.Create(s.db, s.Cfg, &cmp, ag.IsIO, adv.Customer); err != nil {
+					if err = budget.Create(tx, s.Cfg, &cmp, ag.IsIO, adv.Customer); err != nil {
 						s.Alert("Error initializing budget key for "+adv.Name, err)
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}
 
 					addDealsToCampaign(&cmp, s, tx, cmp.Budget)
-
 				} else {
 					// This campaign does have a store.. so it was active sometime this month.
 					// Lets just give it the spendable we must have taken from it when it turned
 					// off
-					err = budget.ReplenishSpendable(s.db, s.Cfg, &cmp, ag.IsIO, adv.Customer)
+					err = budget.ReplenishSpendable(tx, s.Cfg, &cmp, ag.IsIO, adv.Customer)
 					if err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
@@ -731,7 +729,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// If the status has been toggled to off..
 				// Clear out the spendable from the DB and add that value to the balance
 				var spendable float64
-				spendable, err = budget.ClearSpendable(s.db, s.Cfg, &cmp)
+				spendable, err = budget.ClearSpendable(tx, s.Cfg, &cmp)
 				if err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
 					return
@@ -739,9 +737,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 				// If we cleared out some spendable.. lets increment the balance with it
 				if spendable > 0 {
-					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						return budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg)
-					}); err != nil {
+					if err = budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg); err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}

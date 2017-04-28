@@ -961,8 +961,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Fill in and check available spendable
-		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, targetDeal.AdvertiserId)
-		if store.IsClosed(&cmp) {
+		budgetStore, err := budget.GetCampaignStoreFromDb(budgetDb, cfg, cmp.Id, cmp.AdvertiserId)
+		if err != nil || budgetStore == nil {
+			log.Println("Error when opening store", err)
+			continue
+		}
+
+		if budgetStore.IsClosed(&cmp) {
 			// if !query {
 			// 	// Influencer may query for their assigned deal.. but we don't want to
 			// 	// hide the deal if there's no spendable.. we just want to tell them that
@@ -983,15 +988,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		// hit "/assignDeal"
 		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 
-		if store != nil && !cmp.IsProductBasedBudget() {
-			if targetDeal.LikelyEarnings > store.Spendable {
+		if budgetStore != nil && !cmp.IsProductBasedBudget() {
+			if targetDeal.LikelyEarnings > budgetStore.Spendable {
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = store.Spendable / 0.7 //cmp.GetEmptyDeals()
+				targetDeal.LikelyEarnings = budgetStore.Spendable / 0.7 //cmp.GetEmptyDeals()
 			}
 
-			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
+			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
 			// if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 			// 	// NOTE: Skip this for whitelisted campaigns!
 

@@ -61,7 +61,7 @@ func emailScraps(srv *Server) (int32, error) {
 		}
 
 		var spendable float64
-		store, err := budget.GetBudgetInfo(srv.db, srv.Cfg, cmp.Id, "")
+		store, err := budget.GetCampaignStoreFromDb(srv.db, srv.Cfg, cmp.Id, cmp.AdvertiserId)
 		// Only email them campaigns with more than $5
 		if err != nil || store == nil || (store.Spendable < 5 && !cmp.IsProductBasedBudget()) {
 			if srv.Cfg.Sandbox {
