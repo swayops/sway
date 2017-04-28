@@ -781,6 +781,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		return infDeals
 	}
 
+	// If the influencer hasn't been updated in the last 25 days.. ignore em!
+	if !misc.WithinLast(inf.LastSocialUpdate, 24*25) {
+		return infDeals
+	}
+
 	if !inf.Audited() && !cfg.Sandbox {
 		// If the user has no categories or gender.. this means
 		// the assign game hasn't gotten to them yet

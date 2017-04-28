@@ -652,7 +652,11 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					}
 				}
 
-				if modified {
+				// If modified is true that means an existing coupon was either increased
+				// in count or decreased. However, that (the above forloop and it's var modified
+				// logic) wouldn't account for a coupon completely disappearing from the
+				// newCouponMap
+				if modified || len(newCouponMap) != len(existingCoupons) {
 					dealsToAdd := len(filteredList)
 					if dealsToAdd > 0 {
 						// There are new coupons being added!
@@ -669,7 +673,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 						}
 					} else {
 						// Coupons are beign taken away since filtered returned nothing!
-
 						if inUse {
 							c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
 							return
