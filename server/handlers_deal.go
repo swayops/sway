@@ -324,7 +324,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			// Lets send them deal instructions if there are any!
 			if cmp != nil && foundDeal != nil {
 				s.Notify("Deal accepted!", fmt.Sprintf("%s just accepted a deal for %s", inf.Name, cmp.Name))
-				assignDealEmail(s, cmp, foundDeal, &inf)
+				// assignDealEmail(s, cmp, foundDeal, &inf)
 			}
 		}()
 
@@ -369,6 +369,22 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 				s.Alert("Failed to give influencer a deal update: "+inf.Id, err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
+			}
+		}
+
+		c.JSON(200, misc.StatusOK(dealId))
+	}
+}
+
+func sendInstructions(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		dealId := c.Param("dealId")
+
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
+		if ok && cmp != nil {
+			if deal, ok := cmp.Deals[dealId]; ok && deal.IsActive() {
+				assignDealEmail(s, cmp, deal, &inf)
 			}
 		}
 

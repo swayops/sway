@@ -449,6 +449,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
 	verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
+	verifyGroup.GET("/sendInstructions/:influencerId/:campaignId/:dealId", infScope, infOwnership, sendInstructions(srv))
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,

@@ -1374,7 +1374,7 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 			instructions = cmp.Perks.Instructions
 		}
 		if deal.Perk.Code != "" {
-			coupon = "Please visit the influencer app at https://inf.swayops.com and go to My Endorsements --> Pending to see your coupon code in the deal details." //deal.Perk.Code
+			coupon = deal.Perk.Code
 			hasCoupon = true
 		}
 	}
