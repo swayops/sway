@@ -456,6 +456,7 @@ type CampaignUpdate struct {
 	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
 	Task       *string          `json:"task,omitempty"`
 	Perks      *common.Perk     `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
+	BrandSafe  *bool            `json:"brandSafe,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -523,6 +524,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Female != nil {
 			cmp.Female = *upd.Female
+		}
+
+		if upd.BrandSafe != nil {
+			cmp.BrandSafe = *upd.BrandSafe
 		}
 
 		if !cmp.Male && !cmp.Female {
