@@ -636,47 +636,55 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					newCouponMap[newCouponCode] += 1
 				}
 
-				var filteredList []string
+				var (
+					filteredList []string
+					modified     bool
+				)
 				for cp, newVal := range newCouponMap {
 					oldVal, _ := existingCoupons[cp]
-					if oldVal != newVal && newVal > oldVal {
-						for i := 0; i < newVal-oldVal; i++ {
-							filteredList = append(filteredList, cp)
+					if oldVal != newVal {
+						modified = true
+						if newVal > oldVal {
+							for i := 0; i < newVal-oldVal; i++ {
+								filteredList = append(filteredList, cp)
+							}
 						}
 					}
 				}
 
-				dealsToAdd := len(filteredList)
-				if dealsToAdd > 0 {
-					// There are new coupons being added!
-					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
-					cmp.Perks.Count += dealsToAdd
+				if modified {
+					dealsToAdd := len(filteredList)
+					if dealsToAdd > 0 {
+						// There are new coupons being added!
+						cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
+						cmp.Perks.Count += dealsToAdd
 
-					// Add deals for perks we added
-					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						addDeals(&cmp, dealsToAdd, s, tx)
-						return saveCampaign(tx, &cmp, s)
-					}); err != nil {
-						misc.AbortWithErr(c, 500, err)
-						return
-					}
-				} else {
-					// Coupons are beign taken away since filtered returned nothing!
+						// Add deals for perks we added
+						if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+							addDeals(&cmp, dealsToAdd, s, tx)
+							return saveCampaign(tx, &cmp, s)
+						}); err != nil {
+							misc.AbortWithErr(c, 500, err)
+							return
+						}
+					} else {
+						// Coupons are beign taken away since filtered returned nothing!
 
-					if inUse {
-						c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
-						return
-					}
+						if inUse {
+							c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
+							return
+						}
 
-					cmp.Perks.Codes = upd.Perks.Codes
-					cmp.Perks.Count = len(upd.Perks.Codes)
+						cmp.Perks.Codes = upd.Perks.Codes
+						cmp.Perks.Count = len(upd.Perks.Codes)
 
-					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						resetDeals(&cmp, cmp.Perks.Count, s, tx)
-						return saveCampaign(tx, &cmp, s)
-					}); err != nil {
-						misc.AbortWithErr(c, 500, err)
-						return
+						if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+							resetDeals(&cmp, cmp.Perks.Count, s, tx)
+							return saveCampaign(tx, &cmp, s)
+						}); err != nil {
+							misc.AbortWithErr(c, 500, err)
+							return
+						}
 					}
 				}
 			} else if !cmp.Perks.IsCoupon() && !upd.Perks.IsCoupon() {
