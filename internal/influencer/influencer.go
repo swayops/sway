@@ -44,6 +44,8 @@ type InfluencerLoad struct {
 	Male   bool `json:"male,omitempty"`
 	Female bool `json:"female,omitempty"`
 
+	BrandSafe string `json:"brandSafe,omitempty"`
+
 	Categories []string `json:"categories,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
@@ -69,6 +71,8 @@ type Influencer struct {
 
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
+
+	BrandSafe string `json:"brandSafe,omitempty"`
 
 	// References to the social media accounts this influencer owns
 	Facebook         *facebook.Facebook   `json:"facebook,omitempty"`
@@ -145,7 +149,7 @@ type Strike struct {
 	TS         int64  `json:"ts,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip, brandSafe string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
@@ -155,6 +159,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: misc.TrimEmail(email),
 		CreatedAt:    created,
+		BrandSafe:    brandSafe,
 	}
 
 	if address != nil && address.AddressOne != "" {
@@ -960,6 +965,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 		}
 
+		// Brand safety check
+		// If the campaign just wants brand safe and the influencer isn't brand safe..
+		if cmp.BrandSafe && inf.BrandSafe != "t" {
+			rejections[cmp.Id] = "BRAND_SAFETY"
+			continue
+		}
+
 		// Fill in and check available spendable
 		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
 		if store.IsClosed(&cmp) {
@@ -1554,7 +1566,7 @@ func (inf *Influencer) PerkNotify(deal *common.Deal, cfg *config.Config) error {
 }
 
 func (inf *Influencer) Audited() bool {
-	return len(inf.Categories) > 0 && (inf.Male || inf.Female)
+	return len(inf.Categories) > 0 && (inf.Male || inf.Female) && inf.BrandSafe != ""
 }
 
 func (inf *Influencer) IsBanned() bool {

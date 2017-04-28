@@ -597,6 +597,7 @@ func TestDeals(t *testing.T) {
 			InviteCode: common.GetCodeFromID(ag.ExpID),
 			TwitterId:  "CNN",
 			Categories: []string{"business"},
+			BrandSafe:  "t",
 		},
 	}
 	for _, tr := range [...]*resty.TestRequest{

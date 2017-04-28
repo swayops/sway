@@ -50,6 +50,8 @@ type Campaign struct {
 	Instagram bool `json:"instagram,omitempty"`
 	YouTube   bool `json:"youtube,omitempty"`
 
+	BrandSafe bool `json:"brandSafe,omitempty"`
+
 	// Categories the client is targeting
 	Categories []string `json:"categories,omitempty"`
 	Keywords   []string `json:"keywords,omitempty"`

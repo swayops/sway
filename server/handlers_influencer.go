@@ -233,6 +233,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 type AuditSet struct {
 	Categories []string `json:"categories,omitempty"`
 	Gender     string   `json:"gender,omitempty"`
+	BrandSafe  string   `json:"brandSafe,omitempty"`
 }
 
 func setAudit(s *Server) gin.HandlerFunc {
@@ -271,6 +272,10 @@ func setAudit(s *Server) gin.HandlerFunc {
 			inf.Male, inf.Female = true, false
 		case "f":
 			inf.Male, inf.Female = false, true
+		}
+
+		if upd.BrandSafe != "" {
+			inf.BrandSafe = strings.ToLower(upd.BrandSafe)
 		}
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -888,7 +893,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				continue
 			}
 
-			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
+			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 || inf.BrandSafe == "" {
 				var (
 					incInf IncompleteInfluencer
 					found  bool
