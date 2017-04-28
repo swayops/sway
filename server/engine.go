@@ -18,7 +18,7 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
-const EngineRunTime = 2
+const EngineRunTime = 4
 
 func newSwayEngine(srv *Server) error {
 	// Keep a live struct of active campaigns
@@ -103,7 +103,7 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Add keywords to scraps/influencers every 4 hours
-	attrTicker := time.NewTicker(4 * time.Hour)
+	attrTicker := time.NewTicker(6 * time.Hour)
 	go func() {
 		for range attrTicker.C {
 			if _, err := attributer(srv, false); err != nil {

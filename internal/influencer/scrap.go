@@ -207,9 +207,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 		}
 	}
 
-	output := geo.IsGeoMatch(cmp.Geos, sc.Geo)
-	log.Println(cmp.Id, output)
-	if !output {
+	if !geo.IsGeoMatch(cmp.Geos, sc.Geo) {
 		return false
 	}
 

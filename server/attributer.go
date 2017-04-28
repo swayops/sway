@@ -53,7 +53,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 	var scrapsTouched int64
 	// Set keywords, geo, gender, and followers for scraps!
 	for _, sc := range scraps {
-		if sc.IsProfilePictureActive() && (sc.Fails > 3 || misc.WithinLast(sc.Updated, 24*misc.Random(7, 12))) {
+		if sc.IsProfilePictureActive() && (sc.Fails > 3 || misc.WithinLast(sc.Updated, 24*misc.Random(14, 20))) {
 			// If the scrap has an active profile pic AND (they have either failed
 			// multiples OR been updated in the last 7-12 days.. bail!)
 			continue

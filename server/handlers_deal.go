@@ -207,9 +207,8 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 		// Assign the deal & Save the Campaign
 		// DEALS are located in the INFLUENCER struct AND the CAMPAIGN struct
+		var cmp *common.Campaign
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var cmp *common.Campaign
-
 			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 			if err != nil {
 				return err
@@ -321,6 +320,14 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		go func() {
+			// Lets send them deal instructions if there are any!
+			if cmp != nil && foundDeal != nil {
+				s.Notify("Deal accepted!", fmt.Sprintf("%s just accepted a deal for %s", inf.Name, cmp.Name))
+				assignDealEmail(s, cmp, foundDeal, &inf)
+			}
+		}()
+
 		c.JSON(200, foundDeal)
 	}
 }
@@ -357,7 +364,7 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		inf, ok := s.auth.Influencers.Get(influencerId)
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 
-		if ok && cmp != nil {
+		if ok && cmp != nil && c.Query("alert") != "" {
 			if err := inf.DealUpdate(cmp, s.Cfg); err != nil {
 				s.Alert("Failed to give influencer a deal update: "+inf.Id, err)
 				c.JSON(500, misc.StatusErr(err.Error()))
@@ -392,73 +399,40 @@ type SimpleActive struct {
 	Instagram string `json:"instaUsername,omitempty"`
 	Twitter   string `json:"twitterUsername,omitempty"`
 	YouTube   string `json:"youtubeUsername,omitempty"`
+
+	Name  string `json:"name,omitempty"`
+	Email string `json:"email,omitempty"`
 }
 
 func getAllActiveDeals(s *Server) gin.HandlerFunc {
 	// Retrieves all active deals in the system
 	return func(c *gin.Context) {
-		if c.Query("simple") != "" {
-			var deals []*SimpleActive
-			if err := s.db.View(func(tx *bolt.Tx) error {
-				tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-					var cmp common.Campaign
-					if err := json.Unmarshal(v, &cmp); err != nil {
-						log.Println("error when unmarshalling campaign", string(v))
-						return nil
+		var deals []*SimpleActive
+		for _, cmp := range s.Campaigns.GetStore() {
+			for _, deal := range cmp.Deals {
+				if deal.IsActive() {
+					inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
+					if !ok {
+						continue
 					}
-					for _, deal := range cmp.Deals {
-						if deal.IsActive() {
-							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
-							if !ok {
-								continue
-							}
 
-							infClean := inf.Clean()
+					infClean := inf.Clean()
 
-							deals = append(deals, &SimpleActive{
-								CampaignId:   cmp.Id,
-								InfluencerId: deal.InfluencerId,
-								Platforms:    deal.Platforms,
-								Facebook:     infClean.FbUsername,
-								Instagram:    infClean.InstaUsername,
-								Twitter:      infClean.TwitterUsername,
-								YouTube:      infClean.YTUsername,
-							})
-						}
-					}
-					return
-				})
-				return nil
-			}); err != nil {
-				c.JSON(500, misc.StatusErr("Internal error"))
-				return
+					deals = append(deals, &SimpleActive{
+						CampaignId:   cmp.Id,
+						InfluencerId: deal.InfluencerId,
+						Platforms:    deal.Platforms,
+						Facebook:     infClean.FbUsername,
+						Instagram:    infClean.InstaUsername,
+						Twitter:      infClean.TwitterUsername,
+						YouTube:      infClean.YTUsername,
+						Email:        infClean.EmailAddress,
+						Name:         infClean.Name,
+					})
+				}
 			}
-
-			c.JSON(200, deals)
-		} else {
-			var deals []*common.Deal
-			if err := s.db.View(func(tx *bolt.Tx) error {
-				tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
-					var cmp common.Campaign
-					if err := json.Unmarshal(v, &cmp); err != nil {
-						log.Println("error when unmarshalling campaign", string(v))
-						return nil
-					}
-					for _, deal := range cmp.Deals {
-						if deal.IsActive() {
-							deals = append(deals, deal)
-						}
-					}
-					return
-				})
-				return nil
-			}); err != nil {
-				c.JSON(500, misc.StatusErr("Internal error"))
-				return
-			}
-
-			c.JSON(200, deals)
 		}
+		c.JSON(200, deals)
 	}
 }
 

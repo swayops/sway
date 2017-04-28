@@ -416,6 +416,30 @@ func delCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+func dirtyHack(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			var cmp *common.Campaign
+			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
+			if err != nil {
+				return
+			}
+
+			if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
+				cmp.Perks.Instructions = "Code valid for products over $59, use this code at romaboots.com for a free pair of boots, shipping fee (flat rate of $8) is applicable."
+			}
+
+			return saveCampaign(tx, cmp, s)
+		}); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		c.JSON(200, misc.StatusOK(id))
+	}
+}
+
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
 	Geos       []*geo.GeoRecord `json:"geos,omitempty"`

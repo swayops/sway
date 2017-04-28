@@ -28,7 +28,7 @@ func getBudgetInfo(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		budgetStore, err := budget.GetCampaignStoreFromDb(s.db, cfg, cmp.Id, cmp.AdvertiserId)
+		budgetStore, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || budgetStore == nil {
 			c.JSON(500, misc.StatusErr(err.Error()))
 			return
@@ -143,7 +143,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 		// Add up all spent and spendable values for the advertiser to
 		// determine active budget
 		for _, cmp := range campaigns {
-			budg, err := budget.GetCampaignStoreFromDb(s.db, cfg, cmp, adv.ID)
+			budg, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp, adv.ID)
 			if err != nil || budg == nil {
 				log.Println("Err retrieving budget", cmp)
 				continue
@@ -210,7 +210,7 @@ func getTargetYield(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		store, err := budget.GetCampaignStoreFromDb(s.db, cfg, cmp.Id, cmp.AdvertiserId)
+		store, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || store == nil {
 			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for store")))
 			return

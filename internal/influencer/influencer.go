@@ -26,6 +26,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	TimeoutDays = 25
+)
+
 var (
 	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
 	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
@@ -64,6 +68,8 @@ type Influencer struct {
 	// Banned if this person has been seen deleting a completed
 	// deal post
 	Banned bool `json:"banned,omitempty"`
+
+	BrandSafe bool `json:"brandSafe,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
@@ -993,7 +999,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = budgetStore.Spendable / 0.7 //cmp.GetEmptyDeals()
+				targetDeal.LikelyEarnings = budgetStore.Spendable * 0.7 //cmp.GetEmptyDeals()
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
@@ -1346,6 +1352,68 @@ func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) erro
 		"cids": []string{cmp.Id},
 	}); err != nil {
 		log.Println("Failed to log deal udpate!", inf.Id, cmp.Id)
+	}
+
+	return nil
+}
+
+func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config) error {
+	// if cfg.Sandbox {
+	// 	return nil
+	// }
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	perks := "N/A"
+	instructions := "N/A"
+	coupon := "N/A"
+	hasPerks := false
+	hasCoupon := false
+
+	if cmp.Perks != nil {
+		hasPerks = true
+		perks = cmp.Perks.Name
+		if cmp.Perks.Instructions != "" {
+			instructions = cmp.Perks.Instructions
+		}
+		if deal.Perk.Code != "" {
+			coupon = deal.Perk.Code
+			hasCoupon = true
+		}
+	}
+
+	tags := []string{"#ad"}
+	for _, cmpTag := range deal.Tags {
+		tags = append(tags, "#"+cmpTag)
+	}
+
+	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon, "Timeout": TimeoutDays})
+	// resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
+	// 	[]string{""})
+	// if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+	// 	return ErrEmail
+	// }
+
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal instructions",
+		"id":   inf.Id,
+		"cids": []string{cmp.Id},
+	}); err != nil {
+		log.Println("Failed to log deal instructions!", inf.Id, cmp.Id)
 	}
 
 	return nil

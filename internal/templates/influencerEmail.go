@@ -280,6 +280,59 @@ const perkMailEmail = `
 </div>
 `
 
+const dealInstructionsEmail = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}},
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Thank you for accepting the deal for {{Campaign}}! We are very excited to be working with you. Here are some instructions on how to complete this deal:
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<table border="0" cellpadding="20" cellspacing="0" width="900" style="font-size:14px;">
+	    <tr>
+	    	<td align="left" valign="middle" style="width: 100px;"><img src="https://dash.swayops.com{{Image}}" height="150"></td>
+	    	<td align="left" valign="left">
+		    	<b>Campaign name:</b> {{Campaign}} <br/>
+		    	<b>Task description:</b> {{Task}} <br/>
+		    	<b>Please post to ONLY one of the following networks:</b> {{Networks}} <br/>
+
+		    	{{#HasPerks}}
+					<br/>
+			    	<b>Perks:</b> {{Perks}} <br/>
+		 		{{/HasPerks}}
+
+		    	{{#HasCoupon}}
+			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
+			 		<b>Instructions:</b> {{Instructions}} <br/>
+		 		{{/HasCoupon}}
+		 		<br/>
+		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
+				<b>Hashtags to do:</b> {{Tags}}<br/>
+				<b>Mentions to do:</b> {{Mentions}}<br/>
+		 		<br/>
+		    	<b>Days to complete:</b> {{Timeout}}<br/>
+	    	</td>
+	    </tr>
+		</table>
+		
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Let me know if you have any questions! <br/><br/>
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
 	InfluencerEmail        = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail     = MustacheMust(infCmpEmail)
@@ -292,4 +345,5 @@ var (
 	DealRejectionEmail     = MustacheMust(dealRejectionEmail)
 	PrivateEmail           = MustacheMust(privateEmail)
 	PerkMailEmail          = MustacheMust(perkMailEmail)
+	DealInstructionsEmail  = MustacheMust(dealInstructionsEmail)
 )

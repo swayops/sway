@@ -1115,6 +1115,13 @@ func emailStatusUpdate(s *Server, cid string, dbg bool) {
 	)
 }
 
+func assignDealEmail(s *Server, cmp *common.Campaign, deal *common.Deal, inf *influencer.Influencer) {
+	// Emails influencer's with deal instructions
+	if err := inf.DealInstructions(cmp, deal, s.Cfg); err != nil {
+		s.Alert("Failed to give influencer deal instructions: "+inf.Id, err)
+	}
+}
+
 // saveUserImage saves the user image to disk and sets User.ImageURL to the url for it if the image is a data:image/
 func saveUserImage(s *Server, u *auth.User) error {
 	if strings.HasPrefix(u.ImageURL, "data:image/") {
