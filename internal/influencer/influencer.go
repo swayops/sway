@@ -934,13 +934,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Match Campaign Geo Targeting with Influencer Geo //
-		if inf.SkipGeo && cmp.Id != "20" {
-			// Legacy flag that was meant to be just for campaign 20
-			rejections[cmp.Id] = "SKIP_GEO_MATCH"
-			continue
-		}
-
-		if !misc.Contains(inf.GeoSkips, cmp.Id) && !geo.IsGeoMatch(cmp.Geos, location) && !query {
+		if !inf.SkipGeo && !misc.Contains(inf.GeoSkips, cmp.Id) && !geo.IsGeoMatch(cmp.Geos, location) && !query {
 			rejections[cmp.Id] = "GEO_MATCH"
 			continue
 		}
