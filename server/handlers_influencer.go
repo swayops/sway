@@ -579,7 +579,7 @@ func skipGeo(s *Server) gin.HandlerFunc {
 		}
 
 		cid := c.Params.ByName("campaignId")
-		if cid != "" {
+		if cid != "" && !misc.Contains(inf.GeoSkips, cid) {
 			inf.GeoSkips = append(inf.GeoSkips, cid)
 
 			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
