@@ -89,6 +89,7 @@ func scrapStats(s *Server) gin.HandlerFunc {
 			HasGender     int64 `json:"hasGender"`
 			HasCategories int64 `json:"hasCategories"`
 			Attributed    int64 `json:"attributed"`
+			Touched       int64 `json:"touched"`
 			Total         int   `json:"total"`
 		}
 
@@ -112,6 +113,10 @@ func scrapStats(s *Server) gin.HandlerFunc {
 
 			if sc.Male || sc.Female {
 				stats.HasGender += 1
+			}
+
+			if len(sc.SentEmails) > 0 {
+				stats.Touched += 1
 			}
 		}
 
