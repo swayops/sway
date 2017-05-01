@@ -428,7 +428,7 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 			}
 
 			if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
-				cmp.Perks.Instructions = "Code valid for products over $59, use this code at romaboots.com for a free pair of boots, shipping fee (flat rate of $8) is applicable."
+				cmp.Perks.Name = "Free Pair of Roma Boots"
 			}
 
 			return saveCampaign(tx, cmp, s)
