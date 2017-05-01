@@ -113,6 +113,15 @@ func DoesIntersect(opts []string, tg []string) bool {
 	return false
 }
 
+func Contains(haystack []string, needle string) bool {
+	for _, h := range haystack {
+		if h == needle {
+			return true
+		}
+	}
+	return false
+}
+
 func Hash16(b []byte) uint16 {
 	const prime = 374761393
 	h := len(b)

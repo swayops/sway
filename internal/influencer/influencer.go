@@ -90,8 +90,10 @@ type Influencer struct {
 
 	// Set and created by the IP
 	Geo *geo.GeoRecord `json:"geo,omitempty"`
-	// For privilidged users who skip the geo check!
+	// For privilidged users who skip the geo check for certain campaigns!
 	SkipGeo bool `json:"skipGeo,omitempty"`
+	// List of campaigns ofr which to skip geo
+	GeoSkips []string `json:"geoSkips,omitempty"`
 
 	Male   bool `json:"male,omitempty"`
 	Female bool `json:"female,omitempty"`
@@ -932,7 +934,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Match Campaign Geo Targeting with Influencer Geo //
-		if !inf.SkipGeo && !geo.IsGeoMatch(cmp.Geos, location) && !query {
+		if inf.SkipGeo && cmp.Id != "20" {
+			// Legacy flag that was meant to be just for campaign 20
+			rejections[cmp.Id] = "SKIP_GEO_MATCH"
+			continue
+		}
+
+		if !misc.Contains(inf.GeoSkips, cmp.Id) && !geo.IsGeoMatch(cmp.Geos, location) && !query {
 			rejections[cmp.Id] = "GEO_MATCH"
 			continue
 		}

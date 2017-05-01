@@ -568,12 +568,6 @@ func addKeyword(s *Server) gin.HandlerFunc {
 func skipGeo(s *Server) gin.HandlerFunc {
 	// Manually add kw
 	return func(c *gin.Context) {
-		skip, err := strconv.ParseBool(c.Params.ByName("state"))
-		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
 		var (
 			infId = c.Param("influencerId")
 		)
@@ -584,13 +578,16 @@ func skipGeo(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		inf.SkipGeo = skip
+		cid := c.Params.ByName("campaignId")
+		if cid != "" {
+			inf.GeoSkips = append(inf.GeoSkips, cid)
 
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
+			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+				return saveInfluencer(s, tx, inf)
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
 		}
 
 		c.JSON(200, misc.StatusOK(infId))
