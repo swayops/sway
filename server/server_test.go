@@ -889,7 +889,7 @@ func TestDeals(t *testing.T) {
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
-		Link:         "http://www.blank.org?s=t",
+		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 	}
@@ -2612,7 +2612,7 @@ func doDeal(rst *resty.Client, t *testing.T, infId, agId string, approve bool) (
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
-		Link:         "http://www.blank.org?s=t",
+		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 	}
@@ -2751,7 +2751,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(cmpLoad.Link, "blank.org") {
+	if !strings.Contains(cmpLoad.Link, "cnn.com") {
 		t.Fatal("Shortening of the URL did not work!")
 		return
 	}
@@ -2764,11 +2764,12 @@ func TestClicks(t *testing.T) {
 	// Try faking a click for an active deal.. shouldn't work but should redirect!
 	r = rst.DoTesting(t, "GET", getTestClick(load.ActiveDeals[0].ShortenedLink), nil, nil)
 	if r.Status != 200 {
+		log.Println(string(r.Value))
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	if !strings.Contains(r.URL, "blank.org") {
+	if !strings.Contains(r.URL, "cnn.com") {
 		t.Fatal("Incorrect redirect")
 		return
 	}
@@ -2844,7 +2845,7 @@ func TestClicks(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	if !strings.Contains(r.URL, "blank.org") {
+	if !strings.Contains(r.URL, "cnn.com") {
 		t.Fatal("Incorrect redirect")
 		return
 	}
@@ -2895,7 +2896,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(r.URL, "blank.org") {
+	if !strings.Contains(r.URL, "cnn.com") {
 		t.Fatal("Incorrect redirect")
 		return
 	}
@@ -2921,7 +2922,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(r.URL, "blank.org") {
+	if !strings.Contains(r.URL, "cnn.com") {
 		t.Fatal("Incorrect redirect")
 		return
 	}
@@ -3070,7 +3071,7 @@ func TestScraps(t *testing.T) {
 		Instagram:    true,
 		Male:         true,
 		Female:       true,
-		Link:         "http://www.blank.org?s=t",
+		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 	}
@@ -5767,7 +5768,7 @@ func TestAudiences(t *testing.T) {
 		Twitter:      true,
 		Male:         true,
 		Female:       true,
-		Link:         "http://www.blank.org?s=t",
+		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 		Audiences: []string{"1"},

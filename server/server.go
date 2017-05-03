@@ -434,6 +434,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
+	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
 	verifyGroup.GET("/dirtyHack/:id", dirtyHack(srv))
 
 	r.Static("images", srv.Cfg.ImagesDir)
@@ -444,7 +445,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDeals/:influencerId/:lat/:long", infScope, infOwnership, getDealsForInfluencer(srv))
 	verifyGroup.GET("/getDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, getDeal(srv))
 	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
-	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
 	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
