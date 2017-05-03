@@ -940,17 +940,26 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Gender check
-		if !cmp.Male && cmp.Female && !inf.Female {
-			// Only want females
-			rejections[cmp.Id] = "GENDER_F"
-			continue
-		} else if cmp.Male && !cmp.Female && !inf.Male {
-			// Only want males
-			rejections[cmp.Id] = "GENDER_M"
-			continue
-		} else if !cmp.Male && !cmp.Female {
-			rejections[cmp.Id] = "GENDER"
-			continue
+		if !query {
+			// If you are both (i.e. not applicable) and the campaign wants just one..
+			// skip!
+			if inf.Male && inf.Female && (!cmp.Male || !cmp.Female) {
+				rejections[cmp.Id] = "GENDER_UNI"
+				continue
+			}
+
+			if !cmp.Male && cmp.Female && !inf.Female {
+				// Only want females
+				rejections[cmp.Id] = "GENDER_F"
+				continue
+			} else if cmp.Male && !cmp.Female && !inf.Male {
+				// Only want males
+				rejections[cmp.Id] = "GENDER_M"
+				continue
+			} else if !cmp.Male && !cmp.Female {
+				rejections[cmp.Id] = "GENDER"
+				continue
+			}
 		}
 
 		// Whitelisting is done at the campaign level.. but
