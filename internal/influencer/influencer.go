@@ -1016,19 +1016,19 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		if store != nil && !cmp.IsProductBasedBudget() {
 			pendingSpend, _ := cmp.GetPendingDetails()
 			availSpend := store.Spendable - pendingSpend
-			if availSpend <= 0 && !cfg.Sandbox {
+			if availSpend <= 0 && !cfg.Sandbox && !query {
 				rejections[cmp.Id] = "AVAIL_SPEND"
 				continue
 			}
 
-			if targetDeal.LikelyEarnings > availSpend {
+			if targetDeal.LikelyEarnings > store.Spendable {
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = availSpend * 0.7 //cmp.GetEmptyDeals()
+				targetDeal.LikelyEarnings = store.Spendable * 0.5 //cmp.GetEmptyDeals()
 			}
 
-			targetDeal.Spendable = misc.TruncateFloat(availSpend, 2)
+			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
 			// if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
 			// 	// NOTE: Skip this for whitelisted campaigns!
 
