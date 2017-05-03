@@ -33,8 +33,6 @@ type Campaign struct {
 	Status   bool  `json:"status"`
 	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
 
-	Goal float64 `json:"infGoal"` // Price per influencer goal
-
 	// Social Media Post/User Requirements
 	Tags    []string         `json:"tags,omitempty"`
 	Mention string           `json:"mention,omitempty"`
