@@ -35,11 +35,11 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	srv.Audiences.Set(srv.db, srv.Cfg)
-	audTicker := time.NewTicker(20 * time.Minute)
+	srv.Audiences.Set(srv.db, srv.Cfg, getFollowersByEmail(srv))
+	audTicker := time.NewTicker(40 * time.Minute)
 	go func() {
 		for range audTicker.C {
-			srv.Audiences.Set(srv.db, srv.Cfg)
+			srv.Audiences.Set(srv.db, srv.Cfg, getFollowersByEmail(srv))
 		}
 	}()
 

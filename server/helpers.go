@@ -1334,3 +1334,22 @@ func getAllCategories(s *Server) []*InfCategory {
 
 	return out
 }
+
+func getFollowersByEmail(s *Server) map[string]int64 {
+	byEmail := make(map[string]int64)
+	for _, inf := range s.auth.Influencers.GetAll() {
+		byEmail[inf.EmailAddress] = inf.GetFollowers()
+	}
+
+	// Lets go over scraps now!
+	scraps, err := getAllScraps(s)
+	if err != nil {
+		return byEmail
+	}
+
+	for _, sc := range scraps {
+		byEmail[sc.EmailAddress] = sc.Followers
+	}
+
+	return byEmail
+}
