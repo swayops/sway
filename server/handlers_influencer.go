@@ -924,7 +924,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 					}
 				}
 
-				if found && inf.Id == "400" {
+				if found {
 					incInf.Influencer = inf
 					influencers = append(influencers, &incInf)
 				}
