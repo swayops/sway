@@ -993,13 +993,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		// Fill in and check available spendable
 		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
 		if store == nil || store.IsClosed(&cmp) {
-			// if !query {
-			// 	// Influencer may query for their assigned deal.. but we don't want to
-			// 	// hide the deal if there's no spendable.. we just want to tell them that
-			// 	// there's 0 spendable
-			rejections[cmp.Id] = "BUDGET"
-			continue
-			// }
+			if !query {
+				// Influencer may query for their assigned deal.. but we don't want to
+				// hide the deal if there's no spendable.. we just want to tell them that
+				// there's 0 spendable
+				rejections[cmp.Id] = "BUDGET"
+				continue
+			}
 		}
 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
@@ -1011,11 +1011,20 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		// Note: For query lookups, the most up-to date value is shown to influencers.
 		// However, we only save the LikelyEarnings value that is saved when the influencer
 		// hit "/assignDeal"
-		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
-
 		if store != nil && !cmp.IsProductBasedBudget() {
+			// Generate likely earnings for the influencer
+			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+
+			// Generate pending spend (based on deals that are assigned
+			// and how much they should spend)
 			pendingSpend, _ := cmp.GetPendingDetails()
+
+			// Subtract pending spend remaining spendable
 			availSpend := store.Spendable - pendingSpend
+
+			// If we are expected to spend all of spendable
+			// given the people who are in the deal.. lets bail (unless
+			// it's a query.. in which case we shoudl always show the deal)
 			if availSpend <= 0 && !cfg.Sandbox && !query {
 				rejections[cmp.Id] = "AVAIL_SPEND"
 				continue
@@ -1025,7 +1034,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = store.Spendable * 0.5 //cmp.GetEmptyDeals()
+				targetDeal.LikelyEarnings = store.Spendable * 0.5
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
