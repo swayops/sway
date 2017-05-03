@@ -983,9 +983,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Brand safety check
 		// If the campaign just wants brand safe and the influencer isn't brand safe..
-		if cmp.BrandSafe && inf.BrandSafe != "t" && !query {
-			rejections[cmp.Id] = "BRAND_SAFETY"
-			continue
+		if cmp.BrandSafe && !query {
+			if inf.BrandSafe != "t" || inf.GetFollowers() < 10000 {
+				rejections[cmp.Id] = "BRAND_SAFETY"
+				continue
+			}
 		}
 
 		// Fill in and check available spendable
