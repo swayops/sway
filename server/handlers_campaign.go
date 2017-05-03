@@ -420,25 +420,36 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.Param("id")
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var cmp *common.Campaign
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
-			if err != nil {
+		for _, inf := range s.auth.Influencers.GetAll() {
+			inf.BrandSafe = ""
+
+			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+				// Save the influencer
+				return saveInfluencer(s, tx, inf)
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
-
-			if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
-				cmp.Perks.Name = "Free Pair of Roma Boots"
-			}
-
-			return saveCampaign(tx, cmp, s)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
 		}
+		// id := c.Param("id")
+		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+		// 	var cmp *common.Campaign
+		// 	err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
+		// 	if err != nil {
+		// 		return
+		// 	}
 
-		c.JSON(200, misc.StatusOK(id))
+		// 	if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
+		// 		cmp.Perks.Name = "Free Pair of Roma Boots"
+		// 	}
+
+		// 	return saveCampaign(tx, cmp, s)
+		// }); err != nil {
+		// 	c.JSON(500, misc.StatusErr(err.Error()))
+		// 	return
+		// }
+
+		c.JSON(200, misc.StatusOK(""))
 	}
 }
 
