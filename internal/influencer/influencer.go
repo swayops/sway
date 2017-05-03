@@ -1463,6 +1463,9 @@ func (inf *Influencer) DealRejection(reason, postURL string, deal *common.Deal, 
 }
 
 func (inf *Influencer) PrivateEmail(cfg *config.Config) error {
+	// Turn this off for now
+	return nil
+
 	if cfg.Sandbox {
 		return nil
 	}
