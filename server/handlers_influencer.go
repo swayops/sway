@@ -930,6 +930,14 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				}
 			}
 		}
+
+		reversed := []*IncompleteInfluencer{}
+		// reverse order
+		for i := range influencers {
+			n := influencers[len(influencers)-1-i]
+			reversed = append(reversed, n)
+		}
+
 		c.JSON(200, influencers)
 	}
 }
