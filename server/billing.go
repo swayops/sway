@@ -128,7 +128,7 @@ func billing(s *Server) error {
 			continue
 		}
 
-		if s.Cfg.ReplyMailClient() != nil {
+		if s.Cfg.ReplyMailClient() != nil && !s.Cfg.Sandbox {
 			email := templates.NotifyBillingEmail.Render(map[string]interface{}{"Name": user.Name, "campaign": v})
 			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Sway Billing Notification for Advertiser "+user.Name), user.Email, user.Name,
 				[]string{""})
