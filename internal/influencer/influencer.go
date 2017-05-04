@@ -1031,6 +1031,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			if targetDeal.LikelyEarnings > availSpend {
+				if targetDeal.LikelyEarnings-availSpend > 100 {
+					// If we're off by more than a 100 bucks.. lets not offer the deal
+					// because the influencer would feel insulted.
+					rejections[cmp.Id] = "INSULT_SPEND"
+					continue
+				}
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
