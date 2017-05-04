@@ -130,16 +130,9 @@ func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx, spendable 
 	} else {
 		// This function is only called on campaign creation, update and on billing day,
 		// So if it's a goal based campaign, lets replenish deals!
-		if cmp.Goal > 0 {
-			if cmp.Goal > spendable {
-				maxDeals = 1
-			} else {
-				maxDeals = int(spendable / cmp.Goal)
-			}
-		} else {
-			// Default goal of spendable divided by 5 (so 5 deals per campaign)
-			maxDeals = int(spendable / 5)
-		}
+
+		// Default goal of spendable divided by 5 (so 5 deals per campaign)
+		maxDeals = int(spendable / 5)
 	}
 
 	if maxDeals == 0 && s.Cfg.Sandbox {
@@ -1340,4 +1333,23 @@ func getAllCategories(s *Server) []*InfCategory {
 	}
 
 	return out
+}
+
+func getFollowersByEmail(s *Server) map[string]int64 {
+	byEmail := make(map[string]int64)
+	for _, inf := range s.auth.Influencers.GetAll() {
+		byEmail[inf.EmailAddress] = inf.GetFollowers()
+	}
+
+	// Lets go over scraps now!
+	scraps, err := getAllScraps(s)
+	if err != nil {
+		return byEmail
+	}
+
+	for _, sc := range scraps {
+		byEmail[sc.EmailAddress] = sc.Followers
+	}
+
+	return byEmail
 }

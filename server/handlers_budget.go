@@ -68,6 +68,43 @@ func getStore(s *Server) gin.HandlerFunc {
 	}
 }
 
+type TmpPending struct {
+	Budget       float64 `json:"budget,omitempty"`
+	AvailBudget  float64 `json:"availBudget,omitempty"`
+	BookedBudget float64 `json:"bookedBudget,omitempty"`
+}
+
+func getBudgetSnapshot(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			store map[string]*budget.Store
+		)
+		if err := s.db.View(func(tx *bolt.Tx) (err error) {
+			store, err = budget.GetStore(tx, s.Cfg)
+			if err != nil {
+				return err
+			}
+			return nil
+		}); err != nil || len(store) == 0 {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		filteredStore := make(map[string]*TmpPending)
+		for campaignID, val := range store {
+			if cmp, ok := s.Campaigns.Get(campaignID); ok {
+				pendingSpend, _ := cmp.GetPendingDetails()
+				filteredStore[campaignID] = &TmpPending{
+					Budget:       cmp.Budget,
+					AvailBudget:  val.Spendable - pendingSpend,
+					BookedBudget: pendingSpend + val.Spent,
+				}
+			}
+		}
+		c.JSON(200, filteredStore)
+	}
+}
+
 type BillingInfo struct {
 	ID              string           `json:"id,omitempty"`
 	ActiveBalance   float64          `json:"activeBalance,omitempty"`

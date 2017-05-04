@@ -362,7 +362,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/addDeals/:campaignId/:count", addDealCount(srv))
 	adminGroup.GET("/setSignature/:influencerId/:sigId", setSignature(srv))
 	adminGroup.POST("/addBonus", addBonus(srv))
-	adminGroup.GET("/skipGeo/:influencerId/:state", skipGeo(srv))
+	adminGroup.GET("/skipGeo/:influencerId/:campaignId", skipGeo(srv))
 
 	adminGroup.POST("/setScrap", setScrap(srv))
 	adminGroup.GET("/getScrap/:id", getScrap(srv))
@@ -415,6 +415,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
+	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
 	verifyGroup.GET("/dirtyHack/:id", dirtyHack(srv))
 
 	r.Static("images", srv.Cfg.ImagesDir)
@@ -425,11 +426,11 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDeals/:influencerId/:lat/:long", infScope, infOwnership, getDealsForInfluencer(srv))
 	verifyGroup.GET("/getDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, getDeal(srv))
 	verifyGroup.GET("/assignDeal/:influencerId/:campaignId/:dealId/:platform", infScope, infOwnership, assignDeal(srv))
-	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", infScope, infOwnership, unassignDeal(srv))
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
 	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
 	verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
+	verifyGroup.GET("/sendInstructions/:influencerId/:campaignId/:dealId", infScope, infOwnership, sendInstructions(srv))
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,
@@ -446,6 +447,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
 	adminGroup.GET("/getStore", getStore(srv))
+	adminGroup.GET("/getBudgetSnapshot", getBudgetSnapshot(srv))
 
 	// Reporting
 	advScope := srv.auth.CheckScopes(scopes["adv"])

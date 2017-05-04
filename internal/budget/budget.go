@@ -66,7 +66,7 @@ func (st *Store) AddCharge(amount, fromBalance float64) {
 
 func (st *Store) IsClosed(cmp *common.Campaign) bool {
 	// Is the store closed for business?
-	return st == nil || (st.Spendable == 0 && !cmp.IsProductBasedBudget())
+	return st == nil || (st.Spendable <= 0 && !cmp.IsProductBasedBudget())
 }
 
 func (st *Store) Bill(cust string, pendingCharge float64, tx *bolt.Tx, cmp *common.Campaign, cfg *config.Config) error {

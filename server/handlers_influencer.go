@@ -233,6 +233,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 type AuditSet struct {
 	Categories []string `json:"categories,omitempty"`
 	Gender     string   `json:"gender,omitempty"`
+	BrandSafe  string   `json:"brandSafe,omitempty"`
 }
 
 func setAudit(s *Server) gin.HandlerFunc {
@@ -271,6 +272,10 @@ func setAudit(s *Server) gin.HandlerFunc {
 			inf.Male, inf.Female = true, false
 		case "f":
 			inf.Male, inf.Female = false, true
+		}
+
+		if upd.BrandSafe != "" {
+			inf.BrandSafe = strings.ToLower(upd.BrandSafe)
 		}
 
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
@@ -563,12 +568,6 @@ func addKeyword(s *Server) gin.HandlerFunc {
 func skipGeo(s *Server) gin.HandlerFunc {
 	// Manually add kw
 	return func(c *gin.Context) {
-		skip, err := strconv.ParseBool(c.Params.ByName("state"))
-		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
 		var (
 			infId = c.Param("influencerId")
 		)
@@ -579,13 +578,16 @@ func skipGeo(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		inf.SkipGeo = skip
+		cid := c.Params.ByName("campaignId")
+		if cid != "" && !misc.Contains(inf.GeoSkips, cid) {
+			inf.GeoSkips = append(inf.GeoSkips, cid)
 
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
+			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+				return saveInfluencer(s, tx, inf)
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
+				return
+			}
 		}
 
 		c.JSON(200, misc.StatusOK(infId))
@@ -888,7 +890,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				continue
 			}
 
-			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 {
+			if (!inf.Male && !inf.Female) || len(inf.Categories) == 0 || inf.BrandSafe == "" {
 				var (
 					incInf IncompleteInfluencer
 					found  bool
@@ -928,6 +930,7 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 				}
 			}
 		}
+
 		c.JSON(200, influencers)
 	}
 }

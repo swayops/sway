@@ -96,6 +96,7 @@ func (inf *InfluencerLoad) setToUser(a *Auth, u *User) error {
 		u.ParentID,
 		u.Email,
 		inf.IP,
+		inf.BrandSafe,
 		inf.Categories,
 		inf.Address,
 		int32(u.CreatedAt), // Seconds!

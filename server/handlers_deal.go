@@ -364,11 +364,27 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		inf, ok := s.auth.Influencers.Get(influencerId)
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 
-		if ok && cmp != nil && c.Query("alert") != "" {
+		if ok && cmp != nil {
 			if err := inf.DealUpdate(cmp, s.Cfg); err != nil {
 				s.Alert("Failed to give influencer a deal update: "+inf.Id, err)
 				c.JSON(500, misc.StatusErr(err.Error()))
 				return
+			}
+		}
+
+		c.JSON(200, misc.StatusOK(dealId))
+	}
+}
+
+func sendInstructions(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		dealId := c.Param("dealId")
+
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
+		if ok && cmp != nil {
+			if deal, ok := cmp.Deals[dealId]; ok && deal.IsActive() {
+				assignDealEmail(s, cmp, deal, &inf)
 			}
 		}
 

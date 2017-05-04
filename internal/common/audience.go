@@ -13,7 +13,8 @@ type Audience struct {
 	Id   string `json:"id"` // Set internally
 	Name string `json:"name"`
 
-	Members map[string]bool `json:"members"` // List of email addresses
+	Members   map[string]bool `json:"members"` // List of email addresses
+	Followers int64           `json:"followers"`
 
 	// Image URL for the audience
 	ImageURL  string `json:"imageUrl"`
@@ -32,8 +33,8 @@ func NewAudiences() *Audiences {
 	}
 }
 
-func (p *Audiences) Set(db *bolt.DB, cfg *config.Config) error {
-	aud, err := GetAudience(db, cfg)
+func (p *Audiences) Set(db *bolt.DB, cfg *config.Config, byEmail map[string]int64) error {
+	aud, err := GetAudience(db, cfg, byEmail)
 	if err != nil {
 		return err
 	}
@@ -77,13 +78,13 @@ func (p *Audiences) GetStore(ID string) map[string]*Audience {
 	return store
 }
 
-func (p *Audiences) Delete(ID string)  {
+func (p *Audiences) Delete(ID string) {
 	p.mux.Lock()
 	delete(p.store, ID)
 	p.mux.Unlock()
 }
 
-func GetAudience(db *bolt.DB, cfg *config.Config) (map[string]*Audience, error) {
+func GetAudience(db *bolt.DB, cfg *config.Config, byEmail map[string]int64) (map[string]*Audience, error) {
 	audiences := make(map[string]*Audience)
 	if err := db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(cfg.Bucket.Audience)).ForEach(func(k, v []byte) (err error) {
@@ -93,6 +94,15 @@ func GetAudience(db *bolt.DB, cfg *config.Config) (map[string]*Audience, error) 
 				return nil
 			}
 
+			var followers int64
+			for email, _ := range aud.Members {
+				tmpFollowers, ok := byEmail[email]
+				if ok {
+					followers += tmpFollowers
+				}
+			}
+
+			aud.Followers = followers
 			audiences[aud.Id] = &aud
 			return
 		})

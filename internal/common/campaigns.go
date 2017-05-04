@@ -33,8 +33,6 @@ type Campaign struct {
 	Status   bool  `json:"status"`
 	Approved int32 `json:"approved"` // Set to ts when admin receives all perks (or there are no perks)
 
-	Goal float64 `json:"infGoal"` // Price per influencer goal
-
 	// Social Media Post/User Requirements
 	Tags    []string         `json:"tags,omitempty"`
 	Mention string           `json:"mention,omitempty"`
@@ -160,9 +158,9 @@ func (cmp *Campaign) GetEmptyDeals() int32 {
 	return empty
 }
 
-func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
-	// Lets figure out the number of available deals AND the approximate budget
-	// that is used up
+func (cmp *Campaign) GetPendingDetails() (float64, int) {
+	// Lets figure out the amount of expected spend remaining
+	// and the number of empty deals
 	var (
 		pendingSpend float64
 		dealsEmpty   int
@@ -187,6 +185,14 @@ func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 		}
 	}
 
+	return pendingSpend, dealsEmpty
+}
+
+func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
+	// Lets figure out the number of available deals AND the approximate budget
+	// that is used up
+
+	pendingSpend, dealsEmpty := cmp.GetPendingDetails()
 	if dealsEmpty == 0 {
 		return 0, 0
 	}

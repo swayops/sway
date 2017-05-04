@@ -48,6 +48,8 @@ type InfluencerLoad struct {
 	Male   bool `json:"male,omitempty"`
 	Female bool `json:"female,omitempty"`
 
+	BrandSafe string `json:"brandSafe,omitempty"`
+
 	Categories []string `json:"categories,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
@@ -69,7 +71,7 @@ type Influencer struct {
 	// deal post
 	Banned bool `json:"banned,omitempty"`
 
-	BrandSafe bool `json:"brandSafe,omitempty"`
+	BrandSafe string `json:"brandSafe,omitempty"`
 
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
@@ -92,8 +94,10 @@ type Influencer struct {
 
 	// Set and created by the IP
 	Geo *geo.GeoRecord `json:"geo,omitempty"`
-	// For privilidged users who skip the geo check!
+	// For privilidged users who skip the geo check for certain campaigns!
 	SkipGeo bool `json:"skipGeo,omitempty"`
+	// List of campaigns ofr which to skip geo
+	GeoSkips []string `json:"geoSkips,omitempty"`
 
 	Male   bool `json:"male,omitempty"`
 	Female bool `json:"female,omitempty"`
@@ -151,7 +155,7 @@ type Strike struct {
 	TS         int64  `json:"ts,omitempty"`
 }
 
-func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
+func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode, defAgencyID, email, ip, brandSafe string, cats []string, address *lob.AddressLoad, created int32, cfg *config.Config) (*Influencer, error) {
 	inf := &Influencer{
 		Id:           id,
 		Name:         name,
@@ -161,6 +165,7 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 		DealPing:     true, // Deal ping is true by default!
 		EmailAddress: misc.TrimEmail(email),
 		CreatedAt:    created,
+		BrandSafe:    brandSafe,
 	}
 
 	if address != nil && address.AddressOne != "" {
@@ -782,6 +787,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		return infDeals
 	}
 
+	// If the influencer hasn't been updated in the last 25 days.. ignore em!
+	if !misc.WithinLast(inf.LastSocialUpdate, 24*25) {
+		return infDeals
+	}
+
 	if !inf.Audited() && !cfg.Sandbox {
 		// If the user has no categories or gender.. this means
 		// the assign game hasn't gotten to them yet
@@ -928,23 +938,32 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Match Campaign Geo Targeting with Influencer Geo //
-		if !inf.SkipGeo && !geo.IsGeoMatch(cmp.Geos, location) && !query {
+		if !inf.SkipGeo && !misc.Contains(inf.GeoSkips, cmp.Id) && !geo.IsGeoMatch(cmp.Geos, location) && !query {
 			rejections[cmp.Id] = "GEO_MATCH"
 			continue
 		}
 
 		// Gender check
-		if !cmp.Male && cmp.Female && !inf.Female {
-			// Only want females
-			rejections[cmp.Id] = "GENDER_F"
-			continue
-		} else if cmp.Male && !cmp.Female && !inf.Male {
-			// Only want males
-			rejections[cmp.Id] = "GENDER_M"
-			continue
-		} else if !cmp.Male && !cmp.Female {
-			rejections[cmp.Id] = "GENDER"
-			continue
+		if !query {
+			// If you are both (i.e. not applicable) and the campaign wants just one..
+			// skip!
+			if inf.Male && inf.Female && (!cmp.Male || !cmp.Female) {
+				rejections[cmp.Id] = "GENDER_UNI"
+				continue
+			}
+
+			if !cmp.Male && cmp.Female && !inf.Female {
+				// Only want females
+				rejections[cmp.Id] = "GENDER_F"
+				continue
+			} else if cmp.Male && !cmp.Female && !inf.Male {
+				// Only want males
+				rejections[cmp.Id] = "GENDER_M"
+				continue
+			} else if !cmp.Male && !cmp.Female {
+				rejections[cmp.Id] = "GENDER"
+				continue
+			}
 		}
 
 		// Whitelisting is done at the campaign level.. but
@@ -966,6 +985,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 		}
 
+		// Brand safety check
+		// If the campaign just wants brand safe and the influencer isn't brand safe..
+		if cmp.BrandSafe && !query {
+			if inf.BrandSafe != "t" || inf.GetFollowers() < 10000 {
+				rejections[cmp.Id] = "BRAND_SAFETY"
+				continue
+			}
+		}
+
 		// Fill in and check available spendable
 		budgetStore, err := budget.GetCampaignStoreFromDb(budgetDb, cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || budgetStore == nil {
@@ -974,13 +1002,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		if budgetStore.IsClosed(&cmp) {
-			// if !query {
-			// 	// Influencer may query for their assigned deal.. but we don't want to
-			// 	// hide the deal if there's no spendable.. we just want to tell them that
-			// 	// there's 0 spendable
-			rejections[cmp.Id] = "BUDGET"
-			continue
-			// }
+			if !query {
+				// Influencer may query for their assigned deal.. but we don't want to
+				// hide the deal if there's no spendable.. we just want to tell them that
+				// there's 0 spendable
+				rejections[cmp.Id] = "BUDGET"
+				continue
+			}
 		}
 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
@@ -992,14 +1020,30 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		// Note: For query lookups, the most up-to date value is shown to influencers.
 		// However, we only save the LikelyEarnings value that is saved when the influencer
 		// hit "/assignDeal"
-		targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
-
 		if budgetStore != nil && !cmp.IsProductBasedBudget() {
-			if targetDeal.LikelyEarnings > budgetStore.Spendable {
+			// Generate likely earnings for the influencer
+			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+
+			// Generate pending spend (based on deals that are assigned
+			// and how much they should spend)
+			pendingSpend, _ := cmp.GetPendingDetails()
+
+			// Subtract pending spend remaining spendable
+			availSpend := budgetStore.Spendable - pendingSpend
+
+			// If we are expected to spend all of spendable
+			// given the people who are in the deal.. lets bail (unless
+			// it's a query.. in which case we shoudl always show the deal)
+			if availSpend <= 0 && !cfg.Sandbox && !query {
+				rejections[cmp.Id] = "AVAIL_SPEND"
+				continue
+			}
+
+			if targetDeal.LikelyEarnings > availSpend {
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = budgetStore.Spendable * 0.7 //cmp.GetEmptyDeals()
+				targetDeal.LikelyEarnings = availSpend * 0.7
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
@@ -1455,6 +1499,9 @@ func (inf *Influencer) DealRejection(reason, postURL string, deal *common.Deal, 
 }
 
 func (inf *Influencer) PrivateEmail(cfg *config.Config) error {
+	// Turn this off for now
+	return nil
+
 	if cfg.Sandbox {
 		return nil
 	}
@@ -1565,7 +1612,7 @@ func (inf *Influencer) PerkNotify(deal *common.Deal, cfg *config.Config) error {
 }
 
 func (inf *Influencer) Audited() bool {
-	return len(inf.Categories) > 0 && (inf.Male || inf.Female)
+	return len(inf.Categories) > 0 && (inf.Male || inf.Female) && inf.BrandSafe != ""
 }
 
 func (inf *Influencer) IsBanned() bool {

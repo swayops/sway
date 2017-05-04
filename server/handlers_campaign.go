@@ -292,11 +292,11 @@ type manageInf struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Engagements int32  `json:"engagements"`
-
-	ImageURL   string `json:"image"`
-	ProfileURL string `json:"profileUrl"`
-	Followers  int64  `json:"followers"`
-	PostURL    string `json:"postUrl"`
+	DealID      string `json:"dealID"`
+	ImageURL    string `json:"image"`
+	ProfileURL  string `json:"profileUrl"`
+	Followers   int64  `json:"followers"`
+	PostURL     string `json:"postUrl"`
 }
 
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
@@ -348,8 +348,9 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						}
 
 						tmpInf := &manageInf{
-							ID:   inf.Id,
-							Name: inf.Name,
+							ID:     inf.Id,
+							Name:   inf.Name,
+							DealID: deal.Id,
 						}
 
 						if st := deal.TotalStats(); st != nil {
@@ -418,25 +419,36 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		id := c.Param("id")
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var cmp *common.Campaign
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
-			if err != nil {
+		for _, inf := range s.auth.Influencers.GetAll() {
+			inf.BrandSafe = ""
+
+			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+				// Save the influencer
+				return saveInfluencer(s, tx, inf)
+			}); err != nil {
+				c.JSON(500, misc.StatusErr(err.Error()))
 				return
 			}
-
-			if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
-				cmp.Perks.Instructions = "Code valid for products over $59, use this code at romaboots.com for a free pair of boots, shipping fee (flat rate of $8) is applicable."
-			}
-
-			return saveCampaign(tx, cmp, s)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
 		}
+		// id := c.Param("id")
+		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+		// 	var cmp *common.Campaign
+		// 	err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
+		// 	if err != nil {
+		// 		return
+		// 	}
 
-		c.JSON(200, misc.StatusOK(id))
+		// 	if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
+		// 		cmp.Perks.Name = "Free Pair of Roma Boots"
+		// 	}
+
+		// 	return saveCampaign(tx, cmp, s)
+		// }); err != nil {
+		// 	c.JSON(500, misc.StatusErr(err.Error()))
+		// 	return
+		// }
+
+		c.JSON(200, misc.StatusOK(""))
 	}
 }
 
@@ -455,6 +467,7 @@ type CampaignUpdate struct {
 	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
 	Task       *string          `json:"task,omitempty"`
 	Perks      *common.Perk     `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
+	BrandSafe  *bool            `json:"brandSafe,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -522,6 +535,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Female != nil {
 			cmp.Female = *upd.Female
+		}
+
+		if upd.BrandSafe != nil {
+			cmp.BrandSafe = *upd.BrandSafe
 		}
 
 		if !cmp.Male && !cmp.Female {
@@ -616,47 +633,58 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					newCouponMap[newCouponCode] += 1
 				}
 
-				var filteredList []string
+				var (
+					filteredList []string
+					modified     bool
+				)
 				for cp, newVal := range newCouponMap {
 					oldVal, _ := existingCoupons[cp]
-					if oldVal != newVal && newVal > oldVal {
-						for i := 0; i < newVal-oldVal; i++ {
-							filteredList = append(filteredList, cp)
+					if oldVal != newVal {
+						modified = true
+						if newVal > oldVal {
+							for i := 0; i < newVal-oldVal; i++ {
+								filteredList = append(filteredList, cp)
+							}
 						}
 					}
 				}
 
-				dealsToAdd := len(filteredList)
-				if dealsToAdd > 0 {
-					// There are new coupons being added!
-					cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
-					cmp.Perks.Count += dealsToAdd
+				// If modified is true that means an existing coupon was either increased
+				// in count or decreased. However, that (the above forloop and it's var modified
+				// logic) wouldn't account for a coupon completely disappearing from the
+				// newCouponMap
+				if modified || len(newCouponMap) != len(existingCoupons) {
+					dealsToAdd := len(filteredList)
+					if dealsToAdd > 0 {
+						// There are new coupons being added!
+						cmp.Perks.Codes = append(cmp.Perks.Codes, filteredList...)
+						cmp.Perks.Count += dealsToAdd
 
-					// Add deals for perks we added
-					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						addDeals(&cmp, dealsToAdd, s, tx)
-						return saveCampaign(tx, &cmp, s)
-					}); err != nil {
-						misc.AbortWithErr(c, 500, err)
-						return
-					}
-				} else {
-					// Coupons are beign taken away since filtered returned nothing!
+						// Add deals for perks we added
+						if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+							addDeals(&cmp, dealsToAdd, s, tx)
+							return saveCampaign(tx, &cmp, s)
+						}); err != nil {
+							misc.AbortWithErr(c, 500, err)
+							return
+						}
+					} else {
+						// Coupons are beign taken away since filtered returned nothing!
+						if inUse {
+							c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
+							return
+						}
 
-					if inUse {
-						c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
-						return
-					}
+						cmp.Perks.Codes = upd.Perks.Codes
+						cmp.Perks.Count = len(upd.Perks.Codes)
 
-					cmp.Perks.Codes = upd.Perks.Codes
-					cmp.Perks.Count = len(upd.Perks.Codes)
-
-					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						resetDeals(&cmp, cmp.Perks.Count, s, tx)
-						return saveCampaign(tx, &cmp, s)
-					}); err != nil {
-						misc.AbortWithErr(c, 500, err)
-						return
+						if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+							resetDeals(&cmp, cmp.Perks.Count, s, tx)
+							return saveCampaign(tx, &cmp, s)
+						}); err != nil {
+							misc.AbortWithErr(c, 500, err)
+							return
+						}
 					}
 				}
 			} else if !cmp.Perks.IsCoupon() && !upd.Perks.IsCoupon() {
