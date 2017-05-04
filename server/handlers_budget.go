@@ -73,9 +73,8 @@ func getLastMonthsStore(s *Server) gin.HandlerFunc {
 
 type TmpPending struct {
 	Budget       float64 `json:"budget,omitempty"`
-	Spendable    float64 `json:"spendable,omitempty"`
-	PendingSpend float64 `json:"pendingSpend,omitempty"`
-	Spent        float64 `json:"spent,omitempty"`
+	AvailBudget  float64 `json:"availBudget,omitempty"`
+	BookedBudget float64 `json:"bookedBudget,omitempty"`
 }
 
 func getBudgetSnapshot(s *Server) gin.HandlerFunc {
@@ -92,9 +91,8 @@ func getBudgetSnapshot(s *Server) gin.HandlerFunc {
 				pendingSpend, _ := cmp.GetPendingDetails()
 				filteredStore[campaignID] = &TmpPending{
 					Budget:       cmp.Budget,
-					Spendable:    val.Spendable,
-					PendingSpend: pendingSpend,
-					Spent:        val.Spent,
+					AvailBudget:  val.Spendable - pendingSpend,
+					BookedBudget: pendingSpend + val.Spent,
 				}
 			}
 		}
