@@ -1025,7 +1025,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			// If we are expected to spend all of spendable
 			// given the people who are in the deal.. lets bail (unless
 			// it's a query.. in which case we shoudl always show the deal)
-			if availSpend <= 0 && !cfg.Sandbox && !query {
+			if availSpend <= 10 && !cfg.Sandbox && !query {
 				rejections[cmp.Id] = "AVAIL_SPEND"
 				continue
 			}
