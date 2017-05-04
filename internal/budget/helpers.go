@@ -14,18 +14,6 @@ func GetSpendHistoryKey() string {
 	return fmt.Sprintf("%s-%s", last.Format("20060102"), now.Format("20060102"))
 }
 
-func GetLastMonthBudgetKey() string {
-	return getBudgetKeyOffset(1)
-}
-
-func getBudgetKeyOffset(offset int) string {
-	now := time.Now().UTC()
-	if offset > 0 {
-		offset = -offset
-	}
-	return now.AddDate(0, offset, 0).Format(format)
-}
-
 func isFirstDay() bool {
 	// Checks to see if today is the first
 	// day of the month
@@ -48,14 +36,6 @@ func daysInMonth(year int, month time.Month) int {
 		return 31
 	}
 	return 30
-}
-
-func GetProratedBudget(budget float64) float64 {
-	now := time.Now().UTC()
-	days := daysInMonth(now.Year(), now.Month())
-	daysUntilEnd := days - now.Day() + 1
-
-	return (budget / float64(days)) * float64(daysUntilEnd)
 }
 
 const (
