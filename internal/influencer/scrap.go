@@ -7,6 +7,7 @@ import (
 	"github.com/boltdb/bolt"
 
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/subscriptions"
@@ -143,24 +144,21 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 				return false
 			}
 		}
+
+		// Optimization
+		if len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
+			store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
+			if store.IsClosed(&cmp) {
+				return false
+			}
+
+			min, max := cmp.GetTargetYield(store.Spendable)
+			maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+			if maxYield < min || maxYield > max || maxYield == 0 {
+				return false
+			}
+		}
 	}
-
-	// Optimization
-	// if spendable == 0 {
-	// 	store, _ := budget.GetBudgetInfo(budgetDb, cfg, cmp.Id, "")
-	// 	if store.IsClosed(&cmp) {
-	// 		return false
-	// 	}
-	// 	spendable = store.Spendable
-	// }
-
-	// if len(cmp.Whitelist) == 0 && !cfg.Sandbox {
-	// 	min, max := cmp.GetTargetYield(spendable)
-	// 	maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
-	// 	if maxYield < min || maxYield > max || maxYield == 0 {
-	// 		return false
-	// 	}
-	// }
 
 	// Social Media Checks
 	socialMediaFound := false
