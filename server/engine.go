@@ -321,7 +321,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 		store, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || store == nil {
 			if !s.Cfg.Sandbox {
-				log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
+				s.Alert("Could not find store for "+cmp.Id, errors.New("Could not find store"))
 			}
 			continue
 		}

@@ -419,17 +419,43 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		for _, inf := range s.auth.Influencers.GetAll() {
-			inf.BrandSafe = ""
 
-			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-				// Save the influencer
-				return saveInfluencer(s, tx, inf)
-			}); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Budget)).Get([]byte("338"))
+
+			var (
+				st map[string]*budget.Store
+			)
+			if len(b) == 0 {
+				// First save for this advertiser!
+				st = make(map[string]*budget.Store)
+			} else {
+				if err = json.Unmarshal(b, &st); err != nil {
+					return ErrUnmarshal
+				}
 			}
+
+			store := &budget.Store{
+				Spendable: 682.8600000000001,
+				Spent:     17.139999999999873,
+				NextBill:  1496336400,
+			}
+
+			st["20"] = store
+
+			if b, err = json.Marshal(&st); err != nil {
+				return err
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Budget, "338", b); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			s.Alert("Error when running billing for 20", err)
 		}
+
 		// id := c.Param("id")
 		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		// 	var cmp *common.Campaign
