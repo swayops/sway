@@ -71,6 +71,37 @@ func getLastMonthsStore(s *Server) gin.HandlerFunc {
 	}
 }
 
+type TmpPending struct {
+	Budget       float64 `json:"budget,omitempty"`
+	Spendable    float64 `json:"spendable,omitempty"`
+	PendingSpend float64 `json:"pendingSpend,omitempty"`
+	Spent        float64 `json:"spent,omitempty"`
+}
+
+func getBudgetSnapshot(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		store, err := budget.GetStore(s.budgetDb, s.Cfg, "")
+		if err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		filteredStore := make(map[string]*TmpPending)
+		for campaignID, val := range store {
+			if cmp, ok := s.Campaigns.Get(campaignID); ok {
+				pendingSpend, _ := cmp.GetPendingDetails()
+				filteredStore[campaignID] = &TmpPending{
+					Budget:       cmp.Budget,
+					Spendable:    val.Spendable,
+					PendingSpend: pendingSpend,
+					Spent:        val.Spent,
+				}
+			}
+		}
+		c.JSON(200, filteredStore)
+	}
+}
+
 const (
 	cmpInvoiceFormat          = "Campaign ID: %s, Email: test@sway.com, Phone: 123456789, Spent: %f, DSPFee: %f, ExchangeFee: %f, Total: %f"
 	talentAgencyInvoiceFormat = "Agency ID: %s, Email: test@sway.com, Payout: %f, Influencer ID: %s, Campaign ID: %s, Deal ID: %s"

@@ -467,6 +467,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
 	adminGroup.GET("/getLastMonthsStore", getLastMonthsStore(srv))
 	adminGroup.GET("/getStore", getStore(srv))
+	adminGroup.GET("/getBudgetSnapshot", getBudgetSnapshot(srv))
 
 	// Reporting
 	advScope := srv.auth.CheckScopes(scopes["adv"])
