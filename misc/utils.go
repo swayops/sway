@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"net/http"
@@ -141,8 +140,14 @@ func DecodeHex(s string) []byte {
 }
 
 func WithinLast(timestamp, hours int32) bool {
-	// Is the timestamp within the last X hours?
 	now := int32(time.Now().Unix())
+
+	// If the timestamp is from the future.. bail!
+	if timestamp >= now {
+		return false
+	}
+
+	// Is the timestamp within the last X hours?
 	if timestamp >= (now - (hours * hour)) {
 		return true
 	}
@@ -154,7 +159,7 @@ func WithinHours(timestamp, min, max int32) bool {
 	now := int32(time.Now().Unix())
 	minTs := now + (min * hour)
 	maxTs := now + (max * hour)
-	fmt.Println(minTs, maxTs)
+
 	if timestamp >= minTs && timestamp < maxTs {
 		return true
 	}
