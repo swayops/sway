@@ -1031,7 +1031,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			if targetDeal.LikelyEarnings > availSpend {
-				if availSpend/targetDeal.LikelyEarnings < 0.2 && !cfg.Sandbox {
+				if availSpend/targetDeal.LikelyEarnings < 0.2 && !cfg.Sandbox && !query {
 					// If likely earnings are more than available spend.. and
 					// available spend is <20% of what you're supposed to be making..
 					// lets not offer the deal out of fear of insulting the influencer
