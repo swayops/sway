@@ -25,7 +25,7 @@ var (
 )
 
 const (
-	timeoutDays    = 25
+	timeoutDays    = 40
 	timeoutSeconds = int32(60*60*24) * timeoutDays
 	waitingPeriod  = int32(16) // Wait 16 hours before we accept a deal
 	minRatio       = 0.04      // Minimum comments to like ratio as a percentage
