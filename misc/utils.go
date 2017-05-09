@@ -143,7 +143,7 @@ func WithinLast(timestamp, hours int32) bool {
 	now := int32(time.Now().Unix())
 
 	// If the timestamp is from the future.. bail!
-	if timestamp >= now {
+	if timestamp > now {
 		return false
 	}
 
