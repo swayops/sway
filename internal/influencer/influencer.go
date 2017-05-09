@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	TimeoutDays = 25
+	TimeoutDays = 40
 )
 
 var (
