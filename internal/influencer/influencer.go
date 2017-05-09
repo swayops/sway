@@ -1034,18 +1034,20 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			// If we are expected to spend all of spendable
 			// given the people who are in the deal.. lets bail (unless
 			// it's a query.. in which case we shoudl always show the deal)
-			if availSpend <= 0 && !cfg.Sandbox && !query {
+			if availSpend <= 10 && !cfg.Sandbox && !query {
 				rejections[cmp.Id] = "AVAIL_SPEND"
 				continue
 			}
 
-			if targetDeal.LikelyEarnings > availSpend {
-				if targetDeal.LikelyEarnings-availSpend > 100 {
-					// If we're off by more than a 100 bucks.. lets not offer the deal
-					// because the influencer would feel insulted.
+			if targetDeal.LikelyEarnings > availSpend && !query {
+				if availSpend/targetDeal.LikelyEarnings < 0.2 && !cfg.Sandbox {
+					// If likely earnings are more than available spend.. and
+					// available spend is <20% of what you're supposed to be making..
+					// lets not offer the deal out of fear of insulting the influencer
 					rejections[cmp.Id] = "INSULT_SPEND"
 					continue
 				}
+
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
@@ -1053,18 +1055,18 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
-			// if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 {
-			// 	// NOTE: Skip this for whitelisted campaigns!
+			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
+				// NOTE: Skip this for whitelisted campaigns and non-product perk campaigns!
 
-			// 	// OPTIMIZATION: Goal is to distribute funds evenly
-			// 	// given what the campaign's influencer goal is and how
-			// 	// many funds we have left
-			// 	min, max := cmp.GetTargetYield(targetDeal.Spendable)
-			// 	if maxYield < min || maxYield > max || maxYield == 0 {
-			// 		rejections[cmp.Id] = "MAX_YIELD"
-			// 		continue
-			// 	}
-			// }
+				// OPTIMIZATION: Goal is to distribute products and funds evenly
+				// given what the campaign's product perk count is and how
+				// many funds we have left
+				min, max := cmp.GetTargetYield(targetDeal.Spendable)
+				if maxYield < min || maxYield > max || maxYield == 0 {
+					rejections[cmp.Id] = "MAX_YIELD"
+					continue
+				}
+			}
 		}
 
 		if !query {
