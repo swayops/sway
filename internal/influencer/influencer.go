@@ -1448,13 +1448,13 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 	}
 
 	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon, "Timeout": TimeoutDays})
-	// resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
-	// 	[]string{""})
-	// if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-	// 	return ErrEmail
-	// }
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
 
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
+	resp, err = cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
