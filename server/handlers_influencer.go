@@ -399,6 +399,16 @@ func getCompletedDeal(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getInfluencersByRep(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		influencers := s.auth.Influencers.GetAll()
+
+		sort.Slice(influencers, func(i, j int) bool { return influencers[i].CurrentRep > influencers[j].CurrentRep })
+
+		c.JSON(200, influencers)
+	}
+}
+
 func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var influencers []influencer.Influencer
