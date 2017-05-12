@@ -402,7 +402,13 @@ func getCompletedDeal(s *Server) gin.HandlerFunc {
 
 func getInfluencersByRep(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		influencers := s.auth.Influencers.GetAll()
+		influencersMap := s.auth.Influencers.GetAll()
+
+		influencers := make([]influencer.Influencer, 0, len(influencersMap))
+
+		for _, value := range influencersMap {
+			influencers = append(influencers, value)
+		}
 
 		sort.Slice(influencers, func(i, j int) bool { return influencers[i].CurrentRep > influencers[j].CurrentRep })
 
