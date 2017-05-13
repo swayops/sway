@@ -1017,32 +1017,32 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 			// Generate pending spend (based on deals that are assigned
 			// and how much they should spend)
-			pendingSpend, _ := cmp.GetPendingDetails()
+			// pendingSpend, _ := cmp.GetPendingDetails()
 
-			// Subtract pending spend remaining spendable
-			availSpend := store.Spendable - pendingSpend
+			// // Subtract pending spend remaining spendable
+			// availSpend := store.Spendable - pendingSpend
 
-			// If we are expected to spend all of spendable
-			// given the people who are in the deal.. lets bail (unless
-			// it's a query.. in which case we shoudl always show the deal)
-			if availSpend <= 10 && !cfg.Sandbox && !query {
-				rejections[cmp.Id] = "AVAIL_SPEND"
-				continue
-			}
+			// // If we are expected to spend all of spendable
+			// // given the people who are in the deal.. lets bail (unless
+			// // it's a query.. in which case we shoudl always show the deal)
+			// if availSpend <= 10 && !cfg.Sandbox && !query {
+			// 	rejections[cmp.Id] = "AVAIL_SPEND"
+			// 	continue
+			// }
 
-			if targetDeal.LikelyEarnings > availSpend && !query {
-				if availSpend/targetDeal.LikelyEarnings < 0.2 && !cfg.Sandbox {
-					// If likely earnings are more than available spend.. and
-					// available spend is <20% of what you're supposed to be making..
-					// lets not offer the deal out of fear of insulting the influencer
-					rejections[cmp.Id] = "INSULT_SPEND"
-					continue
-				}
+			if targetDeal.LikelyEarnings > store.Spendable && !query {
+				// if availSpend/targetDeal.LikelyEarnings < 0.2 && !cfg.Sandbox {
+				// 	// If likely earnings are more than available spend.. and
+				// 	// available spend is <20% of what you're supposed to be making..
+				// 	// lets not offer the deal out of fear of insulting the influencer
+				// 	rejections[cmp.Id] = "INSULT_SPEND"
+				// 	continue
+				// }
 
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
-				targetDeal.LikelyEarnings = availSpend * 0.7
+				targetDeal.LikelyEarnings = store.Spendable * 0.7
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
@@ -1098,18 +1098,18 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			targetDeal.Tags = cmp.Tags
 			targetDeal.Mention = cmp.Mention
 			targetDeal.Task = cmp.Task
-			if cmp.Perks != nil {
-				var code string
-				if targetDeal.Perk != nil {
-					code = targetDeal.Perk.Code
-				}
-				targetDeal.Perk = &common.Perk{
-					Name:         cmp.Perks.Name,
-					Instructions: cmp.Perks.Instructions,
-					Category:     cmp.Perks.GetType(),
-					Code:         code,
-					Count:        1}
-			}
+			// if cmp.Perks != nil {
+			// 	var code string
+			// 	if targetDeal.Perk != nil {
+			// 		code = targetDeal.Perk.Code
+			// 	}
+			// 	targetDeal.Perk = &common.Perk{
+			// 		Name:         cmp.Perks.Name,
+			// 		Instructions: cmp.Perks.Instructions,
+			// 		Category:     cmp.Perks.GetType(),
+			// 		Code:         code,
+			// 		Count:        1}
+			// }
 
 			if targetDeal.Link == "" {
 				// getDeal queries for an active deal so it already has
@@ -1126,7 +1126,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			infDeals = append(infDeals, targetDeal)
 		}
 	}
-
+	log.Println("REEJCTIONS", rejections)
 	return infDeals
 }
 

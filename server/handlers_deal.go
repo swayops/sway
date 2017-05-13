@@ -13,7 +13,6 @@ import (
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
-	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 )
@@ -219,75 +218,75 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 
 			// Check if any perks are left to give this dude
-			if cmp.Perks != nil {
-				if cmp.Perks.Count == 0 {
-					return errors.New("Deal is no longer available!")
-				}
+			// if cmp.Perks != nil {
+			// 	if cmp.Perks.Count == 0 {
+			// 		return errors.New("Deal is no longer available!")
+			// 	}
 
-				if inf.Address == nil {
-					return errors.New("Please enter a valid mailing address in your profile before accepting this deal")
-				}
+			// 	if inf.Address == nil {
+			// 		return errors.New("Please enter a valid mailing address in your profile before accepting this deal")
+			// 	}
 
-				// Now that we know there is a deal for this dude..
-				// and they have an address.. schedule a perk order!
+			// 	// Now that we know there is a deal for this dude..
+			// 	// and they have an address.. schedule a perk order!
 
-				cmp.Perks.Count -= 1
-				foundDeal.Perk = &common.Perk{
-					Name:         cmp.Perks.Name,
-					Instructions: cmp.Perks.Instructions,
-					Category:     cmp.Perks.GetType(),
-					Count:        1,
-					InfId:        inf.Id,
-					InfName:      inf.Name,
-					Address:      inf.Address,
-					Status:       false,
-				}
+			// 	cmp.Perks.Count -= 1
+			// 	foundDeal.Perk = &common.Perk{
+			// 		Name:         cmp.Perks.Name,
+			// 		Instructions: cmp.Perks.Instructions,
+			// 		Category:     cmp.Perks.GetType(),
+			// 		Count:        1,
+			// 		InfId:        inf.Id,
+			// 		InfName:      inf.Name,
+			// 		Address:      inf.Address,
+			// 		Status:       false,
+			// 	}
 
-				if cmp.Perks.Count == 0 {
-					// Lets email the advertiser letting them know there are no more
-					// perks available!
+			// 	if cmp.Perks.Count == 0 {
+			// 		// Lets email the advertiser letting them know there are no more
+			// 		// perks available!
 
-					user := s.auth.GetUser(cmp.AdvertiserId)
-					if user == nil || user.Advertiser == nil {
-						c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
-						return
-					}
+			// 		user := s.auth.GetUser(cmp.AdvertiserId)
+			// 		if user == nil || user.Advertiser == nil {
+			// 			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			// 			return
+			// 		}
 
-					if s.Cfg.ReplyMailClient() != nil {
-						email := templates.NotifyEmptyPerkEmail.Render(map[string]interface{}{"ID": user.ID, "Campaign": cmp.Name, "Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
-						resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have no remaining perks for the campaign "+cmp.Name), user.Email, user.Name,
-							[]string{""})
-						if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-							s.Alert("Failed to mail advertiser regarding perks running out", err)
-						} else {
-							if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
-								"tag": "no more perks",
-								"id":  user.ID,
-							}); err != nil {
-								log.Println("Failed to log out of perks notify email!", user.ID)
-							}
-						}
-					}
-				}
+			// 		if s.Cfg.ReplyMailClient() != nil {
+			// 			email := templates.NotifyEmptyPerkEmail.Render(map[string]interface{}{"ID": user.ID, "Campaign": cmp.Name, "Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+			// 			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have no remaining perks for the campaign "+cmp.Name), user.Email, user.Name,
+			// 				[]string{""})
+			// 			if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			// 				s.Alert("Failed to mail advertiser regarding perks running out", err)
+			// 			} else {
+			// 				if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+			// 					"tag": "no more perks",
+			// 					"id":  user.ID,
+			// 				}); err != nil {
+			// 					log.Println("Failed to log out of perks notify email!", user.ID)
+			// 				}
+			// 			}
+			// 		}
+			// 	}
 
-				// If it's a coupon code.. we do not need admin approval
-				// so lets set the status to true
-				if cmp.Perks.IsCoupon() {
-					if len(cmp.Perks.Codes) == 0 {
-						return errors.New("Deal is no longer available!")
-					}
+			// 	// If it's a coupon code.. we do not need admin approval
+			// 	// so lets set the status to true
+			// 	if cmp.Perks.IsCoupon() {
+			// 		if len(cmp.Perks.Codes) == 0 {
+			// 			return errors.New("Deal is no longer available!")
+			// 		}
 
-					foundDeal.Perk.Status = true
-					// Give it last element of the slice
-					idx := len(cmp.Perks.Codes) - 1
-					foundDeal.Perk.Code = cmp.Perks.Codes[idx]
+			// 		foundDeal.Perk.Status = true
+			// 		// Give it last element of the slice
+			// 		idx := len(cmp.Perks.Codes) - 1
+			// 		foundDeal.Perk.Code = cmp.Perks.Codes[idx]
 
-					// Lets also delete the coupon code
-					cmp.Perks.Codes = cmp.Perks.Codes[:idx]
-				} else {
-					s.Notify("Perk requested!", fmt.Sprintf("%s just requested a perk (%s) to be mailed to them! Please check admin dash.", inf.Name, cmp.Perks.Name))
-				}
-			}
+			// 		// Lets also delete the coupon code
+			// 		cmp.Perks.Codes = cmp.Perks.Codes[:idx]
+			// 	} else {
+			// 		s.Notify("Perk requested!", fmt.Sprintf("%s just requested a perk (%s) to be mailed to them! Please check admin dash.", inf.Name, cmp.Perks.Name))
+			// 	}
+			// }
 
 			foundDeal.InfluencerId = infId
 			foundDeal.InfluencerName = inf.Name
