@@ -323,7 +323,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			// Lets send them deal instructions if there are any!
 			if cmp != nil && foundDeal != nil {
 				s.Notify("Deal accepted!", fmt.Sprintf("%s just accepted a deal for %s", inf.Name, cmp.Name))
-				assignDealEmail(s, cmp, foundDeal, &inf)
+				// assignDealEmail(s, cmp, foundDeal, &inf)
 			}
 		}()
 
