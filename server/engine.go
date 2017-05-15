@@ -325,7 +325,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 	for _, cmp := range s.Campaigns.GetStore() {
 		// Get this month's store for this campaign
 		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-		if err != nil || store == nil {
+		if err != nil || store == nil || store.IsClosed(&cmp) {
 			if !s.Cfg.Sandbox {
 				log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
 			}
