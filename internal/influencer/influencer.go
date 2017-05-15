@@ -1107,7 +1107,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			targetDeal.Tags = cmp.Tags
 			targetDeal.Mention = cmp.Mention
 			targetDeal.Task = cmp.Task
-			if cmp.Perks != nil {
+			if cmp.Perks != nil && inf.Id != "385" {
 				var code string
 				if targetDeal.Perk != nil {
 					code = targetDeal.Perk.Code

@@ -2717,7 +2717,7 @@ func TestClicks(t *testing.T) {
 		InfluencerLoad: influencer.InfluencerLoad{
 			Male:      true,
 			Geo:       &geo.GeoRecord{},
-			TwitterId: "justinbieber",
+			TwitterId: "underarmour",
 		},
 	}
 
