@@ -420,34 +420,50 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		for _, inf := range s.auth.Influencers.GetAll() {
-			inf.BrandSafe = ""
+		// Move clicks from courtney to carmen
+		// switch their click urls
+		cortney, ok := s.auth.Influencers.Get("387")
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
 
-			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-				// Save the influencer
-				return saveInfluencer(s, tx, inf)
-			}); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
+		stats := make(map[string]*common.Stats)
+		for _, d := range cortney.ActiveDeals {
+			if d.Id == "933c110413161f365762937c75aeab35" {
+				for date, val := range d.Reporting {
+					clicks := []*common.Click{}
+					for _, cl := range val.PendingClicks {
+						clicks = append(clicks, &common.Click{UUID: cl.UUID, TS: cl.TS})
+					}
+					stats[date] = &common.Stats{PendingClicks: clicks}
+				}
+				d.Reporting = nil
 			}
 		}
-		// id := c.Param("id")
-		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-		// 	var cmp *common.Campaign
-		// 	err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
-		// 	if err != nil {
-		// 		return
-		// 	}
 
-		// 	if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
-		// 		cmp.Perks.Name = "Free Pair of Roma Boots"
-		// 	}
+		if err := saveAllActiveDeals(s, cortney); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
 
-		// 	return saveCampaign(tx, cmp, s)
-		// }); err != nil {
-		// 	c.JSON(500, misc.StatusErr(err.Error()))
-		// 	return
-		// }
+		carmen, ok := s.auth.Influencers.Get("385")
+		if !ok {
+			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		for _, d := range carmen.ActiveDeals {
+			if d.Id == "92a111041910302f43a0db9fe41e0ff8" {
+				d.Reporting = stats
+				d.ShortenedLink = "https://swayops.com/c/J+g"
+			}
+		}
+
+		if err := saveAllActiveDeals(s, carmen); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
 
 		c.JSON(200, misc.StatusOK(""))
 	}
