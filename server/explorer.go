@@ -924,11 +924,9 @@ func pickupDeal(deal *common.Deal, inf influencer.Influencer, srv *Server) error
 		return err
 	}
 
-	deal.PickedUp = true
-
 	for _, infDeal := range inf.ActiveDeals {
 		if deal.Id == infDeal.Id {
-			deal.PickedUp = true
+			infDeal.PickedUp = true
 			break
 		}
 	}
