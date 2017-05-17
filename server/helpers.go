@@ -691,7 +691,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals := inf.GetAvailableDeals(campaigns, s.Audiences, s.budgetDb, "", "", nil, false, s.Cfg)
+		deals := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}
@@ -905,7 +905,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 	}
 
 	for _, sc := range scraps {
-		if sc.Match(cmp, s.Audiences, s.budgetDb, s.Cfg, true) {
+		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
 			user := &ForecastUser{
 				ID:    "sc-" + sc.Id,
 				Name:  strings.Title(sc.Name),

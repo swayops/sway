@@ -12,12 +12,6 @@
 
 	"sandbox": true,
 
-	"budgetDbName": "budget",
-	"budgetBuckets": {
-		"budget": "budget",
-		"balance": "balance"
-	},
-
 	"authDbName": "auth",
 
 	"geoLoc": "./config/GeoIP2-City.mmdb",
@@ -29,7 +23,9 @@
 		"campaign": "campaign",
 		"scrap": "scrap",
 		"url": "url",
-		"audience": "audience"
+		"audience": "audience",
+		"budget":"budget",
+		"balance":"balance"
 	},
 
 	"mandrill": {

@@ -85,13 +85,8 @@ type Config struct {
 		Key  string `json:"keyFile"`
 	} `json:"tls"`
 
-	DBPath        string `json:"dbPath"`
-	DBName        string `json:"dbName"`
-	BudgetDBName  string `json:"budgetDbName"`
-	BudgetBuckets struct {
-		Budget   string `json:"budget"`
-		Balances string `json:"balance"`
-	} `json:"budgetBuckets"`
+	DBPath string `json:"dbPath"`
+	DBName string `json:"dbName"`
 
 	AuthDBName string `json:"authDbName"`
 
@@ -157,6 +152,8 @@ type Config struct {
 		Scrap    string `json:"scrap"`
 		URL      string `json:"url"`
 		Audience string `json:"audience"`
+		Budget   string `json:"budget"`
+		Balance  string `json:"balance"`
 	} `json:"bucket"`
 
 	SharpSpring struct {

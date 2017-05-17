@@ -1,27 +1,17 @@
 package budget
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 const format = "01-2006"
 
-func getBudgetKey() string {
-	return time.Now().UTC().Format(format)
-}
+func GetSpendHistoryKey() string {
+	now := time.Now()
+	last := now.AddDate(0, -1, 0)
 
-func GetCurrentBudgetKey() string {
-	return getBudgetKey()
-}
-
-func GetLastMonthBudgetKey() string {
-	return getBudgetKeyOffset(1)
-}
-
-func getBudgetKeyOffset(offset int) string {
-	now := time.Now().UTC()
-	if offset > 0 {
-		offset = -offset
-	}
-	return now.AddDate(0, offset, 0).Format(format)
+	return fmt.Sprintf("%s-%s", last.Format("20060102"), now.Format("20060102"))
 }
 
 func isFirstDay() bool {
@@ -46,14 +36,6 @@ func daysInMonth(year int, month time.Month) int {
 		return 31
 	}
 	return 30
-}
-
-func GetProratedBudget(budget float64) float64 {
-	now := time.Now().UTC()
-	days := daysInMonth(now.Year(), now.Month())
-	daysUntilEnd := days - now.Day() + 1
-
-	return (budget / float64(days)) * float64(daysUntilEnd)
 }
 
 const (

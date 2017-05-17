@@ -140,9 +140,27 @@ func DecodeHex(s string) []byte {
 }
 
 func WithinLast(timestamp, hours int32) bool {
-	// Is the timestamp within the last X hours?
 	now := int32(time.Now().Unix())
+
+	// If the timestamp is from the future.. bail!
+	if timestamp > now {
+		return false
+	}
+
+	// Is the timestamp within the last X hours?
 	if timestamp >= (now - (hours * hour)) {
+		return true
+	}
+	return false
+}
+
+func WithinHours(timestamp, min, max int32) bool {
+	// Is the timestamp within the next min to max hours?
+	now := int32(time.Now().Unix())
+	minTs := now + (min * hour)
+	maxTs := now + (max * hour)
+
+	if timestamp >= minTs && timestamp < maxTs {
 		return true
 	}
 	return false

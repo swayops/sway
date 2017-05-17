@@ -37,11 +37,10 @@ var (
 
 // Server is the main server of the sway server
 type Server struct {
-	Cfg      *config.Config
-	r        *gin.Engine
-	db       *bolt.DB
-	budgetDb *bolt.DB
-	auth     *auth.Auth
+	Cfg  *config.Config
+	r    *gin.Engine
+	db   *bolt.DB
+	auth *auth.Auth
 
 	Campaigns *common.Campaigns
 	Audiences *common.Audiences
@@ -92,13 +91,11 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 	initializeDirs(cfg)
 
 	db := misc.OpenDB(cfg.DBPath, cfg.DBName)
-	budgetDb := misc.OpenDB(cfg.DBPath, cfg.BudgetDBName)
 
 	srv := &Server{
 		Cfg:       cfg,
 		r:         r,
 		db:        db,
-		budgetDb:  budgetDb,
 		auth:      auth.New(db, cfg),
 		Campaigns: common.NewCampaigns(),
 		Audiences: common.NewAudiences(),
@@ -200,21 +197,6 @@ func (srv *Server) initializeDBs(cfg *config.Config) error {
 		}
 		log.Println("created Talent agency, id = ", u.ID)
 
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	if err := srv.budgetDb.Update(func(tx *bolt.Tx) error {
-		for _, val := range cfg.AllBuckets(cfg.BudgetBuckets) {
-			log.Println("Initializing budget bucket", val)
-			if _, err := tx.CreateBucketIfNotExists([]byte(val)); err != nil {
-				return fmt.Errorf("create bucket: %s", err)
-			}
-			if err := misc.InitIndex(tx, val, 1); err != nil {
-				return err
-			}
-		}
 		return nil
 	}); err != nil {
 		return err
@@ -430,7 +412,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
 	verifyGroup.GET("/getTargetYield/:id", getTargetYield(srv))
-	verifyGroup.GET("/getProratedBudget/:budget", getProratedBudget(srv))
 	verifyGroup.POST("/getForecast", getForecast(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
@@ -465,7 +446,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Budget
 	adminGroup.GET("/getBudgetInfo/:id", getBudgetInfo(srv))
-	adminGroup.GET("/getLastMonthsStore", getLastMonthsStore(srv))
 	adminGroup.GET("/getStore", getStore(srv))
 	adminGroup.GET("/getBudgetSnapshot", getBudgetSnapshot(srv))
 
@@ -479,9 +459,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getInfluencerStats/:influencerId/:days", getInfluencerStats(srv))
 	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
-	adminGroup.GET("/billing", runBilling(srv))
-	adminGroup.GET("/credit/:campaignId/:value/:credit", creditValue(srv))
-	adminGroup.GET("/transferSpendable/:campaignId", transferSpendable(srv))
+	adminGroup.GET("/forceBill/:id", forceBill(srv))
 
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
@@ -562,7 +540,12 @@ func (srv *Server) Alert(msg string, err error) {
 
 	log.Println(msg, err)
 
-	email := templates.ErrorEmail.Render(map[string]interface{}{"error": err.Error(), "msg": msg})
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+
+	email := templates.ErrorEmail.Render(map[string]interface{}{"error": errMsg, "msg": msg})
 	for _, addr := range mailingList {
 		if resp, err := srv.Cfg.MailClient().SendMessage(email, "Critical error!", addr, "Important Person",
 			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
@@ -656,7 +639,6 @@ func (srv *Server) Close() error {
 
 	// srv.r.Close() // not implemented in gin nor net/http
 	srv.db.Close()
-	srv.budgetDb.Close()
 	srv.Cfg.Loggers.Close()
 
 	return nil

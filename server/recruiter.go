@@ -48,7 +48,7 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
-		cmp := sc.GetMatchingCampaign(cmps, srv.Audiences, srv.budgetDb, srv.Cfg)
+		cmp := sc.GetMatchingCampaign(cmps, srv.Audiences, srv.db, srv.Cfg)
 		if cmp.Id == "" {
 			continue
 		}
@@ -63,7 +63,11 @@ func emailScraps(srv *Server) (int32, error) {
 		}
 
 		var spendable float64
-		store, err := budget.GetBudgetInfo(srv.budgetDb, srv.Cfg, cmp.Id, "")
+		store, err := budget.GetCampaignStoreFromDb(srv.db, srv.Cfg, cmp.Id, cmp.AdvertiserId)
+		if err != nil || store == nil {
+			continue
+		}
+
 		pendingSpend, _ := cmp.GetPendingDetails()
 		availSpend := store.Spendable - pendingSpend
 

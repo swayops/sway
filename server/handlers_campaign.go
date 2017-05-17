@@ -197,15 +197,14 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			if cmp.Status {
-				var spendable float64
 				// Create their budget key IF the campaign is on
 				// NOTE: Create budget key requires cmp.Id be set
-				if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, cuser.Advertiser.Customer); err != nil {
+				if err = budget.Create(tx, s.Cfg, &cmp, ag.IsIO, cuser.Advertiser.Customer); err != nil {
 					s.Alert("Error initializing budget key for "+adv.Name, err)
 					return
 				}
 
-				addDealsToCampaign(&cmp, s, tx, spendable)
+				addDealsToCampaign(&cmp, s, tx, cmp.Budget)
 
 				// Lets add to timeline!
 				isCoupon := cmp.Perks != nil && cmp.Perks.IsCoupon()
@@ -332,7 +331,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						common.SetAttribute(mCmp.Timeline)
 					}
 
-					store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+					store, _ := budget.GetCampaignStore(tx, s.Cfg, cmp.Id, cmp.AdvertiserId)
 					if store != nil {
 						mCmp.Spent = store.Spent
 						mCmp.Remaining = store.Spendable
@@ -420,50 +419,60 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Move clicks from courtney to carmen
-		// switch their click urls
-		cortney, ok := s.auth.Influencers.Get("387")
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
 
-		stats := make(map[string]*common.Stats)
-		for _, d := range cortney.ActiveDeals {
-			if d.Id == "933c110413161f365762937c75aeab35" {
-				for date, val := range d.Reporting {
-					clicks := []*common.Click{}
-					for _, cl := range val.PendingClicks {
-						clicks = append(clicks, &common.Click{UUID: cl.UUID, TS: cl.TS})
-					}
-					stats[date] = &common.Stats{PendingClicks: clicks}
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			b := tx.Bucket([]byte(s.Cfg.Bucket.Budget)).Get([]byte("338"))
+
+			var (
+				st map[string]*budget.Store
+			)
+			if len(b) == 0 {
+				// First save for this advertiser!
+				st = make(map[string]*budget.Store)
+			} else {
+				if err = json.Unmarshal(b, &st); err != nil {
+					return ErrUnmarshal
 				}
-				d.Reporting = nil
 			}
-		}
 
-		if err := saveAllActiveDeals(s, cortney); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		carmen, ok := s.auth.Influencers.Get("385")
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
-
-		for _, d := range carmen.ActiveDeals {
-			if d.Id == "92a111041910302f43a0db9fe41e0ff8" {
-				d.Reporting = stats
-				d.ShortenedLink = "https://swayops.com/c/J+g"
+			store := &budget.Store{
+				Spendable: 11.57,
+				Spent:     688.43,
+				NextBill:  1496336400,
 			}
+
+			st["20"] = store
+
+			if b, err = json.Marshal(&st); err != nil {
+				return err
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Budget, "338", b); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			s.Alert("Error when running billing for 20", err)
 		}
 
-		if err := saveAllActiveDeals(s, carmen); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
+		// id := c.Param("id")
+		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+		// 	var cmp *common.Campaign
+		// 	err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
+		// 	if err != nil {
+		// 		return
+		// 	}
+
+		// 	if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
+		// 		cmp.Perks.Name = "Free Pair of Roma Boots"
+		// 	}
+
+		// 	return saveCampaign(tx, cmp, s)
+		// }); err != nil {
+		// 	c.JSON(500, misc.StatusErr(err.Error()))
+		// 	return
+		// }
 
 		c.JSON(200, misc.StatusOK(""))
 	}
@@ -608,20 +617,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
 			// Update their budget!
-			var spendable float64
-			if spendable, err = budget.AdjustBudget(s.budgetDb, s.Cfg, &cmp, *upd.Budget, ag.IsIO, adv.Customer); err != nil {
-				log.Println("Error creating budget key!", err)
-				c.JSON(500, misc.StatusErr(err.Error()))
-				return
-			}
-
-			if spendable > 0 {
-				s.db.Update(func(tx *bolt.Tx) error {
-					addDealsToCampaign(&cmp, s, tx, spendable)
-					return nil
-				})
-			}
-
 			cmp.Budget = *upd.Budget
 		}
 
@@ -770,26 +765,23 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 			if *upd.Status && cmp.Status != *upd.Status {
 				// If the campaign has been toggled to on..
-				store, _ := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+				store, _ := budget.GetCampaignStore(tx, s.Cfg, cmp.Id, cmp.AdvertiserId)
 				if store == nil {
 					// This means the campaign has no store.. cmp was craeted with a status of
 					// off so a budget key was NOT created.. so we have to create it now!
 					// NOTE: Create budget key requires cmp.Id be set
-
-					var spendable float64
-					if spendable, err = budget.CreateBudgetKey(s.budgetDb, s.Cfg, &cmp, 0, 0, false, ag.IsIO, adv.Customer); err != nil {
+					if err = budget.Create(tx, s.Cfg, &cmp, ag.IsIO, adv.Customer); err != nil {
 						s.Alert("Error initializing budget key for "+adv.Name, err)
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}
 
-					addDealsToCampaign(&cmp, s, tx, spendable)
-
+					addDealsToCampaign(&cmp, s, tx, cmp.Budget)
 				} else {
 					// This campaign does have a store.. so it was active sometime this month.
 					// Lets just give it the spendable we must have taken from it when it turned
 					// off
-					err = budget.ReplenishSpendable(s.budgetDb, s.Cfg, &cmp, ag.IsIO, adv.Customer)
+					err = budget.ReplenishSpendable(tx, s.Cfg, &cmp, ag.IsIO, adv.Customer)
 					if err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
@@ -815,7 +807,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				// If the status has been toggled to off..
 				// Clear out the spendable from the DB and add that value to the balance
 				var spendable float64
-				spendable, err = budget.ClearSpendable(s.budgetDb, s.Cfg, &cmp)
+				spendable, err = budget.ClearSpendable(tx, s.Cfg, &cmp)
 				if err != nil {
 					c.JSON(500, misc.StatusErr(err.Error()))
 					return
@@ -823,9 +815,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 				// If we cleared out some spendable.. lets increment the balance with it
 				if spendable > 0 {
-					if err = s.budgetDb.Update(func(tx *bolt.Tx) (err error) {
-						return budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg)
-					}); err != nil {
+					if err = budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg); err != nil {
 						c.JSON(500, misc.StatusErr(err.Error()))
 						return
 					}

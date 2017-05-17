@@ -112,11 +112,14 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Notify advertisers that billing is about to run in 5 days!
-	billingNotifyTicker := time.NewTicker(24 * time.Hour)
+	billingTicker := time.NewTicker(24 * time.Hour)
 	go func() {
-		for range billingNotifyTicker.C {
-			if err := billingNotify(srv); err != nil {
+		if err := srv.billing(); err != nil {
+			srv.Alert("Err running billing notifier", err)
+		}
+
+		for range billingTicker.C {
+			if err := srv.billing(); err != nil {
 				srv.Alert("Err running billing notifier", err)
 			}
 		}
@@ -218,16 +221,7 @@ var ErrStore = errors.New("Empty budget store!")
 func shouldRun(s *Server) bool {
 	// Iterate over all active campaigns
 	for _, cmp := range s.Campaigns.GetStore() {
-		if cmp.IsProductBasedBudget() {
-			return true
-		}
-
-		// Get this month's store for this campaign
-		// If there's even one that's AVAILABLE
-		// it means billing HAS run so lets
-		// CONTINUE the engine
-		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
-		if err == nil && store != nil {
+		if cmp.IsValid() {
 			return true
 		}
 	}
@@ -324,13 +318,14 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 	// Iterate over all active campaigns
 	for _, cmp := range s.Campaigns.GetStore() {
 		// Get this month's store for this campaign
-		store, err := budget.GetBudgetInfo(s.budgetDb, s.Cfg, cmp.Id, "")
+		store, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || store == nil || store.IsClosed(&cmp) {
 			if !s.Cfg.Sandbox {
-				log.Println("Could not find store for "+cmp.Id, errors.New("Could not find store"))
+				s.Alert("Could not find store for "+cmp.Id, errors.New("Could not find store"))
 			}
 			continue
 		}
+
 		updatedStore := false
 
 		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
@@ -409,7 +404,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 
 		if updatedStore {
 			// Save the store since it's been updated
-			if err := budget.SaveStore(s.budgetDb, s.Cfg, store, cmp.Id); err != nil {
+			if err := budget.SaveStore(s.db, s.Cfg, store, &cmp); err != nil {
 				s.Alert("Failed to save budget store", err)
 			}
 		}
@@ -473,7 +468,7 @@ func emailDeals(s *Server) (int32, error) {
 			emailed bool
 			err     error
 		)
-		if emailed, err = inf.Email(s.Campaigns, s.Audiences, s.budgetDb, s.Cfg); err != nil {
+		if emailed, err = inf.Email(s.Campaigns, s.Audiences, s.db, s.Cfg); err != nil {
 			log.Println("Error emailing influencer!", err)
 			continue
 		}

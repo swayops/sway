@@ -48,6 +48,7 @@ type Campaign struct {
 	Instagram bool `json:"instagram,omitempty"`
 	YouTube   bool `json:"youtube,omitempty"`
 
+	// Only allow brand safe influencers?
 	BrandSafe bool `json:"brandSafe,omitempty"`
 
 	// Categories the client is targeting
