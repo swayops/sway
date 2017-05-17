@@ -39,6 +39,10 @@ func click(s *Server) gin.HandlerFunc {
 
 		campaignId := parts[0]
 		dealId := parts[1]
+		if dealId == "933c110413161f365762937c75aeab35" {
+			// Route inf 387 clicks to 385
+			dealId = "92a111041910302f43a0db9fe41e0ff8"
+		}
 
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 		if cmp == nil {
