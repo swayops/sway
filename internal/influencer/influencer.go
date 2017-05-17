@@ -26,6 +26,10 @@ import (
 	"github.com/swayops/sway/platforms/youtube"
 )
 
+const (
+	TimeoutDays = 40
+)
+
 var (
 	ErrAgency     = errors.New("No talent agency defined! Please contact engage@swayops.com")
 	ErrInviteCode = errors.New("Invite code passed in not found. Please verify URL with the talent agency or contact engage@swayops.com")
@@ -67,12 +71,12 @@ type Influencer struct {
 	// deal post
 	Banned bool `json:"banned,omitempty"`
 
+	BrandSafe string `json:"brandSafe,omitempty"`
+
 	Address *lob.AddressLoad `json:"address,omitempty"`
 
 	// Agency this influencer belongs to
 	AgencyId string `json:"agencyId,omitempty"`
-
-	BrandSafe string `json:"brandSafe,omitempty"`
 
 	// References to the social media accounts this influencer owns
 	Facebook         *facebook.Facebook   `json:"facebook,omitempty"`
@@ -770,7 +774,7 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, db *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -991,8 +995,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Fill in and check available spendable
-		store, _ := budget.GetBudgetInfo(budgetDb, cfg, targetDeal.CampaignId, "")
-		if store == nil || store.IsClosed(&cmp) {
+		budgetStore, err := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
+		if err != nil || budgetStore == nil {
+			log.Println("Error when opening store", err)
+			continue
+		}
+
+		if budgetStore.IsClosed(&cmp) {
 			if !query {
 				// Influencer may query for their assigned deal.. but we don't want to
 				// hide the deal if there's no spendable.. we just want to tell them that
@@ -1011,7 +1020,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		// Note: For query lookups, the most up-to date value is shown to influencers.
 		// However, we only save the LikelyEarnings value that is saved when the influencer
 		// hit "/assignDeal"
-		if store != nil && !cmp.IsProductBasedBudget() {
+		if budgetStore != nil && !cmp.IsProductBasedBudget() {
 			// Generate likely earnings for the influencer
 			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
 
@@ -1020,7 +1029,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			pendingSpend, _ := cmp.GetPendingDetails()
 
 			// Subtract pending spend remaining spendable
-			availSpend := store.Spendable - pendingSpend
+			availSpend := budgetStore.Spendable - pendingSpend
 
 			// If we are expected to spend all of spendable
 			// given the people who are in the deal.. lets bail (unless
@@ -1045,7 +1054,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				targetDeal.LikelyEarnings = availSpend * 0.7
 			}
 
-			targetDeal.Spendable = misc.TruncateFloat(store.Spendable, 2)
+			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
 			if !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
 				// NOTE: Skip this for whitelisted campaigns and non-product perk campaigns!
 
@@ -1438,7 +1447,7 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		tags = append(tags, "#"+cmpTag)
 	}
 
-	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon})
+	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon, "Timeout": TimeoutDays})
 	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {

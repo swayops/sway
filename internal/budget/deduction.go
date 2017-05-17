@@ -20,7 +20,7 @@ const (
 	TW_RETWEET  = 0.2
 	TW_FAVORITE = 0.1
 
-	CLICK = 0.9
+	CLICK = 0.6
 )
 
 func (store *Store) deductSpendable(val float64) {

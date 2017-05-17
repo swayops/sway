@@ -13,10 +13,10 @@ import (
 var ErrBalance = errors.New("Not enough balance")
 
 func IncrBalance(advid string, amount float64, tx *bolt.Tx, cfg *config.Config) error {
-	b := tx.Bucket([]byte(cfg.BudgetBuckets.Balances)).Get([]byte(advid))
+	b := tx.Bucket([]byte(cfg.Bucket.Balance)).Get([]byte(advid))
 
 	balance := Float64frombytes(b) + amount
-	if err := misc.PutBucketBytes(tx, cfg.BudgetBuckets.Balances, advid, Float64bytes(balance)); err != nil {
+	if err := misc.PutBucketBytes(tx, cfg.Bucket.Balance, advid, Float64bytes(balance)); err != nil {
 		return err
 	}
 
@@ -24,14 +24,14 @@ func IncrBalance(advid string, amount float64, tx *bolt.Tx, cfg *config.Config) 
 }
 
 func DeductBalance(advid string, amount float64, tx *bolt.Tx, cfg *config.Config) error {
-	b := tx.Bucket([]byte(cfg.BudgetBuckets.Balances)).Get([]byte(advid))
+	b := tx.Bucket([]byte(cfg.Bucket.Balance)).Get([]byte(advid))
 
 	balance := Float64frombytes(b) - amount
 	if balance < 0 {
 		return ErrBalance
 	}
 
-	if err := misc.PutBucketBytes(tx, cfg.BudgetBuckets.Balances, advid, Float64bytes(balance)); err != nil {
+	if err := misc.PutBucketBytes(tx, cfg.Bucket.Balance, advid, Float64bytes(balance)); err != nil {
 		return err
 	}
 
@@ -39,7 +39,7 @@ func DeductBalance(advid string, amount float64, tx *bolt.Tx, cfg *config.Config
 }
 
 func GetBalance(advid string, tx *bolt.Tx, cfg *config.Config) float64 {
-	v := tx.Bucket([]byte(cfg.BudgetBuckets.Balances)).Get([]byte(advid))
+	v := tx.Bucket([]byte(cfg.Bucket.Balance)).Get([]byte(advid))
 	return Float64frombytes(v)
 }
 
