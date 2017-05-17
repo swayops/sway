@@ -774,7 +774,7 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, db *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -995,7 +995,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Fill in and check available spendable
-		budgetStore, err := budget.GetCampaignStoreFromDb(budgetDb, cfg, cmp.Id, cmp.AdvertiserId)
+		budgetStore, err := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || budgetStore == nil {
 			log.Println("Error when opening store", err)
 			continue

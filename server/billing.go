@@ -24,7 +24,7 @@ type BillNotify struct {
 	Amount float64
 }
 
-func billing(s *Server) error {
+func (s *Server) billing() error {
 	if isInvoiceDay() {
 		generateInvoices(s)
 	}

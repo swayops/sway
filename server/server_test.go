@@ -61,7 +61,6 @@ func TestAdminLogin(t *testing.T) {
 	for _, tr := range [...]*resty.TestRequest{
 		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
 		{"GET", "/apiKey", nil, 200, nil},
-		// {"GET", "/getStore", nil, 500, nil},
 
 		{"POST", "/signUp", ag, 200, misc.StatusOK(ag.ExpID)},
 

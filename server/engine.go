@@ -114,12 +114,12 @@ func newSwayEngine(srv *Server) error {
 
 	billingTicker := time.NewTicker(24 * time.Hour)
 	go func() {
-		if err := billing(srv); err != nil {
+		if err := srv.billing(); err != nil {
 			srv.Alert("Err running billing notifier", err)
 		}
 
 		for range billingTicker.C {
-			if err := billing(srv); err != nil {
+			if err := srv.billing(); err != nil {
 				srv.Alert("Err running billing notifier", err)
 			}
 		}

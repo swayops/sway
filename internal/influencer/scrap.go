@@ -57,11 +57,11 @@ type Scrap struct {
 	YTData    *youtube.YouTube     `json:"ytData,omitempty"`
 }
 
-func (sc *Scrap) GetMatchingCampaign(campaigns map[string]common.Campaign, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config) common.Campaign {
+func (sc *Scrap) GetMatchingCampaign(campaigns map[string]common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config) common.Campaign {
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []common.Campaign
 	for _, cmp := range campaigns {
-		if sc.Match(cmp, audiences, budgetDb, cfg, false) {
+		if sc.Match(cmp, audiences, db, cfg, false) {
 			considered = append(considered, cmp)
 		}
 	}
@@ -111,7 +111,7 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 	return true
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config, forecast bool) bool {
+func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, forecast bool) bool {
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
@@ -147,7 +147,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, budgetD
 
 		// Optimization
 		if len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
-			store, _ := budget.GetCampaignStoreFromDb(budgetDb, cfg, cmp.Id, cmp.AdvertiserId)
+			store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
 			if store.IsClosed(&cmp) {
 				return false
 			}

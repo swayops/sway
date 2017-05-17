@@ -436,8 +436,8 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 			}
 
 			store := &budget.Store{
-				Spendable: 682.8600000000001,
-				Spent:     17.139999999999873,
+				Spendable: 11.57,
+				Spent:     688.43,
 				NextBill:  1496336400,
 			}
 
