@@ -285,6 +285,7 @@ type ManageCampaign struct {
 	Stats *reporting.TargetStats `json:"stats"`
 
 	Accepted  []*manageInf `json:"accepted"`
+	Submitted []*manageInf `json:"submitted"`
 	Completed []*manageInf `json:"completed"`
 }
 
@@ -297,6 +298,8 @@ type manageInf struct {
 	ProfileURL  string `json:"profileUrl"`
 	Followers   int64  `json:"followers"`
 	PostURL     string `json:"postUrl"`
+
+	Submission *common.Submission `json:"submission"`
 }
 
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
@@ -380,6 +383,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 							mCmp.Accepted = append(mCmp.Accepted, tmpInf)
 						} else if deal.IsComplete() {
 							mCmp.Completed = append(mCmp.Completed, tmpInf)
+						}
+
+						if deal.Submission != nil {
+							tmpInf.Submission = deal.Submission
+							mCmp.Submitted = append(mCmp.Submitted, tmpInf)
 						}
 					}
 					campaigns = append(campaigns, mCmp)
@@ -616,6 +624,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
+			// If the budget has been increased.. lets just
 			// Update their budget!
 			cmp.Budget = *upd.Budget
 		}

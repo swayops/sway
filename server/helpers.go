@@ -1110,7 +1110,14 @@ func emailStatusUpdate(s *Server, cid string, dbg bool) {
 
 func assignDealEmail(s *Server, cmp *common.Campaign, deal *common.Deal, inf *influencer.Influencer) {
 	// Emails influencer's with deal instructions
-	if err := inf.DealInstructions(cmp, deal, s.Cfg); err != nil {
+
+	// If the deal requires a submission.. send different instructions
+	adv := s.auth.GetAdvertiser(deal.AdvertiserId)
+	if adv == nil {
+		return
+	}
+
+	if err := inf.DealInstructions(cmp, deal, s.Cfg, adv.RequiresSubmission); err != nil {
 		s.Alert("Failed to give influencer deal instructions: "+inf.Id, err)
 	}
 }
