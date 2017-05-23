@@ -1020,7 +1020,7 @@ func emailList(s *Server, cid string, override []string) {
 	if len(override) > 0 {
 		list = override
 	} else {
-		list = common.SliceMap(cmp.Whitelist)
+		list = common.SliceWhitelist(cmp.Whitelist)
 	}
 
 	if len(list) > 0 {

@@ -779,6 +779,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
 	// advertisers and agencies
+
 	var (
 		infDeals []*common.Deal
 	)
