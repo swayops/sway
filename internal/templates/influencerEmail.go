@@ -308,6 +308,11 @@ const dealInstructionsEmail = `
 			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
 			 		<b>Instructions:</b> {{Instructions}} <br/>
 		 		{{/HasCoupon}}
+
+		    	{{#HasSchedule}}
+			 		Must be posted between <b>{{StartTime}}</b> and <b>{{EndTime}}</b> <br/>
+		 		{{/HasSchedule}}
+
 		 		<br/>
 		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
 				<b>Hashtags to do:</b> {{Tags}}<br/>
@@ -333,17 +338,110 @@ const dealInstructionsEmail = `
 </div>
 `
 
+const submissionInstructionsEmail = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}},
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Thank you for accepting the deal for {{Campaign}}! We are very excited to be working with you. Here are some instructions on how to complete this deal:
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<table border="0" cellpadding="20" cellspacing="0" width="900" style="font-size:14px;">
+	    <tr>
+	    	<td align="left" valign="middle" style="width: 100px;"><img src="https://dash.swayops.com{{Image}}" height="150"></td>
+	    	<td align="left" valign="left">
+		    	<b>Campaign name:</b> {{Campaign}} <br/>
+		    	<b>Task description:</b> {{Task}} <br/>
+		    	<b>Instructions:</b> <br/>
+		    	1) Draft your post's caption and/or image and submit via the Influencer App <br/> 
+		    	2) Await advertiser's approval of your drafted post (you will be notified via email) <br/> 
+		    	3) Once approved, you may go ahead and post the approved draft to your social handle<br/> 
+
+				<br/>
+		    	<b>Please post to ONLY one of the following networks:</b> {{Networks}} <br/>
+
+		    	{{#HasPerks}}
+					<br/>
+			    	<b>Perks:</b> {{Perks}} <br/>
+		 		{{/HasPerks}}
+
+		    	{{#HasCoupon}}
+			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
+			 		<b>Instructions:</b> {{Instructions}} <br/>
+		 		{{/HasCoupon}}
+
+		    	{{#HasSchedule}}
+			 		Must be posted between <b>{{StartTime}}</b> and <b>{{EndTime}}</b> <br/>
+		 		{{/HasSchedule}}
+		 		
+		 		<br/>
+		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
+				<b>Hashtags to do:</b> {{Tags}}<br/>
+				<b>Mentions to do:</b> {{Mentions}}<br/>
+		 		<br/>
+		    	<b>Days to complete:</b> {{Timeout}}<br/>
+	    	</td>
+	    </tr>
+		</table>
+		
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Let me know if you have any questions! <br/><br/>
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
+const submissionApprovedEmail = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}},
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Congratulations!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Your post submission for {{Company}} has just been approved! You may now go ahead and make the post. Remember to keep the the same caption and/or media as your approved submission otherwise your post will not be approved. Please allow up to 24 hours after making the post for Sway to notice it!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Feel free to call or email me with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ Karlie M<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
-	InfluencerEmail        = MustacheMust(infEmailTmpl)
-	InfluencerCmpEmail     = MustacheMust(infCmpEmail)
-	InfluencerHeadsUpEmail = MustacheMust(headsUpEmail)
-	InfluencerTimeoutEmail = MustacheMust(timeOutEmail)
-	CheckEmail             = MustacheMust(checkTmpl)
-	DealCompletionEmail    = MustacheMust(completionTmpl)
-	PickedUpEmail          = MustacheMust(pickedUpTmpl)
-	CampaignStatusEmail    = MustacheMust(campaignStatusEmail)
-	DealRejectionEmail     = MustacheMust(dealRejectionEmail)
-	PrivateEmail           = MustacheMust(privateEmail)
-	PerkMailEmail          = MustacheMust(perkMailEmail)
-	DealInstructionsEmail  = MustacheMust(dealInstructionsEmail)
+	InfluencerEmail             = MustacheMust(infEmailTmpl)
+	InfluencerCmpEmail          = MustacheMust(infCmpEmail)
+	InfluencerHeadsUpEmail      = MustacheMust(headsUpEmail)
+	InfluencerTimeoutEmail      = MustacheMust(timeOutEmail)
+	CheckEmail                  = MustacheMust(checkTmpl)
+	DealCompletionEmail         = MustacheMust(completionTmpl)
+	PickedUpEmail               = MustacheMust(pickedUpTmpl)
+	CampaignStatusEmail         = MustacheMust(campaignStatusEmail)
+	DealRejectionEmail          = MustacheMust(dealRejectionEmail)
+	PrivateEmail                = MustacheMust(privateEmail)
+	PerkMailEmail               = MustacheMust(perkMailEmail)
+	DealInstructionsEmail       = MustacheMust(dealInstructionsEmail)
+	SubmissionInstructionsEmail = MustacheMust(submissionInstructionsEmail)
+	SubmissionApprovedEmail     = MustacheMust(submissionApprovedEmail)
 )

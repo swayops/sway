@@ -101,6 +101,11 @@ func explore(srv *Server) (int32, error) {
 			}
 		}
 
+		if cmp.RequiresSubmission && !deal.IsSubmitted() {
+			// Advertiser requires submission and post is not submitted
+			continue
+		}
+
 		if inf.IsBanned() {
 			// This foo got banned lets clear the deal!
 			if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
@@ -435,6 +440,10 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				continue
 			}
 
+			if !deal.MatchesSubmission(tw.Text) {
+				continue
+			}
+
 			if !deal.SkipFraud {
 				// If we're not skipping fraud yet we need to wait for X hours
 				// before picking up the deal so we can do fraud engagement checks
@@ -570,6 +579,10 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
+				continue
+			}
+
+			if !deal.MatchesSubmission(post.Caption) {
 				continue
 			}
 
@@ -716,6 +729,11 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				continue
 			}
 
+			if !deal.MatchesSubmission(post.Caption) {
+				rejections[post.Caption] = "SUBMISSION"
+				continue
+			}
+
 			if !deal.SkipFraud {
 				if misc.WithinLast(int32(post.Published), waitingPeriod) {
 					rejections[post.Caption] = "WAITING_PERIOD"
@@ -855,6 +873,10 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
+				continue
+			}
+
+			if !deal.MatchesSubmission(post.Description) {
 				continue
 			}
 

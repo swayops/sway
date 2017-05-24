@@ -285,6 +285,7 @@ type ManageCampaign struct {
 	Stats *reporting.TargetStats `json:"stats"`
 
 	Accepted  []*manageInf `json:"accepted"`
+	Submitted []*manageInf `json:"submitted"`
 	Completed []*manageInf `json:"completed"`
 }
 
@@ -297,6 +298,8 @@ type manageInf struct {
 	ProfileURL  string `json:"profileUrl"`
 	Followers   int64  `json:"followers"`
 	PostURL     string `json:"postUrl"`
+
+	Submission *common.Submission `json:"submission"`
 }
 
 func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
@@ -380,6 +383,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 							mCmp.Accepted = append(mCmp.Accepted, tmpInf)
 						} else if deal.IsComplete() {
 							mCmp.Completed = append(mCmp.Completed, tmpInf)
+						}
+
+						if deal.Submission != nil {
+							tmpInf.Submission = deal.Submission
+							mCmp.Submitted = append(mCmp.Submitted, tmpInf)
 						}
 					}
 					campaigns = append(campaigns, mCmp)
@@ -480,20 +488,21 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos       []*geo.GeoRecord            `json:"geos,omitempty"`
-	Categories []string                    `json:"categories,omitempty"`
-	Audiences  []string                    `json:"audiences,omitempty"`
-	Keywords   []string                    `json:"keywords,omitempty"`
-	Status     *bool                       `json:"status,omitempty"`
-	Budget     *float64                    `json:"budget,omitempty"`
-	Male       *bool                       `json:"male,omitempty"`
-	Female     *bool                       `json:"female,omitempty"`
-	Name       *string                     `json:"name,omitempty"`
-	Whitelist  map[string]*common.Schedule `json:"whitelist,omitempty"`
-	ImageData  string                      `json:"imageData,omitempty"` // this is input-only and never saved to the db
-	Task       *string                     `json:"task,omitempty"`
-	Perks      *common.Perk                `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
-	BrandSafe  *bool                       `json:"brandSafe,omitempty"`
+	Geos               []*geo.GeoRecord            `json:"geos,omitempty"`
+	Categories         []string                    `json:"categories,omitempty"`
+	Audiences          []string                    `json:"audiences,omitempty"`
+	Keywords           []string                    `json:"keywords,omitempty"`
+	Status             *bool                       `json:"status,omitempty"`
+	Budget             *float64                    `json:"budget,omitempty"`
+	Male               *bool                       `json:"male,omitempty"`
+	Female             *bool                       `json:"female,omitempty"`
+	Name               *string                     `json:"name,omitempty"`
+	Whitelist          map[string]*common.Schedule `json:"whitelist,omitempty"`
+	ImageData          string                      `json:"imageData,omitempty"` // this is input-only and never saved to the db
+	Task               *string                     `json:"task,omitempty"`
+	Perks              *common.Perk                `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
+	BrandSafe          *bool                       `json:"brandSafe,omitempty"`
+	RequiresSubmission *bool                       `json:"reqSub,omitempty"` // Does the advertiser require submission?
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -567,6 +576,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.BrandSafe = *upd.BrandSafe
 		}
 
+		if upd.RequiresSubmission != nil {
+			cmp.RequiresSubmission = *upd.RequiresSubmission
+		}
+
 		if !cmp.Male && !cmp.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
@@ -602,20 +615,24 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		// Copy the plan from the Advertiser
 		cmp.Plan = adv.Plan
 
-		// Before creating the campaign.. lets make sure the plan allows for it!
-		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
-		if err != nil {
-			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
-			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
-			return
-		}
+		// If the campaign is being toggled to off.. who cares about subscription
+		if upd.Status == nil || !*upd.Status {
+			// Before creating the campaign.. lets make sure the plan allows for it!
+			allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
+			if err != nil {
+				s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+				c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+				return
+			}
 
-		if !allowed {
-			c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
-			return
+			if !allowed {
+				c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
+				return
+			}
 		}
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
+			// If the budget has been increased.. lets just
 			// Update their budget!
 			cmp.Budget = *upd.Budget
 		}

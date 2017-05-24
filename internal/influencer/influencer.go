@@ -978,11 +978,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Whitelist check!
 		if len(cmp.Whitelist) > 0 {
-			_, ok = cmp.Whitelist[inf.EmailAddress]
+			schedule, ok := cmp.Whitelist[inf.EmailAddress]
 			if !ok {
 				// There was a whitelist and they're not in it!
 				rejections[cmp.Id] = "CMP_WHITELIST"
 				continue
+			}
+
+			if schedule != nil && schedule.From > 0 && schedule.To > 0 {
+				targetDeal.From = schedule.From
+				targetDeal.To = schedule.To
 			}
 		}
 
@@ -1307,6 +1312,39 @@ func (inf *Influencer) DealTimeout(deal *common.Deal, cfg *config.Config) error 
 	return nil
 }
 
+func (inf *Influencer) SubmissionApproved(deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.SubmissionApprovedEmail.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your post submission for %s has been approved!", deal.Company), "shahzil@swayops.com", inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "submission completion",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log submission completion", inf.Id, deal.CampaignId)
+	}
+
+	return nil
+}
+
 func (inf *Influencer) DealCompletion(deal *common.Deal, cfg *config.Config) error {
 	if cfg.Sandbox {
 		return nil
@@ -1411,9 +1449,9 @@ func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) erro
 }
 
 func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config) error {
-	if cfg.Sandbox {
-		return nil
-	}
+	// if cfg.Sandbox {
+	// 	return nil
+	// }
 
 	if cfg.ReplyMailClient() == nil {
 		return ErrEmail
@@ -1448,14 +1486,47 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		tags = append(tags, "#"+cmpTag)
 	}
 
-	email := templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon, "Timeout": TimeoutDays})
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
-		[]string{""})
-	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-		return ErrEmail
+	data := map[string]interface{}{
+		"Networks":     strings.Join(deal.Platforms, ", "),
+		"Link":         deal.ShortenedLink,
+		"Tags":         strings.Join(tags, ", "),
+		"Mentions":     deal.Mention,
+		"Name":         firstName,
+		"Campaign":     cmp.Name,
+		"Task":         cmp.Task,
+		"Instructions": instructions,
+		"Perks":        perks,
+		"Image":        cmp.ImageURL,
+		"CouponCode":   coupon,
+		"HasPerks":     hasPerks,
+		"HasCoupon":    hasCoupon,
+		"Timeout":      TimeoutDays,
 	}
 
-	resp, err = cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
+	schedule, ok := cmp.Whitelist[inf.EmailAddress]
+	if ok && schedule != nil && schedule.From > 0 && schedule.To > 0 {
+		log.Println("ADDING")
+		data["HasSchedule"] = true
+		data["StartTime"] = time.Unix(schedule.From, 0).Format("2006-01-02 15:04 MST")
+		data["EndTime"] = time.Unix(schedule.To, 0).Format("2006-01-02 15:04 MST")
+	} else {
+		data["HasSchedule"] = false
+	}
+
+	var email string
+	if cmp.RequiresSubmission {
+		email = templates.SubmissionInstructionsEmail.Render(data)
+	} else {
+		email = templates.DealInstructionsEmail.Render(data)
+	}
+
+	// resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
+	// 	[]string{""})
+	// if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+	// 	return ErrEmail
+	// }
+
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail

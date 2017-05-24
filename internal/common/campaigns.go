@@ -68,6 +68,8 @@ type Campaign struct {
 	Plan  int              `json:"planID,omitempty"`
 
 	Timeline []*Timeline `json:"timeline,omitempty"`
+
+	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
 }
 
 type Schedule struct {

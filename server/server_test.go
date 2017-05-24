@@ -5856,6 +5856,166 @@ func TestAudiences(t *testing.T) {
 	}
 }
 
+func TestSubmission(t *testing.T) {
+	rst := getClient()
+	defer putClient(rst)
+
+	// Sign in as admin
+	r := rst.DoTesting(t, "POST", "/signIn", &adminReq, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an advertiser that REQUIRES submission!
+	adv := getSignupUser()
+	adv.Advertiser = &auth.Advertiser{
+		DspFee:   0.2,
+		AgencyID: "2",
+		CCLoad: creditCard,
+		SubLoad: getSubscription(3, 100, true),
+	}
+
+	var st Status
+	r = rst.DoTesting(t, "POST", "/signUp", adv, &st)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	cmp := common.Campaign{
+		Status:       true,
+		AdvertiserId: st.ID,
+		Budget:       DEFAULT_BUDGET,
+		Name:         "Submission Campaign!",
+		Twitter:      true,
+		Male:         true,
+		Female:       true,
+		Link:         "http://www.cnn.com?s=t",
+		Task:         "POST THAT DOPE SHIT",
+		Tags:         []string{"#mmmm"},
+		RequiresSubmission: true,
+	}
+
+	var status Status
+	r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &status)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!", string(r.Value))
+		return
+	}
+	cid := status.ID
+
+	// Lets create an influencer that SHOULD get a deal because they are in the 
+	// audience!
+	inf := getSignupUserWithEmail("mayn@mayn123.com")
+	inf.InfluencerLoad = &auth.InfluencerLoad{
+		InfluencerLoad: influencer.InfluencerLoad{
+			Male:      true,
+			Geo:       &geo.GeoRecord{},
+			TwitterId: "cnn",
+		},
+	}
+	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
+	if r.Status != 200 {
+		t.Fatalf("Bad status code! %s", r.Value)
+		return
+	}
+
+	// get deals for influencer
+	var deals []*common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeals/"+inf.ExpID+"/0/0", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	deals = getDeals(cid, deals)
+	if len(deals) == 0 {
+		t.Fatal("Unexpected number of deals!")
+		return
+	}
+
+	tgDeal := deals[0]
+
+	// pick up deal for influencer
+	r = rst.DoTesting(t, "GET", "/assignDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id+"/twitter", nil, &deals)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets try getting the advertiser to approve the post without there being a submission! Should error!
+	r = rst.DoTesting(t, "GET", "/approveSubmission/"+tgDeal.AdvertiserId+"/"+tgDeal.CampaignId+"/"+inf.ExpID, nil, nil)
+	if !strings.Contains(string(r.Value), "Deal and submission not found") {
+		t.Fatal("Bad value!")
+		return
+	}
+
+	// Lets now submit the influencer's proposal!
+	 sub := common.Submission{
+	 	ImageData: []string{postImage},
+	 	Message: "This is the message this campaign wants #mmmm",
+	 }
+
+ 	r = rst.DoTesting(t, "POST", "/submitPost/"+inf.ExpID+"/"+tgDeal.CampaignId, &sub, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad value!")
+		return
+	}
+
+	// Lets make sure the submission is there
+	var dealGet common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &dealGet)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if dealGet.Submission == nil {
+		t.Fatal("No submission!")
+		return
+	}
+
+	if dealGet.Submission.Approved{
+		t.Fatal("Submission wrongfully approved!")
+		return
+	}
+
+	if dealGet.Submission.Message != sub.Message {
+		t.Fatal("Bad message in submission!")
+		return
+	}
+
+	// Approve the proposal via advertiser (make sure it is now set to approved and there is a submission)
+	r = rst.DoTesting(t, "GET", "/approveSubmission/"+tgDeal.AdvertiserId+"/"+tgDeal.CampaignId+"/"+inf.ExpID, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	var dealDone common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &dealDone)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	if dealDone.Submission == nil {
+		t.Fatal("No submission!")
+		return
+	}
+
+	if !dealDone.Submission.Approved {
+		t.Fatal("Submission not approved wtf!")
+		return
+	}
+
+	if dealDone.Submission.Message != sub.Message {
+		t.Fatal("Bad message in submission!")
+		return
+	}
+}
+
 func TestBilling(t *testing.T) {
 	if *genData {
 		t.Skip("not needed for generating data")
