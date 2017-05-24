@@ -125,8 +125,6 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Temporarily
-	emailStatusUpdate(srv, "20")
 	return nil
 }
 
