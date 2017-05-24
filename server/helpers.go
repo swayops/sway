@@ -1063,7 +1063,7 @@ func emailList(s *Server, cid string, override []string) {
 	)
 }
 
-func emailStatusUpdate(s *Server, cid string, dbg bool) {
+func emailStatusUpdate(s *Server, cid string) {
 	// Emails status updates to the influencers with
 	// active deals for this campaign
 	cmp := common.GetCampaign(cid, s.db, s.Cfg)
@@ -1072,7 +1072,7 @@ func emailStatusUpdate(s *Server, cid string, dbg bool) {
 		return
 	}
 
-	if cmp.Status && !dbg {
+	if cmp.Status {
 		// The campaign was turned back on!
 		return
 	}

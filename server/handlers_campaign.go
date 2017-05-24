@@ -856,11 +856,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			// and email the influencer to alert them if the campaign was turned off
 			go func() {
 				// Wait 15 mins before emailing
-				dbg := c.Query("dbg") == "1"
-				if !dbg {
-					time.Sleep(15 * time.Minute)
-				}
-				emailStatusUpdate(s, cmp.Id, dbg)
+				emailStatusUpdate(s, cmp.Id)
 			}()
 		}
 
