@@ -190,6 +190,7 @@ func submitPost(s *Server) gin.HandlerFunc {
 		for _, deal := range inf.ActiveDeals {
 			if deal.CampaignId == campaignId {
 				found = deal
+				break
 			}
 		}
 
@@ -206,14 +207,10 @@ func submitPost(s *Server) gin.HandlerFunc {
 		}
 
 		adv := user.Advertiser
-		if adv == nil {
-			c.JSON(500, misc.StatusErr("Advertiser not found"))
-			return
-		}
 
 		// If the agency is NOT IO and adv is NOT ENTERPRISE. we need an approved submission before accepting!
 		if !adv.RequiresSubmission {
-			c.JSON(500, misc.StatusErr("Deal does not require prior submission. You are free to post!"))
+			c.JSON(400, misc.StatusErr("Deal does not require prior submission. You are free to post!"))
 			return
 		}
 
