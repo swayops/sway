@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -152,6 +154,123 @@ func getDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 		c.JSON(200, deals[0])
+	}
+}
+
+type Post struct {
+	Image   string `json:"img,omitempty"`
+	Message string `json:"caption,omitempty"`
+}
+
+func submitPost(s *Server) gin.HandlerFunc {
+	// Influencer submitting posts for approval
+	return func(c *gin.Context) {
+		var (
+			campaignId = c.Param("campaignId")
+			infId      = c.Param("influencerId")
+		)
+
+		if len(infId) == 0 {
+			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			return
+		}
+
+		if len(campaignId) == 0 {
+			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		var found *common.Deal
+		for _, deal := range inf.ActiveDeals {
+			if deal.CampaignId == campaignId {
+				found = deal
+				break
+			}
+		}
+
+		if found == nil {
+			c.JSON(500, misc.StatusErr("Deal not found"))
+			return
+		}
+
+		// Does this influencer even need to submit a submission?
+		user := s.auth.GetUser(found.AdvertiserId)
+		if user == nil || user.Advertiser == nil {
+			c.JSON(500, misc.StatusErr("Advertiser not found"))
+			return
+		}
+
+		adv := user.Advertiser
+
+		// If the agency is NOT IO and adv is NOT ENTERPRISE. we need an approved submission before accepting!
+		if !adv.RequiresSubmission {
+			c.JSON(400, misc.StatusErr("Deal does not require prior submission. You are free to post!"))
+			return
+		}
+
+		var (
+			sub common.Submission
+			err error
+		)
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&sub); err != nil {
+			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		if len(sub.ImageData) != 0 {
+			for idx, imgData := range sub.ImageData {
+				pre := strconv.Itoa(idx) + "-"
+				if !strings.HasPrefix(imgData, "data:image/") {
+					misc.AbortWithErr(c, 400, errors.New("Please provide a valid image"))
+					return
+				}
+				filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, pre+found.Id), imgData, pre+found.Id, "", 750, 389)
+				if err != nil {
+					c.JSON(400, misc.StatusErr(err.Error()))
+					return
+				}
+
+				sub.ContentURL = append(sub.ContentURL, getImageUrl(s, s.Cfg.Bucket.Campaign, "dash", filename, false))
+			}
+
+			sub.ImageData = nil
+		}
+
+		found.Submission = &sub
+
+		if err := saveAllActiveDeals(s, inf); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		// Email the advertiser
+		if s.Cfg.ReplyMailClient() != nil && !s.Cfg.Sandbox {
+			email := templates.NotifySubmissionEmail.Render(map[string]interface{}{"Name": user.Name, "InfluencerName": found.InfluencerName, "CampaignName": found.CampaignName})
+			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("A submitted post by "+found.InfluencerName+" is awaiting your approval"), user.Email, user.Name,
+				[]string{""})
+			if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+				s.Alert("Failed to mail advertiser about post submission", err)
+			} else {
+				if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+					"tag":   "post submission",
+					"advID": user.ID,
+					"infID": inf.Id,
+				}); err != nil {
+					log.Println("Failed to log advertiser post submission log!", user.ID)
+				}
+			}
+		}
+
+		s.Notify("Deal post submitted!", fmt.Sprintf("Influencer %s has submitted post for %s", infId, campaignId))
+
+		c.JSON(200, found)
 	}
 }
 

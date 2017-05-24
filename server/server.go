@@ -396,6 +396,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
 	verifyGroup.GET("/getAdvertiserTimeline/:id", getAdvertiserTimeline(srv))
+	verifyGroup.GET("/approveSubmission/:id/:campaignId/:influencerId", approveSubmission(srv))
 
 	adminGroup.GET("/balance/:id", getBalance(srv))
 	adminGroup.GET("/getCampaignStore", getCampaignStore(srv))
@@ -431,6 +432,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
 	verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
 	verifyGroup.GET("/sendInstructions/:influencerId/:campaignId/:dealId", infScope, infOwnership, sendInstructions(srv))
+	verifyGroup.POST("/submitPost/:influencerId/:campaignId", infScope, submitPost(srv))
 
 	// Influencers
 	createRoutes(verifyGroup, srv, "/influencer", "id", scopes["inf"], auth.InfluencerItem, getInfluencer,

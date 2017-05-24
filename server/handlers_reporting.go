@@ -354,7 +354,7 @@ func (d *FeedCell) UseInsta(insta *instagram.Post, profile *instagram.Instagram)
 	d.Caption = insta.Caption
 	d.Published = insta.Published
 	d.URL = insta.PostURL
-	if insta.Thumbnail != "" && misc.Ping(insta.Thumbnail) != nil {
+	if insta.Thumbnail != "" && misc.Ping(insta.Thumbnail) == nil {
 		d.SocialImage = insta.Thumbnail
 	} else {
 		d.SocialImage = profile.ProfilePicture
@@ -372,7 +372,7 @@ func (d *FeedCell) UseYT(yt *youtube.Post, profile *youtube.YouTube) {
 	d.Caption = yt.Description
 	d.Published = yt.Published
 	d.URL = yt.PostURL
-	if yt.Thumbnail != "" && misc.Ping(yt.Thumbnail) != nil {
+	if yt.Thumbnail != "" && misc.Ping(yt.Thumbnail) == nil {
 		d.SocialImage = yt.Thumbnail
 	} else {
 		d.SocialImage = profile.ProfilePicture

@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/boltdb/bolt"
@@ -137,5 +138,82 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 		}
 
 		c.JSON(200, misc.StatusOK(id))
+	}
+}
+
+func approveSubmission(s *Server) gin.HandlerFunc {
+	// Approves submission
+	return func(c *gin.Context) {
+		var (
+			advertiserId = c.Param("id")
+			campaignId   = c.Param("campaignId")
+			infId        = c.Param("influencerId")
+		)
+
+		adv := s.auth.GetAdvertiser(advertiserId)
+		if adv == nil {
+			c.JSON(500, misc.StatusErr("Please provide a valid advertiser"))
+			return
+		}
+
+		if !adv.RequiresSubmission {
+			c.JSON(500, misc.StatusErr("Advertiser does not require submission"))
+			return
+		}
+
+		if len(infId) == 0 {
+			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			return
+		}
+
+		if len(campaignId) == 0 {
+			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		var found *common.Deal
+		for _, deal := range inf.ActiveDeals {
+			if deal.CampaignId == campaignId {
+				found = deal
+			}
+		}
+
+		if found == nil || found.Submission == nil {
+			c.JSON(500, misc.StatusErr("Deal and submission not found"))
+			return
+		}
+
+		if found.Submission.Approved {
+			c.JSON(500, misc.StatusErr("Submission already approved"))
+			return
+		}
+
+		found.Submission.Approved = true
+
+		if err := saveAllActiveDeals(s, inf); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		if err := inf.SubmissionApproved(found, s.Cfg); err != nil {
+			c.JSON(500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		go func() {
+			s.Notify("Submission approved!", fmt.Sprintf("%s just approved a post for %s", found.CampaignName, inf.Name))
+			// Tell the influencer that submission has been approved
+			if err := inf.SubmissionApproved(found, s.Cfg); err != nil {
+				s.Alert("Submission approved email errored out", err)
+			}
+		}()
+
+		c.JSON(200, misc.StatusOK(campaignId))
 	}
 }

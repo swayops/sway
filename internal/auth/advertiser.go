@@ -31,6 +31,8 @@ type Advertiser struct {
 	Subscription string `json:"subID,omitempty"`  // Stripe Subscription ID
 	Plan         int    `json:"planID,omitempty"` // Stripe Plan ID
 
+	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
+
 	// Tmp field used to pass in a new credit card
 	CCLoad *swipe.CC `json:"ccLoad,omitempty"`
 

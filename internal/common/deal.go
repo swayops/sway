@@ -89,6 +89,18 @@ type Deal struct {
 
 	// Keyed on DAY.. showing stats calculated by DAY
 	Reporting map[string]*Stats `json:"stats,omitempty"`
+
+	Submission *Submission `json:"submission,omitempty"`
+}
+
+type Submission struct {
+	ImageData []string `json:"imgData,omitempty"`
+	// Could be an array of image URLs, or video URLs
+	ContentURL []string `json:"content,omitempty"`
+
+	Message string `json:"caption,omitempty"`
+
+	Approved bool `json:"approved,omitempty"`
 }
 
 type Stats struct {
@@ -459,6 +471,28 @@ func (d *Deal) ConvertToActive() *Deal {
 	d.Reporting = nil
 
 	return d
+}
+
+func (d *Deal) IsSubmitted() bool {
+	if d.Submission == nil || !d.Submission.Approved {
+		return false
+	}
+
+	return true
+}
+
+func (d *Deal) MatchesSubmission(caption string) bool {
+	if d.Submission != nil {
+		msg := strings.TrimSpace(strings.ToLower(d.Submission.Message))
+		caption = strings.TrimSpace(strings.ToLower(caption))
+		if strings.Contains(caption, msg) || strings.Contains(msg, caption) {
+			return true
+		}
+
+		return false
+	}
+
+	return true
 }
 
 func GetAllDeals(db *bolt.DB, cfg *config.Config, active, complete bool) ([]*Deal, error) {
