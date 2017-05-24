@@ -2716,12 +2716,13 @@ func TestClicks(t *testing.T) {
 		InfluencerLoad: influencer.InfluencerLoad{
 			Male:      true,
 			Geo:       &geo.GeoRecord{},
-			TwitterId: "underarmour",
+			TwitterId: "justinbieber",
 		},
 	}
 
 	r = rst.DoTesting(t, "POST", "/signUp", &inf, nil)
 	if r.Status != 200 {
+		log.Println(string(r.Value))
 		t.Fatal("Bad status code!")
 		return
 	}
