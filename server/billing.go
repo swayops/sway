@@ -32,7 +32,6 @@ func (s *Server) billing() error {
 	// Iterate over all active campaigns
 	cmps := s.Campaigns.GetStore()
 	if len(cmps) == 0 {
-		s.Alert("Did not run billing. Campaign store empty!", ErrWait)
 		return ErrWait
 	}
 
