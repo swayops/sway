@@ -602,17 +602,20 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		// Copy the plan from the Advertiser
 		cmp.Plan = adv.Plan
 
-		// Before creating the campaign.. lets make sure the plan allows for it!
-		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
-		if err != nil {
-			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
-			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
-			return
-		}
+		// If the campaign is being toggled to off.. who cares about subscription
+		if upd.Status == nil || !*upd.Status {
+			// Before creating the campaign.. lets make sure the plan allows for it!
+			allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
+			if err != nil {
+				s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
+				c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+				return
+			}
 
-		if !allowed {
-			c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
-			return
+			if !allowed {
+				c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
+				return
+			}
 		}
 
 		if upd.Budget != nil && cmp.Budget != *upd.Budget {
