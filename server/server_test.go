@@ -2716,7 +2716,7 @@ func TestClicks(t *testing.T) {
 		InfluencerLoad: influencer.InfluencerLoad{
 			Male:      true,
 			Geo:       &geo.GeoRecord{},
-			TwitterId: "underarmour",
+			TwitterId: "justinbieber",
 		},
 	}
 
@@ -5871,7 +5871,6 @@ func TestSubmission(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:   0.2,
 		AgencyID: "2",
-		RequiresSubmission:true,
 		CCLoad: creditCard,
 		SubLoad: getSubscription(3, 100, true),
 	}
@@ -5894,6 +5893,7 @@ func TestSubmission(t *testing.T) {
 		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
+		RequiresSubmission: true,
 	}
 
 	var status Status

@@ -80,7 +80,13 @@ func explore(srv *Server) (int32, error) {
 			continue
 		}
 
-		if adv.RequiresSubmission && !deal.IsSubmitted() {
+		cmp, ok := srv.Campaigns.Get(deal.CampaignId)
+		if !ok {
+			// Campaign not active
+			continue
+		}
+
+		if cmp.RequiresSubmission && !deal.IsSubmitted() {
 			// Advertiser requires submission and post is not submitted
 			continue
 		}

@@ -488,20 +488,21 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos       []*geo.GeoRecord `json:"geos,omitempty"`
-	Categories []string         `json:"categories,omitempty"`
-	Audiences  []string         `json:"audiences,omitempty"`
-	Keywords   []string         `json:"keywords,omitempty"`
-	Status     *bool            `json:"status,omitempty"`
-	Budget     *float64         `json:"budget,omitempty"`
-	Male       *bool            `json:"male,omitempty"`
-	Female     *bool            `json:"female,omitempty"`
-	Name       *string          `json:"name,omitempty"`
-	Whitelist  map[string]bool  `json:"whitelist,omitempty"`
-	ImageData  string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
-	Task       *string          `json:"task,omitempty"`
-	Perks      *common.Perk     `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
-	BrandSafe  *bool            `json:"brandSafe,omitempty"`
+	Geos               []*geo.GeoRecord `json:"geos,omitempty"`
+	Categories         []string         `json:"categories,omitempty"`
+	Audiences          []string         `json:"audiences,omitempty"`
+	Keywords           []string         `json:"keywords,omitempty"`
+	Status             *bool            `json:"status,omitempty"`
+	Budget             *float64         `json:"budget,omitempty"`
+	Male               *bool            `json:"male,omitempty"`
+	Female             *bool            `json:"female,omitempty"`
+	Name               *string          `json:"name,omitempty"`
+	Whitelist          map[string]bool  `json:"whitelist,omitempty"`
+	ImageData          string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
+	Task               *string          `json:"task,omitempty"`
+	Perks              *common.Perk     `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
+	BrandSafe          *bool            `json:"brandSafe,omitempty"`
+	RequiresSubmission *bool            `json:"reqSub,omitempty"` // Does the advertiser require submission?
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -573,6 +574,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.BrandSafe != nil {
 			cmp.BrandSafe = *upd.BrandSafe
+		}
+
+		if upd.RequiresSubmission != nil {
+			cmp.RequiresSubmission = *upd.RequiresSubmission
 		}
 
 		if !cmp.Male && !cmp.Female {

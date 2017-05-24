@@ -206,10 +206,13 @@ func submitPost(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		adv := user.Advertiser
+		cmp, ok := s.Campaigns.Get(found.CampaignId)
+		if !ok {
+			c.JSON(400, misc.StatusErr("Campaign undefined"))
+			return
+		}
 
-		// If the agency is NOT IO and adv is NOT ENTERPRISE. we need an approved submission before accepting!
-		if !adv.RequiresSubmission {
+		if !cmp.RequiresSubmission {
 			c.JSON(400, misc.StatusErr("Deal does not require prior submission. You are free to post!"))
 			return
 		}

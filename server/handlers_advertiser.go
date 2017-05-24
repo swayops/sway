@@ -152,22 +152,28 @@ func approveSubmission(s *Server) gin.HandlerFunc {
 
 		adv := s.auth.GetAdvertiser(advertiserId)
 		if adv == nil {
-			c.JSON(500, misc.StatusErr("Please provide a valid advertiser"))
-			return
-		}
-
-		if !adv.RequiresSubmission {
-			c.JSON(500, misc.StatusErr("Advertiser does not require submission"))
+			c.JSON(400, misc.StatusErr("Please provide a valid advertiser"))
 			return
 		}
 
 		if len(infId) == 0 {
-			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			c.JSON(400, misc.StatusErr("Influencer ID undefined"))
 			return
 		}
 
 		if len(campaignId) == 0 {
-			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			c.JSON(400, misc.StatusErr("Campaign ID undefined"))
+			return
+		}
+
+		cmp, ok := s.Campaigns.Get(campaignId)
+		if !ok {
+			c.JSON(400, misc.StatusErr("Campaign not found"))
+			return
+		}
+
+		if !cmp.RequiresSubmission {
+			c.JSON(400, misc.StatusErr("Campaign does not require submission"))
 			return
 		}
 
