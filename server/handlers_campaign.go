@@ -427,60 +427,26 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			b := tx.Bucket([]byte(s.Cfg.Bucket.Budget)).Get([]byte("338"))
-
-			var (
-				st map[string]*budget.Store
-			)
-			if len(b) == 0 {
-				// First save for this advertiser!
-				st = make(map[string]*budget.Store)
-			} else {
-				if err = json.Unmarshal(b, &st); err != nil {
-					return ErrUnmarshal
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
 				}
-			}
-
-			store := &budget.Store{
-				Spendable: 11.57,
-				Spent:     688.43,
-				NextBill:  1496336400,
-			}
-
-			st["20"] = store
-
-			if b, err = json.Marshal(&st); err != nil {
-				return err
-			}
-
-			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Budget, "338", b); err != nil {
-				return err
-			}
-
+				if len(cmp.LegacyWhitelist) > 0 {
+					for email, _ := range cmp.LegacyWhitelist {
+						cmp.Whitelist[email] = &common.Schedule{From: 0, To: 0}
+					}
+				}
+				cmp.LegacyWhitelist = nil
+				return saveCampaign(tx, &cmp, s)
+			})
 			return nil
 		}); err != nil {
-			s.Alert("Error when running billing for 20", err)
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
 		}
-
-		// id := c.Param("id")
-		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-		// 	var cmp *common.Campaign
-		// 	err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
-		// 	if err != nil {
-		// 		return
-		// 	}
-
-		// 	if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
-		// 		cmp.Perks.Name = "Free Pair of Roma Boots"
-		// 	}
-
-		// 	return saveCampaign(tx, cmp, s)
-		// }); err != nil {
-		// 	c.JSON(500, misc.StatusErr(err.Error()))
-		// 	return
-		// }
 
 		c.JSON(200, misc.StatusOK(""))
 	}
