@@ -435,8 +435,9 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if len(cmp.LegacyWhitelist) > 0 {
+					cmp.Whitelist = make(map[string]*common.Schedule, len(cmp.LegacyWhitelist))
 					for email, _ := range cmp.LegacyWhitelist {
-						cmp.Whitelist[email] = &common.Schedule{From: 0, To: 0}
+						cmp.Whitelist[email] = &common.Schedule{}
 					}
 				}
 				cmp.LegacyWhitelist = nil
