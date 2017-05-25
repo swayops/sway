@@ -1449,9 +1449,9 @@ func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) erro
 }
 
 func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config) error {
-	// if cfg.Sandbox {
-	// 	return nil
-	// }
+	if cfg.Sandbox {
+		return nil
+	}
 
 	if cfg.ReplyMailClient() == nil {
 		return ErrEmail
@@ -1505,10 +1505,9 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 
 	schedule, ok := cmp.Whitelist[inf.EmailAddress]
 	if ok && schedule != nil && schedule.From > 0 && schedule.To > 0 {
-		log.Println("ADDING")
 		data["HasSchedule"] = true
-		data["StartTime"] = time.Unix(schedule.From, 0).Format("2006-01-02 15:04 MST")
-		data["EndTime"] = time.Unix(schedule.To, 0).Format("2006-01-02 15:04 MST")
+		data["StartTime"] = time.Unix(schedule.From, 0).Format("01-02-2006 15:04 MST")
+		data["EndTime"] = time.Unix(schedule.To, 0).Format("01-02-2006 15:04 MST")
 	} else {
 		data["HasSchedule"] = false
 	}
@@ -1520,13 +1519,13 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		email = templates.DealInstructionsEmail.Render(data)
 	}
 
-	// resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
-	// 	[]string{""})
-	// if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-	// 	return ErrEmail
-	// }
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
 
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
+	resp, err = cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), "shahzil@swayops.com", inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail
