@@ -464,7 +464,7 @@ type CampaignUpdate struct {
 	Male               *bool                       `json:"male,omitempty"`
 	Female             *bool                       `json:"female,omitempty"`
 	Name               *string                     `json:"name,omitempty"`
-	Whitelist          map[string]*common.Schedule `json:"whitelist,omitempty"`
+	Whitelist          map[string]*common.Schedule `json:"whitelistSchedule,omitempty"`
 	ImageData          string                      `json:"imageData,omitempty"` // this is input-only and never saved to the db
 	Task               *string                     `json:"task,omitempty"`
 	Perks              *common.Perk                `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
