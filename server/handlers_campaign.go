@@ -100,7 +100,24 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = common.LowerSlice(cmp.Categories)
 		cmp.Keywords = common.LowerSlice(cmp.Keywords)
+
 		cmp.Whitelist = common.TrimWhitelist(cmp.Whitelist)
+		now := time.Now().Unix()
+		// Lets do a sanity check on the schedule for the whitelist
+		for _, schedule := range cmp.Whitelist {
+			if schedule != nil && schedule.From > 0 && schedule.To > 0 {
+				if schedule.To < now {
+					// Old date!
+					c.JSON(400, misc.StatusErr("Please enter a whitelist schedule from the future!"))
+					return
+				}
+
+				if schedule.From > schedule.To {
+					c.JSON(400, misc.StatusErr("Schedule start date is newer than schedule end date!"))
+					return
+				}
+			}
+		}
 
 		// Copy the plan from the Advertiser
 		cmp.Plan = adv.Plan
