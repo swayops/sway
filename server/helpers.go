@@ -1020,7 +1020,7 @@ func emailList(s *Server, cid string, override []string) {
 	if len(override) > 0 {
 		list = override
 	} else {
-		list = common.SliceMap(cmp.Whitelist)
+		list = common.SliceWhitelist(cmp.Whitelist)
 	}
 
 	if len(list) > 0 {
@@ -1110,7 +1110,7 @@ func emailStatusUpdate(s *Server, cid string) {
 
 func assignDealEmail(s *Server, cmp *common.Campaign, deal *common.Deal, inf *influencer.Influencer) {
 	// Emails influencer's with deal instructions
-	if err := inf.DealInstructions(cmp, deal, s.Cfg, cmp.RequiresSubmission); err != nil {
+	if err := inf.DealInstructions(cmp, deal, s.Cfg); err != nil {
 		s.Alert("Failed to give influencer deal instructions: "+inf.Id, err)
 	}
 }

@@ -58,7 +58,9 @@ type Campaign struct {
 
 	Perks *Perk `json:"perks,omitempty"`
 
-	Whitelist map[string]bool `json:"whitelist,omitempty"` // List of emails
+	LegacyWhitelist map[string]bool `json:"whitelist,omitempty"` // List of emails
+
+	Whitelist map[string]*Schedule `json:"whitelistSchedule,omitempty"` // List of emails and their schedules
 	// Copied from advertiser
 	Blacklist map[string]bool `json:"blacklist,omitempty"`
 
@@ -70,6 +72,11 @@ type Campaign struct {
 	Timeline []*Timeline `json:"timeline,omitempty"`
 
 	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
+}
+
+type Schedule struct {
+	From int64 `json:"from,omitempty"`
+	To   int64 `json:"to,omitempty"`
 }
 
 func (cmp *Campaign) IsValid() bool {

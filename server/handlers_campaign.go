@@ -100,7 +100,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Mention = sanitizeMention(cmp.Mention)
 		cmp.Categories = common.LowerSlice(cmp.Categories)
 		cmp.Keywords = common.LowerSlice(cmp.Keywords)
-		cmp.Whitelist = common.TrimEmails(cmp.Whitelist)
+		cmp.Whitelist = common.TrimWhitelist(cmp.Whitelist)
 
 		// Copy the plan from the Advertiser
 		cmp.Plan = adv.Plan
@@ -427,60 +427,27 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 func dirtyHack(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			b := tx.Bucket([]byte(s.Cfg.Bucket.Budget)).Get([]byte("338"))
-
-			var (
-				st map[string]*budget.Store
-			)
-			if len(b) == 0 {
-				// First save for this advertiser!
-				st = make(map[string]*budget.Store)
-			} else {
-				if err = json.Unmarshal(b, &st); err != nil {
-					return ErrUnmarshal
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
+				var cmp common.Campaign
+				if err := json.Unmarshal(v, &cmp); err != nil {
+					log.Println("error when unmarshalling campaign", string(v))
+					return nil
 				}
-			}
-
-			store := &budget.Store{
-				Spendable: 11.57,
-				Spent:     688.43,
-				NextBill:  1496336400,
-			}
-
-			st["20"] = store
-
-			if b, err = json.Marshal(&st); err != nil {
-				return err
-			}
-
-			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Budget, "338", b); err != nil {
-				return err
-			}
-
+				if len(cmp.LegacyWhitelist) > 0 {
+					cmp.Whitelist = make(map[string]*common.Schedule, len(cmp.LegacyWhitelist))
+					for email, _ := range cmp.LegacyWhitelist {
+						cmp.Whitelist[email] = &common.Schedule{}
+					}
+				}
+				cmp.LegacyWhitelist = nil
+				return saveCampaign(tx, &cmp, s)
+			})
 			return nil
 		}); err != nil {
-			s.Alert("Error when running billing for 20", err)
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
 		}
-
-		// id := c.Param("id")
-		// if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-		// 	var cmp *common.Campaign
-		// 	err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &cmp)
-		// 	if err != nil {
-		// 		return
-		// 	}
-
-		// 	if cmp.Perks != nil && cmp.Perks.IsCoupon() && cmp.Perks.Instructions != "" {
-		// 		cmp.Perks.Name = "Free Pair of Roma Boots"
-		// 	}
-
-		// 	return saveCampaign(tx, cmp, s)
-		// }); err != nil {
-		// 	c.JSON(500, misc.StatusErr(err.Error()))
-		// 	return
-		// }
 
 		c.JSON(200, misc.StatusOK(""))
 	}
@@ -488,21 +455,21 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos               []*geo.GeoRecord `json:"geos,omitempty"`
-	Categories         []string         `json:"categories,omitempty"`
-	Audiences          []string         `json:"audiences,omitempty"`
-	Keywords           []string         `json:"keywords,omitempty"`
-	Status             *bool            `json:"status,omitempty"`
-	Budget             *float64         `json:"budget,omitempty"`
-	Male               *bool            `json:"male,omitempty"`
-	Female             *bool            `json:"female,omitempty"`
-	Name               *string          `json:"name,omitempty"`
-	Whitelist          map[string]bool  `json:"whitelist,omitempty"`
-	ImageData          string           `json:"imageData,omitempty"` // this is input-only and never saved to the db
-	Task               *string          `json:"task,omitempty"`
-	Perks              *common.Perk     `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
-	BrandSafe          *bool            `json:"brandSafe,omitempty"`
-	RequiresSubmission *bool            `json:"reqSub,omitempty"` // Does the advertiser require submission?
+	Geos               []*geo.GeoRecord            `json:"geos,omitempty"`
+	Categories         []string                    `json:"categories,omitempty"`
+	Audiences          []string                    `json:"audiences,omitempty"`
+	Keywords           []string                    `json:"keywords,omitempty"`
+	Status             *bool                       `json:"status,omitempty"`
+	Budget             *float64                    `json:"budget,omitempty"`
+	Male               *bool                       `json:"male,omitempty"`
+	Female             *bool                       `json:"female,omitempty"`
+	Name               *string                     `json:"name,omitempty"`
+	Whitelist          map[string]*common.Schedule `json:"whitelist,omitempty"`
+	ImageData          string                      `json:"imageData,omitempty"` // this is input-only and never saved to the db
+	Task               *string                     `json:"task,omitempty"`
+	Perks              *common.Perk                `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
+	BrandSafe          *bool                       `json:"brandSafe,omitempty"`
+	RequiresSubmission *bool                       `json:"reqSub,omitempty"` // Does the advertiser require submission?
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -637,7 +604,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.Budget = *upd.Budget
 		}
 
-		updatedWl := common.TrimEmails(upd.Whitelist)
+		updatedWl := common.TrimWhitelist(upd.Whitelist)
 		additions := []string{}
 		for email, _ := range updatedWl {
 			// If the email isn't on the old whitelist

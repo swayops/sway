@@ -82,8 +82,23 @@ func explore(srv *Server) (int32, error) {
 
 		cmp, ok := srv.Campaigns.Get(deal.CampaignId)
 		if !ok {
-			// Campaign not active
+			// Campaign is no longer active!
 			continue
+		}
+
+		if len(cmp.Whitelist) > 0 {
+			schedule, ok := cmp.Whitelist[inf.EmailAddress]
+			if !ok {
+				// Not in whitelist!
+				continue
+			}
+			now := time.Now().Unix()
+			if schedule != nil && schedule.From > 0 && schedule.To > 0 {
+				if now < schedule.From || now > schedule.To {
+					// Missed your window foo!
+					continue
+				}
+			}
 		}
 
 		if cmp.RequiresSubmission && !deal.IsSubmitted() {

@@ -308,12 +308,21 @@ const dealInstructionsEmail = `
 			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
 			 		<b>Instructions:</b> {{Instructions}} <br/>
 		 		{{/HasCoupon}}
+
+		    	{{#HasSchedule}}
+					<br/>
+			 		Must be posted between <b>{{StartTime}}</b> and <b>{{EndTime}}</b> <br/>
+		 		{{/HasSchedule}}
+
+				{{^HasSchedule}}
+			    	<b>Days to complete:</b> {{Timeout}}<br/>
+				{{/HasSchedule}}
+
 		 		<br/>
 		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
 				<b>Hashtags to do:</b> {{Tags}}<br/>
 				<b>Mentions to do:</b> {{Mentions}}<br/>
 		 		<br/>
-		    	<b>Days to complete:</b> {{Timeout}}<br/>
 	    	</td>
 	    </tr>
 		</table>
@@ -367,12 +376,21 @@ const submissionInstructionsEmail = `
 			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
 			 		<b>Instructions:</b> {{Instructions}} <br/>
 		 		{{/HasCoupon}}
+
+		    	{{#HasSchedule}}
+					<br/>
+			 		Must be posted between <b>{{StartTime}}</b> and <b>{{EndTime}}</b> <br/>
+		 		{{/HasSchedule}}
+
+				{{^HasSchedule}}
+			    	<b>Days to complete:</b> {{Timeout}}<br/>
+				{{/HasSchedule}}
+		 		
 		 		<br/>
 		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
 				<b>Hashtags to do:</b> {{Tags}}<br/>
 				<b>Mentions to do:</b> {{Mentions}}<br/>
 		 		<br/>
-		    	<b>Days to complete:</b> {{Timeout}}<br/>
 	    	</td>
 	    </tr>
 		</table>

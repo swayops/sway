@@ -779,6 +779,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
 	// advertisers and agencies
+
 	var (
 		infDeals []*common.Deal
 	)
@@ -977,11 +978,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Whitelist check!
 		if len(cmp.Whitelist) > 0 {
-			_, ok = cmp.Whitelist[inf.EmailAddress]
+			schedule, ok := cmp.Whitelist[inf.EmailAddress]
 			if !ok {
 				// There was a whitelist and they're not in it!
 				rejections[cmp.Id] = "CMP_WHITELIST"
 				continue
+			}
+
+			if schedule != nil && schedule.From > 0 && schedule.To > 0 {
+				targetDeal.From = schedule.From
+				targetDeal.To = schedule.To
 			}
 		}
 
@@ -1442,7 +1448,7 @@ func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) erro
 	return nil
 }
 
-func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config, submission bool) error {
+func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config) error {
 	if cfg.Sandbox {
 		return nil
 	}
@@ -1480,11 +1486,37 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		tags = append(tags, "#"+cmpTag)
 	}
 
-	var email string
-	if submission {
-		email = templates.SubmissionInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon, "Timeout": TimeoutDays})
+	data := map[string]interface{}{
+		"Networks":     strings.Join(deal.Platforms, ", "),
+		"Link":         deal.ShortenedLink,
+		"Tags":         strings.Join(tags, ", "),
+		"Mentions":     deal.Mention,
+		"Name":         firstName,
+		"Campaign":     cmp.Name,
+		"Task":         cmp.Task,
+		"Instructions": instructions,
+		"Perks":        perks,
+		"Image":        cmp.ImageURL,
+		"CouponCode":   coupon,
+		"HasPerks":     hasPerks,
+		"HasCoupon":    hasCoupon,
+		"Timeout":      TimeoutDays,
+	}
+
+	schedule, ok := cmp.Whitelist[inf.EmailAddress]
+	if ok && schedule != nil && schedule.From > 0 && schedule.To > 0 {
+		data["HasSchedule"] = true
+		data["StartTime"] = time.Unix(schedule.From, 0).Format("01-02-2006 15:04 MST")
+		data["EndTime"] = time.Unix(schedule.To, 0).Format("01-02-2006 15:04 MST")
 	} else {
-		email = templates.DealInstructionsEmail.Render(map[string]interface{}{"Networks": strings.Join(deal.Platforms, ", "), "Link": deal.ShortenedLink, "Tags": strings.Join(tags, ", "), "Mentions": deal.Mention, "Name": firstName, "Campaign": cmp.Name, "Task": cmp.Task, "Instructions": instructions, "Perks": perks, "Image": cmp.ImageURL, "CouponCode": coupon, "HasPerks": hasPerks, "HasCoupon": hasCoupon, "Timeout": TimeoutDays})
+		data["HasSchedule"] = false
+	}
+
+	var email string
+	if cmp.RequiresSubmission {
+		email = templates.SubmissionInstructionsEmail.Render(data)
+	} else {
+		email = templates.DealInstructionsEmail.Render(data)
 	}
 
 	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Instructions for completing your Sway deal for %s", cmp.Name), inf.EmailAddress, inf.Name,

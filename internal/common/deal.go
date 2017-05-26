@@ -91,6 +91,9 @@ type Deal struct {
 	Reporting map[string]*Stats `json:"stats,omitempty"`
 
 	Submission *Submission `json:"submission,omitempty"`
+
+	From int64 `json:"fromTime,omitempty"`
+	To   int64 `json:"toTime,omitempty"`
 }
 
 type Submission struct {
