@@ -560,9 +560,9 @@ func TestDeals(t *testing.T) {
 
 	// Lets have a look at the forecast!
 	var forecast struct {
-		Breakdown []*ForecastUser `json:"breakdown"`
-		Reach       int64 `json:"reach"`
-		Influencers       int64 `json:"influencers"`
+		Breakdown   []*ForecastUser `json:"breakdown"`
+		Reach       int64           `json:"reach"`
+		Influencers int64           `json:"influencers"`
 	}
 	r := rst.DoTesting(t, "POST", "/getForecast?breakdown=250", &cmp, &forecast)
 	if r.Status != 200 {
@@ -581,7 +581,7 @@ func TestDeals(t *testing.T) {
 		return
 	}
 
-	if fInf.AvgEngs == 0 || fInf.Followers == 0 || fInf.ProfilePicture == "" || fInf.URL=="" {
+	if fInf.AvgEngs == 0 || fInf.Followers == 0 || fInf.ProfilePicture == "" || fInf.URL == "" {
 		t.Fatal("Bad forecast twitter data!")
 		return
 	}
@@ -1790,7 +1790,7 @@ SKIP_APPROVE_2:
 	}
 
 	if len(couponCmp.Deals) != len(cmpUpdate.Perks.Codes) {
-		t.Fatal("Unexpected number of deals!", len(cmpUpdate.Perks.Codes),len(couponCmp.Deals) )
+		t.Fatal("Unexpected number of deals!", len(cmpUpdate.Perks.Codes), len(couponCmp.Deals))
 		return
 	}
 
@@ -1825,11 +1825,11 @@ SKIP_APPROVE_2:
 	}
 
 	if len(freshCampaign.Deals) != len(cmpUpdate.Perks.Codes) {
-		t.Fatal("Unexpected number of deals!", len(cmpUpdate.Perks.Codes),len(freshCampaign.Deals) )
+		t.Fatal("Unexpected number of deals!", len(cmpUpdate.Perks.Codes), len(freshCampaign.Deals))
 		return
 	}
 
-	if freshCampaign.Perks.Count != len(updatedCodes) -1 {
+	if freshCampaign.Perks.Count != len(updatedCodes)-1 {
 		t.Fatal("Unexpected number of perks!")
 		return
 	}
@@ -3209,7 +3209,6 @@ func TestScraps(t *testing.T) {
 		t.Fatal("Bad keyword!")
 	}
 }
-
 
 func TestBalances(t *testing.T) {
 	rst := getClient()
@@ -5413,9 +5412,9 @@ func TestBonus(t *testing.T) {
 
 	// Lets try adding a bonus post!
 	bonus := Bonus{
-		CampaignID: newLoad.CompletedDeals[0].CampaignId,
+		CampaignID:   newLoad.CompletedDeals[0].CampaignId,
 		InfluencerID: inf.ExpID,
-		PostURL: newLoad.Twitter.LatestTweets[len(newLoad.Twitter.LatestTweets)-3].PostURL,
+		PostURL:      newLoad.Twitter.LatestTweets[len(newLoad.Twitter.LatestTweets)-3].PostURL,
 	}
 
 	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
@@ -5450,9 +5449,9 @@ func TestBonus(t *testing.T) {
 
 	// Lets try adding a bad bonus post!
 	bonus = Bonus{
-		CampaignID: newLoad.CompletedDeals[0].CampaignId,
+		CampaignID:   newLoad.CompletedDeals[0].CampaignId,
 		InfluencerID: inf.ExpID,
-		PostURL: "www.",
+		PostURL:      "www.",
 	}
 
 	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
@@ -5462,9 +5461,9 @@ func TestBonus(t *testing.T) {
 	}
 
 	bonus = Bonus{
-		CampaignID: "999",
+		CampaignID:   "999",
 		InfluencerID: inf.ExpID,
-		PostURL: newLoad.Twitter.LatestTweets[0].PostURL,
+		PostURL:      newLoad.Twitter.LatestTweets[0].PostURL,
 	}
 
 	r = rst.DoTesting(t, "POST", "/addBonus", &bonus, nil)
@@ -5534,7 +5533,6 @@ func TestProductBudget(t *testing.T) {
 		SubLoad:     getSubscription(3, 100, true),
 	}
 
-
 	r = rst.DoTesting(t, "POST", "/signUp", adv, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -5575,7 +5573,6 @@ func TestProductBudget(t *testing.T) {
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
 		Perks:        &common.Perk{Name: "Nike Air Shoes", Type: 1, Count: 5},
-
 	}
 
 	r = rst.DoTesting(t, "POST", "/campaign", &cmp, &st)
@@ -5707,10 +5704,10 @@ func TestAudiences(t *testing.T) {
 	// Emails should be trimmed!
 	members := map[string]bool{
 		"jOhn@seanjohn.com": true,
-		"blah@fubu.com  ": true,
+		"blah@fubu.com  ":   true,
 	}
 	aud := common.Audience{
-		Name: "My test audience",
+		Name:    "My test audience",
 		Members: members,
 	}
 
@@ -5753,8 +5750,8 @@ func TestAudiences(t *testing.T) {
 		AgencyID: "2",
 	}
 
-		adv.Advertiser.CCLoad = creditCard
-		adv.Advertiser.SubLoad = getSubscription(3, 100, true)
+	adv.Advertiser.CCLoad = creditCard
+	adv.Advertiser.SubLoad = getSubscription(3, 100, true)
 
 	var st Status
 	r = rst.DoTesting(t, "POST", "/signUp", adv, &st)
@@ -5774,7 +5771,7 @@ func TestAudiences(t *testing.T) {
 		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Audiences: []string{"1"},
+		Audiences:    []string{"1"},
 	}
 
 	var status Status
@@ -5791,13 +5788,12 @@ func TestAudiences(t *testing.T) {
 		return
 	}
 
-	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] !="1" {
+	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] != "1" {
 		t.Fatal("Failed to target audience!")
 		return
 	}
-	
 
-	// Lets create an influencer that SHOULD get a deal because they are in the 
+	// Lets create an influencer that SHOULD get a deal because they are in the
 	// audience!
 	inf := getSignupUserWithEmail("john@seanjohn.com")
 	inf.InfluencerLoad = &auth.InfluencerLoad{
@@ -5872,8 +5868,8 @@ func TestSubmission(t *testing.T) {
 	adv.Advertiser = &auth.Advertiser{
 		DspFee:   0.2,
 		AgencyID: "2",
-		CCLoad: creditCard,
-		SubLoad: getSubscription(3, 100, true),
+		CCLoad:   creditCard,
+		SubLoad:  getSubscription(3, 100, true),
 	}
 
 	var st Status
@@ -5884,16 +5880,16 @@ func TestSubmission(t *testing.T) {
 	}
 
 	cmp := common.Campaign{
-		Status:       true,
-		AdvertiserId: st.ID,
-		Budget:       DEFAULT_BUDGET,
-		Name:         "Submission Campaign!",
-		Twitter:      true,
-		Male:         true,
-		Female:       true,
-		Link:         "http://www.cnn.com?s=t",
-		Task:         "POST THAT DOPE SHIT",
-		Tags:         []string{"#mmmm"},
+		Status:             true,
+		AdvertiserId:       st.ID,
+		Budget:             DEFAULT_BUDGET,
+		Name:               "Submission Campaign!",
+		Twitter:            true,
+		Male:               true,
+		Female:             true,
+		Link:               "http://www.cnn.com?s=t",
+		Task:               "POST THAT DOPE SHIT",
+		Tags:               []string{"#mmmm"},
 		RequiresSubmission: true,
 	}
 
@@ -5905,7 +5901,7 @@ func TestSubmission(t *testing.T) {
 	}
 	cid := status.ID
 
-	// Lets create an influencer that SHOULD get a deal because they are in the 
+	// Lets create an influencer that SHOULD get a deal because they are in the
 	// audience!
 	inf := getSignupUserWithEmail("mayn@mayn123.com")
 	inf.InfluencerLoad = &auth.InfluencerLoad{
@@ -5952,12 +5948,12 @@ func TestSubmission(t *testing.T) {
 	}
 
 	// Lets now submit the influencer's proposal!
-	 sub := common.Submission{
-	 	ImageData: []string{postImage},
-	 	Message: "This is the message this campaign wants #mmmm",
-	 }
+	sub := common.Submission{
+		ImageData: []string{postImage},
+		Message:   "This is the message this campaign wants #mmmm",
+	}
 
- 	r = rst.DoTesting(t, "POST", "/submitPost/"+inf.ExpID+"/"+tgDeal.CampaignId, &sub, nil)
+	r = rst.DoTesting(t, "POST", "/submitPost/"+inf.ExpID+"/"+tgDeal.CampaignId, &sub, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad value!")
 		return
@@ -5976,7 +5972,7 @@ func TestSubmission(t *testing.T) {
 		return
 	}
 
-	if dealGet.Submission.Approved{
+	if dealGet.Submission.Approved {
 		t.Fatal("Submission wrongfully approved!")
 		return
 	}
@@ -5985,40 +5981,40 @@ func TestSubmission(t *testing.T) {
 		t.Fatal("Bad message in submission!")
 		return
 	}
-	log.Println("ADVERTISER", dealGet.AdvertiserId, dealGet.CampaignId)
 
 	if *genData {
+		t.Logf("advID for approve submission: %s", tgDeal.AdvertiserId)
 		return
 	}
 
-	// // Approve the proposal via advertiser (make sure it is now set to approved and there is a submission)
-	// r = rst.DoTesting(t, "GET", "/approveSubmission/"+tgDeal.AdvertiserId+"/"+tgDeal.CampaignId+"/"+inf.ExpID, nil, nil)
-	// if r.Status != 200 {
-	// 	t.Fatal("Bad status code!")
-	// 	return
-	// }
+	// Approve the proposal via advertiser (make sure it is now set to approved and there is a submission)
+	r = rst.DoTesting(t, "GET", "/approveSubmission/"+tgDeal.AdvertiserId+"/"+tgDeal.CampaignId+"/"+inf.ExpID, nil, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
 
-	// var dealDone common.Deal
-	// r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &dealDone)
-	// if r.Status != 200 {
-	// 	t.Fatal("Bad status code!")
-	// 	return
-	// }
+	var dealDone common.Deal
+	r = rst.DoTesting(t, "GET", "/getDeal/"+inf.ExpID+"/"+tgDeal.CampaignId+"/"+tgDeal.Id, nil, &dealDone)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
 
-	// if dealDone.Submission == nil {
-	// 	t.Fatal("No submission!")
-	// 	return
-	// }
+	if dealDone.Submission == nil {
+		t.Fatal("No submission!")
+		return
+	}
 
-	// if !dealDone.Submission.Approved {
-	// 	t.Fatal("Submission not approved wtf!")
-	// 	return
-	// }
+	if !dealDone.Submission.Approved {
+		t.Fatal("Submission not approved wtf!")
+		return
+	}
 
-	// if dealDone.Submission.Message != sub.Message {
-	// 	t.Fatal("Bad message in submission!")
-	// 	return
-	// }
+	if dealDone.Submission.Message != sub.Message {
+		t.Fatal("Bad message in submission!")
+		return
+	}
 }
 
 func TestBilling(t *testing.T) {
@@ -6121,7 +6117,6 @@ func TestBilling(t *testing.T) {
 		}
 		cids[cid] = store
 	}
-
 
 	// Lets see what happens to stores when we bill!
 	for cid, oldStore := range cids {
