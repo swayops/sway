@@ -307,7 +307,6 @@ type ManageCampaign struct {
 	Stats *reporting.TargetStats `json:"stats"`
 
 	Accepted  []*manageInf `json:"accepted"`
-	Submitted []*manageInf `json:"submitted"`
 	Completed []*manageInf `json:"completed"`
 }
 
@@ -404,14 +403,13 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						}
 
 						if deal.IsActive() {
+							// Only append submission if it's not approved yet
+							if deal.Submission != nil && !deal.Submission.Approved {
+								tmpInf.Submission = deal.Submission
+							}
 							mCmp.Accepted = append(mCmp.Accepted, tmpInf)
 						} else if deal.IsComplete() {
 							mCmp.Completed = append(mCmp.Completed, tmpInf)
-						}
-
-						if deal.Submission != nil && !deal.Submission.Approved {
-							tmpInf.Submission = deal.Submission
-							mCmp.Submitted = append(mCmp.Submitted, tmpInf)
 						}
 					}
 					campaigns = append(campaigns, mCmp)
