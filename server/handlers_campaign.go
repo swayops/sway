@@ -409,7 +409,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 							mCmp.Completed = append(mCmp.Completed, tmpInf)
 						}
 
-						if deal.Submission != nil {
+						if deal.Submission != nil && !deal.Submission.Approved {
 							tmpInf.Submission = deal.Submission
 							mCmp.Submitted = append(mCmp.Submitted, tmpInf)
 						}
