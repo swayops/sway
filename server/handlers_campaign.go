@@ -314,6 +314,7 @@ type ManageCampaign struct {
 type manageInf struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	EmailAddr   string `json:"emailAddress"`
 	Engagements int32  `json:"engagements"`
 	DealID      string `json:"dealID"`
 	ImageURL    string `json:"image"`
@@ -373,9 +374,10 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						}
 
 						tmpInf := &manageInf{
-							ID:     inf.Id,
-							Name:   inf.Name,
-							DealID: deal.Id,
+							ID:        inf.Id,
+							Name:      inf.Name,
+							DealID:    deal.Id,
+							EmailAddr: inf.EmailAddress,
 						}
 
 						if st := deal.TotalStats(); st != nil {
