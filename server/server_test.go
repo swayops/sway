@@ -5986,6 +5986,10 @@ func TestSubmission(t *testing.T) {
 		return
 	}
 
+	if *genData {
+		return
+	}
+	
 	// Approve the proposal via advertiser (make sure it is now set to approved and there is a submission)
 	r = rst.DoTesting(t, "GET", "/approveSubmission/"+tgDeal.AdvertiserId+"/"+tgDeal.CampaignId+"/"+inf.ExpID, nil, nil)
 	if r.Status != 200 {
