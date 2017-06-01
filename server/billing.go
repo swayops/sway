@@ -201,6 +201,11 @@ func generateInvoices(s *Server) {
 			continue
 		}
 
+		if stats == nil || stats.Total == nil {
+			// Did not spend anything!
+			continue
+		}
+
 		user = s.auth.GetUser(adAgency.ID)
 		if user != nil {
 			if emails == "" {
