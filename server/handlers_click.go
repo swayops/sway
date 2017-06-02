@@ -59,20 +59,20 @@ func click(s *Server) gin.HandlerFunc {
 		infId := foundDeal.InfluencerId
 		// Stored as a comma separated list of dealIDs satisfied
 		cookie := misc.GetCookie(c.Request, "click")
-		if strings.Contains(cookie, foundDeal.Id) && c.Query("dbg") != "1" {
-			// This user has already clicked once for this deal!
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
+		// if strings.Contains(cookie, foundDeal.Id) && c.Query("dbg") != "1" {
+		// 	// This user has already clicked once for this deal!
+		// 	c.Redirect(302, foundDeal.Link)
+		// 	return
+		// }
 
-		ip := c.ClientIP()
-		ua := c.Request.UserAgent()
-		// Has this user's IP and UA combination been seen before?
-		if s.ClickSet.Exists(ip, ua) && !s.Cfg.Sandbox {
-			// This user has already clicked once for this deal!
-			c.Redirect(302, foundDeal.Link)
-			return
-		}
+		// ip := c.ClientIP()
+		// ua := c.Request.UserAgent()
+		// // Has this user's IP and UA combination been seen before?
+		// if s.ClickSet.Exists(ip, ua) && !s.Cfg.Sandbox {
+		// 	// This user has already clicked once for this deal!
+		// 	c.Redirect(302, foundDeal.Link)
+		// 	return
+		// }
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
@@ -122,7 +122,7 @@ func click(s *Server) gin.HandlerFunc {
 		// SAVE!
 		// Also saves influencers!
 		if added {
-			s.ClickSet.Set(ip, ua)
+			// s.ClickSet.Set(ip, ua)
 
 			if err := saveAllDeals(s, inf); err != nil {
 				c.Redirect(302, foundDeal.Link)

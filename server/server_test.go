@@ -2763,7 +2763,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Try faking a click for an active deal.. shouldn't work but should redirect!
+	// Try faking a click for an active deal.. should add a pending click and redirect!
 	r = rst.DoTesting(t, "GET", getTestClick(load.ActiveDeals[0].ShortenedLink), nil, nil)
 	if r.Status != 200 {
 		log.Println(string(r.Value))
@@ -2776,7 +2776,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Make sure there are no clicks in reporting
+	// Make sure there are no clicks or uniques in reporting
 	var breakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &breakdown)
 	if r.Status != 200 {
@@ -2786,6 +2786,11 @@ func TestClicks(t *testing.T) {
 
 	if breakdown["total"].Clicks > 0 {
 		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	if breakdown["total"].Uniques > 0 {
+		t.Fatal("Unexpected number of uniques!")
 		return
 	}
 
@@ -2868,8 +2873,8 @@ func TestClicks(t *testing.T) {
 		}
 	}
 
-	if pending != 0 {
-		t.Fatal("Expected 0 pending click")
+	if pending != 1 {
+		t.Fatal("Expected 1 pending click")
 		return
 	}
 
@@ -2891,30 +2896,35 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	// Try clicking again.. should fail because of unique check!
-	r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink), nil, nil)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+	if newBreakdown["total"].Uniques != 1 {
+		t.Fatal("Unexpected number of uniques!")
 		return
 	}
 
-	if !strings.Contains(r.URL, "cnn.com") {
-		t.Fatal("Incorrect redirect")
-		return
-	}
+	// // Try clicking again.. should fail because of unique check!
+	// r = rst.DoTesting(t, "GET", getTestClick(newLoad.CompletedDeals[0].ShortenedLink), nil, nil)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// 	return
+	// }
 
-	// Make sure nothing increments since this uuid just had a click
-	var lastBreakdown map[string]*reporting.Totals
-	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
-	if r.Status != 200 {
-		t.Fatal("Bad status code!")
-		return
-	}
+	// if !strings.Contains(r.URL, "cnn.com") {
+	// 	t.Fatal("Incorrect redirect")
+	// 	return
+	// }
 
-	if lastBreakdown["total"].Clicks != 1 {
-		t.Fatal("Unexpected number of clicks!")
-		return
-	}
+	// // Make sure nothing increments since this uuid just had a click
+	// var lastBreakdown map[string]*reporting.Totals
+	// r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
+	// if r.Status != 200 {
+	// 	t.Fatal("Bad status code!")
+	// 	return
+	// }
+
+	// if lastBreakdown["total"].Clicks != 1 {
+	// 	t.Fatal("Unexpected number of clicks!")
+	// 	return
+	// }
 
 	// Lets try an actual click and make sure it shows up in pending and
 	// stats remain as 1
@@ -2929,6 +2939,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
+	var lastBreakdown map[string]*reporting.Totals
 	r = rst.DoTesting(t, "GET", "/getCampaignStats/"+cid+"/10", nil, &lastBreakdown)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -2937,6 +2948,11 @@ func TestClicks(t *testing.T) {
 
 	if lastBreakdown["total"].Clicks != 1 {
 		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	if lastBreakdown["total"].Uniques != 1 {
+		t.Fatal("Unexpected number of Uniques!")
 		return
 	}
 
@@ -2956,7 +2972,7 @@ func TestClicks(t *testing.T) {
 		}
 	}
 
-	if pending != 1 {
+	if pending != 2 {
 		t.Fatal("Unexpected number of pending clicks!")
 		return
 	}
@@ -2993,7 +3009,7 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if approved != 2 {
+	if approved != 3 {
 		t.Fatal("Unexpected number of approved clicks!")
 		return
 	}
@@ -3004,8 +3020,13 @@ func TestClicks(t *testing.T) {
 		return
 	}
 
-	if lastBreakdown["total"].Clicks != 2 {
+	if lastBreakdown["total"].Clicks != 3 {
 		t.Fatal("Unexpected number of clicks!")
+		return
+	}
+
+	if lastBreakdown["total"].Uniques != 1 {
+		t.Fatal("Unexpected number of uniques!")
 		return
 	}
 }
