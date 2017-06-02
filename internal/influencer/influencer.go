@@ -1125,6 +1125,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 					Code:         code,
 					Count:        1}
 			}
+			targetDeal.RequiresSubmission = cmp.RequiresSubmission
 
 			if targetDeal.Link == "" {
 				// getDeal queries for an active deal so it already has

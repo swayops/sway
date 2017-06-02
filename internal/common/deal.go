@@ -90,7 +90,9 @@ type Deal struct {
 	// Keyed on DAY.. showing stats calculated by DAY
 	Reporting map[string]*Stats `json:"stats,omitempty"`
 
-	Submission *Submission `json:"submission,omitempty"`
+	// Used by inf app to decide on whether or not it should show post submission option
+	RequiresSubmission bool        `json:"reqSub,omitempty"`
+	Submission         *Submission `json:"submission,omitempty"`
 
 	From int64 `json:"fromTime,omitempty"`
 	To   int64 `json:"toTime,omitempty"`
