@@ -5901,6 +5901,16 @@ func TestSubmission(t *testing.T) {
 	}
 	cid := status.ID
 
+	if *genData {
+		cmp.Name = "Test Submission Cmp"
+		r = rst.DoTesting(t, "POST", "/campaign?dbg=1", &cmp, &status)
+		if r.Status != 200 {
+			t.Fatal("Bad status code!", string(r.Value))
+			return
+		}
+		t.Logf("Advertiser ID: %s, Campaign ID: %s, %s", cmp.AdvertiserId, status.ID)
+	}
+
 	// Lets create an influencer that SHOULD get a deal because they are in the
 	// audience!
 	inf := getSignupUserWithEmail("mayn@mayn123.com")
@@ -5983,7 +5993,6 @@ func TestSubmission(t *testing.T) {
 	}
 
 	if *genData {
-		t.Logf("advID for approve submission: %s", tgDeal.AdvertiserId)
 		return
 	}
 
