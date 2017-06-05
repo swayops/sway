@@ -6025,6 +6025,11 @@ func TestSubmission(t *testing.T) {
 		t.Fatal("Bad message in submission!")
 		return
 	}
+
+	if len(dealDone.Submission.ContentURL) != 3 {
+		t.Fatal("Bad content URL len!")
+		return
+	}
 }
 
 func TestBilling(t *testing.T) {
