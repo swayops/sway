@@ -19,6 +19,12 @@ func putAdvertiser(s *Server) gin.HandlerFunc {
 	}
 }
 
+// Used exclusively for advertiser gets so we can add IO field
+type AdvertiserGet struct {
+	*auth.Advertiser
+	IsIO bool `json:"isIO,omitempty"`
+}
+
 func getAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adv := s.auth.GetAdvertiser(c.Param("id"))
@@ -26,7 +32,14 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 			c.JSON(500, misc.StatusErr("Internal error"))
 			return
 		}
-		c.JSON(200, adv)
+
+		adAg := s.auth.GetAdAgency(adv.AgencyID)
+		if adAg == nil {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		c.JSON(200, &AdvertiserGet{adv, adAg.IsIO})
 	}
 }
 
