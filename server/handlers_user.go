@@ -157,11 +157,16 @@ func userProfile(srv *Server) gin.HandlerFunc {
 		var advWithCampaigns struct {
 			*auth.User
 			HasCampaigns bool `json:"hasCmps"`
+			IsIO         bool `json:"isIO"`
 		}
 
 		advWithCampaigns.User = cu
 
 		srv.db.View(func(tx *bolt.Tx) error {
+			if adAg := srv.auth.GetAdAgency(cu.Advertiser.AgencyID); adAg != nil {
+				advWithCampaigns.IsIO = adAg.IsIO
+			}
+
 			return tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp struct {
 					AdvertiserId string `json:"advertiserId"`
