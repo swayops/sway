@@ -227,6 +227,17 @@ func submitPost(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if len(sub.ImageData) == 0 && len(sub.ContentURL) == 0 {
+			// No media content sent!
+			c.JSON(400, misc.StatusErr("No media content!"))
+			return
+		}
+
+		if len(sub.Message) == 0 {
+			c.JSON(400, misc.StatusErr("No message content!"))
+			return
+		}
+
 		if len(sub.ImageData) != 0 {
 			for idx, imgData := range sub.ImageData {
 				pre := strconv.Itoa(idx) + "-"
