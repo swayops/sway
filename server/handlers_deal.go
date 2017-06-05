@@ -238,6 +238,8 @@ func submitPost(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		sub.SanitizeContent()
+
 		if len(sub.ImageData) != 0 {
 			for idx, imgData := range sub.ImageData {
 				pre := strconv.Itoa(idx) + "-"

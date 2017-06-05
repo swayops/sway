@@ -3,7 +3,9 @@ package common
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"time"
 
@@ -106,6 +108,34 @@ type Submission struct {
 	Message string `json:"caption,omitempty"`
 
 	Approved bool `json:"approved,omitempty"`
+}
+
+func (s *Submission) SanitizeContent() {
+	// Convert YT and Vimeo URLs into embed-capable URLs
+	for idx, content := range s.ContentURL {
+		u, err := url.Parse(content)
+		if err != nil {
+			continue
+		}
+
+		if strings.Contains(u.Host, "youtube") {
+			qp := u.Query()
+			val := qp["v"]
+			if len(val) == 0 || val[0] == "" {
+				continue
+			}
+
+			s.ContentURL[idx] = fmt.Sprintf("https://www.youtube.com/embed/%s", val[0])
+		} else if strings.Contains(u.Host, "vimeo") {
+			videoID := strings.Trim(u.Path, "/")
+			if len(videoID) == 0 {
+				continue
+			}
+
+			s.ContentURL[idx] = fmt.Sprintf("https://player.vimeo.com/video/%s", videoID)
+		}
+
+	}
 }
 
 type Stats struct {

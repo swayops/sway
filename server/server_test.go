@@ -5960,6 +5960,7 @@ func TestSubmission(t *testing.T) {
 	// Lets now submit the influencer's proposal!
 	sub := common.Submission{
 		ImageData: []string{postImage},
+		ContentURL: []string{"https://www.youtube.com/watch?v=dQw4w9WgXcQ","https://vimeo.com/218549048"},
 		Message:   "This is the message this campaign wants #mmmm",
 	}
 
