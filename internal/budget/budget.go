@@ -470,8 +470,19 @@ func AdjustStore(store *Store, deal *common.Deal) (*Store, float64, *Metrics) {
 	}
 
 	if len(total.PendingClicks) > 0 {
-		// Lets pay for all the pending clicks!
-		store.deductSpendable(float64(len(total.PendingClicks)) * CLICK)
+		// Lets pay for all the pending clicks that have a unique UUID
+		// (and one we haven't paid for before)!
+		approvedUUIDs := total.GetApprovedClickUUIDs()
+		for _, cl := range total.PendingClicks {
+			_, found := approvedUUIDs[cl.UUID]
+			if !found {
+				// This UUID has not been seen yet.. so lets pay for it!
+				store.deductSpendable(1.0 * CLICK)
+				// Now that we have paid for it.. lets add it to the tmp approved
+				// UUIDs map
+				approvedUUIDs[cl.UUID] = true
+			}
+		}
 	}
 
 	spentDelta := oldSpendable - store.Spendable

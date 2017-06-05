@@ -27,6 +27,7 @@ type Totals struct {
 	Likes       int32 `json:"likes,omitempty"`
 	Views       int32 `json:"views,omitempty"`
 	Clicks      int32 `json:"clicks,omitempty"`
+	Uniques     int32 `json:"uniques,omitempty"`
 
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
@@ -42,6 +43,7 @@ type ReportStats struct {
 	Shares   int32 `json:"shares,omitempty"`
 	Views    int32 `json:"views,omitempty"`
 	Clicks   int32 `json:"clicks,omitempty"`
+	Uniques  int32 `json:"uniques,omitempty"`
 
 	Spent       float64 `json:"spent,omitempty"`
 	Rep         float64 `json:"rep,omitempty"`
@@ -78,7 +80,10 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 
 			tg.Total.Engagements += eng
 			tg.Total.Likes += st.Likes
+
 			tg.Total.Clicks += st.GetClicks()
+			tg.Total.Uniques += st.GetUniqueClicks()
+
 			tg.Total.Views += st.Views
 			tg.Total.Spent += st.Influencer + st.TotalMarkup()
 			tg.Total.Shares += st.Shares
@@ -133,6 +138,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats,
 	stats.Shares += st.Shares
 	stats.Views += st.Views
 	stats.Clicks += st.GetClicks()
+	stats.Uniques += st.GetUniqueClicks()
 	stats.Spent += st.Influencer + st.TotalMarkup()
 	stats.InfluencerId = infId
 	stats.Network = channel
@@ -148,6 +154,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 
 	stats.Likes += st.Likes
 	stats.Clicks += st.GetClicks()
+	stats.Uniques += st.GetUniqueClicks()
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
 	stats.Views += st.Views
@@ -171,6 +178,7 @@ func GetInfluencerStats(inf influencer.Influencer, cfg *config.Config, from, to 
 		st := deal.Get(dates, agid)
 		eng := getEngagements(st)
 		stats.Clicks += st.GetClicks()
+		stats.Uniques += st.GetUniqueClicks()
 		stats.Likes += st.Likes
 		stats.Comments += st.Comments
 		stats.Shares += st.Shares
@@ -198,6 +206,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 			tg[common.GetDateFromTime(d)] = tot.Total
 			val, _ := tg["total"]
 			val.Clicks += tot.Total.Clicks
+			val.Uniques += tot.Total.Uniques
 			val.Engagements += tot.Total.Engagements
 			val.Likes += tot.Total.Likes
 			val.Views += tot.Total.Views
@@ -252,6 +261,7 @@ func GetInfluencerBreakdown(inf influencer.Influencer, cfg *config.Config, offse
 			}
 			val, _ := tg["total"]
 			val.Clicks += r.Clicks
+			val.Uniques += r.Uniques
 			val.Likes += r.Likes
 			val.Comments += r.Comments
 			val.Shares += r.Shares

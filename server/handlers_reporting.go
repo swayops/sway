@@ -334,6 +334,7 @@ type FeedCell struct {
 	Views    int32 `json:"views,omitempty"`
 	Likes    int32 `json:"likes,omitempty"`
 	Clicks   int32 `json:"clicks,omitempty"`
+	Uniques  int32 `json:"uniques,omitempty"`
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
 
@@ -412,6 +413,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							d.Shares = total.Shares
 							d.Views = total.Views
 							d.Clicks = total.GetClicks()
+							d.Uniques = total.GetUniqueClicks()
 
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
 							if !ok {

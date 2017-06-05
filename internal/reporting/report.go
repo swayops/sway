@@ -97,6 +97,7 @@ func setHighLevelSheet(xf misc.Sheeter, cmp *common.Campaign, from, to time.Time
 		sheet.AddRow("Total Engagements Generated", tot.Engagements)
 		sheet.AddRow("Total Est Views", tot.Views)
 		sheet.AddRow("Total Clicks", tot.Clicks)
+		sheet.AddRow("Total Unique Clicks", tot.Uniques)
 
 		sheet.AddRow("")
 
@@ -111,7 +112,7 @@ func setChannelLevelSheet(xf misc.Sheeter, from, to time.Time, channel map[strin
 		"Likes",
 		"Comments",
 		"Shares",
-		"Clicks",
+		"Clicks / Uniques",
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
@@ -129,7 +130,7 @@ func setChannelLevelSheet(xf misc.Sheeter, from, to time.Time, channel map[strin
 			st.Likes,
 			st.Comments,
 			st.Shares,
-			st.Clicks,
+			fmt.Sprintf("%d / %d", st.Clicks, st.Uniques),
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),
@@ -146,7 +147,7 @@ func setInfluencerLevelSheet(xf misc.Sheeter, from, to time.Time, influencer map
 		"Likes",
 		"Comments",
 		"Shares",
-		"Clicks",
+		"Clicks / Uniques",
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
@@ -166,7 +167,7 @@ func setInfluencerLevelSheet(xf misc.Sheeter, from, to time.Time, influencer map
 			st.Likes,
 			st.Comments,
 			st.Shares,
-			st.Clicks,
+			fmt.Sprintf("%d / %d", st.Clicks, st.Uniques),
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),
@@ -184,7 +185,7 @@ func setContentLevelSheet(xf misc.Sheeter, from, to time.Time, content map[strin
 		"Likes",
 		"Comments",
 		"Shares",
-		"Clicks",
+		"Clicks / Uniques",
 		"Est Views",
 		"Spent",
 		"% of Total Engagements",
@@ -205,7 +206,7 @@ func setContentLevelSheet(xf misc.Sheeter, from, to time.Time, content map[strin
 			st.Likes,
 			st.Comments,
 			st.Shares,
-			st.Clicks,
+			fmt.Sprintf("%d / %d", st.Clicks, st.Uniques),
 			st.Views,
 			fmt.Sprintf("$%0.2f", st.Spent),
 			getPerc(eng),

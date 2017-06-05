@@ -175,6 +175,27 @@ func (st *Stats) GetClicks() int32 {
 	return int32(len(st.ApprovedClicks)) + st.LegacyClicks
 }
 
+func (st *Stats) GetUniqueClicks() int32 {
+	uuids := map[string]bool{}
+	for _, cl := range st.ApprovedClicks {
+		uuids[cl.UUID] = true
+	}
+
+	for _, cl := range st.PendingClicks {
+		uuids[cl.UUID] = true
+	}
+
+	return int32(len(uuids))
+}
+
+func (st *Stats) GetApprovedClickUUIDs() map[string]bool {
+	out := map[string]bool{}
+	for _, cl := range st.ApprovedClicks {
+		out[cl.UUID] = true
+	}
+	return out
+}
+
 type Bonus struct {
 	Tweet     []*twitter.Tweet  `json:"tweet,omitempty"`
 	Facebook  []*facebook.Post  `json:"facebook,omitempty"`
@@ -291,6 +312,7 @@ func (d *Deal) TotalStats() *Stats {
 		total.Influencer += data.Influencer
 		total.Agency += data.Agency
 	}
+
 	return total
 }
 

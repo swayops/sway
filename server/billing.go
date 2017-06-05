@@ -201,7 +201,7 @@ func generateInvoices(s *Server) {
 			continue
 		}
 
-		if stats == nil || stats.Total == nil {
+		if stats == nil || stats.Total == nil || stats.Total.Spent == 0 {
 			// Did not spend anything!
 			continue
 		}
