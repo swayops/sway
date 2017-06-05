@@ -40,6 +40,7 @@ func Merge(totals []map[string]*Totals) map[string]*Totals {
 				tot[date] = val
 			}
 			val.Clicks += stats.Clicks
+			val.Uniques += stats.Uniques
 			val.Engagements += stats.Engagements
 			val.Likes += stats.Likes
 			val.Views += stats.Views
