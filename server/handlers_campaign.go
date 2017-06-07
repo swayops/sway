@@ -102,6 +102,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		cmp.Keywords = common.LowerSlice(cmp.Keywords)
 
 		cmp.Whitelist = common.TrimWhitelist(cmp.Whitelist)
+		cmp.CampaignBlacklist = common.TrimEmails(cmp.CampaignBlacklist)
 		now := time.Now().Unix()
 		// Lets do a sanity check on the schedule for the whitelist
 		for _, schedule := range cmp.Whitelist {
@@ -129,7 +130,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		if len(adv.Blacklist) > 0 {
 			// Blacklist is always set at the advertiser level using content feed bad!
-			cmp.Blacklist = adv.Blacklist
+			cmp.AdvertiserBlacklist = adv.Blacklist
 		}
 
 		if cmp.Perks != nil && cmp.Perks.Type != 1 && cmp.Perks.Type != 2 {
@@ -492,6 +493,7 @@ type CampaignUpdate struct {
 	Perks              *common.Perk                `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
 	BrandSafe          *bool                       `json:"brandSafe,omitempty"`
 	RequiresSubmission *bool                       `json:"reqSub,omitempty"` // Does the advertiser require submission?
+	CampaignBlacklist  map[string]bool             `json:"cmpBlacklist,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -637,6 +639,9 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		cmp.Whitelist = updatedWl
+
+		cmp.CampaignBlacklist = common.TrimEmails(upd.CampaignBlacklist)
+
 		now := time.Now().Unix()
 		// Lets do a sanity check on the schedule for the whitelist
 		for _, schedule := range cmp.Whitelist {
