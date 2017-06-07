@@ -5532,7 +5532,7 @@ func TestProductBudget(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			TwitterId: "cnn",
+			TwitterId: "twitter",
 			Address: &lob.AddressLoad{
 				AddressOne: "8 Saint Elias",
 				City:       "Trabuco Canyon",

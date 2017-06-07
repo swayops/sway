@@ -149,7 +149,7 @@ func click(s *Server) gin.HandlerFunc {
 				log.Println("Failed to log click!", foundDeal.Id, foundDeal.CampaignId)
 			}
 
-			if !strings.Contains(s.Cfg.ConverterURL, "localhost") {
+			if !s.Cfg.Sandbox {
 				go func() {
 					if err := misc.Ping(s.Cfg.ConverterURL + uuid + "/" + foundDeal.Id + "/" + foundDeal.CampaignId + "/" + foundDeal.AdvertiserId); err != nil {
 						s.Alert("Failed to ping converter for "+foundDeal.AdvertiserId, err)
