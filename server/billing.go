@@ -32,7 +32,7 @@ func (s *Server) billing() error {
 	// Iterate over all active campaigns
 	cmps := s.Campaigns.GetStore()
 	if len(cmps) == 0 {
-		return ErrWait
+		return nil
 	}
 
 	notify := make(map[string][]*BillNotify)

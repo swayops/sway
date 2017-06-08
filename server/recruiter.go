@@ -27,7 +27,7 @@ func emailScraps(srv *Server) (int32, error) {
 	cmps := srv.Campaigns.GetStore()
 	if len(cmps) == 0 {
 		// We have no campaigns FOO
-		return 0, ErrWait
+		return 0, nil
 	}
 
 	maxEmails := srv.Campaigns.GetAvailableDealCount() * 2
