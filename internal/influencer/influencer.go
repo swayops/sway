@@ -969,7 +969,15 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Whitelisting is done at the campaign level.. but
 		// lets check the advertiser blacklist!
-		_, ok := cmp.Blacklist[inf.Id]
+		_, ok := cmp.AdvertiserBlacklist[inf.Id]
+		if ok {
+			// We found this influencer in the blacklist!
+			rejections[cmp.Id] = "ADV_BLACKLIST"
+			continue
+		}
+
+		// Lets also check the campaign blacklist
+		_, ok = cmp.CampaignBlacklist[inf.EmailAddress]
 		if ok {
 			// We found this influencer in the blacklist!
 			rejections[cmp.Id] = "CMP_BLACKLIST"

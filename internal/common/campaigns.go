@@ -62,7 +62,8 @@ type Campaign struct {
 
 	Whitelist map[string]*Schedule `json:"whitelistSchedule,omitempty"` // List of emails and their schedules
 	// Copied from advertiser
-	Blacklist map[string]bool `json:"blacklist,omitempty"`
+	AdvertiserBlacklist map[string]bool `json:"blacklist,omitempty"`
+	CampaignBlacklist   map[string]bool `json:"cmpBlacklist,omitempty"`
 
 	// Internal attribute set by putCampaign and un/assignDeal
 	// Contains all the deals sent out by this campaign.. keyed off of deal ID

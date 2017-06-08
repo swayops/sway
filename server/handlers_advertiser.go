@@ -134,7 +134,7 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 				}
 
 				if cmp.AdvertiserId == adv.ID {
-					cmp.Blacklist = adv.Blacklist
+					cmp.AdvertiserBlacklist = adv.Blacklist
 				}
 
 				if err = saveCampaign(tx, cmp, s); err != nil {
