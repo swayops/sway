@@ -92,7 +92,8 @@ func getBudgetSnapshot(s *Server) gin.HandlerFunc {
 
 		filteredStore := make(map[string]*TmpPending)
 		for campaignID, val := range store {
-			if cmp, ok := s.Campaigns.Get(campaignID); ok {
+			cmp := common.GetCampaign(campaignID, s.db, s.Cfg)
+			if cmp != nil {
 				pendingSpend, _ := cmp.GetPendingDetails()
 				filteredStore[campaignID] = &TmpPending{
 					Budget:       cmp.Budget,
