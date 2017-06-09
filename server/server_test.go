@@ -874,7 +874,7 @@ func TestDeals(t *testing.T) {
 		return
 	}
 
-	if _, ok := cmpLoad.Blacklist[inf.ExpID]; !ok {
+	if _, ok := cmpLoad.AdvertiserBlacklist[inf.ExpID]; !ok {
 		t.Fatal("Did not append to blacklist!")
 		return
 	}
@@ -907,7 +907,7 @@ func TestDeals(t *testing.T) {
 		return
 	}
 
-	if _, ok := nextCmp.Blacklist[inf.ExpID]; !ok {
+	if _, ok := nextCmp.AdvertiserBlacklist[inf.ExpID]; !ok {
 		t.Fatal("Did not append to blacklist!")
 		return
 	}
