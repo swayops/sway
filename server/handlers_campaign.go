@@ -458,9 +458,9 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 					return nil
 				}
 				if len(cmp.LegacyWhitelist) > 0 {
-					cmp.Whitelist = make(map[string]*common.Schedule, len(cmp.LegacyWhitelist))
+					cmp.Whitelist = make(map[string]*common.Range, len(cmp.LegacyWhitelist))
 					for email, _ := range cmp.LegacyWhitelist {
-						cmp.Whitelist[email] = &common.Schedule{}
+						cmp.Whitelist[email] = &common.Range{}
 					}
 				}
 				cmp.LegacyWhitelist = nil
@@ -478,22 +478,26 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 
 // Only these things can be changed for a campaign.. nothing else
 type CampaignUpdate struct {
-	Geos               []*geo.GeoRecord            `json:"geos,omitempty"`
-	Categories         []string                    `json:"categories,omitempty"`
-	Audiences          []string                    `json:"audiences,omitempty"`
-	Keywords           []string                    `json:"keywords,omitempty"`
-	Status             *bool                       `json:"status,omitempty"`
-	Budget             *float64                    `json:"budget,omitempty"`
-	Male               *bool                       `json:"male,omitempty"`
-	Female             *bool                       `json:"female,omitempty"`
-	Name               *string                     `json:"name,omitempty"`
-	Whitelist          map[string]*common.Schedule `json:"whitelistSchedule,omitempty"`
-	ImageData          string                      `json:"imageData,omitempty"` // this is input-only and never saved to the db
-	Task               *string                     `json:"task,omitempty"`
-	Perks              *common.Perk                `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
-	BrandSafe          *bool                       `json:"brandSafe,omitempty"`
-	RequiresSubmission *bool                       `json:"reqSub,omitempty"` // Does the advertiser require submission?
-	CampaignBlacklist  map[string]bool             `json:"cmpBlacklist,omitempty"`
+	Geos               []*geo.GeoRecord         `json:"geos,omitempty"`
+	Categories         []string                 `json:"categories,omitempty"`
+	Audiences          []string                 `json:"audiences,omitempty"`
+	Keywords           []string                 `json:"keywords,omitempty"`
+	Status             *bool                    `json:"status,omitempty"`
+	Budget             *float64                 `json:"budget,omitempty"`
+	Male               *bool                    `json:"male,omitempty"`
+	Female             *bool                    `json:"female,omitempty"`
+	Name               *string                  `json:"name,omitempty"`
+	Whitelist          map[string]*common.Range `json:"whitelistSchedule,omitempty"`
+	ImageData          string                   `json:"imageData,omitempty"` // this is input-only and never saved to the db
+	Task               *string                  `json:"task,omitempty"`
+	Perks              *common.Perk             `json:"perks,omitempty"` // NOTE: This struct only allows you to ADD to existing perks
+	BrandSafe          *bool                    `json:"brandSafe,omitempty"`
+	RequiresSubmission *bool                    `json:"reqSub,omitempty"` // Does the advertiser require submission?
+	CampaignBlacklist  map[string]bool          `json:"cmpBlacklist,omitempty"`
+
+	FollowerTarget *common.Range      `json:"followerTarget,omitempty"`
+	EngTarget      *common.Range      `json:"engTarget,omitempty"`
+	PriceTarget    *common.FloatRange `json:"priceTarget,omitempty"`
 }
 
 func putCampaign(s *Server) gin.HandlerFunc {
@@ -571,6 +575,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.RequiresSubmission = *upd.RequiresSubmission
 		}
 
+		if upd.FollowerTarget != nil {
+			cmp.FollowerTarget = upd.FollowerTarget
+		}
+
 		if !cmp.Male && !cmp.Female {
 			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
@@ -602,6 +610,9 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		cmp.Categories = common.LowerSlice(upd.Categories)
 		cmp.Keywords = common.LowerSlice(upd.Keywords)
 		cmp.Audiences = upd.Audiences
+		cmp.FollowerTarget = upd.FollowerTarget
+		cmp.EngTarget = upd.EngTarget
+		cmp.PriceTarget = upd.PriceTarget
 
 		// Copy the plan from the Advertiser
 		cmp.Plan = adv.Plan
@@ -896,19 +907,13 @@ func getForecast(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		influencers, reach := getForecastForCmp(s, cmp)
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
-			bd := int(bd)
-			if bd == -1 {
-				bd = len(influencers)
-			}
-			if bd > len(influencers) {
-				bd = len(influencers)
-			}
-			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
+			influencers, count, reach := getForecastForCmp(s, cmp, int(bd))
+			c.JSON(200, gin.H{"influencers": count, "reach": reach, "breakdown": influencers[:bd]})
 		} else {
 			// Default to totals
-			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach})
+			_, count, reach := getForecastForCmp(s, cmp, -1)
+			c.JSON(200, gin.H{"influencers": count, "reach": reach})
 		}
 	}
 }

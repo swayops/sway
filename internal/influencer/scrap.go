@@ -86,6 +86,48 @@ func (sc *Scrap) GetProfilePicture() string {
 	return ""
 }
 
+func (sc *Scrap) GetAvgEngs() int64 {
+	var engs int64
+	if sc.FBData != nil {
+		engs += int64(sc.FBData.AvgComments + sc.FBData.AvgLikes + sc.FBData.AvgShares)
+	}
+
+	if sc.InstaData != nil {
+		engs += int64(sc.InstaData.AvgComments + sc.InstaData.AvgLikes)
+	}
+
+	if sc.TWData != nil {
+		engs += int64(sc.TWData.AvgLikes + sc.TWData.AvgRetweets)
+	}
+
+	if sc.YTData != nil {
+		engs += int64(sc.YTData.AvgComments + sc.YTData.AvgViews + sc.YTData.AvgLikes + sc.YTData.AvgDislikes)
+	}
+
+	return engs
+}
+
+func (sc *Scrap) GetFollowers() int64 {
+	var flws int64
+	if sc.FBData != nil {
+		flws += int64(sc.FBData.Followers)
+	}
+
+	if sc.InstaData != nil {
+		flws += int64(sc.InstaData.Followers)
+	}
+
+	if sc.TWData != nil {
+		flws += int64(sc.TWData.Followers)
+	}
+
+	if sc.YTData != nil {
+		flws += int64(sc.YTData.Subscribers)
+	}
+
+	return flws
+}
+
 func (sc *Scrap) IsProfilePictureActive() bool {
 	if sc.FBData != nil && sc.FBData.ProfilePicture != "" {
 		if misc.Ping(sc.FBData.ProfilePicture) != nil {
@@ -112,6 +154,8 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 }
 
 func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, forecast bool) bool {
+	maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
@@ -146,14 +190,13 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 		}
 
 		// Optimization
-		if len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
+		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
 			store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
 			if store.IsClosed(&cmp) {
 				return false
 			}
 
 			min, max := cmp.GetTargetYield(store.Spendable)
-			maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 			if maxYield < min || maxYield > max || maxYield == 0 {
 				return false
 			}
@@ -217,6 +260,21 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 		// Only want males
 		return false
 	} else if !cmp.Male && !cmp.Female {
+		return false
+	}
+
+	// Follower check
+	if cmp.FollowerTarget != nil && !cmp.FollowerTarget.InRange(sc.GetFollowers()) {
+		return false
+	}
+
+	// Engagements check
+	if cmp.EngTarget != nil && !cmp.EngTarget.InRange(sc.GetAvgEngs()) {
+		return false
+	}
+
+	// Price check
+	if cmp.PriceTarget != nil && !cmp.PriceTarget.InRange(maxYield) {
 		return false
 	}
 

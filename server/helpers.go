@@ -719,7 +719,12 @@ type ForecastUser struct {
 	AvgEngs        int64  `json:"avgEngs"`
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastUser, reach int64) {
+func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*ForecastUser, count, reach int64) {
+	if bd != -1 && bd < 250 {
+		// Lets have atleast a sample size of 250 since we're extrapolating numbers now
+		bd = 250
+	}
+
 	// Some easy bail outs
 	if !cmp.Instagram && !cmp.Twitter && !cmp.YouTube && !cmp.Facebook {
 		return
@@ -756,8 +761,16 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 
 	// Pre calculate target yield
 	// min, max := target-margin, target+margin
+	var touched int64
+	infs := s.auth.Influencers.GetAll()
 
-	for _, inf := range s.auth.Influencers.GetAll() {
+	for _, inf := range infs {
+		touched += 1
+
+		if bd != -1 && len(influencers) >= bd {
+			break
+		}
+
 		if inf.IsBanned() {
 			continue
 		}
@@ -842,9 +855,11 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 		// }
 
 		user := &ForecastUser{
-			ID:    inf.Id,
-			Name:  strings.Title(inf.Name),
-			Email: inf.EmailAddress,
+			ID:        inf.Id,
+			Name:      strings.Title(inf.Name),
+			Email:     inf.EmailAddress,
+			AvgEngs:   inf.GetAvgEngs(),
+			Followers: inf.GetFollowers(),
 		}
 
 		// Social Media Checks
@@ -854,8 +869,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			if inf.YouTube.ProfilePicture != "" {
 				user.ProfilePicture = inf.YouTube.ProfilePicture
 			}
-			user.Followers += int64(inf.YouTube.Subscribers)
-			user.AvgEngs += int64(inf.YouTube.AvgComments + inf.YouTube.AvgViews + inf.YouTube.AvgLikes + inf.YouTube.AvgDislikes)
 			user.URL = inf.YouTube.GetProfileURL()
 		}
 
@@ -864,8 +877,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			if inf.Instagram.ProfilePicture != "" {
 				user.ProfilePicture = inf.Instagram.ProfilePicture
 			}
-			user.Followers += int64(inf.Instagram.Followers)
-			user.AvgEngs += int64(inf.Instagram.AvgComments + inf.Instagram.AvgLikes)
 			user.URL = inf.Instagram.GetProfileURL()
 		}
 
@@ -874,9 +885,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			if inf.Twitter.ProfilePicture != "" {
 				user.ProfilePicture = inf.Twitter.ProfilePicture
 			}
-
-			user.Followers += int64(inf.Twitter.Followers)
-			user.AvgEngs += int64(inf.Twitter.AvgLikes + inf.Twitter.AvgRetweets)
 			user.URL = inf.Twitter.GetProfileURL()
 		}
 
@@ -886,16 +894,31 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 			if inf.Facebook.ProfilePicture != "" {
 				user.ProfilePicture = inf.Facebook.ProfilePicture
 			}
-			user.Followers += int64(inf.Facebook.Followers)
-			user.AvgEngs += int64(inf.Facebook.AvgComments + inf.Facebook.AvgLikes + inf.Facebook.AvgShares)
 			user.URL = inf.Facebook.GetProfileURL()
 		}
 
 		if !socialMediaFound {
 			continue
 		}
+
+		// Lets check to see a match on eng, follower, price targeting now that
+		// we have those values
+		// NOTE: For scraps this is done within the Match func
+		if cmp.EngTarget != nil && !cmp.EngTarget.InRange(user.AvgEngs) {
+			continue
+		}
+
+		if cmp.FollowerTarget != nil && !cmp.FollowerTarget.InRange(user.Followers) {
+			continue
+		}
+
+		maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+		// Lets see if max yield falls into target range for the campaign
+		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) {
+			continue
+		}
+
 		influencers = append(influencers, user)
-		reach += inf.GetFollowers()
 	}
 
 	// Lets go over scraps now!
@@ -905,20 +928,24 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 	}
 
 	for _, sc := range scraps {
+		touched += 1
+		if bd != -1 && len(influencers) >= bd {
+			break
+		}
+
 		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
 			user := &ForecastUser{
-				ID:    "sc-" + sc.Id,
-				Name:  strings.Title(sc.Name),
-				Email: sc.EmailAddress,
+				ID:        "sc-" + sc.Id,
+				Name:      strings.Title(sc.Name),
+				Email:     sc.EmailAddress,
+				AvgEngs:   sc.GetAvgEngs(),
+				Followers: sc.GetFollowers(),
 			}
 
 			if sc.FBData != nil {
 				if sc.FBData.ProfilePicture != "" {
 					user.ProfilePicture = sc.FBData.ProfilePicture
 				}
-
-				user.Followers += int64(sc.FBData.Followers)
-				user.AvgEngs += int64(sc.FBData.AvgComments + sc.FBData.AvgLikes + sc.FBData.AvgShares)
 				user.URL = sc.FBData.GetProfileURL()
 			}
 
@@ -926,8 +953,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 				if sc.InstaData.ProfilePicture != "" {
 					user.ProfilePicture = sc.InstaData.ProfilePicture
 				}
-				user.Followers += int64(sc.InstaData.Followers)
-				user.AvgEngs += int64(sc.InstaData.AvgComments + sc.InstaData.AvgLikes)
 				user.URL = sc.InstaData.GetProfileURL()
 			}
 
@@ -935,9 +960,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 				if sc.TWData.ProfilePicture != "" {
 					user.ProfilePicture = sc.TWData.ProfilePicture
 				}
-
-				user.Followers += int64(sc.TWData.Followers)
-				user.AvgEngs += int64(sc.TWData.AvgLikes + sc.TWData.AvgRetweets)
 				user.URL = sc.TWData.GetProfileURL()
 			}
 
@@ -945,14 +967,46 @@ func getForecastForCmp(s *Server, cmp common.Campaign) (influencers []*ForecastU
 				if sc.YTData.ProfilePicture != "" {
 					user.ProfilePicture = sc.YTData.ProfilePicture
 				}
-				user.Followers += int64(sc.YTData.Subscribers)
-				user.AvgEngs += int64(sc.YTData.AvgComments + sc.YTData.AvgViews + sc.YTData.AvgLikes + sc.YTData.AvgDislikes)
 				user.URL = sc.YTData.GetProfileURL()
 			}
 
 			influencers = append(influencers, user)
-			reach += sc.Followers
 		}
+	}
+
+	// Lets calculate count and reach now
+	if bd == -1 {
+		// Just great straight reaches and count
+		count = int64(len(influencers))
+		for _, i := range influencers {
+			reach += i.Followers
+		}
+	} else {
+		total := int64(len(infs) + len(scraps))
+		// What % of the ones we touched matched?
+		perc := float64(len(influencers)) / float64(touched)
+
+		// So we matched X% of touched..
+		// We can assume the rest would have a similar match rate
+		// and go off that
+		untouched := float64(total - touched)
+
+		// How much should we add?
+		addition := int64(perc * untouched)
+
+		// Lets add it now to count!
+		count = int64(len(influencers)) + addition
+
+		for _, i := range influencers {
+			reach += i.Followers
+		}
+
+		// What was average reach?
+		avgReach := float64(reach) / float64(len(influencers))
+
+		// Lets use avg reach and add it based on the number of
+		// estimated users we added
+		reach += addition * int64(avgReach)
 	}
 
 	return
