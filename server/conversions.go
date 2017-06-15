@@ -11,6 +11,10 @@ import (
 )
 
 func fillConversions(srv *Server) error {
+	if srv.Cfg.Sandbox {
+		return nil
+	}
+
 	// Traverses active deals in our system and checks
 	// to see whether they have been satisfied or have timed out
 	completedDeals, err := common.GetAllDeals(srv.db, srv.Cfg, false, true)
