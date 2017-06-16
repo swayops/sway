@@ -15,6 +15,8 @@ import (
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/twitter"
 	"github.com/swayops/sway/platforms/youtube"
+
+	"github.com/swayops/converter/pixel"
 )
 
 const (
@@ -155,6 +157,8 @@ type Stats struct {
 	Shares   int32 `json:"shares,omitempty"`
 	Views    int32 `json:"views,omitempty"`
 	Perks    int32 `json:"perks,omitempty"`
+
+	Conversions []pixel.Conversion `json:"conversions,omitempty"`
 
 	LegacyClicks int32 `json:"clicks,omitempty"`
 
@@ -306,11 +310,13 @@ func (d *Deal) TotalStats() *Stats {
 		total.Comments += data.Comments
 		total.Shares += data.Shares
 		total.Views += data.Views
+		total.Perks += data.Perks
 		total.ApprovedClicks = append(total.ApprovedClicks, data.ApprovedClicks...)
 		total.PendingClicks = append(total.PendingClicks, data.PendingClicks...)
 		total.LegacyClicks += data.LegacyClicks
 		total.Influencer += data.Influencer
 		total.Agency += data.Agency
+		total.Conversions = append(total.Conversions, data.Conversions...)
 	}
 
 	return total
@@ -384,6 +390,39 @@ func (d *Deal) Click(uuid string) {
 	data.PendingClicks = append(data.PendingClicks, &Click{UUID: uuid, TS: int32(time.Now().Unix())})
 }
 
+func (d *Deal) AddConversions(convs []pixel.Conversion) {
+	if d.Reporting == nil {
+		d.Reporting = make(map[string]*Stats)
+	}
+	// key := GetDate()
+	for _, conv := range convs {
+		key := GetDateFromTime(time.Unix(conv.TS, 0))
+		data, ok := d.Reporting[key]
+		if !ok {
+			data = &Stats{}
+			d.Reporting[key] = data
+		}
+
+		data.Conversions = addConversion(data.Conversions, conv)
+	}
+}
+
+func addConversion(conversions []pixel.Conversion, conv pixel.Conversion) []pixel.Conversion {
+	shouldAdd := true
+	for _, oldConv := range conversions {
+		if oldConv.UUID == conv.UUID && oldConv.TS == conv.TS && oldConv.DealID == conv.DealID {
+			// This is a dupe.. lets not add!
+			shouldAdd = false
+			break
+		}
+	}
+	if shouldAdd {
+		conversions = append(conversions, conv)
+	}
+
+	return conversions
+}
+
 func (d *Deal) GetMonthStats(offset int) (m *Stats) {
 	// Only returns monetary information
 	// Used for billing
@@ -438,6 +477,8 @@ func (d *Deal) Get(dates []string, agid string) (m *Stats) {
 		data.LegacyClicks += stats.LegacyClicks
 
 		data.Perks += stats.Perks
+
+		data.Conversions = append(data.Conversions, stats.Conversions...)
 	}
 	return data
 }

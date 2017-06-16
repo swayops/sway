@@ -331,12 +331,13 @@ type FeedCell struct {
 
 	Published int32 `json:"published,omitempty"`
 
-	Views    int32 `json:"views,omitempty"`
-	Likes    int32 `json:"likes,omitempty"`
-	Clicks   int32 `json:"clicks,omitempty"`
-	Uniques  int32 `json:"uniques,omitempty"`
-	Comments int32 `json:"comments,omitempty"`
-	Shares   int32 `json:"shares,omitempty"`
+	Views       int32 `json:"views,omitempty"`
+	Likes       int32 `json:"likes,omitempty"`
+	Clicks      int32 `json:"clicks,omitempty"`
+	Uniques     int32 `json:"uniques,omitempty"`
+	Conversions int32 `json:"conversions,omitempty"`
+	Comments    int32 `json:"comments,omitempty"`
+	Shares      int32 `json:"shares,omitempty"`
 
 	Bonus bool `json:"bonus,omitempty"`
 
@@ -414,6 +415,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 							d.Views = total.Views
 							d.Clicks = total.GetClicks()
 							d.Uniques = total.GetUniqueClicks()
+							d.Conversions = int32(len(total.Conversions))
 
 							inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
 							if !ok {

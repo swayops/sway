@@ -11,6 +11,10 @@ func getEngagements(st *common.Stats) int32 {
 	return st.Likes + st.Dislikes + st.Comments + st.Shares
 }
 
+func getEngagementsFromReport(st *ReportStats) int32 {
+	return st.Likes + st.Comments + st.Shares
+}
+
 func GetReportDate(date string) time.Time {
 	// YYYY-MM-DD
 	if t, err := time.Parse(`2006-01-02`, date); err == nil {
@@ -52,4 +56,28 @@ func Merge(totals []map[string]*Totals) map[string]*Totals {
 		}
 	}
 	return tot
+}
+
+func getCPM(spent, views float64) float64 {
+	if views == 0 {
+		return 0
+	}
+
+	return (spent / views) * 1000
+}
+
+func getCPE(spent, engagements float64) float64 {
+	if engagements == 0 {
+		return 0
+	}
+
+	return spent / engagements
+}
+
+func getCPV(spent, views float64) float64 {
+	if views == 0 {
+		return 0
+	}
+
+	return spent / views
 }

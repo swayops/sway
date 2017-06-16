@@ -151,7 +151,7 @@ func click(s *Server) gin.HandlerFunc {
 
 			if !s.Cfg.Sandbox {
 				go func() {
-					if err := misc.Ping(s.Cfg.ConverterURL + uuid + "/" + foundDeal.Id + "/" + foundDeal.CampaignId + "/" + foundDeal.AdvertiserId); err != nil {
+					if err := misc.Ping(s.Cfg.ConverterURL  + "click/" + uuid + "/" + foundDeal.Id + "/" + foundDeal.CampaignId + "/" + foundDeal.AdvertiserId); err != nil {
 						s.Alert("Failed to ping converter for "+foundDeal.AdvertiserId, err)
 					}
 				}()
@@ -209,10 +209,6 @@ func exportClicks(s *Server) gin.HandlerFunc {
 		total := make(map[string][]*Click)
 
 		for _, cmp := range s.Campaigns.GetStore() {
-			if !cmp.IsValid() {
-				continue
-			}
-
 			for _, deal := range cmp.Deals {
 				if !deal.IsComplete() && !deal.IsActive() {
 					continue

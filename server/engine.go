@@ -35,6 +35,20 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	if err := fillConversions(srv); err != nil {
+		return err
+	}
+	convTicker := time.NewTicker(40 * time.Minute)
+	go func() {
+		for range convTicker.C {
+			// Every 40 minutes.. go in and fill conversion
+			// values
+			if err := fillConversions(srv); err != nil {
+				srv.Alert("Error runnin conversion fill", err)
+			}
+		}
+	}()
+
 	srv.Audiences.Set(srv.db, srv.Cfg, getFollowersByEmail(srv))
 	audTicker := time.NewTicker(40 * time.Minute)
 	go func() {

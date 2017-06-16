@@ -89,5 +89,5 @@
 	"imageUrlPath": "images/",
 	"logsPath": "./logs/",
 
-	"converterURL": "http://localhost:8008/click/"
+	"converterURL": "http://localhost:8008/"
 }

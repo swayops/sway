@@ -98,10 +98,17 @@ func setHighLevelSheet(xf misc.Sheeter, cmp *common.Campaign, from, to time.Time
 		sheet.AddRow("Total Est Views", tot.Views)
 		sheet.AddRow("Total Clicks", tot.Clicks)
 		sheet.AddRow("Total Unique Clicks", tot.Uniques)
+		sheet.AddRow("Total Conversions", tot.Conversions)
 
 		sheet.AddRow("")
 
-		sheet.AddRow("Total spent", fmt.Sprintf("$%0.2f", tot.Spent))
+		sheet.AddRow("CPM", fmt.Sprintf("$%0.2f", getCPM(tot.Spent, float64(tot.Views))))
+		sheet.AddRow("CPE (Cost per Engagement)", fmt.Sprintf("$%0.2f", getCPE(tot.Spent, float64(tot.Engagements))))
+		sheet.AddRow("CPV (Cost per View)", fmt.Sprintf("$%0.2f", getCPV(tot.Spent, float64(tot.Views))))
+
+		sheet.AddRow("")
+
+		sheet.AddRow("Total Spent", fmt.Sprintf("$%0.2f", tot.Spent))
 	}
 }
 
@@ -114,7 +121,11 @@ func setChannelLevelSheet(xf misc.Sheeter, from, to time.Time, channel map[strin
 		"Shares",
 		"Clicks / Uniques",
 		"Est Views",
+		"Conversions",
 		"Spent",
+		"CPM",
+		"CPE",
+		"CPV",
 		"% of Total Engagements",
 	)
 
@@ -132,7 +143,11 @@ func setChannelLevelSheet(xf misc.Sheeter, from, to time.Time, channel map[strin
 			st.Shares,
 			fmt.Sprintf("%d / %d", st.Clicks, st.Uniques),
 			st.Views,
+			st.Conversions,
 			fmt.Sprintf("$%0.2f", st.Spent),
+			fmt.Sprintf("$%0.2f", getCPM(st.Spent, float64(st.Views))),
+			fmt.Sprintf("$%0.2f", getCPE(st.Spent, float64(getEngagementsFromReport(st)))),
+			fmt.Sprintf("$%0.2f", getCPV(st.Spent, float64(st.Views))),
 			getPerc(eng),
 		)
 	}
@@ -149,7 +164,11 @@ func setInfluencerLevelSheet(xf misc.Sheeter, from, to time.Time, influencer map
 		"Shares",
 		"Clicks / Uniques",
 		"Est Views",
+		"Conversions",
 		"Spent",
+		"CPM",
+		"CPE",
+		"CPV",
 		"% of Total Engagements",
 	)
 
@@ -169,7 +188,11 @@ func setInfluencerLevelSheet(xf misc.Sheeter, from, to time.Time, influencer map
 			st.Shares,
 			fmt.Sprintf("%d / %d", st.Clicks, st.Uniques),
 			st.Views,
+			st.Conversions,
 			fmt.Sprintf("$%0.2f", st.Spent),
+			fmt.Sprintf("$%0.2f", getCPM(st.Spent, float64(st.Views))),
+			fmt.Sprintf("$%0.2f", getCPE(st.Spent, float64(getEngagementsFromReport(st)))),
+			fmt.Sprintf("$%0.2f", getCPV(st.Spent, float64(st.Views))),
 			getPerc(eng),
 		)
 	}
@@ -187,7 +210,11 @@ func setContentLevelSheet(xf misc.Sheeter, from, to time.Time, content map[strin
 		"Shares",
 		"Clicks / Uniques",
 		"Est Views",
+		"Conversions",
 		"Spent",
+		"CPM",
+		"CPE",
+		"CPV",
 		"% of Total Engagements",
 	)
 
@@ -208,7 +235,11 @@ func setContentLevelSheet(xf misc.Sheeter, from, to time.Time, content map[strin
 			st.Shares,
 			fmt.Sprintf("%d / %d", st.Clicks, st.Uniques),
 			st.Views,
+			st.Conversions,
 			fmt.Sprintf("$%0.2f", st.Spent),
+			fmt.Sprintf("$%0.2f", getCPM(st.Spent, float64(st.Views))),
+			fmt.Sprintf("$%0.2f", getCPE(st.Spent, float64(getEngagementsFromReport(st)))),
+			fmt.Sprintf("$%0.2f", getCPV(st.Spent, float64(st.Views))),
 			getPerc(eng),
 		)
 	}

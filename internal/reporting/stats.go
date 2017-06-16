@@ -28,6 +28,7 @@ type Totals struct {
 	Views       int32 `json:"views,omitempty"`
 	Clicks      int32 `json:"clicks,omitempty"`
 	Uniques     int32 `json:"uniques,omitempty"`
+	Conversions int32 `json:"conversions,omitempty"`
 
 	Comments int32 `json:"comments,omitempty"`
 	Shares   int32 `json:"shares,omitempty"`
@@ -38,12 +39,13 @@ type Totals struct {
 }
 
 type ReportStats struct {
-	Likes    int32 `json:"likes,omitempty"`
-	Comments int32 `json:"comments,omitempty"`
-	Shares   int32 `json:"shares,omitempty"`
-	Views    int32 `json:"views,omitempty"`
-	Clicks   int32 `json:"clicks,omitempty"`
-	Uniques  int32 `json:"uniques,omitempty"`
+	Likes       int32 `json:"likes,omitempty"`
+	Comments    int32 `json:"comments,omitempty"`
+	Shares      int32 `json:"shares,omitempty"`
+	Views       int32 `json:"views,omitempty"`
+	Clicks      int32 `json:"clicks,omitempty"`
+	Uniques     int32 `json:"uniques,omitempty"`
+	Conversions int32 `json:"conversions,omitempty"`
 
 	Spent       float64 `json:"spent,omitempty"`
 	Rep         float64 `json:"rep,omitempty"`
@@ -89,6 +91,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 			tg.Total.Shares += st.Shares
 			tg.Total.Comments += st.Comments
 			tg.Total.Perks += st.Perks
+			tg.Total.Conversions += int32(len(st.Conversions))
 
 			// This assumes each influencer can do the deal once
 			tg.Total.Influencers++
@@ -133,6 +136,7 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats,
 		data[key] = stats
 	}
 
+	stats.Conversions += int32(len(st.Conversions))
 	stats.Likes += st.Likes
 	stats.Comments += st.Comments
 	stats.Shares += st.Shares
@@ -152,6 +156,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 		data[key] = stats
 	}
 
+	stats.Conversions += int32(len(st.Conversions))
 	stats.Likes += st.Likes
 	stats.Clicks += st.GetClicks()
 	stats.Uniques += st.GetUniqueClicks()
@@ -186,6 +191,7 @@ func GetInfluencerStats(inf influencer.Influencer, cfg *config.Config, from, to 
 		stats.Spent += st.Influencer
 		stats.AgencySpent += st.Agency
 		stats.Engagements += eng
+		stats.Conversions += int32(len(st.Conversions))
 	}
 	return stats, nil
 }
@@ -214,6 +220,7 @@ func GetCampaignBreakdown(cid string, db *bolt.DB, cfg *config.Config, startOffs
 			val.Shares += tot.Total.Shares
 			val.Spent += tot.Total.Spent
 			val.Perks += tot.Total.Perks
+			val.Conversions += tot.Total.Conversions
 			if val.Influencers == 0 {
 				// Only needs to be set once
 				val.Influencers = tot.Total.Influencers
@@ -267,6 +274,7 @@ func GetInfluencerBreakdown(inf influencer.Influencer, cfg *config.Config, offse
 			val.Shares += r.Shares
 			val.Views += r.Views
 			val.Spent += r.Spent
+			val.Conversions += r.Conversions
 			val.AgencySpent += r.AgencySpent
 			val.Engagements += r.Engagements
 		}
