@@ -909,6 +909,9 @@ func getForecast(s *Server) gin.HandlerFunc {
 
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
 			influencers, count, reach := getForecastForCmp(s, cmp, int(bd))
+			if ln := int64(len(influencers)); bd > ln {
+				bd = ln
+			}
 			c.JSON(200, gin.H{"influencers": count, "reach": reach, "breakdown": influencers[:bd]})
 		} else {
 			// Default to totals
