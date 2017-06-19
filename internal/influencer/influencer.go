@@ -520,6 +520,28 @@ func (inf *Influencer) GetFollowers() int64 {
 	return fw
 }
 
+func (inf *Influencer) GetAvgEngs() int64 {
+	var engs int64
+
+	if inf.YouTube != nil {
+		engs += int64(inf.YouTube.AvgComments + inf.YouTube.AvgViews + inf.YouTube.AvgLikes + inf.YouTube.AvgDislikes)
+	}
+
+	if inf.Instagram != nil {
+		engs += int64(inf.Instagram.AvgComments + inf.Instagram.AvgLikes)
+	}
+
+	if inf.Twitter != nil {
+		engs += int64(inf.Twitter.AvgLikes + inf.Twitter.AvgRetweets)
+	}
+
+	if inf.Facebook != nil {
+		engs += int64(inf.Facebook.AvgComments + inf.Facebook.AvgLikes + inf.Facebook.AvgShares)
+	}
+
+	return engs
+}
+
 func (inf *Influencer) GetImages(cfg *config.Config) []string {
 	var urls []string
 	if inf.Instagram != nil {
@@ -1008,6 +1030,18 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 		}
 
+		// Follower check
+		if cmp.FollowerTarget != nil && !cmp.FollowerTarget.InRange(inf.GetFollowers()) {
+			rejections[cmp.Id] = "FOLLOWER_TARGETING"
+			continue
+		}
+
+		// Engagements check
+		if cmp.EngTarget != nil && !cmp.EngTarget.InRange(inf.GetAvgEngs()) {
+			rejections[cmp.Id] = "ENG_TARGETING"
+			continue
+		}
+
 		// Fill in and check available spendable
 		budgetStore, err := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || budgetStore == nil {
@@ -1026,6 +1060,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+		// Lets see if max yield falls into target range for the campaign
+		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) {
+			rejections[cmp.Id] = "PRICE_TARGET"
+			continue
+		}
 
 		// Subtract default margins to give influencers an accurate likely earning value
 		// NOTE: Mimics logic in depleteBudget functionality of sway engine

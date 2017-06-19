@@ -48,8 +48,8 @@ func TrimEmails(s map[string]bool) map[string]bool {
 	return out
 }
 
-func TrimWhitelist(s map[string]*Schedule) map[string]*Schedule {
-	out := make(map[string]*Schedule, len(s))
+func TrimWhitelist(s map[string]*Range) map[string]*Range {
+	out := make(map[string]*Range, len(s))
 	for i, v := range s {
 		out[misc.TrimEmail(i)] = v
 	}
@@ -64,7 +64,7 @@ func SliceMap(s map[string]bool) []string {
 	return out
 }
 
-func SliceWhitelist(s map[string]*Schedule) []string {
+func SliceWhitelist(s map[string]*Range) []string {
 	out := make([]string, 0, len(s))
 	for k, _ := range s {
 		out = append(out, k)

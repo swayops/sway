@@ -56,11 +56,15 @@ type Campaign struct {
 	Keywords   []string `json:"keywords,omitempty"`
 	Audiences  []string `json:"audiences,omitempty"` // Audience IDs the client is targeting
 
+	FollowerTarget *Range      `json:"followerTarget,omitempty"` // Min and max followers this campaign is targeting
+	EngTarget      *Range      `json:"engTarget,omitempty"`      // Min and max engagements this campaign is targeting
+	PriceTarget    *FloatRange `json:"priceTarget,omitempty"`    // Min and max payouts this campaign is targeting
+
 	Perks *Perk `json:"perks,omitempty"`
 
 	LegacyWhitelist map[string]bool `json:"whitelist,omitempty"` // List of emails
 
-	Whitelist map[string]*Schedule `json:"whitelistSchedule,omitempty"` // List of emails and their schedules
+	Whitelist map[string]*Range `json:"whitelistSchedule,omitempty"` // List of emails and their schedules
 	// Copied from advertiser
 	AdvertiserBlacklist map[string]bool `json:"blacklist,omitempty"`
 	CampaignBlacklist   map[string]bool `json:"cmpBlacklist,omitempty"`
@@ -75,9 +79,38 @@ type Campaign struct {
 	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
 }
 
-type Schedule struct {
+type Range struct {
 	From int64 `json:"from,omitempty"`
 	To   int64 `json:"to,omitempty"`
+}
+
+func (r *Range) InRange(val int64) bool {
+	if r.From == 0 && r.To == 0 {
+		return true
+	}
+
+	if val < r.From || val > r.To {
+		return false
+	}
+
+	return true
+}
+
+type FloatRange struct {
+	From float64 `json:"from,omitempty"`
+	To   float64 `json:"to,omitempty"`
+}
+
+func (r *FloatRange) InRange(val float64) bool {
+	if r.From == 0 && r.To == 0 {
+		return true
+	}
+
+	if val < r.From || val > r.To {
+		return false
+	}
+
+	return true
 }
 
 func (cmp *Campaign) IsValid() bool {
