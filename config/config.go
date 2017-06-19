@@ -156,11 +156,6 @@ type Config struct {
 		Balance  string `json:"balance"`
 	} `json:"bucket"`
 
-	SharpSpring struct {
-		AccountID string `json:"id"`
-		APIKey    string `json:"key"`
-	} `json:"sharpSpring"`
-
 	Stripe struct {
 		Key string `json:"key"`
 	} `json:"stripe"`
