@@ -10,7 +10,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/common"
-	"github.com/swayops/sway/internal/sharpspring"
 	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
@@ -267,20 +266,6 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
-	}
-
-	var ssType string
-	if sup.Advertiser != nil {
-		ssType = sharpspring.AdvList
-	} else if sup.Influencer != nil {
-		ssType = sharpspring.InfList
-	}
-
-	if ssType != "" && !a.cfg.Sandbox {
-		go func(qs string) {
-			err := sharpspring.CreateLead(a.cfg, ssType, sup.ID, sup.Name, sup.Email, qs)
-			log.Printf("error creating lead: %v", err)
-		}(c.Request.URL.RawQuery)
 	}
 
 	return true
