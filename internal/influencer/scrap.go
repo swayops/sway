@@ -156,53 +156,6 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, forecast bool) bool {
 	maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 
-	if !forecast {
-		// Check if there's an available deal
-		var dealFound bool
-		for _, deal := range cmp.Deals {
-			if deal.IsAvailable() {
-				dealFound = true
-				break
-			}
-		}
-
-		if !dealFound {
-			return false
-		}
-
-		// Check if scrap satisfies the plan
-		if !subscriptions.CanInfluencerRun(cmp.AgencyId, cmp.Plan, sc.Followers) {
-			return false
-		}
-
-		// If it's a perk campaign make sure there are perks available
-		if cmp.Perks != nil && cmp.Perks.Count == 0 {
-			return false
-		}
-
-		// Whitelist check!
-		if len(cmp.Whitelist) > 0 {
-			_, ok := cmp.Whitelist[sc.EmailAddress]
-			if !ok {
-				// There was a whitelist and they're not in it!
-				return false
-			}
-		}
-
-		// Optimization
-		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
-			store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
-			if store.IsClosed(&cmp) {
-				return false
-			}
-
-			min, max := cmp.GetTargetYield(store.Spendable)
-			if maxYield < min || maxYield > max || maxYield == 0 {
-				return false
-			}
-		}
-	}
-
 	// Social Media Checks
 	socialMediaFound := false
 	if cmp.YouTube && sc.YouTube {
@@ -304,6 +257,53 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 
 		if !catFound {
 			return false
+		}
+	}
+
+	if !forecast {
+		// Check if there's an available deal
+		var dealFound bool
+		for _, deal := range cmp.Deals {
+			if deal.IsAvailable() {
+				dealFound = true
+				break
+			}
+		}
+
+		if !dealFound {
+			return false
+		}
+
+		// Check if scrap satisfies the plan
+		if !subscriptions.CanInfluencerRun(cmp.AgencyId, cmp.Plan, sc.Followers) {
+			return false
+		}
+
+		// If it's a perk campaign make sure there are perks available
+		if cmp.Perks != nil && cmp.Perks.Count == 0 {
+			return false
+		}
+
+		// Whitelist check!
+		if len(cmp.Whitelist) > 0 {
+			_, ok := cmp.Whitelist[sc.EmailAddress]
+			if !ok {
+				// There was a whitelist and they're not in it!
+				return false
+			}
+		}
+
+		// Optimization
+		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
+			store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
+			if store.IsClosed(&cmp) {
+				return false
+			}
+
+			min, max := cmp.GetTargetYield(store.Spendable)
+			if maxYield < min || maxYield > max || maxYield == 0 {
+				return false
+			}
 		}
 	}
 
