@@ -1115,10 +1115,14 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// OPTIMIZATION: Goal is to distribute products and funds evenly
 				// given what the campaign's product perk count is and how
 				// many funds we have left
-				min, max := cmp.GetTargetYield(targetDeal.Spendable)
-				if maxYield < min || maxYield > max || maxYield == 0 {
-					rejections[cmp.Id] = fmt.Sprintf("MAX_YIELD Min: %02f, Max: %02f, Yield: %02f", min, max, maxYield)
-					continue
+
+				if cmp.Id != "21" && inf.Id != "439" {
+					// Hack to allow Olivia
+					min, max := cmp.GetTargetYield(targetDeal.Spendable)
+					if maxYield < min || maxYield > max || maxYield == 0 {
+						rejections[cmp.Id] = fmt.Sprintf("MAX_YIELD Min: %02f, Max: %02f, Yield: %02f", min, max, maxYield)
+						continue
+					}
 				}
 			}
 		}
