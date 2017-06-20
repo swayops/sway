@@ -1031,13 +1031,13 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Follower check
-		if cmp.FollowerTarget != nil && !cmp.FollowerTarget.InRange(inf.GetFollowers()) {
+		if cmp.FollowerTarget != nil && !cmp.FollowerTarget.InRange(inf.GetFollowers()) && !query {
 			rejections[cmp.Id] = "FOLLOWER_TARGETING"
 			continue
 		}
 
 		// Engagements check
-		if cmp.EngTarget != nil && !cmp.EngTarget.InRange(inf.GetAvgEngs()) {
+		if cmp.EngTarget != nil && !cmp.EngTarget.InRange(inf.GetAvgEngs()) && !query {
 			rejections[cmp.Id] = "ENG_TARGETING"
 			continue
 		}
@@ -1062,7 +1062,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
 		// Lets see if max yield falls into target range for the campaign
-		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) {
+		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) && !query {
 			rejections[cmp.Id] = "PRICE_TARGET"
 			continue
 		}
