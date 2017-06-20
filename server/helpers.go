@@ -691,7 +691,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
+		deals, _ := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}

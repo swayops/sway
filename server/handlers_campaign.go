@@ -286,6 +286,28 @@ func getCampaign(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getRejections(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
+		if cmp == nil {
+			c.JSON(500, ErrCampaign)
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
+		if !ok {
+			c.JSON(500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		campaigns := common.NewCampaigns()
+		campaigns.SetCampaign(cmp.Id, *cmp)
+		_, rejections := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
+
+		c.JSON(200, rejections)
+	}
+}
+
 type ManageCampaign struct {
 	Image string `json:"image"`
 

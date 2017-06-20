@@ -796,23 +796,26 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, db *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) []*common.Deal {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, db *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) ([]*common.Deal, map[string]string) {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
 	// advertisers and agencies
+
+	// Used purely for debugging..
+	rejections := make(map[string]string)
 
 	var (
 		infDeals []*common.Deal
 	)
 
 	if inf.IsBanned() {
-		return infDeals
+		return infDeals, rejections
 	}
 
 	// If the influencer hasn't been updated in the last 25 days.. ignore em!
 	if !misc.WithinLast(inf.LastSocialUpdate, 24*25) {
-		return infDeals
+		return infDeals, rejections
 	}
 
 	if !inf.Audited() && !cfg.Sandbox {
@@ -820,7 +823,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		// the assign game hasn't gotten to them yet
 		// NOTE: Allowing sandbox because tests don't do the
 		// assign game
-		return infDeals
+		return infDeals, rejections
 	}
 
 	if location == nil {
@@ -834,9 +837,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		store = campaigns.GetStore()
 	}
 
-	// Used purely for debugging.. may want to do something with it
-	// eventually
-	rejections := make(map[string]string)
 	for _, cmp := range store {
 		// Store only contains campaigns with active advertisers with proper
 		// subscriptions!
@@ -1188,10 +1188,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			targetDeal.Company = cmp.Company
 
 			infDeals = append(infDeals, targetDeal)
+		} else {
+			rejections[cmp.Id] = "NO_PLATFORM"
 		}
 	}
 
-	return infDeals
+	return infDeals, rejections
 }
 
 var (
@@ -1209,7 +1211,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 		return false, nil
 	}
 
-	deals := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, cfg)
+	deals, _ := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}
