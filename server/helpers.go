@@ -841,6 +841,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 			continue
 		}
 
+		_, ok := cmp.Whitelist[inf.EmailAddress]
+		if ok {
+			// This person is already in the campaign!
+			continue
+		}
+
 		// MAX YIELD
 		// maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 		// if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
@@ -935,6 +941,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 		}
 
 		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
+			_, ok := cmp.Whitelist[sc.EmailAddress]
+			if ok {
+				// This person is already in the campaign!
+				continue
+			}
+
 			user := &ForecastUser{
 				ID:        "sc-" + sc.Id,
 				Name:      strings.Title(sc.Name),
