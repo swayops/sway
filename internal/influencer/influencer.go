@@ -1504,9 +1504,9 @@ func (inf *Influencer) DealUpdate(cmp *common.Campaign, cfg *config.Config) erro
 }
 
 func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal, cfg *config.Config) error {
-	// if cfg.Sandbox {
-	// 	return nil
-	// }
+	if cfg.Sandbox {
+		return nil
+	}
 
 	if cfg.ReplyMailClient() == nil {
 		return ErrEmail
