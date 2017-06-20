@@ -36,6 +36,23 @@ type AddressLoad struct {
 	Zip        string `json:"address_zip"`
 }
 
+func (a *AddressLoad) String() string {
+	var out string
+	out += a.AddressOne + ", "
+
+	if a.AddressTwo != "" {
+		out += a.AddressTwo + ", "
+	}
+
+	out += a.City + ", " + a.State + ", " + a.Country
+
+	if a.Zip != "" {
+		out += ", " + a.Zip
+	}
+
+	return out
+}
+
 type Check struct {
 	Id               string  `json:"id"`
 	Tracking         *Track  `json:"tracking"`

@@ -304,7 +304,13 @@ const dealInstructionsEmail = `
 			    	<b>Perks:</b> {{Perks}} <br/>
 		 		{{/HasPerks}}
 
+		    	{{#HasAddress}}
+		    		<br/>
+			    	<b>Will be mailed to: </b> {{Address}} <br/>
+		 		{{/HasAddress}}
+
 		    	{{#HasCoupon}}
+		    		<br/>
 			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
 			 		<b>Instructions:</b> {{Instructions}} <br/>
 		 		{{/HasCoupon}}
@@ -315,6 +321,7 @@ const dealInstructionsEmail = `
 		 		{{/HasSchedule}}
 
 				{{^HasSchedule}}
+		    		<br/>
 			    	<b>Days to complete:</b> {{Timeout}}<br/>
 				{{/HasSchedule}}
 
@@ -372,7 +379,13 @@ const submissionInstructionsEmail = `
 			    	<b>Perks:</b> {{Perks}} <br/>
 		 		{{/HasPerks}}
 
+		    	{{#HasAddress}}
+		    		<br/>
+			    	<b>Will be mailed to: </b> {{Address}} <br/>
+		 		{{/HasAddress}}
+
 		    	{{#HasCoupon}}
+		    		<br/>
 			 		<b>Coupon Code:</b> {{CouponCode}} <br/>
 			 		<b>Instructions:</b> {{Instructions}} <br/>
 		 		{{/HasCoupon}}
