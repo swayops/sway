@@ -927,9 +927,10 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 		return
 	}
 
+	scrapUsers := []*ForecastUser{}
 	for _, sc := range scraps {
 		touched += 1
-		if bd != -1 && len(influencers) >= bd {
+		if bd != -1 && len(influencers)+len(scrapUsers) >= bd {
 			break
 		}
 
@@ -970,9 +971,18 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 				user.URL = sc.YTData.GetProfileURL()
 			}
 
-			influencers = append(influencers, user)
+			scrapUsers = append(scrapUsers, user)
 		}
 	}
+
+	// Shuffle the scrap users
+	for i := range scrapUsers {
+		j := rand.Intn(i + 1)
+		scrapUsers[i], scrapUsers[j] = scrapUsers[j], scrapUsers[i]
+	}
+
+	// Now that we shuffled scrap users.. add them to the influencers array
+	influencers = append(influencers, scrapUsers...)
 
 	// Lets calculate count and reach now
 	if bd == -1 {
@@ -1007,12 +1017,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 		// Lets use avg reach and add it based on the number of
 		// estimated users we added
 		reach += addition * int64(avgReach)
-	}
-
-	// Shuffle the users
-	for i := range influencers {
-		j := rand.Intn(i + 1)
-		influencers[i], influencers[j] = influencers[j], influencers[i]
 	}
 
 	return

@@ -21,7 +21,9 @@ const (
 )
 
 var (
-	ErrAddr    = errors.New("Missing address!")
+	ErrAddr  = errors.New("Missing address")
+	ErrState = errors.New("State must be 2 letter representation")
+
 	ErrBadAddr = errors.New("Mailing address inputted is not valid. Please email engage@swayops.com with your login email / username and the address you're trying to use")
 )
 
@@ -129,6 +131,10 @@ func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) 
 }
 
 func verifyUS(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) {
+	if len(addr.State) != 2 {
+		return nil, ErrState
+	}
+
 	form := url.Values{}
 	form.Add("primary_line", addr.AddressOne)
 	form.Add("secondary_line", addr.AddressTwo)

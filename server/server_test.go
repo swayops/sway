@@ -2286,14 +2286,14 @@ func TestInfluencerGeo(t *testing.T) {
 	addr := lob.AddressLoad{
 		AddressOne: "8 Saint Elias",
 		City:       "Trabuco Canyon",
-		State:      "CAlifornia",
+		State:      "CA",
 		Country:    "US",
 	}
 
 	updLoad := &InfluencerUpdate{Address: addr, TwitterId: "cnn"}
 	r = rst.DoTesting(t, "PUT", "/influencer/"+inf.ExpID, updLoad, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 	}
 
 	// Influencer should have a geo set using the address
@@ -2462,6 +2462,7 @@ func TestChecks(t *testing.T) {
 				AddressOne: "8 Saint Elias",
 				City:       "Trabuco Canyon",
 				State:      "CA",
+				Zip:        "92679",
 				Country:    "US",
 			},
 		},
@@ -2549,7 +2550,7 @@ func TestChecks(t *testing.T) {
 	// Approve the check!
 	r = rst.DoTesting(t, "GET", "/approveCheck/"+inf.ExpID, nil, nil)
 	if r.Status != 200 {
-		t.Fatal("Bad status code!")
+		t.Fatal("Bad status code!", string(r.Value))
 	}
 
 	var approvedInf auth.Influencer
@@ -5532,7 +5533,7 @@ func TestProductBudget(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			TwitterId: "twitter",
+			TwitterId: "cnn",
 			Address: &lob.AddressLoad{
 				AddressOne: "8 Saint Elias",
 				City:       "Trabuco Canyon",
