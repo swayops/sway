@@ -1116,7 +1116,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// given what the campaign's product perk count is and how
 				// many funds we have left
 
-				if cmp.Id != "21" && inf.Id != "439" {
+				if inf.Id != "439" {
 					// Hack to allow Olivia
 					min, max := cmp.GetTargetYield(targetDeal.Spendable)
 					if maxYield < min || maxYield > max || maxYield == 0 {
