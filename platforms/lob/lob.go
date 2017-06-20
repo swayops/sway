@@ -15,8 +15,9 @@ import (
 )
 
 const (
-	lobEndpoint     = "https://api.lob.com/v1/checks"
-	lobAddrEndpoint = "https://api.lob.com/v1/verify"
+	lobEndpoint         = "https://api.lob.com/v1/checks"
+	lobDomesticEndpoint = "https://api.lob.com/v1/us_verifications"
+	lobIntlEndpoint     = "https://api.lob.com/v1/intl_verifications"
 )
 
 var (
@@ -39,6 +40,10 @@ type Check struct {
 	ExpectedDelivery string  `json:"expected_delivery_date"`
 	ErrorData        *Error  `json:"error"`
 	Payout           float64 `json:"payout"`
+}
+
+type Error struct {
+	Message string `json:"message"`
 }
 
 type Track struct {
@@ -95,14 +100,14 @@ func CreateCheck(id, name string, addr *AddressLoad, payout float64, cfg *config
 	return &check, err
 }
 
-type Verification struct {
+type IntlVerification struct {
 	Address   *AddressLoad `json:"address"`
 	Message   string       `json:"message"`
 	ErrorData *Error       `json:"error"`
 }
 
-type Error struct {
-	Message string `json:"message"`
+type DomesticVerification struct {
+	Deliverability string `json:"deliverability"`
 }
 
 func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) {
@@ -116,15 +121,22 @@ func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) 
 		addr.Country = "US"
 	}
 
-	form := url.Values{}
-	form.Add("address_line1", addr.AddressOne)
-	form.Add("address_line2", addr.AddressTwo)
-	form.Add("address_city", addr.City)
-	form.Add("address_state", addr.State)
-	form.Add("address_zip", addr.Zip)
-	form.Add("address_country", addr.Country)
+	if addr.Country == "US" {
+		return verifyUS(addr, cfg)
+	} else {
+		return verifyIntl(addr, cfg)
+	}
+}
 
-	req, err := http.NewRequest("POST", lobAddrEndpoint, strings.NewReader(form.Encode()))
+func verifyUS(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) {
+	form := url.Values{}
+	form.Add("primary_line", addr.AddressOne)
+	form.Add("secondary_line", addr.AddressTwo)
+	form.Add("city", addr.City)
+	form.Add("state", addr.State)
+	form.Add("zip_code", addr.Zip)
+
+	req, err := http.NewRequest("POST", lobDomesticEndpoint, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +150,46 @@ func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) 
 		return nil, err
 	}
 
-	var verify Verification
+	var verify DomesticVerification
+	err = json.NewDecoder(resp.Body).Decode(&verify)
+
+	resp.Body.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if verify.Deliverability != "deliverable" {
+		return nil, ErrBadAddr
+	}
+
+	return addr, nil
+}
+
+func verifyIntl(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) {
+	form := url.Values{}
+	form.Add("address_line1", addr.AddressOne)
+	form.Add("address_line2", addr.AddressTwo)
+	form.Add("address_city", addr.City)
+	form.Add("address_state", addr.State)
+	form.Add("address_zip", addr.Zip)
+	form.Add("address_country", addr.Country)
+
+	req, err := http.NewRequest("POST", lobIntlEndpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+
+	req.SetBasicAuth(cfg.Lob.Key, "")
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var verify IntlVerification
 	err = json.NewDecoder(resp.Body).Decode(&verify)
 
 	resp.Body.Close()
@@ -159,5 +210,4 @@ func VerifyAddress(addr *AddressLoad, cfg *config.Config) (*AddressLoad, error) 
 	}
 
 	return verify.Address, nil
-
 }
