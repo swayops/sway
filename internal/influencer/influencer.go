@@ -1117,7 +1117,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// many funds we have left
 				min, max := cmp.GetTargetYield(targetDeal.Spendable)
 				if maxYield < min || maxYield > max || maxYield == 0 {
-					rejections[cmp.Id] = "MAX_YIELD"
+					rejections[cmp.Id] = fmt.Sprintf("MAX_YIELD Min: %02f, Max: %02f, Yield: %02f", min, max, maxYield)
 					continue
 				}
 			}
