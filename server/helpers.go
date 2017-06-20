@@ -1009,6 +1009,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 		reach += addition * int64(avgReach)
 	}
 
+	// Shuffle the users
+	for i := range influencers {
+		j := rand.Intn(i + 1)
+		influencers[i], influencers[j] = influencers[j], influencers[i]
+	}
+
 	return
 }
 
