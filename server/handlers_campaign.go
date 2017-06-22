@@ -506,6 +506,8 @@ type CampaignUpdate struct {
 	Keywords           []string                 `json:"keywords,omitempty"`
 	Status             *bool                    `json:"status,omitempty"`
 	Budget             *float64                 `json:"budget,omitempty"`
+	Monthly            *bool                    `json:"monthly,omitempty"`
+	TermsAndConditions *string                  `json:"terms,omitempty"`
 	Male               *bool                    `json:"male,omitempty"`
 	Female             *bool                    `json:"female,omitempty"`
 	Name               *string                  `json:"name,omitempty"`
@@ -581,6 +583,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			cmp.Task = *upd.Task
 		}
 
+		if upd.TermsAndConditions != nil && *upd.TermsAndConditions != "" {
+			cmp.TermsAndConditions = *upd.TermsAndConditions
+		}
+
 		if upd.Male != nil {
 			cmp.Male = *upd.Male
 		}
@@ -591,6 +597,10 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.BrandSafe != nil {
 			cmp.BrandSafe = *upd.BrandSafe
+		}
+
+		if upd.Monthly != nil {
+			cmp.Monthly = *upd.Monthly
 		}
 
 		if upd.RequiresSubmission != nil {
@@ -929,16 +939,20 @@ func getForecast(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		influencers, reach := getForecastForCmp(s, cmp, c.Query("sortBy"))
 		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
-			influencers, count, reach := getForecastForCmp(s, cmp, int(bd))
-			if ln := int64(len(influencers)); bd > ln {
-				bd = ln
+			bd := int(bd)
+			if bd == -1 {
+				bd = len(influencers)
 			}
-			c.JSON(200, gin.H{"influencers": count, "reach": reach, "breakdown": influencers[:bd]})
+			if bd > len(influencers) {
+				bd = len(influencers)
+			}
+
+			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
 		} else {
 			// Default to totals
-			_, count, reach := getForecastForCmp(s, cmp, -1)
-			c.JSON(200, gin.H{"influencers": count, "reach": reach})
+			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach})
 		}
 	}
 }
