@@ -479,13 +479,9 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if len(cmp.LegacyWhitelist) > 0 {
-					cmp.Whitelist = make(map[string]*common.Range, len(cmp.LegacyWhitelist))
-					for email, _ := range cmp.LegacyWhitelist {
-						cmp.Whitelist[email] = &common.Range{}
-					}
-				}
-				cmp.LegacyWhitelist = nil
+
+				cmp.Monthly = true
+
 				return saveCampaign(tx, &cmp, s)
 			})
 			return nil

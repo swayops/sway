@@ -20,7 +20,7 @@ type Campaign struct {
 	CreatedAt int64 `json:"createdAt"`
 
 	Budget  float64 `json:"budget"`
-	Monthly bool    `json:"Monthly"` // Is this an ongoing monthly campaign?
+	Monthly bool    `json:"monthly"` // Is this an ongoing monthly campaign?
 
 	TermsAndConditions string `json:"terms"`
 
