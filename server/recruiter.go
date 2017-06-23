@@ -30,7 +30,7 @@ func emailScraps(srv *Server) (int32, error) {
 		return 0, nil
 	}
 
-	maxEmails := srv.Campaigns.GetAvailableDealCount() * 2
+	maxEmails := srv.Campaigns.GetAvailableDealCount() * 3
 
 	// Influencers who have signed up
 	signUps := srv.auth.Influencers.GetAllEmails()
