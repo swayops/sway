@@ -70,7 +70,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 	}
 
 	for _, deal := range cmp.Deals {
-		if deal.Completed > 0 {
+		if deal.IsActive() || deal.IsComplete() {
 			st := deal.Get(dates, "")
 
 			// This value falls in our target range!
