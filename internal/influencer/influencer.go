@@ -1188,6 +1188,8 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			targetDeal.CampaignImage = cmp.ImageURL
 			targetDeal.Company = cmp.Company
 
+			targetDeal.TermsAndConditions = cmp.TermsAndConditions
+
 			infDeals = append(infDeals, targetDeal)
 		} else {
 			rejections[cmp.Id] = "NO_PLATFORM"

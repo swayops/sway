@@ -100,6 +100,8 @@ type Deal struct {
 
 	From int64 `json:"fromTime,omitempty"`
 	To   int64 `json:"toTime,omitempty"`
+
+	TermsAndConditions string `json:"terms"`
 }
 
 type Submission struct {
