@@ -224,7 +224,7 @@ func getUserImage(s *Server, data, suffix string, minW, minH int, user *auth.Use
 	return getImageUrl(s, s.Cfg.Bucket.User, "dash", filename, false), nil
 }
 
-func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *auth.User) (bool, error) {
+func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *auth.User, force bool) (bool, error) {
 	if oldPass != "" && pass != "" && oldPass != pass {
 		if len(pass) < 8 {
 			return false, auth.ErrInvalidPass
@@ -233,7 +233,7 @@ func savePassword(s *Server, tx *bolt.Tx, oldPass, pass, pass2 string, user *aut
 			return false, auth.ErrPasswordMismatch
 		}
 
-		if err := s.auth.ChangePasswordTx(tx, user.Email, oldPass, pass, false); err != nil {
+		if err := s.auth.ChangePasswordTx(tx, user.Email, oldPass, pass, force); err != nil {
 			return false, err
 		}
 

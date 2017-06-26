@@ -69,9 +69,11 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		var (
-			upd InfluencerUpdate
-			err error
+			upd     InfluencerUpdate
+			err     error
+			isAdmin = auth.GetCtxUser(c).Admin
 		)
+
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
 			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
@@ -210,7 +212,8 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		user.ParentID = inf.AgencyId
 
 		if err := s.db.Update(func(tx *bolt.Tx) error {
-			changed, err := savePassword(s, tx, upd.OldPass, upd.Pass, upd.Pass2, user)
+			changed, err := savePassword(s, tx, upd.OldPass, upd.Pass, upd.Pass2, user, isAdmin)
+
 			if err != nil {
 				return err
 			}
