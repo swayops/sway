@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/url"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -723,12 +724,7 @@ type ForecastUser struct {
 	AvgEngs        int64  `json:"avgEngs"`
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*ForecastUser, count, reach int64) {
-	if bd != -1 && bd < 250 {
-		// Lets have atleast a sample size of 250 since we're extrapolating numbers now
-		bd = 250
-	}
-
+func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influencers []*ForecastUser, reach int64) {
 	// Some easy bail outs
 	if !cmp.Instagram && !cmp.Twitter && !cmp.YouTube && !cmp.Facebook {
 		return
@@ -765,16 +761,8 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 
 	// Pre calculate target yield
 	// min, max := target-margin, target+margin
-	var touched int64
 	infs := s.auth.Influencers.GetAll()
-
 	for _, inf := range infs {
-		touched += 1
-
-		if bd != -1 && len(influencers) >= bd {
-			break
-		}
-
 		if inf.IsBanned() {
 			continue
 		}
@@ -939,11 +927,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 
 	scrapUsers := []*ForecastUser{}
 	for _, sc := range scraps {
-		touched += 1
-		if bd != -1 && len(influencers)+len(scrapUsers) >= bd {
-			break
-		}
-
 		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
 			_, ok := cmp.Whitelist[sc.EmailAddress]
 			if ok {
@@ -991,48 +974,32 @@ func getForecastForCmp(s *Server, cmp common.Campaign, bd int) (influencers []*F
 		}
 	}
 
-	// Shuffle the scrap users
-	for i := range scrapUsers {
-		j := rand.Intn(i + 1)
-		scrapUsers[i], scrapUsers[j] = scrapUsers[j], scrapUsers[i]
+	// Shuffle the scrap users IF theres no sort by
+	if sortBy == "" {
+		for i := range scrapUsers {
+			j := rand.Intn(i + 1)
+			scrapUsers[i], scrapUsers[j] = scrapUsers[j], scrapUsers[i]
+		}
 	}
 
-	// Now that we shuffled scrap users.. add them to the influencers array
+	// Now that we POTENTIALLY shuffled scrap users.. add them to the influencers array
 	influencers = append(influencers, scrapUsers...)
 
+	// Get reach
+	for _, i := range influencers {
+		reach += i.Followers
+	}
+
 	// Lets calculate count and reach now
-	if bd == -1 {
-		// Just great straight reaches and count
-		count = int64(len(influencers))
-		for _, i := range influencers {
-			reach += i.Followers
-		}
-	} else {
-		total := int64(len(infs) + len(scraps))
-		// What % of the ones we touched matched?
-		perc := float64(len(influencers)) / float64(touched)
-
-		// So we matched X% of touched..
-		// We can assume the rest would have a similar match rate
-		// and go off that
-		untouched := float64(total - touched)
-
-		// How much should we add?
-		addition := int64(perc * untouched)
-
-		// Lets add it now to count!
-		count = int64(len(influencers)) + addition
-
-		for _, i := range influencers {
-			reach += i.Followers
-		}
-
-		// What was average reach?
-		avgReach := float64(reach) / float64(len(influencers))
-
-		// Lets use avg reach and add it based on the number of
-		// estimated users we added
-		reach += addition * int64(avgReach)
+	switch sortBy {
+	case "engagements":
+		sort.Slice(influencers, func(i int, j int) bool {
+			return influencers[i].AvgEngs > influencers[j].AvgEngs
+		})
+	case "followers":
+		sort.Slice(influencers, func(i int, j int) bool {
+			return influencers[i].Followers > influencers[j].Followers
+		})
 	}
 
 	return

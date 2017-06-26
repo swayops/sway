@@ -37,7 +37,7 @@ func (s *Server) billing() error {
 
 	notify := make(map[string][]*BillNotify)
 	for _, cmp := range cmps {
-		if !cmp.Status || cmp.Approved == 0 || cmp.Budget == 0 {
+		if !cmp.Status || cmp.Approved == 0 || cmp.Budget == 0 || !cmp.Monthly {
 			continue
 		}
 

@@ -378,9 +378,9 @@ func assignDeal(s *Server) gin.HandlerFunc {
 					Status:       false,
 				}
 
-				if cmp.Perks.Count == 0 {
+				if cmp.Perks.Count == 0 && cmp.Monthly {
 					// Lets email the advertiser letting them know there are no more
-					// perks available!
+					// perks available if it's a monthly (recurring) campaign
 
 					user := s.auth.GetUser(cmp.AdvertiserId)
 					if user == nil || user.Advertiser == nil {
