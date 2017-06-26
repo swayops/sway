@@ -156,13 +156,17 @@ func addDeals(cmp *common.Campaign, maxDeals int, s *Server, tx *bolt.Tx) *commo
 			AdvertiserId: cmp.AdvertiserId,
 		}
 
-		shortenedID := common.ShortenID(d, tx, s.Cfg)
-		if shortenedID == "" {
-			s.Alert("Error shortening ID", ErrClick)
-			continue
+		if cmp.Link != "" {
+			// Only shorten if the
+			shortenedID := common.ShortenID(d, tx, s.Cfg)
+			if shortenedID == "" {
+				s.Alert("Error shortening ID", ErrClick)
+				continue
+			}
+
+			d.ShortenedLink = getClickUrl(shortenedID, s.Cfg)
 		}
 
-		d.ShortenedLink = getClickUrl(shortenedID, s.Cfg)
 		cmp.Deals[d.Id] = d
 	}
 

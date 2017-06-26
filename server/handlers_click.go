@@ -23,6 +23,8 @@ func click(s *Server) gin.HandlerFunc {
 			v  []byte
 		)
 
+		id = strings.TrimPrefix(id, "/")
+
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.URL)).Get([]byte(id))
 			return nil
@@ -39,10 +41,6 @@ func click(s *Server) gin.HandlerFunc {
 
 		campaignId := parts[0]
 		dealId := parts[1]
-		if dealId == "933c110413161f365762937c75aeab35" {
-			// Route inf 387 clicks to 385
-			dealId = "92a111041910302f43a0db9fe41e0ff8"
-		}
 
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 		if cmp == nil {
@@ -51,7 +49,17 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		foundDeal, ok := cmp.Deals[dealId]
-		if !ok || foundDeal == nil || foundDeal.Link == "" {
+		if !ok || foundDeal == nil {
+			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
+			return
+		}
+
+		if campaignId == "21" {
+			// Hack!
+			foundDeal.Link = "https://www.amazon.com/gp/product/B01C2EFBZU?th=1"
+		}
+
+		if foundDeal.Link == "" {
 			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
 		}
@@ -151,7 +159,7 @@ func click(s *Server) gin.HandlerFunc {
 
 			if !s.Cfg.Sandbox {
 				go func() {
-					if err := misc.Ping(s.Cfg.ConverterURL  + "click/" + uuid + "/" + foundDeal.Id + "/" + foundDeal.CampaignId + "/" + foundDeal.AdvertiserId); err != nil {
+					if err := misc.Ping(s.Cfg.ConverterURL + "click/" + uuid + "/" + foundDeal.Id + "/" + foundDeal.CampaignId + "/" + foundDeal.AdvertiserId); err != nil {
 						s.Alert("Failed to ping converter for "+foundDeal.AdvertiserId, err)
 					}
 				}()
