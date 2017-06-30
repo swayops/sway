@@ -72,7 +72,7 @@ func getConversions(deal *common.Deal, endpoint string) ([]pixel.Conversion, err
 	start := now.AddDate(0, 0, -30).Unix()
 
 	var conversions []pixel.Conversion
-	err := misc.Request("GET", fmt.Sprintf("%s%s/%s/%s/%s/%s/%d/%d", endpoint, "stats", deal.Id, deal.CampaignId, deal.AdvertiserId, start, end), "", &conversions)
+	err := misc.Request("GET", fmt.Sprintf("%s%s/%s/%s/%s/%d/%d", endpoint, "stats", deal.Id, deal.CampaignId, deal.AdvertiserId, start, end), "", &conversions)
 	if err != nil {
 		return conversions, err
 	}
