@@ -15,28 +15,34 @@ var (
 	ErrStatus = errors.New("non-200 status code")
 )
 
-func Request(method, endpoint, reqData string, respData interface{}) error {
+func Request(method, endpoint, reqData string, respData interface{}) (err error) {
 	endpoint = strings.Replace(endpoint, " ", "%20", -1)
 
-	var r *http.Request
+	var (
+		r    *http.Request
+		resp *http.Response
+	)
+
 	if reqData == "" {
-		r, _ = http.NewRequest(method, endpoint, nil)
+		r, err = http.NewRequest(method, endpoint, nil)
 	} else {
-		r, _ = http.NewRequest(method, endpoint, strings.NewReader(reqData))
+		r, err = http.NewRequest(method, endpoint, strings.NewReader(reqData))
 	}
+	if err != nil {
+		return
+	}
+
 	r.Header.Add("Content-Type", "application/json")
 
-	resp, err := client.Do(r)
-	if err != nil {
+	if resp, err = client.Do(r); err != nil {
 		log.Println("Error when hitting:", endpoint, err)
-		return err
+		return
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&respData)
 	resp.Body.Close()
 	if err != nil {
 		log.Println("Error when unmarshalling from:", endpoint, err)
-		return err
 	}
 	return nil
 }
