@@ -480,7 +480,11 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 					return nil
 				}
 
-				cmp.Monthly = true
+				if cmp.Id != "21" {
+					return nil
+				}
+
+				cmp.Link = "https://www.amazon.com/gp/product/B01C2EFBZU?th=1"
 
 				return saveCampaign(tx, &cmp, s)
 			})
