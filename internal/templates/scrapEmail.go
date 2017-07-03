@@ -9,7 +9,7 @@ const scrapFirstEmail = `
 		Our company makes software that connects social media influencers with brands.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		I thought I would ping you because we have a few big advertisers coming through in the next 30 days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
+		I thought I would ping you because we have a few big advertisers coming through in the next few days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		We generally make influencers double the revenue they would normally bring in through your avg social post. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, 1099's, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
@@ -38,7 +38,7 @@ const scrapDealOne = `
 		Hey {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Just wanted to follow up with deals that would be available for you based on my previous email. These are deals you fit based on your fan analytics, follower counts, avg engagement rates, etc. A majority of deals provide product perks that should appear in your social post/ video/ photo. We will automatically ship these to you upon accepting a deal and we automate all of the cumbersome aspects of doing influencer deals. Details are below for deals in your feed:
+		We just wanted to follow up with deals that would be available for you based on my previous email. These are deals you fit based on your fan analytics, follower counts, avg engagement rates, etc. A majority of deals provide product perks that should appear in your social post/ video/ photo. We will automatically ship these to you upon accepting a deal and we automate all of the cumbersome aspects of doing influencer deals. Details are below for deals in your feed:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 
@@ -48,7 +48,7 @@ const scrapDealOne = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b>Budget available:</b> ${{Payout}} <br/>
+		    	<b>Budget available for influencers:</b> ${{Payout}} <br/>
 		    	<b>Product perks?:</b> {{Perks}} <br/>
 		    	<b>Task description:</b> {{Task}} <br/>
 	    	</td>
@@ -58,7 +58,7 @@ const scrapDealOne = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access these you simply need to sign up in our influencer app by <a href="https://inf.swayops.com/signup">Clicking Here</a> and hit the "Accept Endorsement" button inside of the deal you wish to participate in. Feel free to call or email me with any questions, we also have a full wiki on our website as well that explains how fast you get paid, how to calculate your average earnings, etc.
+		In order to access deals you simply need to sign up in our influencer app by <a href="https://inf.swayops.com/signup">Clicking Here</a> and hit the "Accept Endorsement" button inside of the deal you wish to participate in. Feel free to call or email me with any questions, we also have a full wiki on our website as well that explains how fast you get paid, how to calculate your average earnings, etc.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Very excited to work with you,<br/>
