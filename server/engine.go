@@ -13,7 +13,6 @@ import (
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/instagram"
-	"github.com/swayops/sway/platforms/lob"
 	"github.com/swayops/sway/platforms/twitter"
 	"github.com/swayops/sway/platforms/youtube"
 )
@@ -77,7 +76,6 @@ func newSwayEngine(srv *Server) error {
 	}()
 
 	// Check social media keys every hour!
-	addr := &lob.AddressLoad{"917 HARTFORD WAY", "", "BEVERLY HILLS", "CA", "US", "90210"}
 	alertTicker := time.NewTicker(10 * time.Minute)
 	go func() {
 		for range alertTicker.C {
@@ -95,10 +93,6 @@ func newSwayEngine(srv *Server) error {
 
 			if _, err := youtube.New("UCK8sQmJBp8GCxrOtXWBpyEA", srv.Cfg); err != nil {
 				srv.Alert("Error running YouTube init!", err)
-			}
-
-			if _, err := lob.VerifyAddress(addr, srv.Cfg); err != nil {
-				srv.Alert("Error hitting LOB!", err)
 			}
 
 			if testGeo := geo.GetGeoFromCoords(34.1341, -118.3215, int32(time.Now().Unix())); testGeo == nil || testGeo.State != "CA" {
