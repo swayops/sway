@@ -61,7 +61,7 @@ const notifyBillingEmail = `
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hope all is well. I am emailing you to remind you that Sway will be re-charging your primary billing method on file for the following campaigns on the first of next month:
+		Hope all is well. I am emailing you to remind you that Sway will be re-charging your primary billing method on file for the following campaigns in approximately 5 days:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">
