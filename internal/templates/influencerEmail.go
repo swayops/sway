@@ -6,7 +6,7 @@ const infEmailTmpl = `
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		We are excited to announce there are new Sways that requested your participation:
+		This is a system notification. New Sways campaigns have requested your participation:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">
@@ -30,12 +30,12 @@ const infEmailTmpl = `
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 
 </div>
@@ -47,7 +47,7 @@ const infCmpEmail = `
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		We are excited to announce there is a new Sway that requested your participation and I wanted to get your interest level:
+		This is a system notification. We are excited to announce there is a new Sway that requested your participation:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<table border="0" cellpadding="20" cellspacing="0" width="600" style="font-size:14px;">
@@ -70,12 +70,12 @@ const infCmpEmail = `
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -86,19 +86,19 @@ const headsUpEmail = `
 		Hey {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Just wanted to reach out and let you know that you only have 7 days left to complete the deal for {{Company}}. After the 7 days, we will unfortunately be forced to retract the deal from you!
+		This is a system notification to let you know that you only have 7 days left to complete your Sway deal for {{Company}}. After the 7 days, we will unfortunately be forced to retract the deal from you!
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If you would like to access the deal requirements, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> <br/> Feel free to call or email me with any questions.
+		If you would like to access the deal requirements, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> <br/> Feel free to call or email me our team with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engageSwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -112,16 +112,16 @@ const timeOutEmail = `
 		We regret to inform you that we have been forced to retract the deal for {{Company}} from you. Due to strict campaign requirements, there was a limit on the number of days we allow a deal to be left incomplete.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If you would like to access more deals, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> .
+		This is considered a violation of the terms you signed upon accepting this deal. Your Sway influencer score has been lowered because of this and it will be instantly visible to all partners and public rank lists. If your receiving this message in error, please contact us immedietly to avoid negative remarks on your profile. Future infractions are likely to yeild permanent bans from the marketplace and partner marketplaces in the influencer space.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway system<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -135,16 +135,16 @@ const checkTmpl = `
 		We have just sent out your check for ${{Payout}}! It will take approximately {{Delivery}} business days to arrive.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Feel free to call or email me with any questions.
+		Feel free to call or email us with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway notification system<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -158,16 +158,16 @@ const completionTmpl = `
 		Your deal for {{Company}} has just been approved! Keep an eye on your Sway Stats on the <a href="https://inf.swayops.com/login">Influencer Dashboard</a> as you receive earnings based on engagements your post receives.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Feel free to call or email me with any questions.
+		Feel free to call or email us with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway notifications system<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -183,16 +183,16 @@ const pickedUpTmpl = `
 		We will notify you via email as well once the post has been approved by Sway.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Feel free to call or email me with any questions.
+		Feel free to call or email us with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -203,19 +203,19 @@ const campaignStatusEmail = `
 		Hey {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		We regret to inform you that the deal you had accepted for {{Company}} is no longer available due to the campaign changing it's requirements.
+		We regret to inform you that the deal you had accepted for {{Company}} is no longer available due to the campaign changing it's requirements. This can occur for several reasons outside of our control but it is most likely due to the brand changing requirements or moving budget to other campaigns they have running.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		If you would like to access more deals, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> .
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -266,16 +266,16 @@ const perkMailEmail = `
 		We are emailing to inform you that we have just sent out your perk for the deal you have accepted for {{Company}}. Please allow atleast 5-7 business days for the product to arrive.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Feel free to call or email me with any questions.
+		Feel free to call or email us with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -287,7 +287,7 @@ const dealInstructionsEmail = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Thank you for accepting the deal for {{Campaign}}! We are very excited to be working with you. Here are some instructions on how to complete this deal:
+		Thank you for accepting the deal for {{Campaign}}! The brand is excited to be working with you. Here are some instructions on how to complete this deal:
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
@@ -337,14 +337,14 @@ const dealInstructionsEmail = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Let me know if you have any questions! <br/><br/>
+		Let us know if you have any questions! <br/><br/>
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway notification system<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		Engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -356,7 +356,7 @@ const submissionInstructionsEmail = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Thank you for accepting the deal for {{Campaign}}! We are very excited to be working with you. Here are some instructions on how to complete this deal:
+		Thank you for accepting the deal for {{Campaign}}! The brand is excited to be working with you. Here are some instructions on how to complete this deal:
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
@@ -411,14 +411,14 @@ const submissionInstructionsEmail = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Let me know if you have any questions! <br/><br/>
+		Let us know if you have any questions! <br/><br/>
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway team<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		Engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
@@ -440,12 +440,12 @@ const submissionApprovedEmail = `
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
-		~ Karlie M<br/>
+		~ The Sway notification system<br/>
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
 		<br/>
-		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+		Engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	</p>
 </div>
 `
