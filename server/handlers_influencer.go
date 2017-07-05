@@ -1408,3 +1408,44 @@ func getInventoryByState(s *Server) gin.HandlerFunc {
 		c.JSON(200, inv)
 	}
 }
+
+func getAllHandles(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		platform := c.Param("platform")
+		if platform == "" {
+			c.JSON(500, misc.StatusErr("invalid platform id"))
+			return
+		}
+
+		out := make(map[string]bool)
+
+		for _, inf := range s.auth.Influencers.GetAll() {
+			switch platform {
+			case "insta":
+				if inf.Instagram != nil {
+					out[inf.Instagram.UserName] = true
+				}
+			case "twitter":
+				if inf.Twitter != nil {
+					out[inf.Twitter.Id] = true
+				}
+			}
+		}
+
+		scraps, _ := getAllScraps(s)
+		for _, sc := range scraps {
+			switch platform {
+			case "insta":
+				if sc.InstaData != nil {
+					out[sc.InstaData.UserName] = true
+				}
+			case "twitter":
+				if sc.TWData != nil {
+					out[sc.TWData.Id] = true
+				}
+			}
+		}
+
+		c.JSON(200, out)
+	}
+}
