@@ -1417,35 +1417,68 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		out := make(map[string]bool)
+		if c.Query("flw") == "" {
+			out := make(map[string]bool)
 
-		for _, inf := range s.auth.Influencers.GetAll() {
-			switch platform {
-			case "insta":
-				if inf.Instagram != nil {
-					out[inf.Instagram.UserName] = true
-				}
-			case "twitter":
-				if inf.Twitter != nil {
-					out[inf.Twitter.Id] = true
+			for _, inf := range s.auth.Influencers.GetAll() {
+				switch platform {
+				case "insta":
+					if inf.Instagram != nil {
+						out[inf.Instagram.UserName] = true
+					}
+				case "twitter":
+					if inf.Twitter != nil {
+						out[inf.Twitter.Id] = true
+					}
 				}
 			}
-		}
 
-		scraps, _ := getAllScraps(s)
-		for _, sc := range scraps {
-			switch platform {
-			case "insta":
-				if sc.InstaData != nil {
-					out[sc.InstaData.UserName] = false
-				}
-			case "twitter":
-				if sc.TWData != nil {
-					out[sc.TWData.Id] = false
+			scraps, _ := getAllScraps(s)
+			for _, sc := range scraps {
+				switch platform {
+				case "insta":
+					if sc.InstaData != nil {
+						out[sc.InstaData.UserName] = false
+					}
+				case "twitter":
+					if sc.TWData != nil {
+						out[sc.TWData.Id] = false
+					}
 				}
 			}
-		}
 
-		c.JSON(200, out)
+			c.JSON(200, out)
+		} else {
+			out := make(map[string]int64)
+
+			for _, inf := range s.auth.Influencers.GetAll() {
+				switch platform {
+				case "insta":
+					if inf.Instagram != nil {
+						out[inf.Instagram.UserName] = int64(inf.Instagram.Followers)
+					}
+				case "twitter":
+					if inf.Twitter != nil {
+						out[inf.Twitter.Id] = int64(inf.Twitter.Followers)
+					}
+				}
+			}
+
+			scraps, _ := getAllScraps(s)
+			for _, sc := range scraps {
+				switch platform {
+				case "insta":
+					if sc.InstaData != nil {
+						out[sc.InstaData.UserName] = int64(sc.InstaData.Followers)
+					}
+				case "twitter":
+					if sc.TWData != nil {
+						out[sc.TWData.Id] = int64(sc.TWData.Followers)
+					}
+				}
+			}
+
+			c.JSON(200, out)
+		}
 	}
 }
