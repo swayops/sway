@@ -1437,11 +1437,11 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 			switch platform {
 			case "insta":
 				if sc.InstaData != nil {
-					out[sc.InstaData.UserName] = true
+					out[sc.InstaData.UserName] = false
 				}
 			case "twitter":
 				if sc.TWData != nil {
-					out[sc.TWData.Id] = true
+					out[sc.TWData.Id] = false
 				}
 			}
 		}
