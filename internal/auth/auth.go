@@ -15,6 +15,8 @@ import (
 
 const (
 	TokenAge     = time.Hour * 6
+	PermTokenAge = 100 * 365 * (time.Hour * 24) // 100 years should be long enough
+
 	TokenLen     = 16 // it's actually 16 because CreateToken appends 8 bytes
 	SaltLen      = 16
 	ApiKeyHeader = `x-apikey`
@@ -119,15 +121,21 @@ func (a *Auth) getReqInfoTx(tx *bolt.Tx, req *http.Request) *reqInfo {
 	return &ri
 }
 
-func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string) (l *Login, stok string, err error) {
+func (a *Auth) SignInTx(tx *bolt.Tx, email, pass string, perm bool) (l *Login, stok string, err error) {
 	if l = a.GetLoginTx(tx, email); l == nil {
 		return nil, "", ErrInvalidEmail
 	}
 	if !CheckPassword(l.Password, pass) {
 		return nil, "", ErrInvalidPass
 	}
+
+	age := TokenAge
+	if perm {
+		age = PermTokenAge
+	}
+
 	stok = hex.EncodeToString(misc.CreateToken(TokenLen - 8))
-	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(TokenAge).UnixNano()}
+	ntok := &Token{UserID: l.UserID, Expires: time.Now().Add(age).UnixNano()}
 	if l.IsSubUser {
 		ntok.SubUser = email
 	}
@@ -139,9 +147,9 @@ func (a *Auth) SignOutTx(tx *bolt.Tx, stok string) error {
 	return misc.GetBucket(tx, a.cfg.Bucket.Token).Delete([]byte(stok))
 }
 
-func (a *Auth) SignIn(email, pass string) (l *Login, stok string, err error) {
+func (a *Auth) SignIn(email, pass string, perm bool) (l *Login, stok string, err error) {
 	a.db.Update(func(tx *bolt.Tx) error {
-		l, stok, err = a.SignInTx(tx, email, pass)
+		l, stok, err = a.SignInTx(tx, email, pass, perm)
 		return nil
 	})
 	return
