@@ -73,6 +73,17 @@ func StatusOK(id string) gin.H {
 	return gin.H{"status": "success", "id": id, "code": 200}
 }
 
+func StatusOKExtended(id string, data gin.H) gin.H {
+	if data == nil {
+		data = gin.H{}
+	}
+	data["status"], data["code"] = "success", 200
+	if id != "" {
+		data["id"] = id
+	}
+	return data
+}
+
 func StatusErr(msg string) gin.H {
 	return gin.H{"status": "error", "msg": msg, "code": 400}
 }
