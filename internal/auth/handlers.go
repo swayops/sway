@@ -170,6 +170,9 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 			err = ErrInvalidRequest // this should never ever ever happen
 			return
 		}
+		if perm && u.Type() != InfluencerScope {
+			perm = false
+		}
 		salt = u.Salt
 		return
 	})
