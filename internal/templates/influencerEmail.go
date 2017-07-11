@@ -245,7 +245,7 @@ const privateEmail = `
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Our engine detected that one or more of your social media profiles is now private. Until your profile is made public, we cannot track your stats or detect when you complete deals. Let us know if you have any questions. Happy to help 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Our engine detected that one or more of your social media profiles linked with your Sway account is now private and/or inaccessible. Until your profile is made public, we cannot offer you any Sway deals, track your stats or detect when you complete deals. Let us know if you have any questions. Happy to help 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
 		~ Karlie M<br/>
 	</p>

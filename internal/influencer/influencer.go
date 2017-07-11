@@ -146,7 +146,7 @@ type Influencer struct {
 
 	// Stores whether the influencer has already been notified once about
 	// their profile going from public to private
-	PrivateNotify int32 `json:"private,omitempty"`
+	PrivateNotify int32 `json:"privateNotify,omitempty"`
 }
 
 type Strike struct {
