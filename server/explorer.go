@@ -418,7 +418,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				foundLink = true
 			}
 
-			if foundLink
+			if foundLink {
 				approvedFacets += 1
 			}
 		} else {
