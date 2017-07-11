@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
+
+	"io/ioutil"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/closer"
@@ -29,7 +34,7 @@ func main() {
 
 	r := gin.New()
 	r.Use(gin.Recovery())
-	r.Use(ginLogger("/static", "/favicon.ico", "/api/v1/getIncompleteInfluencers"))
+	r.Use(ginLogger(cfg.Sandbox, "/static", "/favicon.ico", "/api/v1/getIncompleteInfluencers"))
 
 	// Ping test
 	r.GET("/ping", func(c *gin.Context) {
@@ -52,7 +57,7 @@ func main() {
 
 }
 
-func ginLogger(prefixesToSkip ...string) gin.HandlerFunc {
+func ginLogger(sandbox bool, prefixesToSkip ...string) gin.HandlerFunc {
 	// shamelessly copied from gin.Logger
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
@@ -62,6 +67,25 @@ func ginLogger(prefixesToSkip ...string) gin.HandlerFunc {
 			}
 		}
 		start := time.Now()
+
+		if sandbox {
+			switch m := c.Request.Method; m {
+			case "POST", "PUT", "DELETE":
+				var buf bytes.Buffer
+				io.Copy(&buf, c.Request.Body)
+				c.Request.Body.Close()
+				c.Request.Body = ioutil.NopCloser(&buf)
+				j, _ := json.Marshal(c.Request.Header)
+				if ln := buf.Len(); ln > 0 {
+					switch buf.Bytes()[0] {
+					case '[', '{', 'n': // [], {} and nullable
+						log.Printf("%s: %s\n\tHeaders: %s\n\tRequest (%d): %s", m, path, j, ln, buf.String())
+					default:
+						log.Printf("%s: %s\n\t\n\tHeaders: %s\n\tRequest (%d): <binary>", m, path, j, ln)
+					}
+				}
+			}
+		}
 
 		c.Next()
 

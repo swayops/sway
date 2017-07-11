@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
@@ -134,14 +135,17 @@ func (a *Auth) CheckOwnership(itemType ItemType, paramName string) gin.HandlerFu
 }
 
 func (a *Auth) SignOutHandler(c *gin.Context) {
-	tok := misc.GetCookie(c.Request, "token")
+	var tok string
+	a.db.Update(func(tx *bolt.Tx) (_ error) {
+		if tok, _, _ = getCreds(c.Request); tok == "" {
+			return
+		}
+		return a.SignOutTx(tx, tok)
+	})
 	if tok == "" {
 		misc.AbortWithErr(c, http.StatusUnauthorized, ErrUnauthorized)
 		return
 	}
-	a.db.Update(func(tx *bolt.Tx) (_ error) {
-		return a.SignOutTx(tx, tok)
-	})
 	w, domain := c.Writer, a.cfg.Domain
 	misc.DeleteCookie(w, domain, "token", !a.cfg.Sandbox)
 	misc.DeleteCookie(w, domain, "key", !a.cfg.Sandbox)
@@ -150,20 +154,24 @@ func (a *Auth) SignOutHandler(c *gin.Context) {
 
 func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	var (
-		login *Login
-		salt  string
-		tok   string
-		err   error
+		login   *Login
+		salt    string
+		tok     string
+		err     error
+		perm, _ = strconv.ParseBool(c.Query("permanent"))
 	)
 
 	a.db.Update(func(tx *bolt.Tx) (_ error) {
-		if login, tok, err = a.SignInTx(tx, email, pass); err != nil {
+		if login, tok, err = a.SignInTx(tx, email, pass, perm); err != nil {
 			return
 		}
 		u := a.GetUserTx(tx, login.UserID)
 		if u == nil {
 			err = ErrInvalidRequest // this should never ever ever happen
 			return
+		}
+		if perm && u.Type() != InfluencerScope {
+			perm = false
 		}
 		salt = u.Salt
 		return
@@ -175,10 +183,20 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	}
 
 	mac := CreateMAC(login.Password, tok, salt)
+	age := TokenAge
+	if perm {
+		age = PermTokenAge
+	}
 	w, domain := c.Writer, a.cfg.Domain
-	misc.SetCookie(w, domain, "token", tok, !a.cfg.Sandbox, TokenAge)
-	misc.SetCookie(w, domain, "key", mac, !a.cfg.Sandbox, TokenAge)
-	c.JSON(200, misc.StatusOK(login.UserID))
+	misc.SetCookie(w, domain, "token", tok, !a.cfg.Sandbox, age)
+	misc.SetCookie(w, domain, "key", mac, !a.cfg.Sandbox, age)
+
+	if perm {
+		c.JSON(200, misc.StatusOKExtended(login.UserID, gin.H{"x-apikey": tok + mac}))
+	} else {
+		c.JSON(200, misc.StatusOK(login.UserID))
+	}
+
 	return true
 }
 
