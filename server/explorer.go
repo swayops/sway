@@ -385,9 +385,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					foundHash = true
 				}
 			}
-			if !foundHash {
-				continue
-			} else {
+			if foundHash {
 				approvedFacets += 1
 			}
 		} else {
@@ -402,9 +400,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				}
 			}
 
-			if !foundMention {
-				continue
-			} else {
+			if foundMention {
 				approvedFacets += 1
 			}
 		} else {
@@ -422,9 +418,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 				foundLink = true
 			}
 
-			if !foundLink {
-				continue
-			} else {
+			if foundLink
 				approvedFacets += 1
 			}
 		} else {
@@ -489,9 +483,9 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			return tw
 		} else {
-			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
-				// If we got more than 50% of the facets approved but didn't pass..
-				// lets notify the influencer!
+			if consideredFacets > 1 && approvedFacets > 1 {
+				// If you have one attribute missing.. we'll email you telling you what
+				// it was
 				var reason string
 				if !foundHash {
 					reason = "hashtags"
@@ -550,9 +544,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 				foundMention = true
 			}
 
-			if !foundMention {
-				continue
-			} else {
+			if foundMention {
 				approvedFacets += 1
 			}
 		} else {
@@ -632,9 +624,9 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 
 			return post
 		} else {
-			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
-				// If we got more than 50% of the facets approved but didn't pass..
-				// lets notify the influencer!
+			if consideredFacets > 1 && approvedFacets > 1 {
+				// If you have one attribute missing.. we'll email you telling you what
+				// it was
 				var reason string
 				if !foundHash {
 					reason = "hashtags"
@@ -679,10 +671,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				}
 			}
 
-			if !foundHash {
-				rejections[post.Caption] = "NO_HASH"
-				continue
-			} else {
+			if foundHash {
 				approvedFacets += 1
 			}
 		} else {
@@ -695,10 +684,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				foundMention = true
 			}
 
-			if !foundMention {
-				rejections[post.Caption] = "NO_MENTION"
-				continue
-			} else {
+			if foundMention {
 				approvedFacets += 1
 			}
 		} else {
@@ -711,10 +697,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 				foundLink = true
 			}
 
-			if !foundLink {
-				rejections[post.Caption] = "NO_LINK"
-				continue
-			} else {
+			if foundLink {
 				approvedFacets += 1
 			}
 		} else {
@@ -783,9 +766,9 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 
 			return post
 		} else {
-			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
-				// If we got more than 50% of the facets approved but didn't pass..
-				// lets notify the influencer!
+			if consideredFacets > 1 && approvedFacets > 1 {
+				// If you have one attribute missing.. we'll email you telling you what
+				// it was
 				var reason string
 				if !foundHash {
 					reason = "hashtags"
@@ -926,9 +909,9 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			return post
 		} else {
-			if consideredFacets > 1 && approvedFacets/consideredFacets >= 0.5 {
-				// If we got more than 50% of the facets approved but didn't pass..
-				// lets notify the influencer!
+			if consideredFacets > 1 && approvedFacets > 1 {
+				// If you have one attribute missing.. we'll email you telling you what
+				// it was
 				var reason string
 				if !foundHash {
 					reason = "hashtags"
