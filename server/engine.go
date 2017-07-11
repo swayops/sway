@@ -274,7 +274,6 @@ func updateInfluencers(s *Server) (int32, error) {
 				}
 				inf.PrivateNotify = int32(time.Now().Unix())
 			}
-			continue
 		}
 
 		// Inserting a request interval so we don't hit our API
