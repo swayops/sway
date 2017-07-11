@@ -6,12 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
-	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/twitter"
 	"github.com/swayops/sway/platforms/youtube"
@@ -147,22 +145,22 @@ func run(srv *Server) error {
 	log.Println("Beginning engine run!")
 
 	var (
-		err                                                            error
-		updatedInf, foundDeals, sigsFound, dealsEmailed, scrapsEmailed int32
-		depletions                                                     []*Depleted
+		err                                                 error
+		updatedInf, foundDeals, dealsEmailed, scrapsEmailed int32
+		depletions                                          []*Depleted
 	)
 
 	// NOTE: This is the only function that can and should edit
 	// budget and reporting DBs
 	start := time.Now()
 
-	// Lets just check for any completed signatures right off the bat!
-	if sigsFound, err = auditTaxes(srv); err != nil {
-		srv.Alert("Error auditing taxes!", err)
-		return err
-	}
+	// // Lets just check for any completed signatures right off the bat!
+	// if sigsFound, err = auditTaxes(srv); err != nil {
+	// 	srv.Alert("Error auditing taxes!", err)
+	// 	return err
+	// }
 
-	log.Println("Taxes audited. Found:", sigsFound)
+	// log.Println("Taxes audited. Found:", sigsFound)
 
 	// Update all influencer stats/completed deal stats
 	// If anything fails to update.. just stop here
@@ -217,7 +215,7 @@ func run(srv *Server) error {
 
 	log.Println("Scraps emailed. Sent:", scrapsEmailed)
 
-	srv.Digest(updatedInf, foundDeals, depletions, sigsFound, dealsEmailed, scrapsEmailed, start)
+	srv.Digest(updatedInf, foundDeals, depletions, dealsEmailed, scrapsEmailed, start)
 
 	srv.Stats.Update(updatedInf, time.Now().Unix())
 
@@ -244,9 +242,10 @@ func updateInfluencers(s *Server) (int32, error) {
 		oldUpdate int32
 		err       error
 		updated   int32
-		private   bool
 	)
 	for _, infId := range s.auth.Influencers.GetAllIDs() {
+		var private bool
+
 		// Do another get incase the influencer has been updated
 		// and since this iteration could take a while
 		inf, ok := s.auth.Influencers.Get(infId)
@@ -273,10 +272,7 @@ func updateInfluencers(s *Server) (int32, error) {
 					s.Alert("Private email failed", err)
 					continue
 				}
-
-				if err = updatePrivateEmailNotification(s, inf.Id); err != nil {
-					log.Println("Saving private email notificationf ailed")
-				}
+				inf.PrivateNotify = int32(time.Now().Unix())
 			}
 			continue
 		}
@@ -422,47 +418,47 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 	return depletions, nil
 }
 
-func auditTaxes(srv *Server) (int32, error) {
-	var (
-		sigsFound int32
-	)
+// func auditTaxes(srv *Server) (int32, error) {
+// 	var (
+// 		sigsFound int32
+// 	)
 
-	for _, infId := range srv.auth.Influencers.GetAllIDs() {
-		// Do another get incase the influencer has been updated
-		// and since this iteration could take a while
-		inf, ok := srv.auth.Influencers.Get(infId)
-		if !ok {
-			continue
-		}
+// 	for _, infId := range srv.auth.Influencers.GetAllIDs() {
+// 		// Do another get incase the influencer has been updated
+// 		// and since this iteration could take a while
+// 		inf, ok := srv.auth.Influencers.Get(infId)
+// 		if !ok {
+// 			continue
+// 		}
 
-		if inf.SignatureId != "" && !inf.HasSigned {
-			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
-			if err != nil {
-				srv.Alert("Error from HelloSign for "+inf.SignatureId, err)
-				continue
-			}
-			if inf.HasSigned != val {
-				if err := srv.db.Update(func(tx *bolt.Tx) error {
-					inf.HasSigned = val
-					if val {
-						sigsFound += 1
-					}
-					// Save the influencer since we just updated it's social media data
-					if err := saveInfluencer(srv, tx, inf); err != nil {
-						log.Println("Errored saving influencer", err)
-						return err
-					}
-					return nil
-				}); err != nil {
-					log.Println("Error when saving influencer", err)
-					return sigsFound, err
-				}
-			}
-		}
-	}
+// 		if inf.SignatureId != "" && !inf.HasSigned {
+// 			val, err := hellosign.HasSigned(inf.Id, inf.SignatureId)
+// 			if err != nil {
+// 				srv.Alert("Error from HelloSign for "+inf.SignatureId, err)
+// 				continue
+// 			}
+// 			if inf.HasSigned != val {
+// 				if err := srv.db.Update(func(tx *bolt.Tx) error {
+// 					inf.HasSigned = val
+// 					if val {
+// 						sigsFound += 1
+// 					}
+// 					// Save the influencer since we just updated it's social media data
+// 					if err := saveInfluencer(srv, tx, inf); err != nil {
+// 						log.Println("Errored saving influencer", err)
+// 						return err
+// 					}
+// 					return nil
+// 				}); err != nil {
+// 					log.Println("Error when saving influencer", err)
+// 					return sigsFound, err
+// 				}
+// 			}
+// 		}
+// 	}
 
-	return sigsFound, nil
-}
+// 	return sigsFound, nil
+// }
 
 func emailDeals(s *Server) (int32, error) {
 	// Email Influencers

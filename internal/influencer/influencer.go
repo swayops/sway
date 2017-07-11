@@ -131,9 +131,9 @@ type Influencer struct {
 	Payouts []*lob.Check `json:"payouts,omitempty"`
 
 	// Tax Information
-	SignatureId  string `json:"sigId,omitempty"`
-	HasSigned    bool   `json:"hasSigned,omitempty"`
-	RequestedTax int32  `json:"taxRequest,omitempty"`
+	// SignatureId  string `json:"sigId,omitempty"`
+	// HasSigned    bool   `json:"hasSigned,omitempty"`
+	// RequestedTax int32  `json:"taxRequest,omitempty"`
 
 	// If true.. send influencer deals every 24 hours + campaign emails
 	DealPing  bool  `json:"dealPing,omitempty"`
@@ -339,7 +339,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 
 	if inf.Instagram != nil {
 		if err = inf.Instagram.UpdateData(cfg, savePosts); err != nil {
-			if inf.Instagram.Followers > 0 && instagram.Status(cfg) {
+			if inf.Instagram.Followers > 500 && instagram.Status(cfg) {
 				// This means we've gotten data on this user before.. but can't
 				// now!
 				// NOTE: Also checking if key is active so we don't email
@@ -352,13 +352,6 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 
 	if inf.Twitter != nil {
 		if err = inf.Twitter.UpdateData(cfg, savePosts); err != nil {
-			if inf.Twitter.Followers > 0 && twitter.Status(cfg) {
-				// This means we've gotten data on this user before.. but can't
-				// now!
-				// NOTE: Also checking if key is active so we don't email
-				// influencers just because our key is down
-				private = true
-			}
 			return private, err
 		}
 	}
@@ -1641,9 +1634,6 @@ func (inf *Influencer) DealRejection(reason, postURL string, deal *common.Deal, 
 }
 
 func (inf *Influencer) PrivateEmail(cfg *config.Config) error {
-	// Turn this off for now
-	return nil
-
 	if cfg.Sandbox {
 		return nil
 	}

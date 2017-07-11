@@ -360,7 +360,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAllActiveDeals", getAllActiveDeals(srv))
 	adminGroup.GET("/setKeyword/:influencerId/:kw", addKeyword(srv))
 	adminGroup.GET("/addDeals/:campaignId/:count", addDealCount(srv))
-	adminGroup.GET("/setSignature/:influencerId/:sigId", setSignature(srv))
+	// adminGroup.GET("/setSignature/:influencerId/:sigId", setSignature(srv))
 	adminGroup.POST("/addBonus", addBonus(srv))
 	adminGroup.GET("/skipGeo/:influencerId/:campaignId", skipGeo(srv))
 	adminGroup.GET("/getAllHandles/:platform", getAllHandles(srv))
@@ -432,7 +432,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/getDealsAssigned/:influencerId", infScope, infOwnership, getDealsAssignedToInfluencer(srv))
 	verifyGroup.GET("/getDealsCompleted/:influencerId", infScope, infOwnership, getDealsCompletedByInfluencer(srv))
 	verifyGroup.GET("/getCompletedDeal/:influencerId/:dealId", infOwnership, getCompletedDeal(srv))
-	verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
+	// verifyGroup.GET("/emailTaxForm/:influencerId", infScope, emailTaxForm(srv))
 	verifyGroup.GET("/sendInstructions/:influencerId/:campaignId/:dealId", infScope, infOwnership, sendInstructions(srv))
 	verifyGroup.POST("/submitPost/:influencerId/:campaignId", infScope, submitPost(srv))
 
@@ -600,7 +600,7 @@ func (srv *Server) Fraud(cid, infId, url string, reasons []string) {
 	}
 }
 
-func (srv *Server) Digest(updatedInf, foundDeals int32, depletions []*Depleted, sigsFound, dealsEmailed, scrapsEmailed int32, start time.Time) {
+func (srv *Server) Digest(updatedInf, foundDeals int32, depletions []*Depleted, dealsEmailed, scrapsEmailed int32, start time.Time) {
 	if srv.Cfg.Sandbox {
 		return
 	}
@@ -612,7 +612,7 @@ func (srv *Server) Digest(updatedInf, foundDeals int32, depletions []*Depleted, 
 		totalSpent += d.Spent
 	}
 
-	if foundDeals+sigsFound+dealsEmailed+scrapsEmailed == 0 && totalSpent < 1 {
+	if foundDeals+dealsEmailed+scrapsEmailed == 0 && totalSpent < 1 {
 		return
 	}
 
@@ -622,7 +622,7 @@ func (srv *Server) Digest(updatedInf, foundDeals int32, depletions []*Depleted, 
 		"foundDeals":    foundDeals,
 		"totalSpent":    misc.TruncateFloat(totalSpent, 2),
 		"depletions":    depletions,
-		"sigsFound":     sigsFound,
+		"sigsFound":     0,
 		"dealsEmailed":  dealsEmailed,
 		"scrapsEmailed": scrapsEmailed,
 		"endTime":       now.String(),

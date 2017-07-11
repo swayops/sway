@@ -21,7 +21,6 @@ import (
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
-	"github.com/swayops/sway/platforms/hellosign"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/lob"
 	"github.com/swayops/sway/platforms/twitter"
@@ -597,38 +596,38 @@ func skipGeo(s *Server) gin.HandlerFunc {
 	}
 }
 
-func setSignature(s *Server) gin.HandlerFunc {
-	// Manually set sig id
-	return func(c *gin.Context) {
-		sigId := c.Param("sigId")
-		if sigId == "" {
-			c.JSON(400, misc.StatusErr("Please submit a valid sigId"))
-			return
-		}
+// func setSignature(s *Server) gin.HandlerFunc {
+// 	// Manually set sig id
+// 	return func(c *gin.Context) {
+// 		sigId := c.Param("sigId")
+// 		if sigId == "" {
+// 			c.JSON(400, misc.StatusErr("Please submit a valid sigId"))
+// 			return
+// 		}
 
-		var (
-			infId = c.Param("influencerId")
-		)
+// 		var (
+// 			infId = c.Param("influencerId")
+// 		)
 
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
+// 		inf, ok := s.auth.Influencers.Get(infId)
+// 		if !ok {
+// 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+// 			return
+// 		}
 
-		inf.SignatureId = sigId
-		inf.RequestedCheck = int32(time.Now().Unix())
+// 		inf.SignatureId = sigId
+// 		inf.RequestedCheck = int32(time.Now().Unix())
 
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
+// 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+// 			return saveInfluencer(s, tx, inf)
+// 		}); err != nil {
+// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			return
+// 		}
 
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
+// 		c.JSON(200, misc.StatusOK(infId))
+// 	}
+// }
 
 func addDealCount(s *Server) gin.HandlerFunc {
 	// Manually add a certain number of deals
@@ -1045,7 +1044,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 					RequestedCheck: inf.RequestedCheck,
 					CompletedDeals: inf.GetPostURLs(inf.LastCheck),
 					Followers:      inf.GetFollowers(),
-					SigID:          inf.SignatureId,
+					// SigID:          inf.SignatureId,
 				}
 				influencers = append(influencers, tmpGreedy)
 			}
@@ -1101,10 +1100,10 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if c.Query("skipTax") != "1" && !inf.HasSigned {
-			c.JSON(500, misc.StatusErr(ErrTax.Error()))
-			return
-		}
+		// if c.Query("skipTax") != "1" && !inf.HasSigned {
+		// 	c.JSON(500, misc.StatusErr(ErrTax.Error()))
+		// 	return
+		// }
 
 		inf.RequestedCheck = int32(time.Now().Unix())
 
@@ -1123,52 +1122,52 @@ func requestCheck(s *Server) gin.HandlerFunc {
 	}
 }
 
-func emailTaxForm(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Delete the check and entry, send to lob
-		infId := c.Param("influencerId")
-		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
-			return
-		}
+// func emailTaxForm(s *Server) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		// Delete the check and entry, send to lob
+// 		infId := c.Param("influencerId")
+// 		if infId == "" {
+// 			c.JSON(500, misc.StatusErr("invalid influencer id"))
+// 			return
+// 		}
 
-		inf, ok := s.auth.Influencers.Get(infId)
-		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
-			return
-		}
+// 		inf, ok := s.auth.Influencers.Get(infId)
+// 		if !ok {
+// 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+// 			return
+// 		}
 
-		if inf.SignatureId != "" {
-			c.JSON(500, misc.StatusErr("Tax documents have already been sent! Please fill those out and allow us 4-8 hours to approve your information. Thank-you!"))
-			return
-		}
+// 		if inf.SignatureId != "" {
+// 			c.JSON(500, misc.StatusErr("Tax documents have already been sent! Please fill those out and allow us 4-8 hours to approve your information. Thank-you!"))
+// 			return
+// 		}
 
-		if inf.Address == nil {
-			c.JSON(500, misc.StatusErr(ErrAddress.Error()))
-			return
-		}
+// 		if inf.Address == nil {
+// 			c.JSON(500, misc.StatusErr(ErrAddress.Error()))
+// 			return
+// 		}
 
-		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, inf.IsAmerican(), s.Cfg.Sandbox)
-		if err != nil {
-			s.Alert("Hellosign signature request failed for "+inf.Id, err)
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
+// 		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, inf.IsAmerican(), s.Cfg.Sandbox)
+// 		if err != nil {
+// 			s.Alert("Hellosign signature request failed for "+inf.Id, err)
+// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			return
+// 		}
 
-		inf.SignatureId = sigId
-		inf.RequestedTax = int32(time.Now().Unix())
+// 		inf.SignatureId = sigId
+// 		inf.RequestedTax = int32(time.Now().Unix())
 
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Save the influencer
-			return saveInfluencer(s, tx, inf)
-		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
-			return
-		}
-		// Insert log
-		c.JSON(200, misc.StatusOK(infId))
-	}
-}
+// 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+// 			// Save the influencer
+// 			return saveInfluencer(s, tx, inf)
+// 		}); err != nil {
+// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			return
+// 		}
+// 		// Insert log
+// 		c.JSON(200, misc.StatusOK(infId))
+// 	}
+// }
 
 func emptyPayout(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
