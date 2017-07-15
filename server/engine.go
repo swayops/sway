@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/swayops/sway/internal/budget"
-	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
@@ -93,9 +92,9 @@ func newSwayEngine(srv *Server) error {
 				srv.Alert("Error running YouTube init!", err)
 			}
 
-			if testGeo := geo.GetGeoFromCoords(34.1341, -118.3215, int32(time.Now().Unix())); testGeo == nil || testGeo.State != "CA" {
-				srv.Alert("Error hitting Google geo!", nil)
-			}
+			// if testGeo := geo.GetGeoFromCoords(34.1341, -118.3215, int32(time.Now().Unix())); testGeo == nil || testGeo.State != "CA" {
+			// 	srv.Alert("Error hitting Google geo!", nil)
+			// }
 
 			// Ping click URLs
 			if err := misc.Request("GET", "https://swayops.com/cl/fakeID", "", nil); err != nil {
