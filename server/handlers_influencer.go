@@ -1508,7 +1508,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 						switch platform {
 						case "insta":
 							inf, err := influencer.New("", "", "", username, "", "", false, false, "", "", "", "", "", []string{}, nil, 0, s.Cfg)
-							if err != nil {
+							if err != nil || inf == nil || inf.Instagram == nil {
 								c.JSON(500, misc.StatusErr("Error for username: "+username))
 								return
 							}
