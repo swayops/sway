@@ -1514,7 +1514,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 							}
 							maxYield := influencer.GetMaxYield(dummyCmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
-							out[strings.ToLower(inf.Instagram.UserName)] = Dummy{
+							out[username] = Dummy{
 								Yield:     maxYield,
 								IsNewUser: true,
 							}
