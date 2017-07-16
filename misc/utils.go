@@ -115,7 +115,7 @@ func DoesIntersect(opts []string, tg []string) bool {
 
 func Contains(haystack []string, needle string) bool {
 	for _, h := range haystack {
-		if h == needle {
+		if strings.EqualFold(h, needle) {
 			return true
 		}
 	}

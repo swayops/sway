@@ -1416,6 +1416,9 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// Could have a comma seperated list of IDs that are wanted
+		ids := strings.Split(c.Query("filter"), ",")
+
 		if c.Query("flw") != "" {
 			out := make(map[string]int64)
 
@@ -1440,7 +1443,15 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 
 			c.JSON(200, out)
 		} else if c.Query("yield") != "" {
-			out := make(map[string]float64)
+			type Dummy struct {
+				Yield        float64 `json:"yield,omitempty"`
+				ID           string  `json:"id,omitempty"`
+				IsInfluencer bool    `json:"isInfluencer"`
+				IsScrap      bool    `json:"isScrap"`
+				IsNewUser    bool    `json:"isNewUser"`
+			}
+
+			out := make(map[string]Dummy)
 
 			dummyCmp := &common.Campaign{
 				Budget:    1000,
@@ -1455,7 +1466,15 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				switch platform {
 				case "insta":
 					if inf.Instagram != nil {
-						out[inf.Instagram.UserName] = maxYield
+						if len(ids) > 0 && !misc.Contains(ids, inf.Instagram.UserName) {
+							continue
+						}
+
+						out[strings.ToLower(inf.Instagram.UserName)] = Dummy{
+							Yield:        maxYield,
+							ID:           inf.Id,
+							IsInfluencer: true,
+						}
 					}
 				}
 			}
@@ -1466,9 +1485,43 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				switch platform {
 				case "insta":
 					if sc.InstaData != nil {
-						out[sc.InstaData.UserName] = maxYield
+						if len(ids) > 0 && !misc.Contains(ids, sc.InstaData.UserName) {
+							continue
+						}
+
+						out[strings.ToLower(sc.InstaData.UserName)] = Dummy{
+							Yield:   maxYield,
+							ID:      sc.Id,
+							IsScrap: true,
+						}
 					}
 				}
+			}
+
+			if len(ids) > 0 {
+				// If we had IDs.. lets create users for the people that weren't in our
+				// system
+				for _, username := range ids {
+					username = strings.ToLower(username)
+					if _, ok := out[username]; !ok {
+						// We need to make an inf
+						switch platform {
+						case "insta":
+							inf, err := influencer.New("", "", "", username, "", "", false, false, "", "", "", "", "", []string{}, nil, 0, s.Cfg)
+							if err != nil {
+								c.JSON(500, misc.StatusErr("Error for username: "+username))
+								return
+							}
+							maxYield := influencer.GetMaxYield(dummyCmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+							out[strings.ToLower(inf.Instagram.UserName)] = Dummy{
+								Yield:     maxYield,
+								IsNewUser: true,
+							}
+						}
+					}
+				}
+
 			}
 
 			c.JSON(200, out)
