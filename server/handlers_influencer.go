@@ -1417,7 +1417,13 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 		}
 
 		// Could have a comma seperated list of IDs that are wanted
-		ids := strings.Split(c.Query("filter"), ",")
+		rawIDs := strings.Split(c.Query("filter"), ",")
+		ids := []string{}
+		for _, val := range rawIDs {
+			if val != "" {
+				ids = append(ids, val)
+			}
+		}
 		log.Println("WHAT IS IDS", ids, len(ids))
 
 		if c.Query("flw") != "" {
