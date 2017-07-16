@@ -1416,38 +1416,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if c.Query("flw") == "" {
-			out := make(map[string]bool)
-
-			for _, inf := range s.auth.Influencers.GetAll() {
-				switch platform {
-				case "insta":
-					if inf.Instagram != nil {
-						out[inf.Instagram.UserName] = true
-					}
-				case "twitter":
-					if inf.Twitter != nil {
-						out[inf.Twitter.Id] = true
-					}
-				}
-			}
-
-			scraps, _ := getAllScraps(s)
-			for _, sc := range scraps {
-				switch platform {
-				case "insta":
-					if sc.InstaData != nil {
-						out[sc.InstaData.UserName] = false
-					}
-				case "twitter":
-					if sc.TWData != nil {
-						out[sc.TWData.Id] = false
-					}
-				}
-			}
-
-			c.JSON(200, out)
-		} else {
+		if c.Query("flw") != "" {
 			out := make(map[string]int64)
 
 			for _, inf := range s.auth.Influencers.GetAll() {
@@ -1455,10 +1424,6 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				case "insta":
 					if inf.Instagram != nil {
 						out[inf.Instagram.UserName] = int64(inf.Instagram.Followers)
-					}
-				case "twitter":
-					if inf.Twitter != nil {
-						out[inf.Twitter.Id] = int64(inf.Twitter.Followers)
 					}
 				}
 			}
@@ -1470,14 +1435,67 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 					if sc.InstaData != nil {
 						out[sc.InstaData.UserName] = int64(sc.InstaData.Followers)
 					}
-				case "twitter":
-					if sc.TWData != nil {
-						out[sc.TWData.Id] = int64(sc.TWData.Followers)
+				}
+			}
+
+			c.JSON(200, out)
+		} else if c.Query("yield") != "" {
+			out := make(map[string]float64)
+
+			dummyCmp := &common.Campaign{
+				Budget:    1000,
+				Twitter:   true,
+				Facebook:  true,
+				YouTube:   true,
+				Instagram: true,
+			}
+
+			for _, inf := range s.auth.Influencers.GetAll() {
+				maxYield := influencer.GetMaxYield(dummyCmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+				switch platform {
+				case "insta":
+					if inf.Instagram != nil {
+						out[inf.Instagram.UserName] = maxYield
+					}
+				}
+			}
+
+			scraps, _ := getAllScraps(s)
+			for _, sc := range scraps {
+				maxYield := influencer.GetMaxYield(dummyCmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+				switch platform {
+				case "insta":
+					if sc.InstaData != nil {
+						out[sc.InstaData.UserName] = maxYield
 					}
 				}
 			}
 
 			c.JSON(200, out)
+		} else {
+			out := make(map[string]bool)
+
+			for _, inf := range s.auth.Influencers.GetAll() {
+				switch platform {
+				case "insta":
+					if inf.Instagram != nil {
+						out[inf.Instagram.UserName] = true
+					}
+				}
+			}
+
+			scraps, _ := getAllScraps(s)
+			for _, sc := range scraps {
+				switch platform {
+				case "insta":
+					if sc.InstaData != nil {
+						out[sc.InstaData.UserName] = false
+					}
+				}
+			}
+
+			c.JSON(200, out)
+
 		}
 	}
 }
