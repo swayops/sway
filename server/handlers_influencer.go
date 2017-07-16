@@ -1424,7 +1424,6 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				ids = append(ids, val)
 			}
 		}
-		log.Println("WHAT IS IDS", ids, len(ids))
 
 		if c.Query("flw") != "" {
 			out := make(map[string]int64)
@@ -1451,11 +1450,11 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 			c.JSON(200, out)
 		} else if c.Query("yield") != "" {
 			type Dummy struct {
-				Yield        float64 `json:"yield,omitempty"`
+				Yield        float64 `json:"yield"`
 				ID           string  `json:"id,omitempty"`
-				IsInfluencer bool    `json:"isInfluencer"`
-				IsScrap      bool    `json:"isScrap"`
-				IsNewUser    bool    `json:"isNewUser"`
+				IsInfluencer bool    `json:"isInfluencer,omitempty"`
+				IsScrap      bool    `json:"isScrap,omitempty"`
+				IsNewUser    bool    `json:"isNewUser,omitempty"`
 			}
 
 			out := make(map[string]Dummy)
