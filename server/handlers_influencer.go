@@ -1450,11 +1450,12 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 			c.JSON(200, out)
 		} else if c.Query("yield") != "" {
 			type Dummy struct {
-				Yield        float64 `json:"yield"`
-				ID           string  `json:"id,omitempty"`
-				IsInfluencer bool    `json:"isInfluencer,omitempty"`
-				IsScrap      bool    `json:"isScrap,omitempty"`
-				IsNewUser    bool    `json:"isNewUser,omitempty"`
+				Yield          float64 `json:"yield"`
+				ID             string  `json:"id,omitempty"`
+				IsInfluencer   bool    `json:"isInfluencer,omitempty"`
+				IsScrap        bool    `json:"isScrap,omitempty"`
+				IsNewUser      bool    `json:"isNewUser,omitempty"`
+				AvgEngagements float64 `json:"avgEngagements,omitempty"`
 			}
 
 			out := make(map[string]Dummy)
@@ -1477,9 +1478,10 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 						}
 
 						out[strings.ToLower(inf.Instagram.UserName)] = Dummy{
-							Yield:        maxYield,
-							ID:           inf.Id,
-							IsInfluencer: true,
+							Yield:          maxYield,
+							ID:             inf.Id,
+							IsInfluencer:   true,
+							AvgEngagements: inf.Instagram.AvgLikes + inf.Instagram.AvgComments,
 						}
 					}
 				}
@@ -1496,9 +1498,10 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 						}
 
 						out[strings.ToLower(sc.InstaData.UserName)] = Dummy{
-							Yield:   maxYield,
-							ID:      sc.Id,
-							IsScrap: true,
+							Yield:          maxYield,
+							ID:             sc.Id,
+							IsScrap:        true,
+							AvgEngagements: sc.InstaData.AvgLikes + sc.InstaData.AvgComments,
 						}
 					}
 				}
@@ -1524,8 +1527,9 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 							maxYield := influencer.GetMaxYield(dummyCmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
 							out[username] = Dummy{
-								Yield:     maxYield,
-								IsNewUser: true,
+								Yield:          maxYield,
+								IsNewUser:      true,
+								AvgEngagements: inf.Instagram.AvgLikes + inf.Instagram.AvgComments,
 							}
 						}
 					}
