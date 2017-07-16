@@ -1502,6 +1502,9 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				// If we had IDs.. lets create users for the people that weren't in our
 				// system
 				for _, username := range ids {
+					if username == "" {
+						continue
+					}
 					username = strings.ToLower(username)
 					if _, ok := out[username]; !ok {
 						// We need to make an inf
