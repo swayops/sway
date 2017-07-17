@@ -41,7 +41,7 @@ type Twitter struct {
 	LatestTweets Tweets         `json:"latestTw,omitempty"`    // Posts since last update.. will later check these for deal satisfaction
 	LastUpdated  int32          `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
 
-	client *http.Client `json:"client,omitempty"`
+	client *http.Client
 
 	ProfilePicture string `json:"profile_picture,omitempty"`
 	FullName       string `json:"full_name,omitempty"`
