@@ -29,7 +29,7 @@ type Tumblr struct {
 	LastUpdated int32   `json:"lastUpdated,omitempty"` // If you see this on year 2038 and wonder why it broke, find Shahzil.
 	Score       float64 `json:"score,omitempty"`
 
-	client *http.Client `json:"client,omitempty"`
+	client *http.Client
 }
 
 func New(id string, cfg *config.Config) (tr *Tumblr, err error) {
