@@ -18,16 +18,16 @@ func setScrap(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&scraps); err != nil || len(scraps) == 0 {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body"))
 			return
 		}
 
 		if err := saveScraps(s, scraps); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -51,11 +51,11 @@ func getScraps(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		scraps, err := getAllScraps(s)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, scraps)
+		misc.WriteJSON(c, 200, scraps)
 	}
 }
 
@@ -63,11 +63,11 @@ func getScrap(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		scrap, err := getScrapFromID(s, c.Param("id"))
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, scrap)
+		misc.WriteJSON(c, 200, scrap)
 	}
 }
 
@@ -79,7 +79,7 @@ func scrapStats(s *Server) gin.HandlerFunc {
 
 		scraps, err := getAllScraps(s)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -120,7 +120,7 @@ func scrapStats(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, stats)
+		misc.WriteJSON(c, 200, stats)
 	}
 }
 
@@ -132,7 +132,7 @@ func getScrapByHandle(s *Server) gin.HandlerFunc {
 
 		scraps, err := getAllScraps(s)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -165,6 +165,6 @@ func getScrapByHandle(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, found)
+		misc.WriteJSON(c, 200, found)
 	}
 }

@@ -317,7 +317,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r = r.Group(srv.Cfg.APIPath)
 
 	r.GET("/version", func(c *gin.Context) {
-		c.JSON(200, gin.H{"version": gitBuild})
+		misc.WriteJSON(c, 200, gin.H{"version": gitBuild})
 	})
 
 	// Public endpoint

@@ -16,7 +16,7 @@ import (
 
 func getCampaignStore(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, s.Campaigns.GetStore())
+		misc.WriteJSON(c, 200, s.Campaigns.GetStore())
 	}
 }
 
@@ -24,17 +24,17 @@ func getBudgetInfo(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, misc.StatusErr(ErrCampaign.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrCampaign.Error()))
 			return
 		}
 
 		budgetStore, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || budgetStore == nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, budgetStore)
+		misc.WriteJSON(c, 200, budgetStore)
 	}
 }
 
@@ -50,7 +50,7 @@ func getStore(s *Server) gin.HandlerFunc {
 			}
 			return nil
 		}); err != nil || len(store) == 0 {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -61,9 +61,9 @@ func getStore(s *Server) gin.HandlerFunc {
 					filteredStore[campaignID] = val
 				}
 			}
-			c.JSON(200, filteredStore)
+			misc.WriteJSON(c, 200, filteredStore)
 		} else {
-			c.JSON(200, store)
+			misc.WriteJSON(c, 200, store)
 		}
 	}
 }
@@ -86,7 +86,7 @@ func getBudgetSnapshot(s *Server) gin.HandlerFunc {
 			}
 			return nil
 		}); err != nil || len(store) == 0 {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -102,7 +102,7 @@ func getBudgetSnapshot(s *Server) gin.HandlerFunc {
 				}
 			}
 		}
-		c.JSON(200, filteredStore)
+		misc.WriteJSON(c, 200, filteredStore)
 	}
 }
 
@@ -119,13 +119,13 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := s.auth.GetUser(c.Param("id"))
 		if user == nil {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
 		adv := user.Advertiser
 		if adv == nil {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
@@ -135,7 +135,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 		)
 
 		if adv.Customer == "" {
-			c.JSON(200, info)
+			misc.WriteJSON(c, 200, info)
 			return
 		}
 
@@ -147,7 +147,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 		info.ID = adv.Customer
 		info.CreditCard, err = swipe.GetCleanCreditCard(adv.Customer)
 		if err != nil {
-			c.JSON(200, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 200, misc.StatusErr(err.Error()))
 			return
 		}
 		info.History = history
@@ -174,7 +174,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -190,7 +190,7 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 			info.ActiveBalance += budg.Spendable + budg.Spent
 		}
 
-		c.JSON(200, info)
+		misc.WriteJSON(c, 200, info)
 	}
 }
 
@@ -217,7 +217,7 @@ func assignLikelyEarnings(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -228,10 +228,10 @@ func getBalance(s *Server) gin.HandlerFunc {
 			balance = budget.GetBalance(c.Param("id"), tx, s.Cfg)
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
-		c.JSON(200, balance)
+		misc.WriteJSON(c, 200, balance)
 	}
 }
 
@@ -244,17 +244,17 @@ func getTargetYield(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
+			misc.WriteJSON(c, 500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
 			return
 		}
 
 		store, err := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 		if err != nil || store == nil {
-			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for store")))
+			misc.WriteJSON(c, 500, misc.StatusErr(fmt.Sprintf("Failed for store")))
 			return
 		}
 
 		min, max := cmp.GetTargetYield(store.Spendable)
-		c.JSON(200, &TargetYield{Min: min, Max: max})
+		misc.WriteJSON(c, 200, &TargetYield{Min: min, Max: max})
 	}
 }

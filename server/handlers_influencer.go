@@ -63,7 +63,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("id"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Please provide a valid influencer ID"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Please provide a valid influencer ID"))
 			return
 		}
 
@@ -75,7 +75,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
@@ -86,7 +86,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 				keywords := getScrapKeywords(s, inf.EmailAddress, upd.InstagramId)
 				err = inf.NewInsta(upd.InstagramId, keywords, s.Cfg)
 				if err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
+					misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 					return
 				}
 			}
@@ -100,7 +100,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 				// Make sure that the id has actually been updated
 				err = inf.NewFb(upd.FbId, s.Cfg)
 				if err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
+					misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 					return
 				}
 			}
@@ -114,7 +114,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 				// Make sure that the id has actually been updated
 				err = inf.NewTwitter(upd.TwitterId, s.Cfg)
 				if err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
+					misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 					return
 				}
 			}
@@ -128,7 +128,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 				// Make sure that the id has actually been updated
 				err = inf.NewYouTube(upd.YouTubeId, keywords, s.Cfg)
 				if err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
+					misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 					return
 				}
 			}
@@ -157,12 +157,12 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 		if upd.Address.AddressOne != "" {
 			cleanAddr, err := lob.VerifyAddress(&upd.Address, s.Cfg)
 			if err != nil {
-				c.JSON(400, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 				return
 			}
 
 			if !geo.IsValidGeo(&geo.GeoRecord{State: cleanAddr.State, Country: cleanAddr.Country}) {
-				c.JSON(400, misc.StatusErr("Address does not convert to a valid geo!"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Address does not convert to a valid geo!"))
 				return
 			}
 
@@ -178,14 +178,14 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			}
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
 		if upd.Name != nil {
 			name := strings.TrimSpace(*upd.Name)
 			if len(strings.Split(name, " ")) < 2 {
-				c.JSON(400, misc.StatusErr(ErrNoName.Error()))
+				misc.WriteJSON(c, 400, misc.StatusErr(ErrNoName.Error()))
 				return
 			}
 
@@ -228,7 +228,7 @@ func putInfluencer(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(inf.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(inf.Id))
 	}
 }
 
@@ -242,7 +242,7 @@ func setAudit(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Please provide a valid influencer ID"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Please provide a valid influencer ID"))
 			return
 		}
 
@@ -252,14 +252,14 @@ func setAudit(s *Server) gin.HandlerFunc {
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
 		var filteredCats []string
 		for _, cat := range upd.Categories {
 			if _, ok := common.CATEGORIES[cat]; !ok {
-				c.JSON(400, misc.StatusErr(ErrBadCat.Error()))
+				misc.WriteJSON(c, 400, misc.StatusErr(ErrBadCat.Error()))
 				return
 			}
 			filteredCats = append(filteredCats, cat)
@@ -283,11 +283,11 @@ func setAudit(s *Server) gin.HandlerFunc {
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(inf.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(inf.Id))
 	}
 }
 
@@ -295,11 +295,11 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("id"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, inf)
+		misc.WriteJSON(c, 200, inf)
 	}
 }
 
@@ -327,7 +327,7 @@ func getBio(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -360,7 +360,7 @@ func getBio(s *Server) gin.HandlerFunc {
 			Engagements:    eng,
 			CompletedDeals: bioDeals,
 		}
-		c.JSON(200, bio)
+		misc.WriteJSON(c, 200, bio)
 	}
 }
 
@@ -368,19 +368,19 @@ func getCompletedDeal(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		dealId := c.Param("dealId")
 		if dealId == "" {
-			c.JSON(500, misc.StatusErr("invalid deal id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid deal id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -393,11 +393,11 @@ func getCompletedDeal(s *Server) gin.HandlerFunc {
 		}
 
 		if d == nil {
-			c.JSON(500, misc.StatusErr("deal not found"))
+			misc.WriteJSON(c, 500, misc.StatusErr("deal not found"))
 			return
 		}
 
-		c.JSON(200, d)
+		misc.WriteJSON(c, 200, d)
 	}
 }
 
@@ -414,7 +414,7 @@ func getInfluencersByCategory(s *Server) gin.HandlerFunc {
 				}
 			}
 		}
-		c.JSON(200, influencers)
+		misc.WriteJSON(c, 200, influencers)
 	}
 }
 
@@ -437,7 +437,7 @@ func getInfluencersByAgency(s *Server) gin.HandlerFunc {
 				influencers = append(influencers, inf)
 			}
 		}
-		c.JSON(200, influencers)
+		misc.WriteJSON(c, 200, influencers)
 	}
 }
 
@@ -446,7 +446,7 @@ func setBan(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ban, err := strconv.ParseBool(c.Params.ByName("state"))
 		if err != nil {
-			c.JSON(400, misc.StatusErr("Please submit a valid ban state"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please submit a valid ban state"))
 			return
 		}
 
@@ -456,7 +456,7 @@ func setBan(s *Server) gin.HandlerFunc {
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -465,13 +465,13 @@ func setBan(s *Server) gin.HandlerFunc {
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
 		s.Notify("Influencer has been banned!", fmt.Sprintf("Influencer %s has been banned", infId))
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -480,7 +480,7 @@ func setStrike(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reasons := c.Params.ByName("reasons")
 		if reasons == "" {
-			c.JSON(400, misc.StatusErr("Please submit a valid reason"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please submit a valid reason"))
 			return
 		}
 
@@ -491,12 +491,12 @@ func setStrike(s *Server) gin.HandlerFunc {
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
 		if campaignId == "" {
-			c.JSON(500, misc.StatusErr("Invalid campaign ID"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid campaign ID"))
 			return
 		}
 
@@ -510,7 +510,7 @@ func setStrike(s *Server) gin.HandlerFunc {
 		// Make sure it's not there already!
 		for _, st := range inf.Strikes {
 			if st.CampaignID == strike.CampaignID {
-				c.JSON(500, misc.StatusErr("Strike has already been recorded!"))
+				misc.WriteJSON(c, 500, misc.StatusErr("Strike has already been recorded!"))
 				return
 			}
 		}
@@ -525,13 +525,13 @@ func setStrike(s *Server) gin.HandlerFunc {
 		}
 
 		if err := saveAllActiveDeals(s, inf); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
 		s.Notify("Strike given!", fmt.Sprintf("Influencer %s has been given a strike (and the post has been allowed) for campaign %s", infId, campaignId))
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -540,7 +540,7 @@ func addKeyword(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		kw := c.Param("kw")
 		if kw == "" {
-			c.JSON(400, misc.StatusErr("Please submit a valid keyword"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please submit a valid keyword"))
 			return
 		}
 
@@ -550,7 +550,7 @@ func addKeyword(s *Server) gin.HandlerFunc {
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -559,11 +559,11 @@ func addKeyword(s *Server) gin.HandlerFunc {
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -576,7 +576,7 @@ func skipGeo(s *Server) gin.HandlerFunc {
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -587,12 +587,12 @@ func skipGeo(s *Server) gin.HandlerFunc {
 			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 				return saveInfluencer(s, tx, inf)
 			}); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 				return
 			}
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -601,7 +601,7 @@ func skipGeo(s *Server) gin.HandlerFunc {
 // 	return func(c *gin.Context) {
 // 		sigId := c.Param("sigId")
 // 		if sigId == "" {
-// 			c.JSON(400, misc.StatusErr("Please submit a valid sigId"))
+// 			misc.WriteJSON(c, 400, misc.StatusErr("Please submit a valid sigId"))
 // 			return
 // 		}
 
@@ -611,7 +611,7 @@ func skipGeo(s *Server) gin.HandlerFunc {
 
 // 		inf, ok := s.auth.Influencers.Get(infId)
 // 		if !ok {
-// 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+// 			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 // 			return
 // 		}
 
@@ -621,11 +621,11 @@ func skipGeo(s *Server) gin.HandlerFunc {
 // 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 // 			return saveInfluencer(s, tx, inf)
 // 		}); err != nil {
-// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 // 			return
 // 		}
 
-// 		c.JSON(200, misc.StatusOK(infId))
+// 		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 // 	}
 // }
 
@@ -634,7 +634,7 @@ func addDealCount(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		count, err := strconv.Atoi(c.Param("count"))
 		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -649,12 +649,12 @@ func addDealCount(s *Server) gin.HandlerFunc {
 		})
 
 		if err = json.Unmarshal(b, &cmp); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling campaign"))
 			return
 		}
 
 		if cmp.Perks != nil {
-			c.JSON(400, misc.StatusErr("Cannot add deals to perk campaign"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Cannot add deals to perk campaign"))
 			return
 		}
 
@@ -667,7 +667,7 @@ func addDealCount(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -690,35 +690,35 @@ func addBonus(s *Server) gin.HandlerFunc {
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&bonus); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
 		if bonus.InfluencerID == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		if bonus.CampaignID == "" {
-			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid campaign id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(bonus.InfluencerID)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
 		parsed, err := url.Parse(bonus.PostURL)
 		if err != nil {
-			c.JSON(500, misc.StatusErr("invalid post URL"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid post URL"))
 			return
 		}
 
 		bonus.PostURL = parsed.Host + parsed.Path
 		if bonus.PostURL == "" {
-			c.JSON(500, misc.StatusErr("invalid post URL"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid post URL"))
 			return
 		}
 
@@ -730,14 +730,14 @@ func addBonus(s *Server) gin.HandlerFunc {
 		}
 
 		if foundDeal == nil {
-			c.JSON(500, misc.StatusErr("deal not found"))
+			misc.WriteJSON(c, 500, misc.StatusErr("deal not found"))
 			return
 		}
 
 		// Force update saves all new posts and updates to recent data
 		err = inf.ForceUpdate(s.Cfg)
 		if err != nil {
-			c.JSON(500, misc.StatusErr("internal error with influencer update"))
+			misc.WriteJSON(c, 500, misc.StatusErr("internal error with influencer update"))
 			return
 		}
 
@@ -783,16 +783,16 @@ func addBonus(s *Server) gin.HandlerFunc {
 		}
 
 		if !foundURL {
-			c.JSON(500, misc.StatusErr("invalid post URL"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid post URL"))
 			return
 		}
 
 		if err := saveAllCompletedDeals(s, inf); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(bonus.InfluencerID))
+		misc.WriteJSON(c, 200, misc.StatusOK(bonus.InfluencerID))
 	}
 }
 
@@ -801,25 +801,25 @@ func setFraud(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fraud, err := strconv.ParseBool(c.Params.ByName("state"))
 		if err != nil {
-			c.JSON(400, misc.StatusErr("Please submit a valid fraud state"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please submit a valid fraud state"))
 			return
 		}
 
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		cid := c.Param("campaignId")
 		if cid == "" {
-			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid campaign id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -830,13 +830,13 @@ func setFraud(s *Server) gin.HandlerFunc {
 		}
 
 		if err := saveAllActiveDeals(s, inf); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
 		s.Notify("Deal post allowed!", fmt.Sprintf("Deal for campaign %s and influencer %s has been allowed", cid, infId))
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -850,13 +850,13 @@ func setAgency(s *Server) gin.HandlerFunc {
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
 		talentAgency := s.auth.GetTalentAgency(agId)
 		if talentAgency == nil {
-			c.JSON(500, misc.StatusErr(fmt.Sprintf("Could not find talent agency %s", inf.AgencyId)))
+			misc.WriteJSON(c, 500, misc.StatusErr(fmt.Sprintf("Could not find talent agency %s", inf.AgencyId)))
 			return
 		}
 
@@ -865,11 +865,11 @@ func setAgency(s *Server) gin.HandlerFunc {
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -933,13 +933,13 @@ func getIncompleteInfluencers(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, influencers)
+		misc.WriteJSON(c, 200, influencers)
 	}
 }
 
 func getCategories(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(200, s.Categories)
+		misc.WriteJSON(c, 200, s.Categories)
 	}
 }
 
@@ -1049,7 +1049,7 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 				influencers = append(influencers, tmpGreedy)
 			}
 		}
-		c.JSON(200, influencers)
+		misc.WriteJSON(c, 200, influencers)
 	}
 }
 
@@ -1068,7 +1068,7 @@ func requestCheck(s *Server) gin.HandlerFunc {
 		// Delete the check and entry, send to lob
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
@@ -1076,32 +1076,32 @@ func requestCheck(s *Server) gin.HandlerFunc {
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
 		if inf.IsBanned() {
-			c.JSON(500, misc.StatusErr(ErrSorry.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrSorry.Error()))
 			return
 		}
 
 		if inf.PendingPayout < 10 {
-			c.JSON(500, misc.StatusErr(ErrInvalidFunds.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrInvalidFunds.Error()))
 			return
 		}
 
 		if inf.LastCheck > 0 && inf.LastCheck > now-THIRTY_DAYS {
-			c.JSON(500, misc.StatusErr(ErrThirtyDays.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrThirtyDays.Error()))
 			return
 		}
 
 		if inf.Address == nil {
-			c.JSON(500, misc.StatusErr(ErrAddress.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrAddress.Error()))
 			return
 		}
 
 		// if c.Query("skipTax") != "1" && !inf.HasSigned {
-		// 	c.JSON(500, misc.StatusErr(ErrTax.Error()))
+		// 	misc.WriteJSON(c, 500, misc.StatusErr(ErrTax.Error()))
 		// 	return
 		// }
 
@@ -1111,14 +1111,14 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			// Save the influencer
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
 		s.Notify("Check requested!", fmt.Sprintf("%s just requested a check of %f! Please check admin dash.", inf.Name, inf.PendingPayout))
 
 		// Insert log
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -1127,30 +1127,30 @@ func requestCheck(s *Server) gin.HandlerFunc {
 // 		// Delete the check and entry, send to lob
 // 		infId := c.Param("influencerId")
 // 		if infId == "" {
-// 			c.JSON(500, misc.StatusErr("invalid influencer id"))
+// 			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 // 			return
 // 		}
 
 // 		inf, ok := s.auth.Influencers.Get(infId)
 // 		if !ok {
-// 			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+// 			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 // 			return
 // 		}
 
 // 		if inf.SignatureId != "" {
-// 			c.JSON(500, misc.StatusErr("Tax documents have already been sent! Please fill those out and allow us 4-8 hours to approve your information. Thank-you!"))
+// 			misc.WriteJSON(c, 500, misc.StatusErr("Tax documents have already been sent! Please fill those out and allow us 4-8 hours to approve your information. Thank-you!"))
 // 			return
 // 		}
 
 // 		if inf.Address == nil {
-// 			c.JSON(500, misc.StatusErr(ErrAddress.Error()))
+// 			misc.WriteJSON(c, 500, misc.StatusErr(ErrAddress.Error()))
 // 			return
 // 		}
 
 // 		sigId, err := hellosign.SendSignatureRequest(inf.Name, inf.EmailAddress, inf.Id, inf.IsAmerican(), s.Cfg.Sandbox)
 // 		if err != nil {
 // 			s.Alert("Hellosign signature request failed for "+inf.Id, err)
-// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 // 			return
 // 		}
 
@@ -1161,11 +1161,11 @@ func requestCheck(s *Server) gin.HandlerFunc {
 // 			// Save the influencer
 // 			return saveInfluencer(s, tx, inf)
 // 		}); err != nil {
-// 			c.JSON(500, misc.StatusErr(err.Error()))
+// 			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 // 			return
 // 		}
 // 		// Insert log
-// 		c.JSON(200, misc.StatusOK(infId))
+// 		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 // 	}
 // }
 
@@ -1174,13 +1174,13 @@ func emptyPayout(s *Server) gin.HandlerFunc {
 		// Empties out influencer's pending payout
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -1192,11 +1192,11 @@ func emptyPayout(s *Server) gin.HandlerFunc {
 			// Save the influencer
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -1245,11 +1245,11 @@ func getPendingPerks(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, perks)
+		misc.WriteJSON(c, 200, perks)
 	}
 }
 
@@ -1262,24 +1262,24 @@ func approveCheck(s *Server) gin.HandlerFunc {
 		// Maps to label "CHECK PAYOUTS" on admin frontend
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
 		if inf.RequestedCheck == 0 || inf.PendingPayout == 0 {
-			c.JSON(500, misc.StatusErr(ErrPayout.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrPayout.Error()))
 			return
 		}
 
 		check, err := lob.CreateCheck(inf.Id, inf.Name, inf.Address, inf.PendingPayout, s.Cfg)
 		if err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -1292,7 +1292,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			// Save the influencer
 			return saveInfluencer(s, tx, inf)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -1300,7 +1300,7 @@ func approveCheck(s *Server) gin.HandlerFunc {
 			s.Alert("Failed to email check information to influencer "+inf.Id, err)
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -1309,19 +1309,19 @@ func approvePerk(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		cid := c.Param("campaignId")
 		if cid == "" {
-			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid campaign id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -1334,11 +1334,11 @@ func approvePerk(s *Server) gin.HandlerFunc {
 		}
 
 		if err := saveAllActiveDeals(s, inf); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 	}
 }
 
@@ -1404,7 +1404,7 @@ func getInventoryByState(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, inv)
+		misc.WriteJSON(c, 200, inv)
 	}
 }
 
@@ -1412,7 +1412,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		platform := c.Param("platform")
 		if platform == "" {
-			c.JSON(500, misc.StatusErr("invalid platform id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid platform id"))
 			return
 		}
 
@@ -1447,7 +1447,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			c.JSON(200, out)
+			misc.WriteJSON(c, 200, out)
 		} else if c.Query("yield") != "" {
 			type Dummy struct {
 				Yield          float64 `json:"yield"`
@@ -1521,7 +1521,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 						case "insta":
 							inf, err := influencer.New("", "", "", username, "", "", false, false, "", "", "", "", "", []string{}, nil, 0, s.Cfg)
 							if err != nil || inf == nil || inf.Instagram == nil {
-								c.JSON(500, misc.StatusErr("Error for username: "+username))
+								misc.WriteJSON(c, 500, misc.StatusErr("Error for username: "+username))
 								return
 							}
 							maxYield := influencer.GetMaxYield(dummyCmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
@@ -1537,7 +1537,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 
 			}
 
-			c.JSON(200, out)
+			misc.WriteJSON(c, 200, out)
 		} else {
 			out := make(map[string]bool)
 
@@ -1560,7 +1560,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			c.JSON(200, out)
+			misc.WriteJSON(c, 200, out)
 
 		}
 	}

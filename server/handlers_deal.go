@@ -25,11 +25,11 @@ func getDealsForCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
+			misc.WriteJSON(c, 500, misc.StatusErr(fmt.Sprintf("Failed for campaign")))
 			return
 		}
 
-		c.JSON(200, getDealsForCmp(s, cmp, false))
+		misc.WriteJSON(c, 200, getDealsForCmp(s, cmp, false))
 	}
 }
 
@@ -88,7 +88,7 @@ func getMatchesForKeyword(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, matches)
+		misc.WriteJSON(c, 200, matches)
 	}
 }
 
@@ -101,19 +101,19 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 		)
 
 		if len(infId) == 0 {
-			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Influencer ID undefined"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
 		deals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, "", "",
 			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
-		c.JSON(200, deals)
+		misc.WriteJSON(c, 200, deals)
 	}
 }
 
@@ -128,32 +128,32 @@ func getDeal(s *Server) gin.HandlerFunc {
 		)
 
 		if len(infId) == 0 {
-			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Influencer ID undefined"))
 			return
 		}
 
 		if len(dealId) == 0 {
-			c.JSON(500, misc.StatusErr("Deal ID undefined"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Deal ID undefined"))
 			return
 		}
 
 		if len(campaignId) == 0 {
-			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Campaign ID undefined"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
 		deals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, campaignId, dealId, nil, true, s.Cfg)
 		if len(deals) != 1 {
-			c.JSON(500, misc.StatusErr("Deal no longer available"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Deal no longer available"))
 			return
 		}
-		c.JSON(200, deals[0])
+		misc.WriteJSON(c, 200, deals[0])
 	}
 }
 
@@ -171,18 +171,18 @@ func submitPost(s *Server) gin.HandlerFunc {
 		)
 
 		if len(infId) == 0 {
-			c.JSON(500, misc.StatusErr("Influencer ID undefined"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Influencer ID undefined"))
 			return
 		}
 
 		if len(campaignId) == 0 {
-			c.JSON(500, misc.StatusErr("Campaign ID undefined"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Campaign ID undefined"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -195,25 +195,25 @@ func submitPost(s *Server) gin.HandlerFunc {
 		}
 
 		if found == nil {
-			c.JSON(500, misc.StatusErr("Deal not found"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Deal not found"))
 			return
 		}
 
 		// Does this influencer even need to submit a submission?
 		user := s.auth.GetUser(found.AdvertiserId)
 		if user == nil || user.Advertiser == nil {
-			c.JSON(500, misc.StatusErr("Advertiser not found"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Advertiser not found"))
 			return
 		}
 
 		cmp, ok := s.Campaigns.Get(found.CampaignId)
 		if !ok {
-			c.JSON(400, misc.StatusErr("Campaign undefined"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Campaign undefined"))
 			return
 		}
 
 		if !cmp.RequiresSubmission {
-			c.JSON(400, misc.StatusErr("Deal does not require prior submission. You are free to post!"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Deal does not require prior submission. You are free to post!"))
 			return
 		}
 
@@ -223,18 +223,18 @@ func submitPost(s *Server) gin.HandlerFunc {
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&sub); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
 		if len(sub.ImageData) == 0 && len(sub.ContentURL) == 0 {
 			// No media content sent!
-			c.JSON(400, misc.StatusErr("No media content!"))
+			misc.WriteJSON(c, 400, misc.StatusErr("No media content!"))
 			return
 		}
 
 		if len(sub.Message) == 0 {
-			c.JSON(400, misc.StatusErr("No message content!"))
+			misc.WriteJSON(c, 400, misc.StatusErr("No message content!"))
 			return
 		}
 
@@ -249,7 +249,7 @@ func submitPost(s *Server) gin.HandlerFunc {
 				}
 				filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, pre+found.Id), imgData, pre+found.Id, "", 750, 389)
 				if err != nil {
-					c.JSON(400, misc.StatusErr(err.Error()))
+					misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 					return
 				}
 
@@ -262,7 +262,7 @@ func submitPost(s *Server) gin.HandlerFunc {
 		found.Submission = &sub
 
 		if err := saveAllActiveDeals(s, inf); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -286,7 +286,7 @@ func submitPost(s *Server) gin.HandlerFunc {
 
 		s.Notify("Deal post submitted!", fmt.Sprintf("Influencer %s has submitted post for %s", infId, campaignId))
 
-		c.JSON(200, found)
+		misc.WriteJSON(c, 200, found)
 	}
 }
 
@@ -302,13 +302,13 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		)
 
 		if _, ok := platform.ALL_PLATFORMS[mediaPlatform]; !ok {
-			c.JSON(500, misc.StatusErr("This platform was not found"))
+			misc.WriteJSON(c, 500, misc.StatusErr("This platform was not found"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -336,7 +336,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 		}
 
 		if !found {
-			c.JSON(500, misc.StatusErr("Unforunately, the requested deal is no longer available!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Unforunately, the requested deal is no longer available!"))
 			return
 		}
 
@@ -384,7 +384,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 
 					user := s.auth.GetUser(cmp.AdvertiserId)
 					if user == nil || user.Advertiser == nil {
-						c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+						misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 						return
 					}
 
@@ -451,7 +451,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -463,7 +463,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			}
 		}()
 
-		c.JSON(200, foundDeal)
+		misc.WriteJSON(c, 200, foundDeal)
 	}
 }
 
@@ -471,7 +471,7 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -480,7 +480,7 @@ func getDealsAssignedToInfluencer(s *Server) gin.HandlerFunc {
 			deals = append(deals, d)
 		}
 
-		c.JSON(200, deals)
+		misc.WriteJSON(c, 200, deals)
 	}
 }
 
@@ -491,7 +491,7 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		campaignId := c.Param("campaignId")
 
 		if err := clearDeal(s, dealId, influencerId, campaignId, false); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -502,12 +502,12 @@ func unassignDeal(s *Server) gin.HandlerFunc {
 		if ok && cmp != nil {
 			if err := inf.DealUpdate(cmp, s.Cfg); err != nil {
 				s.Alert("Failed to give influencer a deal update: "+inf.Id, err)
-				c.JSON(500, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 				return
 			}
 		}
 
-		c.JSON(200, misc.StatusOK(dealId))
+		misc.WriteJSON(c, 200, misc.StatusOK(dealId))
 	}
 }
 
@@ -523,7 +523,7 @@ func sendInstructions(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, misc.StatusOK(dealId))
+		misc.WriteJSON(c, 200, misc.StatusOK(dealId))
 	}
 }
 
@@ -532,11 +532,11 @@ func getDealsCompletedByInfluencer(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, inf.CompletedDeals)
+		misc.WriteJSON(c, 200, inf.CompletedDeals)
 	}
 }
 
@@ -583,7 +583,7 @@ func getAllActiveDeals(s *Server) gin.HandlerFunc {
 				}
 			}
 		}
-		c.JSON(200, deals)
+		misc.WriteJSON(c, 200, deals)
 	}
 }
 
@@ -598,7 +598,7 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 		infId := c.Param("influencerId")
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
 			return
 		}
 
@@ -611,7 +611,7 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 		}
 
 		if d == nil {
-			c.JSON(500, misc.StatusErr("Invalid deal!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid deal!"))
 			return
 		}
 
@@ -670,10 +670,10 @@ func unapproveDeal(s *Server) gin.HandlerFunc {
 
 			return nil
 		}); err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(inf.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(inf.Id))
 	}
 }

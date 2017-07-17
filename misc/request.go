@@ -91,6 +91,6 @@ func StatusErr(msg string) gin.H {
 func AbortWithErr(c *gin.Context, code int, err error) {
 	m := StatusErr(err.Error())
 	m["code"] = code
-	c.JSON(code, m)
+	WriteJSON(c, code, m)
 	c.Abort()
 }

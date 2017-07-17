@@ -27,13 +27,13 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 		infId := c.Param("influencerId")
 		campaignId := c.Param("campaignId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -44,7 +44,7 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 			}
 		}
 		if found == nil {
-			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
 		}
 
@@ -54,7 +54,7 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 			case platform.Twitter:
 				if inf.Twitter != nil && len(inf.Twitter.LatestTweets) > 0 {
 					if err = s.ApproveTweet(inf.Twitter.LatestTweets[0], found); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 					break
@@ -62,7 +62,7 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 			case platform.Facebook:
 				if inf.Facebook != nil && len(inf.Facebook.LatestPosts) > 0 {
 					if err = s.ApproveFacebook(inf.Facebook.LatestPosts[0], found); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 					break
@@ -70,7 +70,7 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 			case platform.Instagram:
 				if inf.Instagram != nil && len(inf.Instagram.LatestPosts) > 0 {
 					if err = s.ApproveInstagram(inf.Instagram.LatestPosts[0], found); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 					break
@@ -78,14 +78,14 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 			case platform.YouTube:
 				if inf.YouTube != nil && len(inf.YouTube.LatestPosts) > 0 {
 					if err = s.ApproveYouTube(inf.YouTube.LatestPosts[0], found); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 					break
 				}
 			}
 		}
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 
 	}
 }
@@ -111,37 +111,37 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err := json.NewDecoder(c.Request.Body).Decode(&fApp); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
 		postUrl := fApp.URL
 		if postUrl == "" {
-			c.JSON(400, misc.StatusErr("invalid post url"))
+			misc.WriteJSON(c, 400, misc.StatusErr("invalid post url"))
 			return
 		}
 
 		infId := fApp.InfluencerID
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("invalid influencer id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid influencer id"))
 			return
 		}
 
 		campaignId := fApp.CampaignID
 		cmp, ok := s.Campaigns.Get(campaignId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("invalid campaign id"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid campaign id"))
 			return
 		}
 
 		if !cmp.IsValid() {
-			c.JSON(500, misc.StatusErr("invalid campaign"))
+			misc.WriteJSON(c, 500, misc.StatusErr("invalid campaign"))
 			return
 		}
 
@@ -154,13 +154,13 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 		}
 
 		if foundDeal == nil {
-			c.JSON(500, misc.StatusErr("no available deals left for this campaign"))
+			misc.WriteJSON(c, 500, misc.StatusErr("no available deals left for this campaign"))
 			return
 		}
 
 		store, _ := budget.GetCampaignStoreFromDb(s.db, s.Cfg, campaignId, cmp.AdvertiserId)
 		if store.IsClosed(&cmp) {
-			c.JSON(500, misc.StatusErr("campaign has no spendable left"))
+			misc.WriteJSON(c, 500, misc.StatusErr("campaign has no spendable left"))
 			return
 		}
 
@@ -179,7 +179,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 		switch fApp.Platform {
 		case platform.Twitter:
 			if inf.Twitter == nil {
-				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				misc.WriteJSON(c, 500, misc.StatusErr("Influencer does not have this platform"))
 				return
 			}
 			if err = inf.Twitter.UpdateData(s.Cfg, true); err != nil {
@@ -191,14 +191,14 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 				if post.PostURL == postUrl {
 					// So we just found the post.. lets accept!
 					if err = s.ApproveTweet(post, foundDeal); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 				}
 			}
 		case platform.Instagram:
 			if inf.Instagram == nil {
-				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				misc.WriteJSON(c, 500, misc.StatusErr("Influencer does not have this platform"))
 				return
 			}
 			if err = inf.Instagram.UpdateData(s.Cfg, true); err != nil {
@@ -210,14 +210,14 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 				if post.PostURL == postUrl {
 					// So we just found the post.. lets accept!
 					if err = s.ApproveInstagram(post, foundDeal); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 				}
 			}
 		case platform.YouTube:
 			if inf.YouTube == nil {
-				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				misc.WriteJSON(c, 500, misc.StatusErr("Influencer does not have this platform"))
 				return
 			}
 			if err = inf.YouTube.UpdateData(s.Cfg, true); err != nil {
@@ -229,14 +229,14 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 				if post.PostURL == postUrl {
 					// So we just found the post.. lets accept!
 					if err = s.ApproveYouTube(post, foundDeal); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 				}
 			}
 		case platform.Facebook:
 			if inf.Facebook == nil {
-				c.JSON(500, misc.StatusErr("Influencer does not have this platform"))
+				misc.WriteJSON(c, 500, misc.StatusErr("Influencer does not have this platform"))
 				return
 			}
 			if err = inf.Facebook.UpdateData(s.Cfg, true); err != nil {
@@ -248,7 +248,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 				if post.PostURL == postUrl {
 					// So we just found the post.. lets accept!
 					if err = s.ApproveFacebook(post, foundDeal); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 				}
@@ -258,7 +258,7 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(infId))
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
 		return
 	}
 }
@@ -270,11 +270,11 @@ func forceDeplete(s *Server) gin.HandlerFunc {
 		}
 
 		if _, err := depleteBudget(s); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -288,26 +288,26 @@ func forceBill(s *Server) gin.HandlerFunc {
 
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, ErrCampaign)
+			misc.WriteJSON(c, 500, ErrCampaign)
 			return
 		}
 
 		ag := s.auth.GetAdAgency(cmp.AgencyId)
 		if ag == nil {
-			c.JSON(500, ErrNoAgency)
+			misc.WriteJSON(c, 500, ErrNoAgency)
 			return
 		}
 
 		adv := s.auth.GetAdvertiser(cmp.AdvertiserId)
 		if adv == nil {
-			c.JSON(500, ErrCampaign)
+			misc.WriteJSON(c, 500, ErrCampaign)
 			return
 		}
 
 		// Lets make sure they have an active subscription!
 		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, cmp)
 		if err != nil || !allowed {
-			c.JSON(500, ErrSub)
+			misc.WriteJSON(c, 500, ErrSub)
 			return
 		}
 
@@ -317,7 +317,7 @@ func forceBill(s *Server) gin.HandlerFunc {
 			}
 			return nil
 		}); err != nil {
-			c.JSON(500, err)
+			misc.WriteJSON(c, 500, err)
 			return
 		}
 
@@ -327,10 +327,10 @@ func forceBill(s *Server) gin.HandlerFunc {
 			addDealsToCampaign(cmp, s, tx, cmp.Budget)
 			return saveCampaign(tx, cmp, s)
 		}); err != nil {
-			c.JSON(500, err)
+			misc.WriteJSON(c, 500, err)
 			return
 		}
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -375,11 +375,11 @@ func forceTimeline(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -391,14 +391,14 @@ func forceEngine(s *Server) gin.HandlerFunc {
 
 		if s.Cfg.Sandbox {
 			if err := run(s); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 				return
 			}
 		} else {
 			go run(s)
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -410,11 +410,11 @@ func forceEmail(s *Server) gin.HandlerFunc {
 
 		_, err := emailDeals(s)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -426,11 +426,11 @@ func forceScrapEmail(s *Server) gin.HandlerFunc {
 
 		count, err := emailScraps(s)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, gin.H{"count": count})
+		misc.WriteJSON(c, 200, gin.H{"count": count})
 	}
 }
 
@@ -442,10 +442,10 @@ func forceAttributer(s *Server) gin.HandlerFunc {
 
 		count, err := attributer(s, true)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, gin.H{"count": count})
+		misc.WriteJSON(c, 200, gin.H{"count": count})
 	}
 }

@@ -674,7 +674,7 @@ func isSecureAdmin(c *gin.Context, s *Server) bool {
 	if c.Query("pw") == "muchodinero" || s.Cfg.Sandbox {
 		return true
 	} else {
-		c.JSON(500, misc.StatusErr("GET OUDDA HEEYAH!"))
+		misc.WriteJSON(c, 500, misc.StatusErr("GET OUDDA HEEYAH!"))
 		return false
 	}
 }
@@ -1202,7 +1202,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		changePass = false
 	)
 
-	if err := c.BindJSON(&incUser); err != nil {
+	if err := misc.BindJSON(c, &incUser); err != nil {
 		misc.AbortWithErr(c, 400, err)
 		return
 	}
@@ -1299,7 +1299,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		return
 	}
 
-	c.JSON(200, misc.StatusOK(id))
+	misc.WriteJSON(c, 200, misc.StatusOK(id))
 }
 
 func getAllCampaigns(db *bolt.DB, cfg *config.Config) []*common.Campaign {

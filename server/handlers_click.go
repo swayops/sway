@@ -29,13 +29,13 @@ func click(s *Server) gin.HandlerFunc {
 			v = tx.Bucket([]byte(s.Cfg.Bucket.URL)).Get([]byte(id))
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(ErrID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrID.Error()))
 			return
 		}
 
 		parts := strings.Split(string(v), "::")
 		if len(parts) != 2 {
-			c.JSON(500, misc.StatusErr(ErrID.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrID.Error()))
 			return
 		}
 
@@ -44,13 +44,13 @@ func click(s *Server) gin.HandlerFunc {
 
 		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, misc.StatusErr(ErrCampaign.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrCampaign.Error()))
 			return
 		}
 
 		foundDeal, ok := cmp.Deals[dealId]
 		if !ok || foundDeal == nil {
-			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
 		}
 
@@ -60,7 +60,7 @@ func click(s *Server) gin.HandlerFunc {
 		}
 
 		if foundDeal.Link == "" {
-			c.JSON(500, misc.StatusErr(ErrDealNotFound.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
 		}
 
@@ -193,7 +193,7 @@ func getTotalClicks(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, total)
+		misc.WriteJSON(c, 200, total)
 	}
 }
 
@@ -242,6 +242,6 @@ func exportClicks(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		c.JSON(200, total)
+		misc.WriteJSON(c, 200, total)
 	}
 }

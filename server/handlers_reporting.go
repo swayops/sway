@@ -21,19 +21,19 @@ func getCampaignReport(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cid := c.Param("cid")
 		if cid == "" {
-			c.JSON(500, misc.StatusErr("Please pass in a valid campaign ID"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Please pass in a valid campaign ID"))
 			return
 		}
 
 		from := reporting.GetReportDate(c.Param("from"))
 		to := reporting.GetReportDate(c.Param("to"))
 		if from.IsZero() || to.IsZero() || to.Before(from) {
-			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
 		if err := reporting.GenerateCampaignReport(c.Writer, s.db, cid, from, to, s.Cfg); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 		}
 	}
 }
@@ -174,11 +174,11 @@ func getAdminStats(s *Server) gin.HandlerFunc {
 
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, a)
+		misc.WriteJSON(c, 200, a)
 	}
 }
 
@@ -203,12 +203,12 @@ func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
 		common.SetLinkTitles(cmpTimeline)
-		c.JSON(200, cmpTimeline)
+		misc.WriteJSON(c, 200, cmpTimeline)
 	}
 }
 
@@ -223,7 +223,7 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 		)
 
 		if start == 0 {
-			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
@@ -241,7 +241,7 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -250,7 +250,7 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 			cmpStats = append(cmpStats, stats)
 		}
 
-		c.JSON(200, reporting.Merge(cmpStats))
+		misc.WriteJSON(c, 200, reporting.Merge(cmpStats))
 	}
 }
 
@@ -258,11 +258,11 @@ func getCampaignStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		days, err := strconv.Atoi(c.Param("days"))
 		if err != nil || days == 0 {
-			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
-		c.JSON(200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days, 0))
+		misc.WriteJSON(c, 200, reporting.GetCampaignBreakdown(c.Param("cid"), s.db, s.Cfg, days, 0))
 	}
 }
 
@@ -270,17 +270,17 @@ func getInfluencerStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		days, err := strconv.Atoi(c.Param("days"))
 		if err != nil || days == 0 {
-			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Error retrieving influencer!"))
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
+		misc.WriteJSON(c, 200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", ""))
 	}
 }
 
@@ -288,17 +288,17 @@ func getCampaignInfluencerStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		days, err := strconv.Atoi(c.Param("days"))
 		if err != nil || days == 0 {
-			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(c.Param("infId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Error retrieving influencer!"))
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
+		misc.WriteJSON(c, 200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, c.Param("cid"), ""))
 	}
 }
 
@@ -306,17 +306,17 @@ func getAgencyInfluencerStats(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		days, err := strconv.Atoi(c.Param("days"))
 		if err != nil || days == 0 {
-			c.JSON(500, misc.StatusErr("Invalid date range!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid date range!"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(c.Param("infId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Error retrieving influencer!"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Error retrieving influencer!"))
 			return
 		}
 
-		c.JSON(200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
+		misc.WriteJSON(c, 200, reporting.GetInfluencerBreakdown(inf, s.Cfg, days, inf.Rep, inf.CurrentRep, "", c.Param("id")))
 	}
 }
 
@@ -386,7 +386,7 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adv := s.auth.GetAdvertiser(c.Param("id"))
 		if adv == nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -497,11 +497,11 @@ func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, feed)
+		misc.WriteJSON(c, 200, feed)
 	}
 }
 
@@ -574,13 +574,13 @@ func syncAllStats(s *Server) gin.HandlerFunc {
 			saveAllCompletedDeals(s, inf)
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
 func getServerStats(s *Server) gin.HandlerFunc {
 	// Returns stored server stats
 	return func(c *gin.Context) {
-		c.JSON(200, s.Stats.Get())
+		misc.WriteJSON(c, 200, s.Stats.Get())
 	}
 }

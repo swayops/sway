@@ -30,7 +30,7 @@ func getTalentAgency(s *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, auth.ErrInvalidAgencyID)
 			return
 		}
-		c.JSON(200, ag)
+		misc.WriteJSON(c, 200, ag)
 	}
 }
 
@@ -53,7 +53,7 @@ func getAllTalentAgencies(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		})
-		c.JSON(200, all)
+		misc.WriteJSON(c, 200, all)
 	}
 }
 
@@ -75,7 +75,7 @@ func getAdAgency(s *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, auth.ErrInvalidAgencyID)
 			return
 		}
-		c.JSON(200, ag)
+		misc.WriteJSON(c, 200, ag)
 	}
 }
 
@@ -106,7 +106,7 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 		for _, u := range all {
 			u.SubCount = counts[u.ID]
 		}
-		c.JSON(200, all)
+		misc.WriteJSON(c, 200, all)
 	}
 }
 
@@ -150,7 +150,7 @@ func userProfile(srv *Server) gin.HandlerFunc {
 		cu = cu.Trim()
 
 		if cu.Advertiser == nil { // return the user if it isn't an advertiser
-			c.JSON(200, cu)
+			misc.WriteJSON(c, 200, cu)
 			return
 		}
 
@@ -185,6 +185,6 @@ func userProfile(srv *Server) gin.HandlerFunc {
 			})
 		})
 
-		c.JSON(200, &advWithCampaigns)
+		misc.WriteJSON(c, 200, &advWithCampaigns)
 	}
 }

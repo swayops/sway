@@ -29,17 +29,17 @@ func getAdvertiser(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		adv := s.auth.GetAdvertiser(c.Param("id"))
 		if adv == nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
 		adAg := s.auth.GetAdAgency(adv.AgencyID)
 		if adAg == nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, &AdvertiserGet{adv, adAg.IsIO})
+		misc.WriteJSON(c, 200, &AdvertiserGet{adv, adAg.IsIO})
 	}
 }
 
@@ -85,7 +85,7 @@ func getAdvertisersByAgency(s *Server) gin.HandlerFunc {
 		for _, adv := range advertisers {
 			adv.NumCampaigns = counts[adv.ID]
 		}
-		c.JSON(200, advertisers)
+		misc.WriteJSON(c, 200, advertisers)
 	}
 }
 
@@ -95,13 +95,13 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 		id := c.Param("id")
 		adv := s.auth.GetAdvertiser(id)
 		if adv == nil {
-			c.JSON(500, misc.StatusErr("Please provide a valid advertiser"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Please provide a valid advertiser"))
 			return
 		}
 
 		infId := c.Param("influencerId")
 		if infId == "" {
-			c.JSON(500, misc.StatusErr("Please provide a valid influencer"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Please provide a valid influencer"))
 			return
 		}
 
@@ -120,7 +120,7 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 			adv.Blacklist[infId] = true
 			return user.StoreWithData(s.auth, tx, adv)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -146,11 +146,11 @@ func advertiserBan(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(id))
+		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
@@ -165,34 +165,34 @@ func approveSubmission(s *Server) gin.HandlerFunc {
 
 		adv := s.auth.GetAdvertiser(advertiserId)
 		if adv == nil {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser"))
 			return
 		}
 
 		if len(infId) == 0 {
-			c.JSON(400, misc.StatusErr("Influencer ID undefined"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Influencer ID undefined"))
 			return
 		}
 
 		if len(campaignId) == 0 {
-			c.JSON(400, misc.StatusErr("Campaign ID undefined"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Campaign ID undefined"))
 			return
 		}
 
 		cmp, ok := s.Campaigns.Get(campaignId)
 		if !ok {
-			c.JSON(400, misc.StatusErr("Campaign not found"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Campaign not found"))
 			return
 		}
 
 		if !cmp.RequiresSubmission {
-			c.JSON(400, misc.StatusErr("Campaign does not require submission"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Campaign does not require submission"))
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(infId)
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -204,24 +204,24 @@ func approveSubmission(s *Server) gin.HandlerFunc {
 		}
 
 		if found == nil || found.Submission == nil {
-			c.JSON(500, misc.StatusErr("Deal and submission not found"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Deal and submission not found"))
 			return
 		}
 
 		if found.Submission.Approved {
-			c.JSON(500, misc.StatusErr("Submission already approved"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Submission already approved"))
 			return
 		}
 
 		found.Submission.Approved = true
 
 		if err := saveAllActiveDeals(s, inf); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
 		if err := inf.SubmissionApproved(found, s.Cfg); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -233,6 +233,6 @@ func approveSubmission(s *Server) gin.HandlerFunc {
 			}
 		}()
 
-		c.JSON(200, misc.StatusOK(campaignId))
+		misc.WriteJSON(c, 200, misc.StatusOK(campaignId))
 	}
 }

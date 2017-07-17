@@ -22,18 +22,18 @@ func audience(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&aud); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body"))
 			return
 		}
 
 		if len(aud.Members) == 0 {
-			c.JSON(400, misc.StatusErr("Please provide a valid audience list"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid audience list"))
 			return
 		}
 		aud.Members = common.TrimEmails(aud.Members)
 
 		if aud.Name == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid audience name"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid audience name"))
 			return
 		}
 
@@ -43,21 +43,21 @@ func audience(s *Server) gin.HandlerFunc {
 				aud.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Audience)
 				return
 			}); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 				return
 			}
 		}
 
 		if aud.ImageData != "" {
 			if !strings.HasPrefix(aud.ImageData, "data:image/") {
-				c.JSON(400, misc.StatusErr("Please provide a valid audience image"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid audience image"))
 				return
 			}
 
 			// NOTE FOR Ahmed: Change min size and height as per ur liking
 			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Audience, aud.Id), aud.ImageData, aud.Id, "", 750, 389)
 			if err != nil {
-				c.JSON(400, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 				return
 			}
 
@@ -82,7 +82,7 @@ func audience(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(aud.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(aud.Id))
 	}
 }
 
@@ -90,7 +90,7 @@ func getAudiences(s *Server) gin.HandlerFunc {
 	// Optional "ID" param to filter to one audience, otherwise it returns
 	// all audiences
 	return func(c *gin.Context) {
-		c.JSON(200, s.Audiences.GetStore(c.Param("id")))
+		misc.WriteJSON(c, 200, s.Audiences.GetStore(c.Param("id")))
 	}
 }
 
@@ -107,6 +107,6 @@ func delAudience(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }

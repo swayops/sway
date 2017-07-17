@@ -149,7 +149,7 @@ func (a *Auth) SignOutHandler(c *gin.Context) {
 	w, domain := c.Writer, a.cfg.Domain
 	misc.DeleteCookie(w, domain, "token", !a.cfg.Sandbox)
 	misc.DeleteCookie(w, domain, "key", !a.cfg.Sandbox)
-	c.JSON(200, misc.StatusOK(""))
+	misc.WriteJSON(c, 200, misc.StatusOK(""))
 }
 
 func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
@@ -192,9 +192,9 @@ func signInHelper(a *Auth, c *gin.Context, email, pass string) (_ bool) {
 	misc.SetCookie(w, domain, "key", mac, !a.cfg.Sandbox, age)
 
 	if perm {
-		c.JSON(200, misc.StatusOKExtended(login.UserID, gin.H{"x-apikey": tok + mac}))
+		misc.WriteJSON(c, 200, misc.StatusOKExtended(login.UserID, gin.H{"x-apikey": tok + mac}))
 	} else {
-		c.JSON(200, misc.StatusOK(login.UserID))
+		misc.WriteJSON(c, 200, misc.StatusOK(login.UserID))
 	}
 
 	return true
@@ -205,7 +205,7 @@ func (a *Auth) SignInHandler(c *gin.Context) {
 		Email    string `json:"email" form:"email"`
 		Password string `json:"pass" form:"pass"`
 	}
-	if err := c.Bind(&li); err != nil {
+	if err := misc.BindJSON(c, &li); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
@@ -291,7 +291,7 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 
 func (a *Auth) SignUpHandler(c *gin.Context) {
 	var sup signupUser
-	if err := c.Bind(&sup); err != nil {
+	if err := misc.BindJSON(c, &sup); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
@@ -301,7 +301,7 @@ func (a *Auth) SignUpHandler(c *gin.Context) {
 	if c.Query("autologin") != "" {
 		signInHelper(a, c, sup.Email, sup.Password)
 	} else {
-		c.JSON(200, misc.StatusOK(sup.ID))
+		misc.WriteJSON(c, 200, misc.StatusOK(sup.ID))
 	}
 }
 
@@ -316,7 +316,7 @@ func (a *Auth) AddSubUserHandler(c *gin.Context) {
 		id = c.Param("id")
 	)
 
-	if err := c.Bind(&su); err != nil {
+	if err := misc.BindJSON(c, &su); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
@@ -344,7 +344,7 @@ func (a *Auth) AddSubUserHandler(c *gin.Context) {
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 	} else {
-		c.JSON(200, misc.StatusOK(id))
+		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
@@ -362,7 +362,7 @@ func (a *Auth) DelSubUserHandler(c *gin.Context) {
 	}); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 	} else {
-		c.JSON(200, misc.StatusOK(id))
+		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
@@ -382,7 +382,7 @@ func (a *Auth) ListSubUsersHandler(c *gin.Context) {
 		return nil
 	})
 
-	c.JSON(200, out)
+	misc.WriteJSON(c, 200, out)
 }
 
 const resetPasswordUrl = "%s/resetPassword/%s"
@@ -391,7 +391,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 	var req struct {
 		Email string `json:"email"`
 	}
-	if c.BindJSON(&req) != nil || len(req.Email) == 0 {
+	if misc.BindJSON(c, &req) != nil || len(req.Email) == 0 {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
 		return
 	}
@@ -428,7 +428,7 @@ func (a *Auth) ReqResetHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, misc.StatusOK(""))
+	misc.WriteJSON(c, 200, misc.StatusOK(""))
 }
 
 func (a *Auth) ResetHandler(c *gin.Context) {
@@ -439,7 +439,7 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 		Password1 string `json:"pass1"`
 	}
 
-	if c.BindJSON(&req) != nil || req.Email == "" || req.Token == "" {
+	if misc.BindJSON(c, &req) != nil || req.Email == "" || req.Token == "" {
 		misc.AbortWithErr(c, http.StatusBadRequest, ErrInvalidRequest)
 		return
 	}
@@ -456,7 +456,7 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, misc.StatusOK(""))
+	misc.WriteJSON(c, 200, misc.StatusOK(""))
 }
 
 // this returns a perma API key for the logged in user, the user can pass ?renew=true to generate a new key.
@@ -467,7 +467,7 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 			Email    string `json:"email" form:"email"`
 			Password string `json:"pass" form:"pass"`
 		}
-		if err := c.Bind(&li); err != nil {
+		if err := misc.BindJSON(c, &li); err != nil {
 			misc.AbortWithErr(c, http.StatusBadRequest, err)
 			return
 		}
@@ -517,5 +517,5 @@ func (a *Auth) APIKeyHandler(c *gin.Context) {
 
 	msg := misc.StatusOK(u.ID)
 	msg["key"] = u.APIKey
-	c.JSON(200, msg)
+	misc.WriteJSON(c, 200, msg)
 }

@@ -44,31 +44,31 @@ func postCampaign(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body"))
 			return
 		}
 
 		if !cmp.Male && !cmp.Female {
-			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
 
 		// Lets make sure this is a valid advertiser
 		adv := s.auth.GetAdvertiser(cmp.AdvertiserId)
 		if adv == nil {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
 		if cuser.Admin { // if user is admin, they have to pass us an advID
 			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil || cuser.Advertiser == nil {
-				c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 				return
 			}
 		} else if cuser.AdAgency != nil { // if user is an ad agency, they have to pass an advID that *they* own.
 			agID := cuser.ID
 			if cuser = s.auth.GetUser(cmp.AdvertiserId); cuser == nil || cuser.ParentID != agID || cuser.Advertiser == nil {
-				c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 				return
 			}
 		}
@@ -76,18 +76,18 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// cuser is always an advertiser
 		cmp.AdvertiserId, cmp.AgencyId, cmp.Company = cuser.ID, cuser.ParentID, cuser.Name
 		if !cmp.Twitter && !cmp.Facebook && !cmp.Instagram && !cmp.YouTube {
-			c.JSON(400, misc.StatusErr("Please target atleast one social network"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please target atleast one social network"))
 			return
 		}
 
 		if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
-			c.JSON(400, misc.StatusErr("Please provide a required tag, mention or link"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a required tag, mention or link"))
 			return
 		}
 
 		for _, g := range cmp.Geos {
 			if !geo.IsValidGeoTarget(g) {
-				c.JSON(400, misc.StatusErr("Please provide valid geo targets!"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide valid geo targets!"))
 				return
 			}
 		}
@@ -109,17 +109,17 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			if schedule != nil && schedule.From > 0 && schedule.To > 0 {
 				if schedule.To < now {
 					// Old date!
-					c.JSON(400, misc.StatusErr("Please enter a whitelist schedule from the future!"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Please enter a whitelist schedule from the future!"))
 					return
 				}
 
 				if schedule.From > schedule.To {
-					c.JSON(400, misc.StatusErr("Schedule start date is newer than schedule end date!"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Schedule start date is newer than schedule end date!"))
 					return
 				}
 
 				if schedule.From == schedule.To {
-					c.JSON(400, misc.StatusErr("Schedule start date is equal to schedule end date!"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Schedule start date is equal to schedule end date!"))
 					return
 				}
 			}
@@ -134,18 +134,18 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if cmp.Perks != nil && cmp.Perks.Type != 1 && cmp.Perks.Type != 2 {
-			c.JSON(400, misc.StatusErr("Invalid perk type. Must be 1 (Product) or 2 (Coupon)"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Invalid perk type. Must be 1 (Product) or 2 (Coupon)"))
 			return
 		}
 
 		if cmp.Perks != nil && cmp.Perks.IsCoupon() {
 			if len(cmp.Perks.Codes) == 0 {
-				c.JSON(400, misc.StatusErr("Please provide coupon codes"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide coupon codes"))
 				return
 			}
 
 			if cmp.Perks.Instructions == "" {
-				c.JSON(400, misc.StatusErr("Please provide coupon instructions"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide coupon instructions"))
 				return
 			}
 
@@ -156,7 +156,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		// Allowing $0 budgets for product-based campaigns!
 		if cmp.Budget < 150 && cmp.Perks == nil {
 			// This is NOT a budget based campaign OR a product based campaign!
-			c.JSON(400, misc.StatusErr("Please provide a valid budget OR valid perks"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid budget OR valid perks"))
 			return
 		}
 
@@ -167,7 +167,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if cmp.Perks != nil && cmp.Perks.Count == 0 {
-			c.JSON(400, misc.StatusErr("Please provide greater than 0 perks"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide greater than 0 perks"))
 			return
 		}
 
@@ -177,12 +177,12 @@ func postCampaign(s *Server) gin.HandlerFunc {
 		allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
 		if err != nil {
 			s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
-			c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign."))
+			misc.WriteJSON(c, 400, misc.StatusErr("Current subscription plan does not allow for this campaign."))
 			return
 		}
 
 		if !allowed {
-			c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
+			misc.WriteJSON(c, 400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
 			return
 		}
 
@@ -190,7 +190,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			cmp.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Campaign)
 			return
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -201,7 +201,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			}
 			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), cmp.ImageData, cmp.Id, "", 750, 389)
 			if err != nil {
-				c.JSON(400, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 				return
 			}
 
@@ -248,7 +248,7 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			fmt.Sprintf("%s (%s) created a campaign for %f", adv.Name, adv.ID, cmp.Budget),
 		)
 
-		c.JSON(200, misc.StatusOK(cmp.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
 	}
 }
 
@@ -258,7 +258,7 @@ func getCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, ErrCampaign)
+			misc.WriteJSON(c, 500, ErrCampaign)
 			return
 		}
 
@@ -282,7 +282,7 @@ func getCampaign(s *Server) gin.HandlerFunc {
 			cmp.Deals = nil
 		}
 
-		c.JSON(200, cmp)
+		misc.WriteJSON(c, 200, cmp)
 	}
 }
 
@@ -290,13 +290,13 @@ func getRejections(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
 		if cmp == nil {
-			c.JSON(500, ErrCampaign)
+			misc.WriteJSON(c, 500, ErrCampaign)
 			return
 		}
 
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
@@ -304,7 +304,7 @@ func getRejections(s *Server) gin.HandlerFunc {
 		campaigns.SetCampaign(cmp.Id, *cmp)
 		_, rejections := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
 
-		c.JSON(200, rejections)
+		misc.WriteJSON(c, 200, rejections)
 	}
 }
 
@@ -441,10 +441,10 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
-		c.JSON(200, campaigns)
+		misc.WriteJSON(c, 200, campaigns)
 	}
 }
 
@@ -462,11 +462,11 @@ func delCampaign(s *Server) gin.HandlerFunc {
 
 			return saveCampaign(tx, g, s)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(id))
+		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
@@ -490,11 +490,11 @@ func dirtyHack(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, misc.StatusOK(""))
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 
@@ -534,7 +534,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		)
 		cId := c.Param("id")
 		if cId == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid campaign ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid campaign ID"))
 			return
 		}
 
@@ -544,7 +544,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		})
 
 		if err = json.Unmarshal(b, &cmp); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling campaign"))
 			return
 		}
 
@@ -553,19 +553,19 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		)
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
 		if upd.ImageData != "" {
 			if !strings.HasPrefix(upd.ImageData, "data:image/") {
-				c.JSON(400, misc.StatusErr("Please provide a valid campaign image"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid campaign image"))
 				return
 			}
 
 			filename, err := saveImageToDisk(filepath.Join(s.Cfg.ImagesDir, s.Cfg.Bucket.Campaign, cmp.Id), upd.ImageData, cmp.Id, "", 750, 389)
 			if err != nil {
-				c.JSON(400, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 				return
 			}
 
@@ -574,7 +574,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		for _, g := range upd.Geos {
 			if !geo.IsValidGeoTarget(g) {
-				c.JSON(400, misc.StatusErr("Please provide valid geo targets!"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide valid geo targets!"))
 				return
 			}
 		}
@@ -612,13 +612,13 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		if !cmp.Male && !cmp.Female {
-			c.JSON(400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid gender target (m, f or mf)"))
 			return
 		}
 
 		if upd.Name != nil {
 			if *upd.Name == "" {
-				c.JSON(400, misc.StatusErr("Please provide a valid name"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid name"))
 				return
 			}
 			cmp.Name = *upd.Name
@@ -629,12 +629,12 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			adv *auth.Advertiser
 		)
 		if ag = s.auth.GetAdAgency(cmp.AgencyId); ag == nil {
-			c.JSON(400, misc.StatusErr("Could not find ad agency "+cmp.AgencyId))
+			misc.WriteJSON(c, 400, misc.StatusErr("Could not find ad agency "+cmp.AgencyId))
 			return
 		}
 
 		if adv = s.auth.GetAdvertiser(cmp.AdvertiserId); adv == nil {
-			c.JSON(400, misc.StatusErr("Could not find advertiser "+cmp.AgencyId))
+			misc.WriteJSON(c, 400, misc.StatusErr("Could not find advertiser "+cmp.AgencyId))
 			return
 		}
 
@@ -655,12 +655,12 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			allowed, err := subscriptions.CanCampaignRun(adv.IsSelfServe(), adv.Subscription, adv.Plan, &cmp)
 			if err != nil {
 				s.Alert("Stripe subscription lookup error for "+adv.Subscription, err)
-				c.JSON(400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Current subscription plan does not allow for this campaign"))
 				return
 			}
 
 			if !allowed {
-				c.JSON(400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
+				misc.WriteJSON(c, 400, misc.StatusErr(subscriptions.GetNextPlanMsg(&cmp, adv.Plan)))
 				return
 			}
 		}
@@ -691,17 +691,17 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			if schedule != nil && schedule.From > 0 && schedule.To > 0 {
 				if schedule.To < now {
 					// Old date!
-					c.JSON(400, misc.StatusErr("Please enter a whitelist schedule from the future!"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Please enter a whitelist schedule from the future!"))
 					return
 				}
 
 				if schedule.From > schedule.To {
-					c.JSON(400, misc.StatusErr("Schedule start date is newer than schedule end date!"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Schedule start date is newer than schedule end date!"))
 					return
 				}
 
 				if schedule.From == schedule.To {
-					c.JSON(400, misc.StatusErr("Schedule start date is equal to schedule end date!"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Schedule start date is equal to schedule end date!"))
 					return
 				}
 			}
@@ -773,7 +773,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					} else {
 						// Coupons are beign taken away since filtered returned nothing!
 						if inUse {
-							c.JSON(400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
+							misc.WriteJSON(c, 400, misc.StatusErr("Cannot delete coupon codes that are in use by influencers"))
 							return
 						}
 
@@ -801,7 +801,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				}
 
 				if perksInUse > upd.Perks.Count {
-					c.JSON(400, misc.StatusErr("Perk count can only be increased"))
+					misc.WriteJSON(c, 400, misc.StatusErr("Perk count can only be increased"))
 					return
 				}
 
@@ -848,7 +848,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					// NOTE: Create budget key requires cmp.Id be set
 					if err = budget.Create(tx, s.Cfg, &cmp, ag.IsIO, adv.Customer); err != nil {
 						s.Alert("Error initializing budget key for "+adv.Name, err)
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 
@@ -859,7 +859,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 					// off
 					err = budget.ReplenishSpendable(tx, s.Cfg, &cmp, ag.IsIO, adv.Customer)
 					if err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 				}
@@ -885,14 +885,14 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				var spendable float64
 				spendable, err = budget.ClearSpendable(tx, s.Cfg, &cmp)
 				if err != nil {
-					c.JSON(500, misc.StatusErr(err.Error()))
+					misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 					return
 				}
 
 				// If we cleared out some spendable.. lets increment the balance with it
 				if spendable > 0 {
 					if err = budget.IncrBalance(cmp.AdvertiserId, spendable, tx, s.Cfg); err != nil {
-						c.JSON(500, misc.StatusErr(err.Error()))
+						misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 						return
 					}
 				}
@@ -906,7 +906,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		END:
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -919,7 +919,7 @@ func putCampaign(s *Server) gin.HandlerFunc {
 			}()
 		}
 
-		c.JSON(200, misc.StatusOK(cmp.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
 	}
 }
 
@@ -935,7 +935,7 @@ func getForecast(s *Server) gin.HandlerFunc {
 
 		defer c.Request.Body.Close()
 		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
 			return
 		}
 
@@ -949,10 +949,10 @@ func getForecast(s *Server) gin.HandlerFunc {
 				bd = len(influencers)
 			}
 
-			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
+			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
 		} else {
 			// Default to totals
-			c.JSON(200, gin.H{"influencers": len(influencers), "reach": reach})
+			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach})
 		}
 	}
 }
@@ -961,11 +961,11 @@ func getLatestGeo(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
 		if !ok {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
 
-		c.JSON(200, inf.GetLatestGeo())
+		misc.WriteJSON(c, 200, inf.GetLatestGeo())
 	}
 }
 
@@ -992,10 +992,10 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 			})
 			return nil
 		}); err != nil {
-			c.JSON(500, misc.StatusErr("Internal error"))
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
-		c.JSON(200, campaigns)
+		misc.WriteJSON(c, 200, campaigns)
 	}
 }
 
@@ -1009,7 +1009,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 		)
 		cId := c.Param("id")
 		if cId == "" {
-			c.JSON(400, misc.StatusErr("Please provide a valid campaign ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid campaign ID"))
 			return
 		}
 
@@ -1019,13 +1019,13 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 		})
 
 		if err = json.Unmarshal(b, &cmp); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling campaign"))
 			return
 		}
 
 		user := s.auth.GetUser(cmp.AdvertiserId)
 		if user == nil || user.Advertiser == nil {
-			c.JSON(400, misc.StatusErr("Please provide a valid advertiser ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid advertiser ID"))
 			return
 		}
 
@@ -1067,7 +1067,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 
 		// Bail early if this JUST an acceptance for a perk increase!
 		if cmp.Approved > 0 {
-			c.JSON(200, misc.StatusOK(cmp.Id))
+			misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
 			return
 		}
 
@@ -1085,7 +1085,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
-			c.JSON(500, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -1102,7 +1102,7 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 			}()
 		}
 
-		c.JSON(200, misc.StatusOK(cmp.Id))
+		misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
 	}
 }
 
@@ -1110,20 +1110,20 @@ func uploadImage(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var upd UploadImage
 		if err := json.NewDecoder(c.Request.Body).Decode(&upd); err != nil {
-			c.JSON(400, misc.StatusErr("Error unmarshalling request body"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body"))
 			return
 		}
 
 		id := c.Param("id")
 		if id == "" {
-			c.JSON(400, misc.StatusErr("Invalid ID"))
+			misc.WriteJSON(c, 400, misc.StatusErr("Invalid ID"))
 			return
 		}
 
 		bucket := c.Param("bucket")
 		filename, err := saveImageToDisk(s.Cfg.ImagesDir+bucket+"/"+id, upd.Data, id, "", 750, 389)
 		if err != nil {
-			c.JSON(400, misc.StatusErr(err.Error()))
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 			return
 		}
 
@@ -1140,7 +1140,7 @@ func uploadImage(s *Server) gin.HandlerFunc {
 			})
 
 			if err = json.Unmarshal(b, &cmp); err != nil {
-				c.JSON(400, misc.StatusErr("Error unmarshalling campaign"))
+				misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling campaign"))
 				return
 			}
 
@@ -1151,10 +1151,10 @@ func uploadImage(s *Server) gin.HandlerFunc {
 			if err = s.db.Update(func(tx *bolt.Tx) (err error) {
 				return saveCampaign(tx, &cmp, s)
 			}); err != nil {
-				c.JSON(500, misc.StatusErr(err.Error()))
+				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 				return
 			}
 		}
-		c.JSON(200, UploadImage{ImageURL: imageURL})
+		misc.WriteJSON(c, 200, UploadImage{ImageURL: imageURL})
 	}
 }
