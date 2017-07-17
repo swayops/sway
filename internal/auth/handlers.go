@@ -291,7 +291,7 @@ func (a *Auth) signUpHelper(c *gin.Context, sup *signupUser) (_ bool) {
 
 func (a *Auth) SignUpHandler(c *gin.Context) {
 	var sup signupUser
-	if err := misc.JSONBody(c, &sup); err != nil {
+	if err := c.Bind(&sup); err != nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
