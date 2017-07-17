@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/gin-gonic/gin"
 )
 
 const hour = int32(60 * 60)
@@ -205,4 +207,10 @@ func SanitizeHash(str string) string {
 		str = str[1:]
 	}
 	return strings.ToLower(str)
+}
+
+func JSONBody(c *gin.Context, v interface{}) error {
+	body := c.Request.Body
+	defer body.Close()
+	return json.NewDecoder(body).Decode(v)
 }
