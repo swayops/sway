@@ -560,6 +560,10 @@ func getAllActiveDeals(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var deals []*SimpleActive
 		for _, cmp := range s.Campaigns.GetStore() {
+			if !cmp.IsValid() {
+				continue
+			}
+
 			for _, deal := range cmp.Deals {
 				if deal.IsActive() {
 					inf, ok := s.auth.Influencers.Get(deal.InfluencerId)
