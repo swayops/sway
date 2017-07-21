@@ -72,8 +72,8 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
-	// Check social media keys every hour!
-	alertTicker := time.NewTicker(10 * time.Minute)
+	// Check social media keys every 30 minutes!
+	alertTicker := time.NewTicker(30 * time.Minute)
 	go func() {
 		for range alertTicker.C {
 			if _, err := facebook.New("facebook", srv.Cfg); err != nil {
