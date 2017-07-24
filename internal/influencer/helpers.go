@@ -45,41 +45,33 @@ func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Faceboo
 	}
 
 	// Expected value on average a post generates
-	var maxYield float64
+	// NOTE: Priority here is the same as GetAvailableDeals priority for platforms
+	if cmp.Instagram && insta != nil {
+		yield := insta.AvgLikes * budget.INSTA_LIKE
+		yield += insta.AvgComments * budget.INSTA_COMMENT
+		return yield
+	}
+
 	if cmp.YouTube && yt != nil {
 		yield := yt.AvgViews * budget.YT_VIEW
 		yield += yt.AvgComments * budget.YT_COMMENT
 		yield += yt.AvgLikes * budget.YT_LIKE
 		yield += yt.AvgDislikes * budget.YT_DISLIKE
-		if yield > maxYield {
-			maxYield = yield
-		}
-	}
-
-	if cmp.Instagram && insta != nil {
-		yield := insta.AvgLikes * budget.INSTA_LIKE
-		yield += insta.AvgComments * budget.INSTA_COMMENT
-		if yield > maxYield {
-			maxYield = yield
-		}
+		return yield
 	}
 
 	if cmp.Twitter && tw != nil {
 		yield := tw.AvgLikes * budget.TW_FAVORITE
 		yield += tw.AvgRetweets * budget.TW_RETWEET
-		if yield > maxYield {
-			maxYield = yield
-		}
+		return yield
 	}
 
 	if cmp.Facebook && fb != nil {
 		yield := fb.AvgLikes * budget.FB_LIKE
 		yield += fb.AvgComments * budget.FB_COMMENT
 		yield += fb.AvgShares * budget.FB_SHARE
-		if yield > maxYield {
-			maxYield = yield
-		}
+		return yield
 	}
 
-	return maxYield
+	return 0
 }

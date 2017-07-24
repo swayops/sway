@@ -1126,15 +1126,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Social Media Checks
-		if cmp.YouTube && inf.YouTube != nil {
-			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
-				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
-			}
-		}
-
+		// NOTE: Matches priority in GetMaxYield func
 		if cmp.Instagram && inf.Instagram != nil {
 			if !common.IsInList(targetDeal.Platforms, platform.Instagram) {
 				targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
+			}
+		}
+
+		if cmp.YouTube && inf.YouTube != nil {
+			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
+				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 			}
 		}
 
@@ -1152,6 +1153,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Add deal that has approved platform
 		if len(targetDeal.Platforms) > 0 {
+			targetDeal.Platforms = []string{targetDeal.Platforms[0]}
 			targetDeal.Tags = cmp.Tags
 			targetDeal.Mention = cmp.Mention
 			targetDeal.Task = cmp.Task
