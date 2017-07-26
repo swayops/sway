@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/gin-gonic/gin"
@@ -243,6 +244,15 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 		}); err != nil {
 			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
+		}
+
+		if targetAdv == "81" {
+			// Hack for demo account
+			startTmp, _ := time.Parse("Jan 2, 2006", "Jan 3, 2017")
+			endTmp, _ := time.Parse("Jan 2, 2006", "Mar 1, 2017")
+
+			start = int(time.Since(startTmp) / (24 * time.Hour))
+			end = int(time.Since(endTmp) / (24 * time.Hour))
 		}
 
 		for _, cmp := range campaigns {
