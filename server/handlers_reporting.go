@@ -248,7 +248,7 @@ func getAdvertiserStats(s *Server) gin.HandlerFunc {
 
 		if targetAdv == "81" {
 			// Hack for demo account
-			startTmp, _ := time.Parse("Jan 2, 2006", "Jan 3, 2017")
+			startTmp, _ := time.Parse("Jan 2, 2006", "Jan 30, 2017")
 			endTmp, _ := time.Parse("Jan 2, 2006", "Mar 1, 2017")
 
 			start = int(time.Since(startTmp) / (24 * time.Hour))
