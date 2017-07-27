@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
@@ -20,8 +21,7 @@ import (
 	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
-
-	"github.com/gin-gonic/gin"
+	"github.com/swayops/sway/platforms/pdf"
 )
 
 ///////// Campaigns /////////
@@ -957,6 +957,65 @@ func getForecast(s *Server) gin.HandlerFunc {
 	}
 }
 
+func getForecastExport(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			cmp common.Campaign
+			err error
+		)
+
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
+		}
+
+		influencers, _ := getForecastForCmp(s, cmp, "")
+
+		if len(cmp.Whitelist) == 0 {
+			// If no whitelist cap at 50
+			bd := 50
+			if bd > len(influencers) {
+				bd = len(influencers)
+			}
+			influencers = influencers[:bd]
+		}
+
+		var numInfs int
+		if cmp.Perks != nil && cmp.Perks.Count != 0 {
+			numInfs = cmp.Perks.Count
+		} else if len(cmp.Whitelist) != 0 {
+			numInfs = len(cmp.Whitelist)
+		} else {
+			// Calculate based on avg influencer yield in our platform
+			yield := s.auth.Influencers.GetAvgYield()
+			numInfs = int(cmp.Budget / yield)
+			if numInfs < 3 && cmp.Budget > 100 {
+				numInfs = 3
+			}
+		}
+
+		load := map[string]interface{}{
+			"Influencers":         influencers,
+			"NumberOfInfluencers": strconv.Itoa(numInfs),
+			"LikelyEngagements":   fmt.Sprintf("%0.2f", cmp.Budget/(budget.INSTA_LIKE)),
+			"Budget":              fmt.Sprintf("$%0.2f", cmp.Budget),
+			"TwitterIcon":         TwitterIcon,
+			"YoutubeIcon":         YoutubeIcon,
+			"InstaIcon":           InstaIcon,
+			"FacebookIcon":        FacebookIcon,
+		}
+		tmpl := templates.ForecastExport.Render(load)
+
+		c.Header("Content-type", "application/octet-stream")
+		c.Header("Content-Disposition", "attachment;Filename=test.doc")
+
+		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, s.Cfg); err != nil {
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
+		}
+	}
+}
+
 func getLatestGeo(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		inf, ok := s.auth.Influencers.Get(c.Param("influencerId"))
@@ -983,7 +1042,7 @@ func getPendingCampaigns(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if cmp.Approved == 0 || (cmp.Perks != nil && cmp.Perks.PendingCount > 0) {
+				if (cmp.Approved == 0 && cmp.Status) || (cmp.Perks != nil && cmp.Perks.PendingCount > 0) {
 					// Hide deals
 					cmp.Deals = nil
 					campaigns = append(campaigns, &cmp)

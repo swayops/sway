@@ -40,19 +40,19 @@ func degradeRep(val int, rep float64) float64 {
 }
 
 func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Facebook, tw *twitter.Twitter, insta *instagram.Instagram) float64 {
-	if cmp.IsProductBasedBudget() {
+	if cmp != nil && cmp.IsProductBasedBudget() {
 		return 0
 	}
 
 	// Expected value on average a post generates
 	// NOTE: Priority here is the same as GetAvailableDeals priority for platforms
-	if cmp.Instagram && insta != nil {
+	if (cmp == nil || cmp.Instagram) && insta != nil {
 		yield := insta.AvgLikes * budget.INSTA_LIKE
 		yield += insta.AvgComments * budget.INSTA_COMMENT
 		return yield
 	}
 
-	if cmp.YouTube && yt != nil {
+	if (cmp == nil || cmp.YouTube) && yt != nil {
 		yield := yt.AvgViews * budget.YT_VIEW
 		yield += yt.AvgComments * budget.YT_COMMENT
 		yield += yt.AvgLikes * budget.YT_LIKE
@@ -60,13 +60,13 @@ func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Faceboo
 		return yield
 	}
 
-	if cmp.Twitter && tw != nil {
+	if (cmp == nil || cmp.Twitter) && tw != nil {
 		yield := tw.AvgLikes * budget.TW_FAVORITE
 		yield += tw.AvgRetweets * budget.TW_RETWEET
 		return yield
 	}
 
-	if cmp.Facebook && fb != nil {
+	if (cmp == nil || cmp.Facebook) && fb != nil {
 		yield := fb.AvgLikes * budget.FB_LIKE
 		yield += fb.AvgComments * budget.FB_COMMENT
 		yield += fb.AvgShares * budget.FB_SHARE
