@@ -3,20 +3,19 @@ package templates
 const scrapFirstEmail = `
 <div>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Hey {{Name}},
+		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Our company makes software that connects social media influencers with brands.
+		I have a sponsored post opportunity for you and wanted to reach out. Our company makes software that helps social media influencers get paid for posts sub 15 minutes instead of spending hours negotiating and trading payment/ shipping details back and forth.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		I thought I would ping you because we have a few big advertisers coming through in the next few days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
+		I thought I would ping you because we have a few big brands/ advertisers coming through in the next few days and our software picked you up as a candidate for them. Just wanted to see if this was something that would interest you going forward. 
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		We generally make influencers double the revenue they would normally bring in through your avg social post. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, 1099's, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
+		We generally make influencers double the revenue they would normally bring in through your avg social post because we make it so fast. You don't need to go back and forth over email for every opportunity, we simply show it via a feed in our mobile app. We handle payments, shipping free products to you, and all the non-fun stuff so you can focus on your fans and developing your social brand.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If this sounds like something that would interest you please let us know. You can see more info about how our app works at http://SwayOps.com/influencer/ , and if I don't hear from you I will ping you over email when the next brand requests you :)
-
+		If this sounds like something that would interest you please let us know. You can see more info about how our app works at http://SwayOps.com/influencer/ , and if I don't hear from you I will ping you over email when the next brand requests you :) . You can also download our iPhone app from the store named "Sway iOS" to instantly get going.
 		Hope to work together soon,<br/>
 		~ Karlie M<br/>
 	</p>
