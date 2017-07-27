@@ -3,9 +3,6 @@ package templates
 const forecastTmpl = `
 <html>
 	<head>
-		<!-- Loading Flat UI -->
-	    <link href="https://dash.swayops.com/static/css/flat-ui.min.css" rel="stylesheet">
-
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
 		<style>
 			body {
@@ -39,6 +36,7 @@ const forecastTmpl = `
 				padding: 15px;
 				background-color: #f9f9f9;
 				border-bottom: 1px #cecece solid;
+				overflow:hidden;
 			}
 			.but-blue {
 				background-color: #31aff5;
@@ -126,16 +124,16 @@ const forecastTmpl = `
 					<p>Categories: {{Categories}}</p>
 					<p>
 					{{#HasTwitter}}
-						<i href="http://www.twitter.com" title="Twitter" class="fui-twitter"></i> @{{TwitterUsername}}&nbsp
+						<a href="https://twitter.com/{{TwitterUsername}}"><img src="../../images/iconSocial/twitter.png"/> @{{TwitterUsername}}</a>&nbsp
 					{{/HasTwitter}}
 					{{#HasYoutube}}
-						<i title="YouTube" class="fui-youtube"></i> @{{YoutubeUsername}}&nbsp
+						<a href="https://www.youtube.com/channel/"><img src="../../images/iconSocial/youtube.png"/> @{{YoutubeUsername}}</a>&nbsp
 					{{/HasYoutube}}
 					{{#HasInsta}}
-						<i title="Instagram" class="fui-instagram"></i> @{{InstaUsername}}&nbsp
+						<a href="https://www.instagram.com/{{InstaUsername}}"><img src="../../images/iconSocial/instagram.png"/> @{{InstaUsername}}</a>&nbsp
 					{{/HasInsta}}
 					{{#HasFacebook}}
-						<i title="Facebook" class="fui-facebook"></i> @{{FacebookUsername}}&nbsp
+						<a href="https://www.facebook.com/{{FacebookUsername}}"><img src="../../images/iconSocial/facebook.png"/> @{{FacebookUsername}}</a>&nbsp
 					{{/HasFacebook}}</p>
 				</div>
 				<div class="infStats">
