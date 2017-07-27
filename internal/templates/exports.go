@@ -30,7 +30,7 @@ const forecastTmpl = `
 				background-color: #fff;
 			}
 			.row {
-				height: 120px;
+				height: 160px;
 				font-size: 14px;
 				color: #000;
 				padding: 15px;
@@ -66,7 +66,7 @@ const forecastTmpl = `
 			}
 			.infPic {
 				width: 150px;
-				height: 100px;
+				height: 140px;
 				border-radius: 5px;
 				overflow: hidden;
 				float: left;
@@ -114,14 +114,26 @@ const forecastTmpl = `
 
 			<div class="row clearfix" align="left">
 				<div class="infPic">
-					<img src="https://dash.swayops.com/static/img/hdr-sign-bg.png"/>
+					<img style="width: 100%;" src="{{ProfilePicture}}"/>
 				</div>
 				<div class="infDescription">
 					<h3>{{Name}}</h3>
 					<p>Gender: {{Gender}}</p>
 					<p>Geo: {{Geo}}</p>
 					<p>Categories: {{Categories}}</p>
-					<p>{{SocialHandles}}</p>
+					<p>
+					{{#HasTwitter}}
+						@{{TwitterUsername}}&nbsp
+					{{/HasTwitter}}
+					{{#HasYoutube}}
+						@{{YoutubeUsername}}&nbsp
+					{{/HasYoutube}}
+					{{#HasInsta}}
+						@{{InstaUsername}}&nbsp
+					{{/HasInsta}}
+					{{#HasFacebook}}
+						@{{FacebookUsername}}&nbsp
+					{{/HasFacebook}}</p>
 				</div>
 				<div class="infStats">
 					Followers: <b style="color:#31aff5;">{{Followers}}</b> <br>
