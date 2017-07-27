@@ -1,18 +1,17 @@
 package templates
 
-const forecastTmpl = `
+const forecastTmpl = `<!DOCTYPE html>
 <html>
 	<head>
 		<!-- Loading Flat UI -->
-	    <link href="https://dash.swayops.com/static/css/flat-ui.min.css" rel="stylesheet">
-
+		<link href="https://dash.swayops.com/static/css/flat-ui.min.css" rel="stylesheet">
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
 		<style>
 			body {
 				background-color: #fff;
 				margin: 0px;
 				font-family: 'Open Sans', sans-serif;
-			}	
+			}
 			.main {
 				width:684px;
 				height: 864px;
@@ -65,7 +64,7 @@ const forecastTmpl = `
 			}
 			.clearfix {
 				clear:both;
-				overflow: auto;
+				overflow: hidden;
 			}
 			.infPic {
 				width: 150px;
@@ -87,17 +86,16 @@ const forecastTmpl = `
 			}
 			.infStats {
 				margin-left: 20px;
-				width: 160px;
 				float: left;
-				margin-top: 30px;
-				
+				margin-top: 42px;
+
 			}
 		</style>
-		
+
 	</head>
 	<body>
 		<div class="main">
-		
+
 			<div class="header">
 				<img src="https://swayops.com/marketer/img/swayLogoBlack.png"/>
 			</div>
@@ -112,7 +110,7 @@ const forecastTmpl = `
 					# of influencers:<br><div class="label" align="center">{{NumberOfInfluencers}}</div>
 				</div>
 			</div>
-			
+
 			{{#Influencers}}
 
 			<div class="row clearfix" align="left">
@@ -145,11 +143,11 @@ const forecastTmpl = `
 			</div>
 
 			{{/Influencers}}
-			
+
 			<div class="footer">
 				<div align="center">&#169; 2017 Sway Ops LLC. - All rights reserved.</div>
 			</div>
-		
+
 		</div>
 	</body>
 </html>
