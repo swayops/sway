@@ -128,6 +128,14 @@ func (sc *Scrap) GetFollowers() int64 {
 	return flws
 }
 
+func (sc *Scrap) GetDescription() string {
+	if sc.InstaData != nil && sc.InstaData.Bio != "" {
+		return sc.InstaData.Bio
+	}
+
+	return ""
+}
+
 func (sc *Scrap) IsProfilePictureActive() bool {
 	if sc.FBData != nil && sc.FBData.ProfilePicture != "" {
 		if misc.Ping(sc.FBData.ProfilePicture) != nil {

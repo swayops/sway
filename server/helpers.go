@@ -720,8 +720,16 @@ type ForecastUser struct {
 
 	ProfilePicture string `json:"profilePicture"`
 	URL            string `json:"url"`
+	Description    string `json:"description"`
 	Followers      int64  `json:"followers"`
 	AvgEngs        int64  `json:"avgEngs"`
+
+	// Used for display purposes in reports
+	MaxYield      string `json:"maxYield"`
+	Geo           string `json:"geo"`
+	Gender        string `json:"gender"`
+	Categories    string `json:"categories"`
+	SocialHandles string `json:"socialHandles"`
 }
 
 func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influencers []*ForecastUser, reach int64) {
@@ -840,7 +848,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 		}
 
 		// MAX YIELD
-		// maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+		maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 		// if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !s.Cfg.Sandbox {
 		// 	// NOTE: Skip this for whitelisted campaigns!
 
@@ -853,21 +861,47 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 		// }
 
 		user := &ForecastUser{
-			ID:        inf.Id,
-			Name:      strings.Title(inf.Name),
-			Email:     inf.EmailAddress,
-			AvgEngs:   inf.GetAvgEngs(),
-			Followers: inf.GetFollowers(),
+			ID:            inf.Id,
+			Name:          strings.Title(inf.Name),
+			Email:         inf.EmailAddress,
+			AvgEngs:       inf.GetAvgEngs(),
+			Followers:     inf.GetFollowers(),
+			Description:   inf.GetDescription(),
+			MaxYield:      fmt.Sprintf("$%0.2f", maxYield),
+			Geo:           "N/A",
+			Gender:        "N/A",
+			Categories:    "N/A",
+			SocialHandles: "N/A",
+		}
+
+		if geo := inf.GetLatestGeo(); geo != nil {
+			if geo.State != "" && geo.Country != "" {
+				user.Geo = geo.State + ", " + geo.Country
+			} else if geo.State == "" && geo.Country != "" {
+				user.Geo = geo.Country
+			}
+		}
+
+		if inf.Male {
+			user.Gender = "M"
+		} else if inf.Female {
+			user.Gender = "F"
+		}
+
+		if len(inf.Categories) > 0 {
+			user.Categories = strings.Join(inf.Categories, ", ")
 		}
 
 		// Social Media Checks
 		socialMediaFound := false
+		var socialHandles []string
 		if cmp.YouTube && inf.YouTube != nil {
 			socialMediaFound = true
 			if inf.YouTube.ProfilePicture != "" {
 				user.ProfilePicture = inf.YouTube.ProfilePicture
 			}
 			user.URL = inf.YouTube.GetProfileURL()
+			socialHandles = append(socialHandles, "YouTube@"+inf.YouTube.UserName)
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
@@ -876,6 +910,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 				user.ProfilePicture = inf.Instagram.ProfilePicture
 			}
 			user.URL = inf.Instagram.GetProfileURL()
+			socialHandles = append(socialHandles, "Instagram@"+inf.Instagram.UserName)
 		}
 
 		if cmp.Twitter && inf.Twitter != nil {
@@ -884,6 +919,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 				user.ProfilePicture = inf.Twitter.ProfilePicture
 			}
 			user.URL = inf.Twitter.GetProfileURL()
+			socialHandles = append(socialHandles, "Twitter@"+inf.Twitter.Id)
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
@@ -893,11 +929,14 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 				user.ProfilePicture = inf.Facebook.ProfilePicture
 			}
 			user.URL = inf.Facebook.GetProfileURL()
+			socialHandles = append(socialHandles, "Facebook@"+inf.Facebook.Id)
 		}
 
 		if !socialMediaFound {
 			continue
 		}
+
+		user.SocialHandles = strings.Join(socialHandles, ", ")
 
 		// Lets check to see a match on eng, follower, price targeting now that
 		// we have those values
@@ -910,7 +949,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 			continue
 		}
 
-		maxYield := influencer.GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 		// Lets see if max yield falls into target range for the campaign
 		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) {
 			continue
@@ -935,18 +973,44 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 			}
 
 			user := &ForecastUser{
-				ID:        "sc-" + sc.Id,
-				Name:      strings.Title(sc.Name),
-				Email:     sc.EmailAddress,
-				AvgEngs:   sc.GetAvgEngs(),
-				Followers: sc.GetFollowers(),
+				ID:            "sc-" + sc.Id,
+				Name:          strings.Title(sc.Name),
+				Email:         sc.EmailAddress,
+				AvgEngs:       sc.GetAvgEngs(),
+				Followers:     sc.GetFollowers(),
+				Description:   sc.GetDescription(),
+				MaxYield:      fmt.Sprintf("$%0.2f", influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)),
+				Geo:           "N/A",
+				Gender:        "N/A",
+				Categories:    "N/A",
+				SocialHandles: "N/A",
 			}
 
+			if geo := sc.Geo; geo != nil {
+				if geo.State != "" && geo.Country != "" {
+					user.Geo = geo.State + ", " + geo.Country
+				} else if geo.State == "" && geo.Country != "" {
+					user.Geo = geo.Country
+				}
+			}
+
+			if sc.Male {
+				user.Gender = "M"
+			} else if sc.Female {
+				user.Gender = "F"
+			}
+
+			if len(sc.Categories) > 0 {
+				user.Categories = strings.Join(sc.Categories, ", ")
+			}
+
+			var socialHandles []string
 			if sc.FBData != nil {
 				if sc.FBData.ProfilePicture != "" {
 					user.ProfilePicture = sc.FBData.ProfilePicture
 				}
 				user.URL = sc.FBData.GetProfileURL()
+				socialHandles = append(socialHandles, "Facebook@"+sc.FBData.Id)
 			}
 
 			if sc.InstaData != nil {
@@ -954,6 +1018,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 					user.ProfilePicture = sc.InstaData.ProfilePicture
 				}
 				user.URL = sc.InstaData.GetProfileURL()
+				socialHandles = append(socialHandles, "Instagram@"+sc.InstaData.UserName)
 			}
 
 			if sc.TWData != nil {
@@ -961,6 +1026,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 					user.ProfilePicture = sc.TWData.ProfilePicture
 				}
 				user.URL = sc.TWData.GetProfileURL()
+				socialHandles = append(socialHandles, "Twitter@"+sc.TWData.Id)
 			}
 
 			if sc.YTData != nil {
@@ -968,6 +1034,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 					user.ProfilePicture = sc.YTData.ProfilePicture
 				}
 				user.URL = sc.YTData.GetProfileURL()
+				socialHandles = append(socialHandles, "YouTube@"+sc.YTData.UserName)
 			}
 
 			scrapUsers = append(scrapUsers, user)

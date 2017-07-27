@@ -3,9 +3,10 @@ package influencer
 import "sync"
 
 type Influencers struct {
-	mux    sync.RWMutex
-	store  map[string]Influencer
-	counts map[string]int64
+	mux      sync.RWMutex
+	store    map[string]Influencer
+	counts   map[string]int64
+	avgYield float64
 }
 
 func NewInfluencers() *Influencers {
@@ -19,11 +20,17 @@ func NewInfluencers() *Influencers {
 func (p *Influencers) Set(infs []Influencer) {
 	store := make(map[string]Influencer)
 	counts := make(map[string]int64)
+	var totalYields float64
 	for _, inf := range infs {
 		store[inf.Id] = inf
 		counts[inf.AgencyId] += 1
+
+		totalYields += GetMaxYield(nil, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 	}
+
+	// Lets also set avg yield value for our reporting purposes
 	p.mux.Lock()
+	p.avgYield = totalYields / float64(len(infs))
 	p.store = store
 	p.counts = counts
 	p.mux.Unlock()
@@ -44,6 +51,14 @@ func (p *Influencers) GetAll() map[string]Influencer {
 	}
 	p.mux.RUnlock()
 	return store
+}
+
+func (p *Influencers) GetAvgYield() float64 {
+	var avgYield float64
+	p.mux.RLock()
+	avgYield = p.avgYield
+	p.mux.RUnlock()
+	return avgYield
 }
 
 func (p *Influencers) GetAllEmails() map[string]bool {

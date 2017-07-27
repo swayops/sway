@@ -752,6 +752,13 @@ func (inf *Influencer) Clean() *Influencer {
 	return inf
 }
 
+func (inf *Influencer) GetDescription() string {
+	if inf.Instagram != nil && inf.Instagram.Bio != "" {
+		return inf.Instagram.Bio
+	}
+	return ""
+}
+
 func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
 	if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
 		return inf.Instagram.LastLocation
