@@ -1006,6 +1006,10 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			"FacebookIcon":        FacebookIcon,
 		}
 		tmpl := templates.ForecastExport.Render(load)
+
+		c.Header("Content-type", "application/octet-stream")
+		c.Header("Content-Disposition", "attachment;Filename=test.doc")
+
 		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, s.Cfg); err != nil {
 			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 		}

@@ -25,10 +25,9 @@ var (
 	ErrBadAddr = errors.New("Mailing address inputted is not valid. Please email engage@swayops.com with your login email / username and the address you're trying to use")
 )
 
-func ConvertHTMLToPDF(html string, res http.ResponseWriter, cfg *config.Config) (err error) {
+func ConvertHTMLToPDF(html string, res http.ResponseWriter, cfg *config.Config) error {
 	if html == "" {
-		err = ErrHTML
-		return
+		return ErrHTML
 	}
 
 	form := url.Values{}
@@ -44,21 +43,18 @@ func ConvertHTMLToPDF(html string, res http.ResponseWriter, cfg *config.Config) 
 
 	req, err := http.NewRequest("POST", endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
-		return
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
 	if err != nil {
-		return
+		return err
 	}
+	defer resp.Body.Close()
 
 	_, err = io.Copy(res, resp.Body)
-	if err != nil {
-		return
-	}
 
-	return
+	return err
 }
