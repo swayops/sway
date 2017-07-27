@@ -959,23 +959,17 @@ func getForecast(s *Server) gin.HandlerFunc {
 
 func getForecastExport(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// var (
-		// 	cmp common.Campaign
-		// 	err error
-		// )
+		var (
+			cmp common.Campaign
+			err error
+		)
 
-		// defer c.Request.Body.Close()
-		// if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
-		// 	misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
-		// 	return
-		// }
-		cmp := common.Campaign{
-			Budget:    1000,
-			Instagram: true,
-			Male:      true,
-			Female:    true,
-			Twitter:   true,
+		defer c.Request.Body.Close()
+		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
+			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
+			return
 		}
+
 		influencers, _ := getForecastForCmp(s, cmp, "")
 
 		if len(cmp.Whitelist) == 0 {
