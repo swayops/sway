@@ -124,16 +124,16 @@ const forecastTmpl = `
 					<p>Categories: {{Categories}}</p>
 					<p>
 					{{#HasTwitter}}
-						<a href="https://twitter.com/{{TwitterUsername}}"><img src="../../images/iconSocial/twitter.png"/> @{{TwitterUsername}}</a>&nbsp
+						<img src="{{TwitterIcon}}"> <a href="https://twitter.com/{{TwitterUsername}}">@{{TwitterUsername}}</a>&nbsp
 					{{/HasTwitter}}
 					{{#HasYoutube}}
-						<a href="https://www.youtube.com/channel/"><img src="../../images/iconSocial/youtube.png"/> @{{YoutubeUsername}}</a>&nbsp
+						<img src="{{YoutubeIcon}}"> <a href="https://www.youtube.com/channel/">@{{YoutubeUsername}}</a>&nbsp
 					{{/HasYoutube}}
 					{{#HasInsta}}
-						<a href="https://www.instagram.com/{{InstaUsername}}"><img src="../../images/iconSocial/instagram.png"/> @{{InstaUsername}}</a>&nbsp
+						<img src="{{InstaIcon}}"> <a href="https://www.instagram.com/{{InstaUsername}}">@{{InstaUsername}}</a>&nbsp
 					{{/HasInsta}}
 					{{#HasFacebook}}
-						<a href="https://www.facebook.com/{{FacebookUsername}}"><img src="../../images/iconSocial/facebook.png"/> @{{FacebookUsername}}</a>&nbsp
+						<img src="{{FacebookIcon}}"> <a href="https://www.facebook.com/{{FacebookUsername}}">@{{FacebookUsername}}</a>&nbsp
 					{{/HasFacebook}}</p>
 				</div>
 				<div class="infStats">

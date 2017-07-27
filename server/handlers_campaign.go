@@ -1006,6 +1006,10 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			"NumberOfInfluencers": strconv.Itoa(numInfs),
 			"LikelyEngagements":   fmt.Sprintf("%0.2f", cmp.Budget/(budget.INSTA_LIKE)),
 			"Budget":              fmt.Sprintf("$%0.2f", cmp.Budget),
+			"TwitterIcon":         TwitterIcon,
+			"YoutubeIcon":         YoutubeIcon,
+			"InstaIcon":           InstaIcon,
+			"FacebookIcon":        FacebookIcon,
 		}
 		tmpl := templates.ForecastExport.Render(load)
 		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, s.Cfg); err != nil {
