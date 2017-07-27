@@ -1007,14 +1007,7 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			"LikelyEngagements":   fmt.Sprintf("%0.2f", cmp.Budget/(budget.INSTA_LIKE)),
 			"Budget":              fmt.Sprintf("$%0.2f", cmp.Budget),
 		}
-
 		tmpl := templates.ForecastExport.Render(load)
-
-		if c.Query("debug") == "html" {
-			c.Data(200, gin.MIMEHTML, []byte(tmpl))
-			return
-		}
-
 		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, s.Cfg); err != nil {
 			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
 		}
