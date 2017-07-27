@@ -949,12 +949,25 @@ func getForecast(s *Server) gin.HandlerFunc {
 				bd = len(influencers)
 			}
 
-			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers[:bd]})
+			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": filterForecast(influencers, bd)})
 		} else {
 			// Default to totals
 			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach})
 		}
 	}
+}
+
+func filterForecast(infs []*ForecastUser, bd int) (out []*ForecastUser) {
+	for _, inf := range infs {
+		if len(out) >= bd {
+			return
+		}
+
+		if inf.IsProfilePictureActive() {
+			out = append(out, inf)
+		}
+	}
+	return
 }
 
 func getForecastExport(s *Server) gin.HandlerFunc {
@@ -978,7 +991,8 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			if bd > len(influencers) {
 				bd = len(influencers)
 			}
-			influencers = influencers[:bd]
+
+			influencers = filterForecast(influencers, bd)
 		}
 
 		var numInfs int

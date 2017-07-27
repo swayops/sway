@@ -744,6 +744,13 @@ type ForecastUser struct {
 	FacebookUsername string `json:"fbUsername"`
 }
 
+func (user *ForecastUser) IsProfilePictureActive() bool {
+	if user.ProfilePicture == "" || (user.ProfilePicture != "" && misc.Ping(user.ProfilePicture) != nil) {
+		return false
+	}
+	return true
+}
+
 func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influencers []*ForecastUser, reach int64) {
 	// Some easy bail outs
 	if !cmp.Instagram && !cmp.Twitter && !cmp.YouTube && !cmp.Facebook {
