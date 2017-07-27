@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	testEndpoint = "http://api.pdflayer.com/api/convert?access_key=455abc3fe93b7cb35c83e211e7b01876&force=1&page_width=684&page_height=864"
-	prodEndpoint = "http://api.pdflayer.com/api/convert?access_key=455abc3fe93b7cb35c83e211e7b01876&force=1&page_width=684&page_height=864"
+	testEndpoint = "http://api.pdflayer.com/api/convert?access_key=2b82226c6c03b23482e984c258866fc2&force=1&page_width=684&page_height=864"
+	prodEndpoint = "http://api.pdflayer.com/api/convert?access_key=2b82226c6c03b23482e984c258866fc2&force=1&page_width=684&page_height=864"
 )
 
 var (

@@ -3,6 +3,9 @@ package templates
 const forecastTmpl = `
 <html>
 	<head>
+		<!-- Loading Flat UI -->
+	    <link href="https://dash.swayops.com/static/css/flat-ui.min.css" rel="stylesheet">
+
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
 		<style>
 			body {
@@ -123,20 +126,20 @@ const forecastTmpl = `
 					<p>Categories: {{Categories}}</p>
 					<p>
 					{{#HasTwitter}}
-						@{{TwitterUsername}}&nbsp
+						<i href="http://www.twitter.com" title="Twitter" class="fui-twitter"></i> @{{TwitterUsername}}&nbsp
 					{{/HasTwitter}}
 					{{#HasYoutube}}
-						@{{YoutubeUsername}}&nbsp
+						<i title="YouTube" class="fui-youtube"></i> @{{YoutubeUsername}}&nbsp
 					{{/HasYoutube}}
 					{{#HasInsta}}
-						@{{InstaUsername}}&nbsp
+						<i title="Instagram" class="fui-instagram"></i> @{{InstaUsername}}&nbsp
 					{{/HasInsta}}
 					{{#HasFacebook}}
-						@{{FacebookUsername}}&nbsp
+						<i title="Facebook" class="fui-facebook"></i> @{{FacebookUsername}}&nbsp
 					{{/HasFacebook}}</p>
 				</div>
 				<div class="infStats">
-					Followers: <b style="color:#31aff5;">{{Followers}}</b> <br>
+					Followers: <b style="color:#31aff5;">{{StringFollowers}}</b> <br>
 					Avg earnings: <b style="color:#31aff5;">{{MaxYield}}</b>
 				</div>
 			</div>

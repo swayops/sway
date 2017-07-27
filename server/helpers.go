@@ -718,11 +718,12 @@ type ForecastUser struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
 
-	ProfilePicture string `json:"profilePicture"`
-	URL            string `json:"url"`
-	Description    string `json:"description"`
-	Followers      int64  `json:"followers"`
-	AvgEngs        int64  `json:"avgEngs"`
+	ProfilePicture  string `json:"profilePicture"`
+	URL             string `json:"url"`
+	Description     string `json:"description"`
+	Followers       int64  `json:"followers"`
+	StringFollowers string `json:"stringFollowers"`
+	AvgEngs         int64  `json:"avgEngs"`
 
 	// Used for display purposes in reports
 	MaxYield   string `json:"maxYield"`
@@ -883,6 +884,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 			Gender:      "N/A",
 			Categories:  "N/A",
 		}
+		user.StringFollowers = common.Commanize(user.Followers)
 
 		if geo := inf.GetLatestGeo(); geo != nil {
 			if geo.State != "" && geo.Country != "" {
@@ -995,6 +997,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 				Gender:      "N/A",
 				Categories:  "N/A",
 			}
+			user.StringFollowers = common.Commanize(user.Followers)
 
 			if geo := sc.Geo; geo != nil {
 				if geo.State != "" && geo.Country != "" {
