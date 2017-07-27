@@ -990,7 +990,7 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			// Calculate based on avg influencer yield in our platform
 			yield := s.auth.Influencers.GetAvgYield()
 			numInfs = int(cmp.Budget / yield)
-			if numInfs < 3 {
+			if numInfs < 3 && cmp.Budget > 100 {
 				numInfs = 3
 			}
 		}
