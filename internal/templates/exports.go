@@ -6,7 +6,7 @@ const forecastTmpl = `
 		<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
 		<style>
 			body {
-				background-color: #000;
+				background-color: #fff;
 				margin: 0px;
 				font-family: 'Open Sans', sans-serif;
 			}	
@@ -30,7 +30,7 @@ const forecastTmpl = `
 				background-color: #fff;
 			}
 			.row {
-				height: 110px;
+				height: 120px;
 				font-size: 14px;
 				color: #000;
 				padding: 15px;
@@ -112,7 +112,7 @@ const forecastTmpl = `
 			
 			{{#Influencers}}
 
-			<div class="row" align="left">
+			<div class="row clearfix" align="left">
 				<div class="infPic">
 					<img src="https://dash.swayops.com/static/img/hdr-sign-bg.png"/>
 				</div>
