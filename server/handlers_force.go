@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -447,5 +448,32 @@ func forceAttributer(s *Server) gin.HandlerFunc {
 		}
 
 		misc.WriteJSON(c, 200, gin.H{"count": count})
+	}
+}
+
+func forceDeduction(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		amount, err := strconv.ParseFloat(c.Param("amount"), 64)
+		if err != nil || amount == 0 {
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if err = budget.DeductBalance(c.Param("id"), amount, tx, s.Cfg); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
+			return
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
+
 	}
 }

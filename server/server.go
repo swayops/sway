@@ -465,6 +465,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/getAdminStats", getAdminStats(srv))
 
 	adminGroup.GET("/forceBill/:id", forceBill(srv))
+	adminGroup.GET("/forceDeduction/:id/:amount", forceDeduction(srv))
 
 	adminGroup.GET("/getPendingChecks", getPendingChecks(srv))
 	adminGroup.GET("/approveCheck/:influencerId", approveCheck(srv))
