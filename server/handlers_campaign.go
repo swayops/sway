@@ -791,35 +791,57 @@ func putCampaign(s *Server) gin.HandlerFunc {
 				}
 			} else if !cmp.Perks.IsCoupon() && !upd.Perks.IsCoupon() {
 				// If the saved perk is a physical product.. lets add more!
+				var bookedPerks int
 				perksInUse := cmp.Perks.Count
 
 				// Get all the products saved in the deals
 				for _, d := range cmp.Deals {
 					if d.Perk != nil {
-						perksInUse += d.Perk.Count
+						bookedPerks += d.Perk.Count
 					}
 				}
+				perksInUse += bookedPerks
 
 				if perksInUse > upd.Perks.Count {
-					misc.WriteJSON(c, 400, misc.StatusErr("Perk count can only be increased"))
-					return
-				}
+					// Lets only allow decreasing perks IF the campaign has no deals yet
+					if bookedPerks == 0 && (upd.Perks.Count > 0 && cmp.Perks.Count > upd.Perks.Count) {
+						// Delete the extra deals we made
+						var deleted int
+						toDelete := cmp.Perks.Count - upd.Perks.Count
+						for dealKey, deal := range cmp.Deals {
+							if deleted >= toDelete {
+								break
+							}
 
-				// Subtracting pending count because frontend's upd.Perks.Count value
-				// includes pending count!
-				dealsToAdd := upd.Perks.Count - perksInUse - cmp.Perks.PendingCount
-				if dealsToAdd > 0 {
-					// For perks.. lets put it into pending count instead of the actual
-					// count
-					// NOTE: We'll add deals and perk count once the addition is approved
-					// by admin
-					cmp.Perks.PendingCount += dealsToAdd
-					// Add deals for perks we added
-					if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-						return saveCampaign(tx, &cmp, s)
-					}); err != nil {
-						misc.AbortWithErr(c, 500, err)
+							if deal.IsAvailable() {
+								delete(cmp.Deals, dealKey)
+								deleted += 1
+							}
+						}
+
+						// Lower the perk count AFTER deleting the deals
+						cmp.Perks.Count = upd.Perks.Count
+					} else {
+						misc.WriteJSON(c, 400, misc.StatusErr("Perk count can only be increased"))
 						return
+					}
+				} else {
+					// Subtracting pending count because frontend's upd.Perks.Count value
+					// includes pending count!
+					dealsToAdd := upd.Perks.Count - perksInUse - cmp.Perks.PendingCount
+					if dealsToAdd > 0 {
+						// For perks.. lets put it into pending count instead of the actual
+						// count
+						// NOTE: We'll add deals and perk count once the addition is approved
+						// by admin
+						cmp.Perks.PendingCount += dealsToAdd
+						// Add deals for perks we added
+						if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+							return saveCampaign(tx, &cmp, s)
+						}); err != nil {
+							misc.AbortWithErr(c, 500, err)
+							return
+						}
 					}
 				}
 			}
