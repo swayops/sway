@@ -477,3 +477,30 @@ func forceDeduction(s *Server) gin.HandlerFunc {
 
 	}
 }
+
+func forceAthlete(s *Server) gin.HandlerFunc {
+	// Really hacky please ignore
+	return func(c *gin.Context) {
+		if !isSecureAdmin(c, s) {
+			return
+		}
+
+		cmp := common.GetCampaign("28", s.db, s.Cfg)
+		if cmp == nil {
+			misc.WriteJSON(c, 500, ErrCampaign)
+			return
+		}
+
+		// Save the Campaign
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Add fresh deals for this month
+			cmp.Mention = sanitizeMention("athletetrainingandhealth")
+			return saveCampaign(tx, cmp, s)
+		}); err != nil {
+			misc.WriteJSON(c, 500, err)
+			return
+		}
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
+
+	}
+}
