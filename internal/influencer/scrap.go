@@ -280,7 +280,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 			return false
 		}
 	}
-
+	log.Println("Scrap made it here!", sc.Id)
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool

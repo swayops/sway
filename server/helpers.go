@@ -976,7 +976,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 
 		influencers = append(influencers, user)
 	}
-
+	log.Println("How many influencers do we have?", len(influencers))
 	// Lets go over scraps now!
 	scraps, err := getAllScraps(s)
 	if err != nil {
