@@ -418,6 +418,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/getForecastExport/:filename", getForecastExport(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))
+	verifyGroup.GET("/getKeywords", getKeywords(srv))
 	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
 	verifyGroup.GET("/dirtyHack", dirtyHack(srv))
 	verifyGroup.GET("/getRejections/:campaignId/:influencerId", getRejections(srv))

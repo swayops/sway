@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -89,6 +90,51 @@ func getMatchesForKeyword(s *Server) gin.HandlerFunc {
 		}
 
 		misc.WriteJSON(c, 200, matches)
+	}
+}
+
+func getKeywords(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		matches := make(map[string]int)
+		for _, inf := range s.auth.Influencers.GetAll() {
+			for _, kw := range inf.Keywords {
+				matches[kw+"-imagga"] += 1
+			}
+			if inf.Instagram != nil && inf.Instagram.Bio != "" {
+				for _, kw := range strings.Split(inf.Instagram.Bio, " ") {
+					matches[kw] += 1
+				}
+			}
+		}
+
+		scraps, _ := getAllScraps(s)
+		for _, sc := range scraps {
+			for _, kw := range sc.Keywords {
+				matches[kw+"-imagga"] += 1
+			}
+
+			if sc.InstaData != nil && sc.InstaData.Bio != "" {
+				for _, kw := range strings.Split(sc.InstaData.Bio, " ") {
+					matches[kw] += 1
+				}
+			}
+		}
+
+		type kv struct {
+			Key   string
+			Value int
+		}
+
+		var ss []kv
+		for k, v := range matches {
+			ss = append(ss, kv{k, v})
+		}
+
+		sort.Slice(ss, func(i, j int) bool {
+			return ss[i].Value > ss[j].Value
+		})
+
+		misc.WriteJSON(c, 200, ss)
 	}
 }
 
