@@ -494,7 +494,10 @@ func forceAthlete(s *Server) gin.HandlerFunc {
 		// Save the Campaign
 		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 			// Add fresh deals for this month
-			cmp.Mention = sanitizeMention("athletetrainingandhealth")
+			deal, _ := cmp.Deals["997b11071a120c01060d157e44645f9f"]
+			deal.Mention = sanitizeMention("athletetrainingandhealth")
+			deal.Task = cmp.Task
+			cmp.Deals["997b11071a120c01060d157e44645f9f"] = deal
 			return saveCampaign(tx, cmp, s)
 		}); err != nil {
 			misc.WriteJSON(c, 500, err)
