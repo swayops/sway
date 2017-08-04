@@ -277,9 +277,6 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 
 		min, max := cmp.GetTargetYield(store.Spendable)
 		if maxYield < min || maxYield > max || maxYield == 0 {
-			if sc.InstaData != nil {
-				log.Println(sc.InstaData.UserName, maxYield)
-			}
 			return false
 		}
 	}

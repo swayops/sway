@@ -1061,6 +1061,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 			}
 
 			scrapUsers = append(scrapUsers, user)
+			log.Println("Appending", user.URL)
 		}
 	}
 
