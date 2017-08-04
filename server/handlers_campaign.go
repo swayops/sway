@@ -581,6 +581,13 @@ func putCampaign(s *Server) gin.HandlerFunc {
 
 		if upd.Task != nil && *upd.Task != "" {
 			cmp.Task = *upd.Task
+			// Also update task in any deals
+			for _, d := range cmp.Deals {
+				if d.IsActive() {
+					d.Task = cmp.Task
+					cmp.Deals[d.Id] = d
+				}
+			}
 		}
 
 		if upd.TermsAndConditions != nil && *upd.TermsAndConditions != "" {

@@ -328,7 +328,7 @@ const dealInstructionsEmail = `
 		 		<br/>
 		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
 				<b>Hashtags to do:</b> {{Tags}}<br/>
-				<b>Mentions to do:</b> @{{Mentions}}<br/>
+				<b>Mentions to do:</b> {{Mentions}}<br/>
 		 		<br/>
 	    	</td>
 	    </tr>
