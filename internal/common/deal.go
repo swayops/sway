@@ -11,6 +11,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms/facebook"
 	"github.com/swayops/sway/platforms/instagram"
 	"github.com/swayops/sway/platforms/twitter"
@@ -503,6 +504,34 @@ func (d *Deal) Published() int32 {
 	}
 
 	return 0
+}
+
+func (d *Deal) Caption() string {
+	if d.Tweet != nil {
+		return d.Tweet.Text
+	}
+
+	if d.Facebook != nil {
+		return d.Facebook.Caption
+	}
+
+	if d.Instagram != nil {
+		return d.Instagram.Caption
+	}
+
+	if d.YouTube != nil {
+		return d.YouTube.Description
+	}
+
+	return ""
+}
+
+func (d *Deal) Picture() string {
+	if d.Instagram != nil && misc.Ping(d.Instagram.Thumbnail) == nil {
+		return d.Instagram.Thumbnail
+	}
+
+	return ""
 }
 
 func (d *Deal) IsActive() bool {

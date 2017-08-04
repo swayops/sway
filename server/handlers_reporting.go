@@ -33,7 +33,8 @@ func getCampaignReport(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if err := reporting.GenerateCampaignReport(c.Writer, s.db, cid, from, to, s.Cfg); err != nil {
+		isPDF, _ := strconv.ParseBool(c.Query("pdf"))
+		if err := reporting.GenerateCampaignReport(c, s.auth, s.db, cid, from, to, isPDF, s.Cfg); err != nil {
 			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 		}
 	}

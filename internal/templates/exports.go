@@ -272,20 +272,20 @@ const CampaignReportTmp = `
 
 			<div class="row clearfix" align="left">
 				<div class="infPic">
-					<img style="width: 100%;" src="{{postPicture}}"/>
+					<img style="width: 100%;" src="{{Picture}}"/>
 				</div>
 				<div class="infDescription">
-					<h3>{{infName}}</h3>
-					<p>Published: {{infDate}}</p>
-					<p>Post link: <a href="{{infPostLink}}">Open</a></p>
+					<h3>{{Name}}</h3>
+					<p>Published: {{Date}}</p>
+					<p>Post link: <a href="{{Link}}">Open</a></p>
 					<p style="max-height: 80px;">Caption: {{Caption}}</p>
 				</div>
 				<div class="infStats">
-					Est Views: <b style="color:#31aff5;">{{infViews}}</b> <br>
-					Likes: <b style="color:#31aff5;">{{infLikes}}</b>
-					Comments: <b style="color:#31aff5;">{{infComments}}</b>
-					Shares: <b style="color:#31aff5;">{{infShares}}</b>
-					Clicks: <b style="color:#31aff5;">{{infClicks}}</b>
+					Est Views: <b style="color:#31aff5;">{{Views}}</b> <br>
+					Likes: <b style="color:#31aff5;">{{Likes}}</b> <br>
+					Comments: <b style="color:#31aff5;">{{Comments}}</b> <br>
+					Shares: <b style="color:#31aff5;">{{Shares}}</b> <br>
+					Clicks: <b style="color:#31aff5;">{{Clicks}}</b> <br>
 				</div>
 			</div>
 

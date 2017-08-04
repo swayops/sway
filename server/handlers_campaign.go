@@ -1051,7 +1051,7 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 		tmpl := templates.ForecastExport.Render(load)
 
 		c.Header("Content-type", "application/octet-stream")
-		c.Header("Content-Disposition", "attachment;Filename=test.doc")
+		c.Header("Content-Disposition", fmt.Sprintf("attachment;Filename=%s.pdf", cmp.Name+"_forecast"))
 
 		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, s.Cfg); err != nil {
 			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))

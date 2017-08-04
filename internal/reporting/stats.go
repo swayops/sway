@@ -57,6 +57,7 @@ type ReportStats struct {
 	Published    string `json:"posted,omitempty"`     // Pretty string of date post was made
 	InfluencerId string `json:"infId,omitempty"`
 	Network      string `json:"network,omitempty"` // Social Network
+	DealID       string `json:"dealID,omitempty"`
 }
 
 func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time.Time, onlyTotals bool) (*TargetStats, error) {
@@ -104,19 +105,19 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 				tg.Channel = make(map[string]*ReportStats)
 			}
 
-			fillReportStats(deal.AssignedPlatform, tg.Channel, st, deal.InfluencerId, deal.AssignedPlatform)
+			fillReportStats(deal.AssignedPlatform, tg.Channel, st, deal.InfluencerId, deal.AssignedPlatform, deal.Id)
 
 			if tg.Influencer == nil || len(tg.Influencer) == 0 {
 				tg.Influencer = make(map[string]*ReportStats)
 			}
 
-			fillReportStats(deal.InfluencerName, tg.Influencer, st, deal.InfluencerId, deal.AssignedPlatform)
+			fillReportStats(deal.InfluencerName, tg.Influencer, st, deal.InfluencerId, deal.AssignedPlatform, deal.Id)
 
 			if tg.Post == nil || len(tg.Post) == 0 {
 				tg.Post = make(map[string]*ReportStats)
 			}
 
-			fillContentLevelStats(deal.PostUrl, deal.AssignedPlatform, deal.Published(), tg.Post, st, deal.InfluencerId)
+			fillContentLevelStats(deal.PostUrl, deal.AssignedPlatform, deal.Published(), tg.Post, st, deal.InfluencerId, deal.Id)
 
 			continue
 		}
@@ -129,7 +130,7 @@ func GetCampaignStats(cid string, db *bolt.DB, cfg *config.Config, from, to time
 	return tg, nil
 }
 
-func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats, infId, channel string) map[string]*ReportStats {
+func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats, infId, channel, dealID string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
 		stats = &ReportStats{}
@@ -146,10 +147,11 @@ func fillReportStats(key string, data map[string]*ReportStats, st *common.Stats,
 	stats.Spent += st.Influencer + st.TotalMarkup()
 	stats.InfluencerId = infId
 	stats.Network = channel
+	stats.DealID = dealID
 	return data
 }
 
-func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *common.Stats, infId string) map[string]*ReportStats {
+func fillContentLevelStats(key, platformId string, ts int32, data map[string]*ReportStats, st *common.Stats, infId, dealID string) map[string]*ReportStats {
 	stats, ok := data[key]
 	if !ok {
 		stats = &ReportStats{}
@@ -167,6 +169,7 @@ func fillContentLevelStats(key, platformId string, ts int32, data map[string]*Re
 	stats.PlatformId = platformId
 	stats.Published = getPostDate(ts)
 	stats.InfluencerId = infId
+	stats.DealID = dealID
 
 	return data
 }

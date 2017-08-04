@@ -4,20 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
+	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
+	"github.com/swayops/sway/platforms/pdf"
 )
 
 var (
 	ErrCampaignNotFound = errors.New("Campaign not found!")
 )
 
-func GenerateCampaignReport(res http.ResponseWriter, db *bolt.DB, cid string, from, to time.Time, cfg *config.Config) error {
+type ReportInfluencer struct {
+	Name, Date, Picture, Link, Caption     string
+	Views, Likes, Comments, Shares, Clicks int32
+}
+
+func GenerateCampaignReport(c *gin.Context, auth *auth.Auth, db *bolt.DB, cid string, from, to time.Time, isPDF bool, cfg *config.Config) error {
 	cmp := common.GetCampaign(cid, db, cfg)
 	if cmp == nil {
 		return ErrCampaignNotFound
@@ -29,16 +37,77 @@ func GenerateCampaignReport(res http.ResponseWriter, db *bolt.DB, cid string, fr
 		return err
 	}
 
-	xf := misc.NewXLSXFile(cfg.JsonXlsxPath)
-	setHighLevelSheet(xf, cmp, from, to, st.Total)
-	setChannelLevelSheet(xf, from, to, st.Channel)
-	setInfluencerLevelSheet(xf, from, to, st.Influencer)
-	setContentLevelSheet(xf, from, to, st.Post)
+	if isPDF {
+		load := make(map[string]interface{})
+		load["Campaign Name"] = cmp.Name
+		if st.Total != nil {
+			load["Spent"] = fmt.Sprintf("$%0.2f", st.Total.Spent)
+			load["Views"] = st.Total.Views
+			load["Engagements"] = st.Total.Engagements
+		}
+		type ReportInfluencer struct {
+			Name, Date, Picture, Link, Caption     string
+			Views, Likes, Comments, Shares, Clicks int32
+		}
+		if st.Influencer != nil {
+			infs := []*ReportInfluencer{}
+			for _, stats := range st.Influencer {
+				deal, ok := cmp.Deals[stats.DealID]
+				if !ok {
+					continue
+				}
 
-	res.Header().Set("Content-Type", misc.XLSTContentType)
-	if _, err := xf.WriteTo(res); err != nil {
-		log.Println(err)
-		return err
+				inf, ok := auth.Influencers.Get(stats.InfluencerId)
+				if !ok {
+					continue
+				}
+
+				picture := inf.GetProfilePicture()
+				if dealPic := deal.Picture(); dealPic != "" {
+					picture = dealPic
+				}
+
+				caption := deal.Caption()
+				if len(caption) > 200 {
+					caption = caption[:200] + "..."
+				}
+				rptInf := &ReportInfluencer{
+					Name:     inf.Name,
+					Date:     time.Unix(int64(deal.Published()), 0).Format(time.RFC1123),
+					Picture:  picture,
+					Link:     deal.PostUrl,
+					Caption:  caption,
+					Views:    stats.Views,
+					Likes:    stats.Likes,
+					Comments: stats.Comments,
+					Shares:   stats.Shares,
+					Clicks:   stats.Clicks,
+				}
+				infs = append(infs, rptInf)
+			}
+			load["Influencers"] = infs
+		}
+
+		tmpl := templates.CampaignReportExport.Render(load)
+
+		c.Header("Content-type", "application/octet-stream")
+		c.Header("Content-Disposition", fmt.Sprintf("attachment;Filename=%s.pdf", cmp.Name+"_report"))
+
+		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, cfg); err != nil {
+			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
+		}
+	} else {
+		xf := misc.NewXLSXFile(cfg.JsonXlsxPath)
+		setHighLevelSheet(xf, cmp, from, to, st.Total)
+		setChannelLevelSheet(xf, from, to, st.Channel)
+		setInfluencerLevelSheet(xf, from, to, st.Influencer)
+		setContentLevelSheet(xf, from, to, st.Post)
+
+		c.Header("Content-Type", misc.XLSTContentType)
+		if _, err := xf.WriteTo(c.Writer); err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
 	return nil
