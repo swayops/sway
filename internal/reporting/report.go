@@ -45,10 +45,7 @@ func GenerateCampaignReport(c *gin.Context, auth *auth.Auth, db *bolt.DB, cid st
 			load["Views"] = st.Total.Views
 			load["Engagements"] = st.Total.Engagements
 		}
-		type ReportInfluencer struct {
-			Name, Date, Picture, Link, Caption     string
-			Views, Likes, Comments, Shares, Clicks int32
-		}
+
 		if st.Influencer != nil {
 			infs := []*ReportInfluencer{}
 			for _, stats := range st.Influencer {
