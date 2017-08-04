@@ -268,19 +268,6 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 		}
 	}
 
-	// Optimization
-	if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
-		store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
-		if store.IsClosed(&cmp) {
-			return false
-		}
-
-		min, max := cmp.GetTargetYield(store.Spendable)
-		if maxYield < min || maxYield > max || maxYield == 0 {
-			return false
-		}
-	}
-
 	if !forecast {
 		// Check if there's an available deal
 		var dealFound bool
