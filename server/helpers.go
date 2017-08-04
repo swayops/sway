@@ -986,6 +986,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 	scrapUsers := []*ForecastUser{}
 	for _, sc := range scraps {
 		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
+			log.Println("MATCHED!", sc.Id)
 			_, ok := cmp.Whitelist[sc.EmailAddress]
 			if ok {
 				// This person is already in the campaign!
