@@ -106,7 +106,9 @@ func getKeywords(s *Server) gin.HandlerFunc {
 
 			if inf.Instagram != nil && inf.Instagram.Bio != "" {
 				for _, kw := range strings.Split(inf.Instagram.Bio, " ") {
-					matches[kw] += 1
+					if len(kw) > 3 {
+						matches[kw] += 1
+					}
 				}
 			}
 		}
@@ -121,7 +123,9 @@ func getKeywords(s *Server) gin.HandlerFunc {
 
 			if sc.InstaData != nil && sc.InstaData.Bio != "" {
 				for _, kw := range strings.Split(sc.InstaData.Bio, " ") {
-					matches[kw] += 1
+					if len(kw) > 3 {
+						matches[kw] += 1
+					}
 				}
 			}
 		}
