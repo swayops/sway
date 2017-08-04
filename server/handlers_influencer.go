@@ -1200,6 +1200,45 @@ func emptyPayout(s *Server) gin.HandlerFunc {
 	}
 }
 
+func blockCampaign(s *Server) gin.HandlerFunc {
+	// Blocks given campaign ID for given influencer
+	return func(c *gin.Context) {
+		var (
+			infId      = c.Param("influencerId")
+			campaignId = c.Param("campaignId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		if campaignId == "" {
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid campaign ID"))
+			return
+		}
+
+		cmp := common.GetCampaign(campaignId, s.db, s.Cfg)
+		if cmp == nil {
+			misc.WriteJSON(c, 500, misc.StatusErr("Invalid campaign"))
+			return
+		}
+
+		// Add the campaign ID to blacklist
+		inf.Blacklist = append(inf.Blacklist, campaignId)
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			// Save the influencer
+			return saveInfluencer(s, tx, inf)
+		}); err != nil {
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
+			return
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
+	}
+}
+
 type PerkWithCmpInfo struct {
 	DealID       string `json:"dealID"`
 	InfluencerID string `json:"infID"`

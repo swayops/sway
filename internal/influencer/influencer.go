@@ -118,6 +118,8 @@ type Influencer struct {
 	Cancellations []string `json:"cancel,omitempty"`
 	// Array of campaigns this influencer has timed out for
 	Timeouts []string `json:"tos,omitempty"`
+	// Array of campaigns this influencer has blacklisted
+	Blacklist []string `json:"blacklist,omitempty"`
 
 	// Sway Rep scores by date
 	Rep        map[string]float64 `json:"historicRep,omitempty"`
@@ -949,6 +951,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			for _, cid := range inf.Cancellations {
+				if cid == targetDeal.CampaignId {
+					dealFound = true
+				}
+			}
+
+			for _, cid := range inf.Blacklist {
 				if cid == targetDeal.CampaignId {
 					dealFound = true
 				}
