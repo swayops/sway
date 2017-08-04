@@ -976,7 +976,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 
 		influencers = append(influencers, user)
 	}
-	log.Println("How many influencers do we have?", len(influencers))
+
 	// Lets go over scraps now!
 	scraps, err := getAllScraps(s)
 	if err != nil {
@@ -986,7 +986,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 	scrapUsers := []*ForecastUser{}
 	for _, sc := range scraps {
 		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
-			log.Println("MATCHED!", sc.Id)
 			_, ok := cmp.Whitelist[sc.EmailAddress]
 			if ok {
 				// This person is already in the campaign!
@@ -1062,7 +1061,6 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 			}
 
 			scrapUsers = append(scrapUsers, user)
-			log.Println("Appending", user.URL)
 		}
 	}
 
