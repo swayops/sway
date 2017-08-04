@@ -137,7 +137,9 @@ func getKeywords(s *Server) gin.HandlerFunc {
 
 		var ss []kv
 		for k, v := range matches {
-			ss = append(ss, kv{k, v})
+			if v > 100 {
+				ss = append(ss, kv{k, v})
+			}
 		}
 
 		sort.Slice(ss, func(i, j int) bool {
