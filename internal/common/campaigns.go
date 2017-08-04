@@ -255,7 +255,13 @@ func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 	target := filteredSpendable / float64(dealsEmpty)
 
 	// 40% margin left and right of target
-	margin := 0.40 * target
+	var margin float64
+	if len(cmp.Deals) == dealsEmpty {
+		// If no deal has been filled yet.. lets be a bit more lenient
+		margin = 0.60 * target
+	} else {
+		margin = 0.40 * target
+	}
 	return target - margin, target + margin
 }
 
