@@ -96,10 +96,14 @@ func getMatchesForKeyword(s *Server) gin.HandlerFunc {
 func getKeywords(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		matches := make(map[string]int)
+		includeImagga := c.Query("imagga") == "t"
 		for _, inf := range s.auth.Influencers.GetAll() {
-			for _, kw := range inf.Keywords {
-				matches[kw+"-imagga"] += 1
+			if includeImagga {
+				for _, kw := range inf.Keywords {
+					matches[kw+"-imagga"] += 1
+				}
 			}
+
 			if inf.Instagram != nil && inf.Instagram.Bio != "" {
 				for _, kw := range strings.Split(inf.Instagram.Bio, " ") {
 					matches[kw] += 1
@@ -109,8 +113,10 @@ func getKeywords(s *Server) gin.HandlerFunc {
 
 		scraps, _ := getAllScraps(s)
 		for _, sc := range scraps {
-			for _, kw := range sc.Keywords {
-				matches[kw+"-imagga"] += 1
+			if includeImagga {
+				for _, kw := range sc.Keywords {
+					matches[kw+"-imagga"] += 1
+				}
 			}
 
 			if sc.InstaData != nil && sc.InstaData.Bio != "" {
