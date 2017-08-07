@@ -80,6 +80,8 @@ type Campaign struct {
 	Timeline []*Timeline `json:"timeline,omitempty"`
 
 	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
+
+	Archived bool `json:"archived,omitempty"` // aka "deleted"
 }
 
 type Range struct {
@@ -117,7 +119,7 @@ func (r *FloatRange) InRange(val float64) bool {
 }
 
 func (cmp *Campaign) IsValid() bool {
-	return (cmp.Budget > 0 || cmp.IsProductBasedBudget()) && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
+	return (cmp.Budget > 0 || cmp.IsProductBasedBudget()) && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0 && !cmp.Archived
 }
 
 func (cmp *Campaign) IsProductBasedBudget() bool {
