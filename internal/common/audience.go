@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -71,6 +72,18 @@ func (p *Audiences) GetStore(ID string) map[string]*Audience {
 	p.mux.RLock()
 	for audID, aud := range p.store {
 		if ID == "" || ID == aud.Id {
+			store[audID] = aud
+		}
+	}
+	p.mux.RUnlock()
+	return store
+}
+
+func (p *Audiences) GetStoreByAdvertiser(advID string) map[string]*Audience {
+	store := make(map[string]*Audience)
+	p.mux.RLock()
+	for audID, aud := range p.store {
+		if strings.HasPrefix(audID, advID+"_") {
 			store[audID] = aud
 		}
 	}

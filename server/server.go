@@ -402,6 +402,12 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/balance/:id", getBalance(srv))
 	adminGroup.GET("/getCampaignStore", getCampaignStore(srv))
 
+	// POST method for advertiser audience
+	verifyGroup.POST("/audience/:id", advScopes, audience(srv))
+	// GET audiences by advertiser
+	verifyGroup.GET("/getAudiencesByAdvertiser/:id", advScopes, getAudiencesByAdvertiser(srv))
+	verifyGroup.DELETE("/audience/:id/:audID", advScopes, delAudience(srv))
+
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)
 
@@ -499,11 +505,12 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
 
-	// Audiences
+	// Audiences (admin)
+	// POST method for admin audience
 	adminGroup.POST("/audience", audience(srv))
 	adminGroup.DELETE("/audience/:id", delAudience(srv))
-	verifyGroup.GET("/audience", getAudiences(srv))
-	verifyGroup.GET("/audience/:id", getAudiences(srv))
+	adminGroup.GET("/audience", getAudiences(srv))
+	adminGroup.GET("/audience/:id", getAudiences(srv))
 }
 
 func (srv *Server) startEngine() error {

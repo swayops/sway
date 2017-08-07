@@ -37,10 +37,15 @@ func audience(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		advID := c.Param("id")
+
 		// If an ID is not passed in we assume a new audience is being made
 		if aud.Id == "" {
 			if err = s.db.Update(func(tx *bolt.Tx) (err error) { // have to get an id early for saveImage
 				aud.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Audience)
+				if advID != "" {
+					aud.Id = advID + "_" + aud.Id
+				}
 				return
 			}); err != nil {
 				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
@@ -91,6 +96,29 @@ func getAudiences(s *Server) gin.HandlerFunc {
 	// all audiences
 	return func(c *gin.Context) {
 		misc.WriteJSON(c, 200, s.Audiences.GetStore(c.Param("id")))
+	}
+}
+
+func getAudiencesByAdvertiser(s *Server) gin.HandlerFunc {
+	// Get audiences by advertiser id "id"
+	return func(c *gin.Context) {
+		misc.WriteJSON(c, 200, s.Audiences.GetStoreByAdvertiser(c.Param("id")))
+	}
+}
+
+func delAdvertiserAudience(s *Server) gin.HandlerFunc {
+	// Delete audience at the advertiser l
+	return func(c *gin.Context) {
+		id := c.Param("audID")
+		s.Audiences.Delete(id)
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			return tx.Bucket([]byte(s.Cfg.Bucket.Audience)).Delete([]byte(id))
+		}); err != nil {
+			misc.AbortWithErr(c, 500, err)
+			return
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(""))
 	}
 }
 

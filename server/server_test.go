@@ -5721,14 +5721,49 @@ func TestAudiences(t *testing.T) {
 		return
 	}
 
-	// Create an audience
+	// Create an audience for an advertiser
+	members := map[string]bool{
+		"advertiser@seanjohn.com": true,
+		"advertiser@fubu.com  ":   true,
+	}
+	aud := common.Audience{
+		Name:    "My advertiser audience",
+		Members: members,
+	}
+
+	r = rst.DoTesting(t, "POST", "/audience/123", &aud, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets get that audience!
+	var audienceStore map[string]common.Audience
+	r = rst.DoTesting(t, "GET", "/getAudiencesByAdvertiser/123", nil, &audienceStore)
+	if r.Status != 200 || len(audienceStore) == 0 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an admin audience
+	aud, ok := audienceStore["123_1"]
+	if !ok {
+		t.Fatal("Failed to add adv audience!")
+		return
+	}
+
+	_, ok = aud.Members["advertiser@fubu.com"]
+	if !ok {
+		t.Fatal("Failed to trim email!")
+		return
+	}
 
 	// Emails should be trimmed!
-	members := map[string]bool{
+	members = map[string]bool{
 		"jOhn@seanjohn.com": true,
 		"blah@fubu.com  ":   true,
 	}
-	aud := common.Audience{
+	aud = common.Audience{
 		Name:    "My test audience",
 		Members: members,
 	}
@@ -5740,14 +5775,13 @@ func TestAudiences(t *testing.T) {
 	}
 
 	// Lets get that audience!
-	var audienceStore map[string]common.Audience
 	r = rst.DoTesting(t, "GET", "/audience", nil, &audienceStore)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	aud, ok := audienceStore["1"]
+	aud, ok = audienceStore["2"]
 	if !ok {
 		t.Fatal("Failed to add audience!")
 		return
@@ -5793,7 +5827,7 @@ func TestAudiences(t *testing.T) {
 		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Audiences:    []string{"1"},
+		Audiences:    []string{"2"},
 	}
 
 	var status Status
@@ -5810,7 +5844,7 @@ func TestAudiences(t *testing.T) {
 		return
 	}
 
-	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] != "1" {
+	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] != "2" {
 		t.Fatal("Failed to target audience!")
 		return
 	}
