@@ -36,17 +36,15 @@ var DEFAULT_IMAGES = []string{
 
 func delCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			cid = c.Param("id")
-			cmp common.Campaign
-		)
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			misc.WriteJSON(c, 404, ErrCampaign)
+			return
+		}
 
 		if err := s.db.Update(func(tx *bolt.Tx) error {
-			if err := misc.GetTxJson(tx, cfg.Bucket.Campaign, cid, &cmp); err != nil || cmp.Id != cid {
-				return err
-			}
 			cmp.Status, cmp.Archived = false, true
-			return misc.PutTxJson(tx, cfg.Bucket.Campaign, cid, &cmp)
+			return saveCampaign(tx, cmp, s)
 		}); err != nil {
 			log.Printf("error: %v", err)
 			misc.WriteJSON(c, 500, ErrCampaign)

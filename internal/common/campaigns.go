@@ -119,7 +119,7 @@ func (r *FloatRange) InRange(val float64) bool {
 }
 
 func (cmp *Campaign) IsValid() bool {
-	return (cmp.Budget > 0 || cmp.IsProductBasedBudget()) && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0
+	return (cmp.Budget > 0 || cmp.IsProductBasedBudget()) && len(cmp.Deals) > 0 && cmp.Status && cmp.Approved > 0 && !cmp.Archived
 }
 
 func (cmp *Campaign) IsProductBasedBudget() bool {
@@ -327,9 +327,6 @@ func (p *Campaigns) GetStore() map[string]Campaign {
 	store := make(map[string]Campaign)
 	p.mux.RLock()
 	for cId, cmp := range p.store {
-		if cmp.Archived {
-			continue
-		}
 		store[cId] = cmp
 	}
 	p.mux.RUnlock()
@@ -340,9 +337,6 @@ func (p *Campaigns) GetAvailableDealCount() int32 {
 	var count int32
 	p.mux.RLock()
 	for _, cmp := range p.store {
-		if cmp.Archived {
-			continue
-		}
 		count += cmp.GetEmptyDeals()
 	}
 	p.mux.RUnlock()
