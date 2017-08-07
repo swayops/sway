@@ -80,6 +80,8 @@ type Campaign struct {
 	Timeline []*Timeline `json:"timeline,omitempty"`
 
 	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
+
+	Archived bool `json:"archived,omitempty"` // aka "deleted"
 }
 
 type Range struct {

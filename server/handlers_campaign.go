@@ -34,6 +34,29 @@ var DEFAULT_IMAGES = []string{
 	"default_6.jpg",
 }
 
+func delCampaign(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			cid = c.Param("cid")
+			cmp common.Campaign
+		)
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			if err := misc.GetTxJson(tx, cfg.Bucket.Campaign, cid, &cmp); err != nil || cmp.Id != cid {
+				return err
+			}
+			cmp.Archived = true
+			return misc.PutTxJson(tx, cfg.Bucket.Campaign, cid, &cmp)
+		}); err != nil {
+			log.Printf("error: %v", err)
+			misc.WriteJSON(c, 500, ErrCampaign)
+			return
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
+	}
+}
+
 func postCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
@@ -262,6 +285,11 @@ func getCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		if cmp.Archived && !auth.GetCtxUser(c).Admin {
+			misc.WriteJSON(c, 500, ErrCampaign)
+			return
+		}
+
 		// This is an edge case where we need to display perk count
 		// for the purpose of UI
 		if cmp.Perks != nil && !s.Cfg.Sandbox && c.Query("dbg") != "1" {
@@ -445,28 +473,6 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 			return
 		}
 		misc.WriteJSON(c, 200, campaigns)
-	}
-}
-
-func delCampaign(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var g *common.Campaign
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &g)
-			if err != nil {
-				return
-			}
-
-			g.Status = false
-
-			return saveCampaign(tx, g, s)
-		}); err != nil {
-			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
