@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -481,6 +482,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
 			return
 		}
+
+		sort.Slice(campaigns, func(i int, j int) bool {
+			return strings.ToLower(campaigns[i].CreatedAt) > strings.ToLower(campaigns[j].CreatedAt)
+		})
+
 		misc.WriteJSON(c, 200, campaigns)
 	}
 }
