@@ -484,7 +484,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 		}
 
 		sort.Slice(campaigns, func(i int, j int) bool {
-			return strings.ToLower(campaigns[i].Created) > strings.ToLower(campaigns[j].Created)
+			return campaigns[i].Created > campaigns[j].Created
 		})
 
 		misc.WriteJSON(c, 200, campaigns)
