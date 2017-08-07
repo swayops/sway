@@ -827,7 +827,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 		L2:
 			for _, kw := range cmp.Keywords {
 				for _, infKw := range inf.Keywords {
-					if kw == infKw {
+					if common.IsExactMatch(kw, infKw) {
 						kwFound = true
 						break L2
 					}

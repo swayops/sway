@@ -191,7 +191,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 	L1:
 		for _, kw := range cmp.Keywords {
 			for _, scKw := range sc.Keywords {
-				if kw == scKw {
+				if common.IsExactMatch(kw, scKw) {
 					kwFound = true
 					break L1
 				}
