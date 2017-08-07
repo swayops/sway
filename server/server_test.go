@@ -478,7 +478,7 @@ func TestCampaigns(t *testing.T) {
 
 		// log in as admin and see if we can get the campaign
 		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
-		{"GET", "/campaign/1", nil, 200, nil},
+		{"GET", "/campaign/1", nil, 200, gin.H{"status": false, "archived": true}},
 	} {
 		tr.Run(t, rst)
 	}
