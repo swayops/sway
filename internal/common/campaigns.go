@@ -327,6 +327,9 @@ func (p *Campaigns) GetStore() map[string]Campaign {
 	store := make(map[string]Campaign)
 	p.mux.RLock()
 	for cId, cmp := range p.store {
+		if cmp.Archived {
+			continue
+		}
 		store[cId] = cmp
 	}
 	p.mux.RUnlock()
@@ -337,6 +340,9 @@ func (p *Campaigns) GetAvailableDealCount() int32 {
 	var count int32
 	p.mux.RLock()
 	for _, cmp := range p.store {
+		if cmp.Archived {
+			continue
+		}
 		count += cmp.GetEmptyDeals()
 	}
 	p.mux.RUnlock()

@@ -37,7 +37,7 @@ var DEFAULT_IMAGES = []string{
 func delCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			cid = c.Param("cid")
+			cid = c.Param("id")
 			cmp common.Campaign
 		)
 
@@ -281,12 +281,12 @@ func getCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			misc.WriteJSON(c, 500, ErrCampaign)
+			misc.WriteJSON(c, 404, ErrCampaign)
 			return
 		}
 
 		if cmp.Archived && !auth.GetCtxUser(c).Admin {
-			misc.WriteJSON(c, 500, ErrCampaign)
+			misc.WriteJSON(c, 404, ErrCampaign)
 			return
 		}
 
@@ -359,6 +359,8 @@ type ManageCampaign struct {
 
 	Accepted  []*manageInf `json:"accepted"`
 	Completed []*manageInf `json:"completed"`
+
+	Archived bool `json:"archived,omitempty"`
 }
 
 type manageInf struct {
@@ -379,8 +381,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	// Prettifies the info because this is what Manage Campaigns
 	// page on frontend uses
 	return func(c *gin.Context) {
-		targetAdv := c.Param("id")
-		var campaigns []*ManageCampaign
+		var (
+			targetAdv = c.Param("id")
+			campaigns []*ManageCampaign
+			isAdmin   = auth.GetCtxUser(c).Admin
+		)
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -388,6 +393,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
+
+				if cmp.Archived && !isAdmin {
+					return nil
+				}
+
 				if cmp.AdvertiserId == targetAdv {
 					mCmp := &ManageCampaign{
 						Image:     cmp.ImageURL,
@@ -400,6 +410,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						YouTube:   cmp.YouTube,
 						Facebook:  cmp.Facebook,
 						Budget:    cmp.Budget,
+						Archived:  cmp.Archived,
 					}
 
 					if len(cmp.Timeline) > 0 {
