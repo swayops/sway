@@ -45,7 +45,7 @@ func delCampaign(s *Server) gin.HandlerFunc {
 			if err := misc.GetTxJson(tx, cfg.Bucket.Campaign, cid, &cmp); err != nil || cmp.Id != cid {
 				return err
 			}
-			cmp.Archived = true
+			cmp.Status, cmp.Archived = false, true
 			return misc.PutTxJson(tx, cfg.Bucket.Campaign, cid, &cmp)
 		}); err != nil {
 			log.Printf("error: %v", err)
