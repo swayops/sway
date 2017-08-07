@@ -79,11 +79,17 @@ func (p *Audiences) GetStore(ID string) map[string]*Audience {
 	return store
 }
 
-func (p *Audiences) GetStoreByAdvertiser(advID string) map[string]*Audience {
+func (p *Audiences) GetStoreByFilter(id string, isAgency bool) map[string]*Audience {
 	store := make(map[string]*Audience)
 	p.mux.RLock()
 	for audID, aud := range p.store {
-		if strings.HasPrefix(audID, advID+"_") {
+		var key string
+		if isAgency {
+			key = "agency:" + id + ":"
+		} else {
+			key = "advertiser:" + id + ":"
+		}
+		if strings.HasPrefix(audID, key) {
 			store[audID] = aud
 		}
 	}

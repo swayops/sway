@@ -5731,7 +5731,7 @@ func TestAudiences(t *testing.T) {
 		Members: members,
 	}
 
-	r = rst.DoTesting(t, "POST", "/audience/123", &aud, nil)
+	r = rst.DoTesting(t, "POST", "/advertiser/audience/123", &aud, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
@@ -5746,7 +5746,7 @@ func TestAudiences(t *testing.T) {
 	}
 
 	// Create an admin audience
-	aud, ok := audienceStore["123_1"]
+	aud, ok := audienceStore["advertiser:123:1"]
 	if !ok {
 		t.Fatal("Failed to add adv audience!")
 		return

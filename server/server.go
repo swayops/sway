@@ -402,12 +402,6 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/balance/:id", getBalance(srv))
 	adminGroup.GET("/getCampaignStore", getCampaignStore(srv))
 
-	// POST method for advertiser audience
-	verifyGroup.POST("/audience/:id", advScopes, audience(srv))
-	// GET audiences by advertiser
-	verifyGroup.GET("/getAudiencesByAdvertiser/:id", advScopes, getAudiencesByAdvertiser(srv))
-	verifyGroup.DELETE("/audience/:id/:audID", advScopes, delAudience(srv))
-
 	createRoutes(verifyGroup, srv, "/getAdvertisersByAgency", "id", scopes["adAgency"], auth.AdAgencyItem,
 		getAdvertisersByAgency, nil, nil, nil)
 
@@ -505,9 +499,24 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Run emailing of deals right now
 	adminGroup.GET("/forceEmail", forceEmail(srv))
 
-	// Audiences (admin)
-	// POST method for admin audience
-	adminGroup.POST("/audience", audience(srv))
+	// Audiences
+	// Agency audiences
+	agencyScopes := srv.auth.CheckScopes(scopes["adAgency"])
+	// POST method for agency audience
+	verifyGroup.POST("/agency/audience/:id", agencyScopes, agencyAudience(srv))
+	// GET audiences by agency
+	verifyGroup.GET("/getAudiencesByAgency/:id", agencyScopes, getAudiencesByAgency(srv))
+	verifyGroup.DELETE("/agency/audience/:id/:audID", agencyScopes, delAgencyAudience(srv))
+
+	// Advertiser audiences
+	// POST method for advertiser audience
+	verifyGroup.POST("/advertiser/audience/:id", advScopes, advertiserAudience(srv))
+	// GET audiences by advertiser
+	verifyGroup.GET("/getAudiencesByAdvertiser/:id", advScopes, getAudiencesByAdvertiser(srv))
+	verifyGroup.DELETE("/advertiser/audience/:id/:audID", advScopes, delAdvertiserAudience(srv))
+
+	// Admin audiences
+	adminGroup.POST("/audience", adminAudience(srv))
 	adminGroup.DELETE("/audience/:id", delAudience(srv))
 	adminGroup.GET("/audience", getAudiences(srv))
 	adminGroup.GET("/audience/:id", getAudiences(srv))
