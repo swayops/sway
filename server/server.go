@@ -46,6 +46,7 @@ type Server struct {
 	Campaigns *common.Campaigns
 	Audiences *common.Audiences
 	Scraps    *influencer.Scraps
+	Forecasts *Forecasts
 
 	Categories []*InfCategory // List of available categories and their reach
 
@@ -103,6 +104,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		Audiences: common.NewAudiences(),
 		LimitSet:  common.NewLimitSet(),
 		ClickSet:  common.NewSet(),
+		Forecasts: NewForecasts(),
 		Scraps:    influencer.NewScraps(),
 		Stats:     NewStats(),
 	}

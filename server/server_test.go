@@ -563,7 +563,9 @@ func TestDeals(t *testing.T) {
 		Breakdown   []*ForecastUser `json:"breakdown"`
 		Reach       int64           `json:"reach"`
 		Influencers int64           `json:"influencers"`
+		Token       string          `json:"token"`
 	}
+
 	r := rst.DoTesting(t, "POST", "/getForecast?breakdown=250", &cmp, &forecast)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!", string(r.Value))
@@ -583,6 +585,11 @@ func TestDeals(t *testing.T) {
 
 	if fInf.AvgEngs == 0 || fInf.Followers == 0 || fInf.ProfilePicture == "" || fInf.URL == "" {
 		t.Fatal("Bad forecast twitter data!")
+		return
+	}
+
+	if forecast.Token == "" {
+		t.Fatal("Bad forecast token!")
 		return
 	}
 
