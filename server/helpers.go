@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
+	"github.com/swayops/sway/internal/budget"
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/geo"
 	"github.com/swayops/sway/internal/influencer"
@@ -725,6 +726,8 @@ type ForecastUser struct {
 	StringFollowers string `json:"stringFollowers"`
 	AvgEngs         int64  `json:"avgEngs"`
 
+	// Float representation of max yield
+	Rate float64 `json:"rate"`
 	// Used for display purposes in reports
 	MaxYield   string `json:"maxYield"`
 	Geo        string `json:"geo"`
@@ -887,6 +890,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 			Followers:   inf.GetFollowers(),
 			Description: inf.GetDescription(),
 			MaxYield:    fmt.Sprintf("$%0.2f", maxYield),
+			Rate:        maxYield,
 			Geo:         "N/A",
 			Gender:      "N/A",
 			Categories:  "N/A",
@@ -978,14 +982,13 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 	}
 
 	// Lets go over scraps now!
-	scraps, err := getAllScraps(s)
-	if err != nil {
-		return
-	}
+	scraps := s.Scraps.GetStore()
+
+	tmpStore, _ := budget.GetCampaignStoreFromDb(s.db, s.Cfg, cmp.Id, cmp.AdvertiserId)
 
 	scrapUsers := []*ForecastUser{}
 	for _, sc := range scraps {
-		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, true) {
+		if sc.Match(cmp, s.Audiences, s.db, s.Cfg, tmpStore, true) {
 			_, ok := cmp.Whitelist[sc.EmailAddress]
 			if ok {
 				// This person is already in the campaign!
@@ -999,11 +1002,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy string) (influence
 				AvgEngs:     sc.GetAvgEngs(),
 				Followers:   sc.GetFollowers(),
 				Description: sc.GetDescription(),
-				MaxYield:    fmt.Sprintf("$%0.2f", influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)),
 				Geo:         "N/A",
 				Gender:      "N/A",
 				Categories:  "N/A",
 			}
+			user.Rate = influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+			user.MaxYield = fmt.Sprintf("$%0.2f", user.Rate)
 			user.StringFollowers = common.Commanize(user.Followers)
 
 			if geo := sc.Geo; geo != nil {
@@ -1456,10 +1460,7 @@ func getAllCategories(s *Server) []*InfCategory {
 	}
 
 	// Lets go over scraps now!
-	scraps, err := getAllScraps(s)
-	if err != nil {
-		return out
-	}
+	scraps := s.Scraps.GetStore()
 	for _, sc := range scraps {
 		for _, cat := range sc.Categories {
 			if val := findCat(out, cat); val != nil {
@@ -1479,10 +1480,7 @@ func getFollowersByEmail(s *Server) map[string]int64 {
 	}
 
 	// Lets go over scraps now!
-	scraps, err := getAllScraps(s)
-	if err != nil {
-		return byEmail
-	}
+	scraps := s.Scraps.GetStore()
 
 	for _, sc := range scraps {
 		byEmail[sc.EmailAddress] = sc.Followers

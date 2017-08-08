@@ -19,11 +19,6 @@ func emailScraps(srv *Server) (int32, error) {
 	// This should trigger X amount of emails daily
 	// with varying templates and should ONLY begin
 	// emailing once a campaign is live
-	scraps, err := getAllScraps(srv)
-	if err != nil {
-		return 0, err
-	}
-
 	cmps := srv.Campaigns.GetStore()
 	if len(cmps) == 0 {
 		// We have no campaigns FOO
@@ -37,7 +32,7 @@ func emailScraps(srv *Server) (int32, error) {
 
 	now := int32(time.Now().Unix())
 	var count int32
-	for _, sc := range scraps {
+	for _, sc := range srv.Scraps.GetStore() {
 		if count >= maxEmails {
 			// Only send max depending on how many deals available
 			break
@@ -101,46 +96,26 @@ func emailScraps(srv *Server) (int32, error) {
 	return count, nil
 }
 
-func getAllScraps(s *Server) (scraps []*influencer.Scrap, err error) {
-	if err = s.db.View(func(tx *bolt.Tx) error {
+func getAllScraps(s *Server) map[string]influencer.Scrap {
+	scraps := make(map[string]influencer.Scrap)
+	if err := s.db.View(func(tx *bolt.Tx) error {
 		tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).ForEach(func(k, v []byte) (err error) {
 			var sc influencer.Scrap
 			if err := json.Unmarshal(v, &sc); err != nil {
 				log.Println("error when unmarshalling scrap", string(v))
 				return nil
 			}
-			scraps = append(scraps, &sc)
+			scraps[sc.Id] = sc
 			return
 		})
 		return nil
 	}); err != nil {
-		return
+		return scraps
 	}
-	return
+	return scraps
 }
 
-func getScrapFromID(s *Server, id string) (*influencer.Scrap, error) {
-	var (
-		v  []byte
-		sc influencer.Scrap
-	)
-
-	if err := s.db.View(func(tx *bolt.Tx) error {
-		v = tx.Bucket([]byte(s.Cfg.Bucket.Scrap)).Get([]byte(id))
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	if err := json.Unmarshal(v, &sc); err != nil {
-		log.Println("error when unmarshalling scrap", string(v))
-		return nil, err
-	}
-
-	return &sc, nil
-}
-
-func saveScrap(s *Server, sc *influencer.Scrap) error {
+func saveScrap(s *Server, sc influencer.Scrap) error {
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		if sc.Id == "" {
 			if sc.Id, err = misc.GetNextIndex(tx, s.Cfg.Bucket.Scrap); err != nil {
@@ -162,6 +137,9 @@ func saveScrap(s *Server, sc *influencer.Scrap) error {
 		if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id, b); err != nil {
 			return err
 		}
+
+		s.Scraps.SetScrap(sc.Id, sc)
+
 		return nil
 	}); err != nil {
 		s.Alert("Failed to save scraps!", err)
@@ -170,7 +148,7 @@ func saveScrap(s *Server, sc *influencer.Scrap) error {
 	return nil
 }
 
-func saveScraps(s *Server, scs []*influencer.Scrap) error {
+func saveScraps(s *Server, scs []influencer.Scrap) error {
 	if err := s.db.Update(func(tx *bolt.Tx) (err error) {
 		for _, sc := range scs {
 			if sc.Id == "" {
@@ -194,6 +172,8 @@ func saveScraps(s *Server, scs []*influencer.Scrap) error {
 			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Scrap, sc.Id, b); err != nil {
 				continue
 			}
+			s.Scraps.SetScrap(sc.Id, sc)
+
 		}
 		return nil
 	}); err != nil {

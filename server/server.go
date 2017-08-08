@@ -18,6 +18,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
@@ -44,6 +45,7 @@ type Server struct {
 
 	Campaigns *common.Campaigns
 	Audiences *common.Audiences
+	Scraps    *influencer.Scraps
 
 	Categories []*InfCategory // List of available categories and their reach
 
@@ -101,6 +103,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		Audiences: common.NewAudiences(),
 		LimitSet:  common.NewLimitSet(),
 		ClickSet:  common.NewSet(),
+		Scraps:    influencer.NewScraps(),
 		Stats:     NewStats(),
 	}
 

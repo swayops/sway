@@ -12,7 +12,7 @@ func setScrap(s *Server) gin.HandlerFunc {
 	// Ingests a scrap and puts it into pool
 	return func(c *gin.Context) {
 		var (
-			scraps []*influencer.Scrap
+			scraps []influencer.Scrap
 			err    error
 		)
 
@@ -34,7 +34,7 @@ func setScrap(s *Server) gin.HandlerFunc {
 func optoutScrap(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		email := c.Param("email")
-		scraps, _ := getAllScraps(s)
+		scraps := s.Scraps.GetStore()
 		for _, sc := range scraps {
 			if sc.EmailAddress == email {
 				sc.Ignore = true
@@ -49,24 +49,14 @@ func optoutScrap(s *Server) gin.HandlerFunc {
 
 func getScraps(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		scraps, err := getAllScraps(s)
-		if err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
-			return
-		}
-
+		scraps := s.Scraps.GetStore()
 		misc.WriteJSON(c, 200, scraps)
 	}
 }
 
 func getScrap(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		scrap, err := getScrapFromID(s, c.Param("id"))
-		if err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
-			return
-		}
-
+		scrap, _ := s.Scraps.Get(c.Param("id"))
 		misc.WriteJSON(c, 200, scrap)
 	}
 }
@@ -77,11 +67,7 @@ func scrapStats(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		scraps, err := getAllScraps(s)
-		if err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
-			return
-		}
+		scraps := s.Scraps.GetStore()
 
 		type ScrapStats struct {
 			HasKeywords   int64 `json:"hasKeywords"`
@@ -130,16 +116,12 @@ func getScrapByHandle(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		scraps, err := getAllScraps(s)
-		if err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
-			return
-		}
+		scraps := s.Scraps.GetStore()
 
 		handle := c.Param("id")
 		platform := c.Param("platform")
 
-		var found *influencer.Scrap
+		var found influencer.Scrap
 		for _, sc := range scraps {
 			switch platform {
 			case "instagram":

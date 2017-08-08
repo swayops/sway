@@ -3121,7 +3121,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Lets get all scraps to verify values
-	var getScraps []*influencer.Scrap
+	var getScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -3129,6 +3129,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	if len(getScraps) != 3 {
+		log.Println("Number of scraps", len(getScraps))
 		t.Fatal("Wrong number of scraps!")
 		return
 	}
@@ -3163,7 +3164,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Verify values again!
-	var lastScraps []*influencer.Scrap
+	var lastScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &lastScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4293,7 +4294,7 @@ func TestAttributer(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	var getScraps []*influencer.Scrap
+	var getScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4344,7 +4345,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	var updatedScraps []*influencer.Scrap
+	var updatedScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &updatedScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")

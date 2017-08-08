@@ -61,7 +61,7 @@ func (sc *Scrap) GetMatchingCampaign(campaigns map[string]common.Campaign, audie
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []common.Campaign
 	for _, cmp := range campaigns {
-		if sc.Match(cmp, audiences, db, cfg, false) {
+		if sc.Match(cmp, audiences, db, cfg, nil, false) {
 			considered = append(considered, cmp)
 		}
 	}
@@ -161,7 +161,7 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 	return true
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, forecast bool) bool {
+func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, store *budget.Store, forecast bool) bool {
 	maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 
 	// Social Media Checks
@@ -303,12 +303,18 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 
 		// Optimization
 		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
-			store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
-			if store.IsClosed(&cmp) {
+			var budgetStore *budget.Store
+			if forecast {
+				budgetStore = store
+			} else {
+				budgetStore, _ = budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
+			}
+
+			if budgetStore.IsClosed(&cmp) {
 				return false
 			}
 
-			min, max := cmp.GetTargetYield(store.Spendable)
+			min, max := cmp.GetTargetYield(budgetStore.Spendable)
 			if maxYield < min || maxYield > max || maxYield == 0 {
 				return false
 			}

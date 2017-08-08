@@ -62,6 +62,15 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	// Keep a live struct for all scraps in the platform
+	srv.Scraps.Set(srv.db, srv.Cfg, getAllScraps(srv))
+	scrapsTicker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for range scrapsTicker.C {
+			srv.Scraps.Set(srv.db, srv.Cfg, getAllScraps(srv))
+		}
+	}()
+
 	// Run engine every X hours
 	runTicker := time.NewTicker(EngineRunTime * time.Hour)
 	go func() {

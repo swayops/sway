@@ -61,7 +61,7 @@ func getMatchesForKeyword(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		scraps, _ := getAllScraps(s)
+		scraps := s.Scraps.GetStore()
 		for _, sc := range scraps {
 			if common.IsInList(sc.Keywords, kw) {
 				m := &Match{
@@ -113,7 +113,7 @@ func getKeywords(s *Server) gin.HandlerFunc {
 			}
 		}
 
-		scraps, _ := getAllScraps(s)
+		scraps := s.Scraps.GetStore()
 		for _, sc := range scraps {
 			if includeImagga {
 				for _, kw := range sc.Keywords {
