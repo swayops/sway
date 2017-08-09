@@ -96,7 +96,8 @@ type ForecastUser struct {
 	AvgEngs         int64  `json:"avgEngs"`
 
 	// Float representation of max yield
-	Rate float64 `json:"rate"`
+	FromRate float64 `json:"fromRate"`
+	ToRate   float64 `json:"toRate"`
 	// Used for display purposes in reports
 	MaxYield   string `json:"maxYield"`
 	Geo        string `json:"geo"`
@@ -265,11 +266,13 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 			Followers:   inf.GetFollowers(),
 			Description: inf.GetDescription(),
 			MaxYield:    fmt.Sprintf("$%0.2f", maxYield),
-			Rate:        maxYield,
 			Geo:         "N/A",
 			Gender:      "N/A",
 			Categories:  "N/A",
 		}
+		user.FromRate = maxYield
+		user.ToRate = user.FromRate + (user.FromRate * 0.3)
+
 		user.StringFollowers = common.Commanize(user.Followers)
 
 		if geo := inf.GetLatestGeo(); geo != nil {
@@ -379,8 +382,10 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 				Gender:      "N/A",
 				Categories:  "N/A",
 			}
-			user.Rate = influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
-			user.MaxYield = fmt.Sprintf("$%0.2f", user.Rate)
+			user.FromRate = influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+			user.ToRate = user.FromRate + (user.FromRate * 0.3)
+
+			user.MaxYield = fmt.Sprintf("$%0.2f", user.FromRate)
 			user.StringFollowers = common.Commanize(user.Followers)
 
 			if geo := sc.Geo; geo != nil {
