@@ -128,6 +128,17 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 	if incomingToken != "" {
 		// If a token was passed and we have a value for it.. lets return that!
 		if infs, total, r, ok := s.Forecasts.Get(incomingToken, indexStart, maxResults); ok {
+			switch sortBy {
+			case "engagements":
+				sort.Slice(infs, func(i int, j int) bool {
+					return infs[i].AvgEngs > infs[j].AvgEngs
+				})
+			case "followers":
+				sort.Slice(infs, func(i int, j int) bool {
+					return infs[i].Followers > infs[j].Followers
+				})
+			}
+
 			return infs, total, r, incomingToken
 		}
 	}
@@ -169,6 +180,11 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 	// min, max := target-margin, target+margin
 	infs := s.auth.Influencers.GetAll()
 	for _, inf := range infs {
+		// If the influencer hasn't been updated in the last 10 days.. ignore em!
+		if !misc.WithinLast(inf.LastSocialUpdate, 24*10) {
+			continue
+		}
+
 		if inf.IsBanned() {
 			continue
 		}
@@ -598,9 +614,12 @@ func filterForecast(infs []ForecastUser, bd int) (out []ForecastUser) {
 			return
 		}
 
-		if inf.IsProfilePictureActive() {
-			out = append(out, inf)
+		if !inf.IsProfilePictureActive() {
+			inf.ProfilePicture = "https://dash.swayops.com/api/v1/images/sway_logo.png"
 		}
+
+		out = append(out, inf)
+
 	}
 	return
 }

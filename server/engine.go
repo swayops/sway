@@ -113,6 +113,10 @@ func newSwayEngine(srv *Server) error {
 			if err := misc.Request("GET", "https://swayops.com/c/fakeID", "", nil); err != nil {
 				srv.Alert("Error hitting Second Click URL!", err)
 			}
+
+			if err := misc.Request("GET", "https://dash.swayops.com/api/v1/images/sway_logo.png", "", nil); err != nil {
+				srv.Alert("Error hitting Sway logo!", err)
+			}
 		}
 	}()
 
