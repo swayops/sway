@@ -895,7 +895,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		}
 
 		// Filter Checks
-		if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 {
+		if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 || len(cmp.Keywords) > 0 {
 			catFound := false
 		L1:
 			for _, cat := range cmp.Categories {
@@ -917,36 +917,34 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			if !catFound {
+				for _, kw := range cmp.Keywords {
+					if catFound {
+						break
+					}
+
+					for _, infKw := range inf.Keywords {
+						if common.IsExactMatch(kw, infKw) {
+							catFound = true
+							break
+						}
+					}
+
+					if inf.Instagram != nil && inf.Instagram.Bio != "" {
+						if common.IsExactMatch(inf.Instagram.Bio, kw) {
+							catFound = true
+							break
+						}
+					}
+
+					if inf.IsSearchInUsername(kw) {
+						catFound = true
+						break
+					}
+				}
+			}
+
+			if !catFound {
 				rejections[cmp.Id] = "CAT_NOT_FOUND"
-				continue
-			}
-		}
-
-		if len(cmp.Keywords) > 0 {
-			kwFound := false
-		L2:
-			for _, kw := range cmp.Keywords {
-				for _, infKw := range inf.Keywords {
-					if common.IsExactMatch(kw, infKw) {
-						kwFound = true
-						break L2
-					}
-				}
-
-				if inf.Instagram != nil && inf.Instagram.Bio != "" {
-					if common.IsExactMatch(inf.Instagram.Bio, kw) {
-						kwFound = true
-						break L2
-					}
-				}
-
-				if inf.IsSearchInUsername(kw) {
-					kwFound = true
-					break L2
-				}
-			}
-			if !kwFound {
-				rejections[cmp.Id] = "KW_NOT_FOUND"
 				continue
 			}
 		}

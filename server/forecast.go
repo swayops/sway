@@ -189,7 +189,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 			continue
 		}
 
-		if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 {
+		if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 || len(cmp.Keywords) > 0 {
 			catFound := false
 		L1:
 			for _, cat := range cmp.Categories {
@@ -213,34 +213,33 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 			}
 
 			if !catFound {
-				continue
-			}
-		}
+				for _, kw := range cmp.Keywords {
+					if catFound {
+						break
+					}
 
-		if len(cmp.Keywords) > 0 {
-			kwFound := false
-		L2:
-			for _, kw := range cmp.Keywords {
-				for _, infKw := range inf.Keywords {
-					if common.IsExactMatch(kw, infKw) {
-						kwFound = true
-						break L2
+					for _, infKw := range inf.Keywords {
+						if common.IsExactMatch(kw, infKw) {
+							catFound = true
+							break
+						}
+					}
+
+					if inf.Instagram != nil && inf.Instagram.Bio != "" {
+						if common.IsExactMatch(inf.Instagram.Bio, kw) {
+							catFound = true
+							break
+						}
+					}
+
+					if inf.IsSearchInUsername(kw) {
+						catFound = true
+						break
 					}
 				}
-
-				if inf.Instagram != nil && inf.Instagram.Bio != "" {
-					if common.IsExactMatch(inf.Instagram.Bio, kw) {
-						kwFound = true
-						break L2
-					}
-				}
-
-				if inf.IsSearchInUsername(kw) {
-					kwFound = true
-					break L2
-				}
 			}
-			if !kwFound {
+
+			if !catFound {
 				continue
 			}
 		}
