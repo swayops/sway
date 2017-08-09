@@ -352,7 +352,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 		}
 
 		// Lets see if max yield falls into target range for the campaign
-		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) {
+		if cmp.PriceTarget != nil && !cmp.PriceTarget.InRange(maxYield) {
 			continue
 		}
 

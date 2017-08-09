@@ -1070,7 +1070,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
 		// Lets see if max yield falls into target range for the campaign
-		if cmp.PriceTarget != nil && cmp.PriceTarget.InRange(maxYield) && !query {
+		if cmp.PriceTarget != nil && !cmp.PriceTarget.InRange(maxYield) && !query {
 			rejections[cmp.Id] = "PRICE_TARGET"
 			continue
 		}
