@@ -483,7 +483,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			return tw
 		} else {
-			if consideredFacets > 1 && approvedFacets > 1 {
+			if deal.Mention != "" && foundMention {
 				// If you have one attribute missing.. we'll email you telling you what
 				// it was
 				var reason string
@@ -491,9 +491,8 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					reason = "hashtags"
 				} else if !foundLink {
 					reason = "required link"
-				} else if !foundMention {
-					reason = "required mention"
 				}
+
 				if err := inf.DealRejection(reason, tw.PostURL, deal, srv.Cfg); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
@@ -624,7 +623,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 
 			return post
 		} else {
-			if consideredFacets > 1 && approvedFacets > 1 {
+			if deal.Mention != "" && foundMention {
 				// If you have one attribute missing.. we'll email you telling you what
 				// it was
 				var reason string
@@ -632,9 +631,8 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 					reason = "hashtags"
 				} else if !foundLink {
 					reason = "link"
-				} else if !foundMention {
-					reason = "mention"
 				}
+
 				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
@@ -679,6 +677,9 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		}
 
 		if deal.Mention != "" {
+			if deal.CampaignId == "28" {
+				deal.Mention = "athletetrainingandhealth"
+			}
 			consideredFacets += 1
 			if containsFold(post.Caption, deal.Mention) {
 				foundMention = true
@@ -766,7 +767,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 
 			return post
 		} else {
-			if consideredFacets > 1 && approvedFacets > 1 {
+			if deal.Mention != "" && foundMention {
 				// If you have one attribute missing.. we'll email you telling you what
 				// it was
 				var reason string
@@ -774,9 +775,8 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 					reason = "hashtags"
 				} else if !foundLink {
 					reason = "link"
-				} else if !foundMention {
-					reason = "mention"
 				}
+
 				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
@@ -909,7 +909,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			return post
 		} else {
-			if consideredFacets > 1 && approvedFacets > 1 {
+			if deal.Mention != "" && foundMention {
 				// If you have one attribute missing.. we'll email you telling you what
 				// it was
 				var reason string
@@ -917,9 +917,8 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					reason = "hashtags"
 				} else if !foundLink {
 					reason = "link"
-				} else if !foundMention {
-					reason = "mention"
 				}
+
 				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
