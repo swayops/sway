@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -499,18 +500,9 @@ func getForecast(s *Server) gin.HandlerFunc {
 		}
 
 		influencers, reach, token := getForecastForCmp(s, cmp, c.Query("sortBy"), c.Query("token"), int(start), int(results))
-		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
-			// We should be able to do away with this now that we have start and results params.. confirm with Ahmed
-			// Would need UI changes if we were to remove this
-			bd := int(bd)
-			if bd == -1 {
-				bd = len(influencers)
-			}
-			if bd > len(influencers) {
-				bd = len(influencers)
-			}
-
-			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": filterForecast(influencers, bd), "token": token})
+		if start != -1 && results != -1 { // keep the old behaviour
+			influencers = filterForecast(influencers, int(results))
+			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers, "token": token})
 		} else {
 			// Default to totals
 			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "token": token})
@@ -592,22 +584,14 @@ func filterForecast(infs []ForecastUser, bd int) (out []ForecastUser) {
 }
 
 func index(users []ForecastUser, start, results int) []ForecastUser {
-	// Start specifies the index we want to start at, and results specifies the number of results you want
-	// For example, if start is 5 and results is 10, you are saying "Get me the next 10 results after
-	// index 5"
-	if start >= 0 && start < len(users) && results > 0 {
-		if start+results > len(users) {
-			// If indexing for results will go over our len.. lets cap the
-			// results len now
-			results = len(users) - start
-		}
-		return users[start : start+results]
+	if start == -1 || results == -1 || start > len(users) { // we're over the list, return empty
+		return nil
 	}
 
-	if start > len(users) {
-		// If you've gone past the length.. return empty
-		return []ForecastUser{}
+	end := start + results
+	if end > len(users) {
+		end = len(users)
 	}
-
-	return users
+	log.Println(len(users), len(users[start:end]), start, end, results)
+	return users[start:end]
 }
