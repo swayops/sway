@@ -595,7 +595,7 @@ func index(users []ForecastUser, start, results int) []ForecastUser {
 	// Start specifies the index we want to start at, and results specifies the number of results you want
 	// For example, if start is 5 and results is 10, you are saying "Get me the next 10 results after
 	// index 5"
-	if start > 0 && start < len(users) && results > 0 {
+	if start >= 0 && start < len(users) && results > 0 {
 		if start+results > len(users) {
 			// If indexing for results will go over our len.. lets cap the
 			// results len now
