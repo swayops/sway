@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swayops/sway/internal/influencer"
@@ -120,9 +121,15 @@ func getScrapByHandle(s *Server) gin.HandlerFunc {
 
 		handle := c.Param("id")
 		platform := c.Param("platform")
+		email := c.Query("email")
 
 		var found influencer.Scrap
 		for _, sc := range scraps {
+			if email != "" && strings.EqualFold(sc.EmailAddress, email) {
+				found = sc
+				break
+			}
+
 			switch platform {
 			case "instagram":
 				if sc.InstaData != nil && sc.InstaData.UserName == handle {

@@ -16,6 +16,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/swayops/closer"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go"
 	"github.com/swayops/resty"
@@ -100,7 +102,10 @@ func TestMain(m *testing.M) {
 		cfg.DBPath, err = ioutil.TempDir("", "sway-srv")
 		panicIf(err)
 
-		defer os.RemoveAll(cfg.DBPath) // clean up
+		defer closer.Defer(func() {
+			log.Println("removing", cfg.DBPath)
+			os.RemoveAll(cfg.DBPath)
+		})()
 	}
 
 	// disable all the gin spam

@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -47,7 +46,6 @@ func (s *Forecasts) Set(users []ForecastUser, reach int64) (token string) {
 	token = misc.PseudoUUID()
 
 	s.l.Lock()
-	log.Println("Setting a value", token, reach)
 	s.m[token] = ForecastValue{users, reach, time.Now().Unix()}
 	s.l.Unlock()
 

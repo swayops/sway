@@ -9,6 +9,7 @@ import (
 	"testing"
 	// "time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/swayops/resty"
 	// "github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
@@ -469,6 +470,15 @@ func TestCampaigns(t *testing.T) {
 
 		// try to create a campaign with a bad advertiser id
 		{"POST", "/campaign?dbg=1", &badAdvId, 400, nil},
+
+		// log as user and delete campaign,
+		{"POST", "/signIn", gin.H{"email": adv.Email, "pass": adv.Password}, 200, nil},
+		{"DELETE", "/campaign/1", nil, 200, nil},
+		{"GET", "/campaign/1", nil, 404, nil},
+
+		// log in as admin and see if we can get the campaign
+		{"POST", "/signIn", adminReq, 200, misc.StatusOK("1")},
+		{"GET", "/campaign/1", nil, 200, gin.H{"status": false, "archived": true}},
 	} {
 		tr.Run(t, rst)
 	}
@@ -6023,9 +6033,9 @@ func TestSubmission(t *testing.T) {
 
 	// Lets now submit the influencer's proposal!
 	sub := common.Submission{
-		ImageData: []string{postImage},
-		ContentURL: []string{"https://www.youtube.com/watch?v=dQw4w9WgXcQ","https://vimeo.com/218549048"},
-		Message:   "This is the message this campaign wants #mmmm",
+		ImageData:  []string{postImage},
+		ContentURL: []string{"https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://vimeo.com/218549048"},
+		Message:    "This is the message this campaign wants #mmmm",
 	}
 
 	r = rst.DoTesting(t, "POST", "/submitPost/"+inf.ExpID+"/"+tgDeal.CampaignId, &sub, nil)

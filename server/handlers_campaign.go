@@ -7,6 +7,8 @@ import (
 	"log"
 	"math/rand"
 	"path/filepath"
+
+	"sort"
 	"strings"
 	"time"
 
@@ -30,6 +32,27 @@ var DEFAULT_IMAGES = []string{
 	"default_4.jpg",
 	"default_5.jpg",
 	"default_6.jpg",
+}
+
+func delCampaign(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			misc.WriteJSON(c, 404, ErrCampaign)
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) error {
+			cmp.Status, cmp.Archived = false, true
+			return saveCampaign(tx, cmp, s)
+		}); err != nil {
+			log.Printf("error: %v", err)
+			misc.WriteJSON(c, 500, ErrCampaign)
+			return
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
+	}
 }
 
 func postCampaign(s *Server) gin.HandlerFunc {
@@ -256,7 +279,12 @@ func getCampaign(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
-			misc.WriteJSON(c, 500, ErrCampaign)
+			misc.WriteJSON(c, 404, ErrCampaign)
+			return
+		}
+
+		if cmp.Archived && !auth.GetCtxUser(c).Admin {
+			misc.WriteJSON(c, 404, ErrCampaign)
 			return
 		}
 
@@ -329,6 +357,8 @@ type ManageCampaign struct {
 
 	Accepted  []*manageInf `json:"accepted"`
 	Completed []*manageInf `json:"completed"`
+
+	Archived bool `json:"archived,omitempty"`
 }
 
 type manageInf struct {
@@ -349,8 +379,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 	// Prettifies the info because this is what Manage Campaigns
 	// page on frontend uses
 	return func(c *gin.Context) {
-		targetAdv := c.Param("id")
-		var campaigns []*ManageCampaign
+		var (
+			targetAdv = c.Param("id")
+			campaigns []*ManageCampaign
+			isAdmin   = auth.GetCtxUser(c).Admin
+		)
 		if err := s.db.View(func(tx *bolt.Tx) error {
 			tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).ForEach(func(k, v []byte) (err error) {
 				var cmp common.Campaign
@@ -358,6 +391,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
+
+				if cmp.Archived && !isAdmin {
+					return nil
+				}
+
 				if cmp.AdvertiserId == targetAdv {
 					mCmp := &ManageCampaign{
 						Image:     cmp.ImageURL,
@@ -370,6 +408,7 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 						YouTube:   cmp.YouTube,
 						Facebook:  cmp.Facebook,
 						Budget:    cmp.Budget,
+						Archived:  cmp.Archived,
 					}
 
 					if len(cmp.Timeline) > 0 {
@@ -443,29 +482,11 @@ func getCampaignsByAdvertiser(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		sort.Slice(campaigns, func(i int, j int) bool {
+			return campaigns[i].Created > campaigns[j].Created
+		})
+
 		misc.WriteJSON(c, 200, campaigns)
-	}
-}
-
-func delCampaign(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			var g *common.Campaign
-			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(id)), &g)
-			if err != nil {
-				return
-			}
-
-			g.Status = false
-
-			return saveCampaign(tx, g, s)
-		}); err != nil {
-			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
-			return
-		}
-
-		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
