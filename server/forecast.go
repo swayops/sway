@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -592,6 +591,7 @@ func index(users []ForecastUser, start, results int) []ForecastUser {
 	if end > len(users) {
 		end = len(users)
 	}
-	log.Println(len(users), len(users[start:end]), start, end, results)
+
+	//log.Println(len(users), len(users[start:end]), start, end, results)
 	return users[start:end]
 }
