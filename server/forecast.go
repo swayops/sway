@@ -52,12 +52,12 @@ func (s *Forecasts) Set(users []ForecastUser, reach int64) (token string) {
 	return
 }
 
-func (s *Forecasts) Get(token string, start, results int) ([]ForecastUser, int64, bool) {
+func (s *Forecasts) Get(token string, start, results int) ([]ForecastUser, int, int64, bool) {
 	s.l.RLock()
 	value, ok := s.m[token]
 	s.l.RUnlock()
 
-	return index(value.Users, start, results), value.Reach, ok
+	return index(value.Users, start, results), len(value.Users), value.Reach, ok
 }
 
 func (s *Forecasts) clean() {
@@ -117,11 +117,11 @@ func (user *ForecastUser) IsProfilePictureActive() bool {
 	return true
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken string, indexStart, maxResults int) (influencers []ForecastUser, reach int64, token string) {
+func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken string, indexStart, maxResults int) (influencers []ForecastUser, total int, reach int64, token string) {
 	if incomingToken != "" {
 		// If a token was passed and we have a value for it.. lets return that!
-		if infs, r, ok := s.Forecasts.Get(incomingToken, indexStart, maxResults); ok {
-			return infs, r, incomingToken
+		if infs, total, r, ok := s.Forecasts.Get(incomingToken, indexStart, maxResults); ok {
+			return infs, total, r, incomingToken
 		}
 	}
 	// Some easy bail outs
@@ -466,6 +466,8 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 	// Lets save this in the cache for later use!
 	token = s.Forecasts.Set(influencers, reach)
 
+	total = len(influencers)
+
 	// Lets factor in the start and results index that may be passed in
 	influencers = index(influencers, indexStart, maxResults)
 
@@ -498,13 +500,13 @@ func getForecast(s *Server) gin.HandlerFunc {
 			results, _ = strconv.ParseInt(rs, 10, 64)
 		}
 
-		influencers, reach, token := getForecastForCmp(s, cmp, c.Query("sortBy"), c.Query("token"), int(start), int(results))
+		influencers, total, reach, token := getForecastForCmp(s, cmp, c.Query("sortBy"), c.Query("token"), int(start), int(results))
 		if start != -1 && results != -1 { // keep the old behaviour
 			influencers = filterForecast(influencers, int(results))
-			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": influencers, "token": token})
+			misc.WriteJSON(c, 200, gin.H{"influencers": total, "reach": reach, "breakdown": influencers, "token": token})
 		} else {
 			// Default to totals
-			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "token": token})
+			misc.WriteJSON(c, 200, gin.H{"influencers": total, "reach": reach, "token": token})
 		}
 	}
 }
@@ -522,7 +524,7 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		influencers, _, _ := getForecastForCmp(s, cmp, "", "", 0, 0)
+		influencers, _, _, _ := getForecastForCmp(s, cmp, "", "", 0, 0)
 
 		if len(cmp.Whitelist) == 0 {
 			// If no whitelist cap at 50
