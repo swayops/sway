@@ -754,6 +754,25 @@ func (inf *Influencer) Clean() *Influencer {
 	return inf
 }
 
+func (inf *Influencer) IsSearchInUsername(p string) bool {
+	if inf.Facebook != nil && strings.Contains(inf.Facebook.Id, p) {
+		return true
+	}
+
+	if inf.Instagram != nil && strings.Contains(inf.Instagram.UserName, p) {
+		return true
+	}
+	if inf.Twitter != nil && strings.Contains(inf.Twitter.Id, p) {
+		return true
+	}
+
+	if inf.YouTube != nil && strings.Contains(inf.YouTube.UserName, p) {
+		return true
+	}
+
+	return false
+}
+
 func (inf *Influencer) GetDescription() string {
 	if inf.Instagram != nil && inf.Instagram.Bio != "" {
 		return inf.Instagram.Bio
@@ -919,6 +938,11 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 						kwFound = true
 						break L2
 					}
+				}
+
+				if inf.IsSearchInUsername(kw) {
+					kwFound = true
+					break L2
 				}
 			}
 			if !kwFound {

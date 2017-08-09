@@ -218,6 +218,11 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 						break L2
 					}
 				}
+
+				if inf.IsSearchInUsername(kw) {
+					kwFound = true
+					break L2
+				}
 			}
 			if !kwFound {
 				continue

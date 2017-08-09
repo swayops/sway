@@ -3,6 +3,7 @@ package influencer
 import (
 	"log"
 	"math"
+	"strings"
 
 	"github.com/boltdb/bolt"
 
@@ -84,6 +85,26 @@ func (sc *Scrap) GetProfilePicture() string {
 	}
 
 	return ""
+}
+
+func (sc *Scrap) IsSearchInUsername(p string) bool {
+	if sc.FBData != nil && strings.Contains(sc.FBData.Id, p) {
+		return true
+	}
+
+	if sc.InstaData != nil && strings.Contains(sc.InstaData.UserName, p) {
+		return true
+	}
+
+	if sc.TWData != nil && strings.Contains(sc.TWData.Id, p) {
+		return true
+	}
+
+	if sc.YTData != nil && strings.Contains(sc.YTData.UserName, p) {
+		return true
+	}
+
+	return false
 }
 
 func (sc *Scrap) GetAvgEngs() int64 {
@@ -202,6 +223,11 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 					kwFound = true
 					break L1
 				}
+			}
+
+			if sc.IsSearchInUsername(kw) {
+				kwFound = true
+				break L1
 			}
 		}
 		if !kwFound {
