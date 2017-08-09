@@ -60,6 +60,12 @@ func (s *Forecasts) Get(token string, start, results int) ([]ForecastUser, int, 
 	return index(value.Users, start, results), len(value.Users), value.Reach, ok
 }
 
+func (s *Forecasts) Delete(token string) {
+	s.l.Lock()
+	delete(s.m, token)
+	s.l.Unlock()
+}
+
 func (s *Forecasts) clean() {
 	// Every 30 minutes clear out any values that are older than 30 minutes
 	ticker := time.NewTicker(UPDATE)
@@ -478,6 +484,11 @@ func getForecast(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Gets influencer count and reach for an incoming campaign struct
 		// NOTE: Ignores budget values
+
+		if deleteToken := c.Query("deleteToken"); deleteToken != "" {
+			// IF the UI is asking us to delete a token which is no longer in use.. delete it!
+			s.Forecasts.Delete(deleteToken)
+		}
 
 		var (
 			cmp common.Campaign
