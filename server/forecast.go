@@ -613,3 +613,11 @@ func index(users []ForecastUser, start, results int) []ForecastUser {
 	//log.Println(len(users), len(users[start:end]), start, end, results)
 	return users[start:end]
 }
+
+func convertToMap(u []ForecastUser) map[string]bool {
+	m := make(map[string]bool)
+	for _, user := range u {
+		m[user.Email] = true
+	}
+	return m
+}

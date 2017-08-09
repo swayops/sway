@@ -57,6 +57,14 @@ func createAudienceHelper(s *Server, c *gin.Context, agency, advertiser bool) (a
 		return
 	}
 
+	if aud.Token != "" {
+		// If a token is passed in, that implies UI would like to dump
+		// the saved users into the audience (all of them!)
+		if infs, _, _, ok := s.Forecasts.Get(aud.Token, 0, 10000); ok {
+			aud.Members = convertToMap(infs)
+		}
+	}
+
 	if len(aud.Members) == 0 {
 		err = errors.New("Please provide a valid audience list")
 		return

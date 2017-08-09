@@ -21,6 +21,8 @@ type Audience struct {
 	ImageURL  string `json:"imageUrl"`
 	ImageData string `json:"imageData,omitempty"` // this is input-only and never saved to the db
 
+	// Sent if UI wants to dump all users in based on a token
+	Token string `json:"token,omitempty"`
 }
 
 type Audiences struct {
