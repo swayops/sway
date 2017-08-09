@@ -604,5 +604,10 @@ func index(users []ForecastUser, start, results int) []ForecastUser {
 		return users[start : start+results]
 	}
 
+	if start > len(users) {
+		// If you've gone past the length.. return empty
+		return []ForecastUser{}
+	}
+
 	return users
 }
