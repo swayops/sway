@@ -576,7 +576,7 @@ func TestDeals(t *testing.T) {
 		Token       string          `json:"token"`
 	}
 
-	r := rst.DoTesting(t, "POST", "/getForecast?breakdown=250", &cmp, &forecast)
+	r := rst.DoTesting(t, "POST", "/getForecast?start=0&results=1000", &cmp, &forecast)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!", string(r.Value))
 		return
