@@ -1128,6 +1128,7 @@ func emailDeal(s *Server, cid string) (bool, error) {
 
 		err := offer.Influencer.EmailDeal(offer.Deal, s.Cfg)
 		if err != nil {
+			log.Println("Emailing influencer error", err)
 			continue
 		}
 
