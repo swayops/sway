@@ -63,6 +63,7 @@ func createAudienceHelper(s *Server, c *gin.Context, agency, advertiser bool) (a
 		if infs, _, _, ok := s.Forecasts.Get(aud.Token, 0, 100000, false); ok {
 			aud.Members = convertToMap(infs)
 		}
+		aud.Token = ""
 	}
 
 	if len(aud.Members) == 0 {
@@ -130,9 +131,16 @@ func createAudienceHelper(s *Server, c *gin.Context, agency, advertiser bool) (a
 
 func getAudiences(s *Server) gin.HandlerFunc {
 	// Optional "ID" param to filter to one audience, otherwise it returns
-	// ALL audiences
+	// ALL admin audiences
 	return func(c *gin.Context) {
-		misc.WriteJSON(c, 200, s.Audiences.GetStore(c.Param("id")))
+		misc.WriteJSON(c, 200, s.Audiences.GetAdminStore(c.Param("id")))
+	}
+}
+
+func getAudience(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		aud, _ := s.Audiences.Get(c.Param("audID"))
+		misc.WriteJSON(c, 200, aud)
 	}
 }
 
@@ -152,10 +160,35 @@ func delAudience(s *Server) gin.HandlerFunc {
 	}
 }
 
-func getAudiencesByAdvertiser(s *Server) gin.HandlerFunc {
-	// Get audiences for the given advertiser
+func getUserAudiences(s *Server) gin.HandlerFunc {
+	// Get relevant audiences for the given user
 	return func(c *gin.Context) {
-		misc.WriteJSON(c, 200, s.Audiences.GetStoreByFilter(c.Param("id"), false))
+		user := s.auth.GetUser(c.Param("id"))
+		if user == nil {
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a valid user ID"))
+			return
+		}
+
+		// Lets initialize with all the admin level audiences
+		baseAudience := s.Audiences.GetAdminStore("")
+		if user.Advertiser != nil {
+			// This person is an advertiser! Lets get their advertiser level audiences
+			// and add it
+			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.ID, false) {
+				baseAudience[k] = v
+			}
+
+			// Lets add their agency level audiences too
+			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, false) {
+				baseAudience[k] = v
+			}
+		} else if user.AdAgency != nil {
+			// This person is an agency.. just add their agency audiences
+			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, false) {
+				baseAudience[k] = v
+			}
+		}
+		misc.WriteJSON(c, 200, baseAudience)
 	}
 }
 

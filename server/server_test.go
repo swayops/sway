@@ -5757,7 +5757,7 @@ func TestAudiences(t *testing.T) {
 
 	// Lets get that audience!
 	var audienceStore map[string]common.Audience
-	r = rst.DoTesting(t, "GET", "/getAudiencesByAdvertiser/123", nil, &audienceStore)
+	r = rst.DoTesting(t, "GET", "/getUserAudiences/123", nil, &audienceStore)
 	if r.Status != 200 || len(audienceStore) == 0 {
 		t.Fatal("Bad status code!")
 		return

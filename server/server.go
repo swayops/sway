@@ -509,16 +509,17 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	agencyScopes := srv.auth.CheckScopes(scopes["adAgency"])
 	// POST method for agency audience
 	verifyGroup.POST("/agency/audience/:id", agencyScopes, agencyAudience(srv))
-	// GET audiences by agency
-	verifyGroup.GET("/getAudiencesByAgency/:id", agencyScopes, getAudiencesByAgency(srv))
+	verifyGroup.GET("/getAgencyAudience/:audID", agencyScopes, getAudience(srv))
 	verifyGroup.DELETE("/agency/audience/:id/:audID", agencyScopes, delAgencyAudience(srv))
 
 	// Advertiser audiences
 	// POST method for advertiser audience
 	verifyGroup.POST("/advertiser/audience/:id", advScopes, advertiserAudience(srv))
-	// GET audiences by advertiser
-	verifyGroup.GET("/getAudiencesByAdvertiser/:id", advScopes, getAudiencesByAdvertiser(srv))
+	verifyGroup.GET("/getAdvertiserAudience/:audID", advScopes, getAudience(srv))
 	verifyGroup.DELETE("/advertiser/audience/:id/:audID", advScopes, delAdvertiserAudience(srv))
+
+	// GET all relevant audiences for the user
+	verifyGroup.GET("/getUserAudiences/:id", advScopes, getUserAudiences(srv))
 
 	// Admin audiences
 	adminGroup.POST("/audience", adminAudience(srv))

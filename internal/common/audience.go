@@ -76,10 +76,15 @@ func (p *Audiences) Get(id string) (*Audience, bool) {
 	return val, ok
 }
 
-func (p *Audiences) GetStore(ID string) map[string]*Audience {
+func (p *Audiences) GetAdminStore(ID string) map[string]*Audience {
+	// Returns admin audiences
 	store := make(map[string]*Audience)
 	p.mux.RLock()
 	for audID, aud := range p.store {
+		if strings.Contains(audID, "agency") || strings.Contains(audID, "advertiser") {
+			continue
+		}
+
 		if ID == "" || ID == aud.Id {
 			store[audID] = aud
 		}
