@@ -198,7 +198,7 @@ func getAdvertiserTimeline(s *Server) gin.HandlerFunc {
 					log.Println("error when unmarshalling campaign", string(v))
 					return nil
 				}
-				if cmp.AdvertiserId == targetAdv && len(cmp.Timeline) > 0 {
+				if cmp.AdvertiserId == targetAdv && len(cmp.Timeline) > 0 && !cmp.Archived {
 					cmpTimeline[fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)] = cmp.Timeline[len(cmp.Timeline)-1]
 				}
 				return
