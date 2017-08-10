@@ -128,7 +128,7 @@ func (user *ForecastUser) IsProfilePictureActive() bool {
 
 func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, audID string, indexStart, maxResults int) (influencers []ForecastUser, total int, reach int64, token string) {
 	// NOTE: Aud ID sent when UI wants to have existing members sorted at the top
-	existingMembers := make(map[string]bool)
+	var existingMembers map[string]bool
 	if audID != "" && sortBy == "" {
 		aud, ok := s.Audiences.Get(audID)
 		if ok && len(aud.Members) > 0 {
