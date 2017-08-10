@@ -179,12 +179,12 @@ func getUserAudiences(s *Server) gin.HandlerFunc {
 			}
 
 			// Lets add their agency level audiences too
-			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, false) {
+			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, true) {
 				baseAudience[k] = v
 			}
 		} else if user.AdAgency != nil {
 			// This person is an agency.. just add their agency audiences
-			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, false) {
+			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, true) {
 				baseAudience[k] = v
 			}
 		}
