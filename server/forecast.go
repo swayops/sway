@@ -136,6 +136,9 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 		}
 	}
 
+	// Temporary map to insure no dupes
+	unique := make(map[string]bool)
+
 	if incomingToken != "" {
 		// If a token was passed and we have a value for it.. lets return that!
 		if infs, total, r, ok := s.Forecasts.Get(incomingToken, indexStart, maxResults, len(existingMembers) > 0); ok {
@@ -389,6 +392,11 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			continue
 		}
 
+		if _, dupe := unique[user.Email]; dupe {
+			continue
+		}
+
+		unique[user.Email] = true
 		influencers = append(influencers, user)
 	}
 
@@ -476,6 +484,12 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 				user.HasYoutube = true
 				user.YoutubeUsername = sc.YTData.UserName
 			}
+
+			if _, dupe := unique[user.Email]; dupe {
+				continue
+			}
+
+			unique[user.Email] = true
 
 			scrapUsers = append(scrapUsers, user)
 		}
