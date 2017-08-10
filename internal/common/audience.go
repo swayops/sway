@@ -69,6 +69,13 @@ func (p *Audiences) IsAllowed(id, email string) bool {
 	return allowed
 }
 
+func (p *Audiences) Get(id string) (*Audience, bool) {
+	p.mux.RLock()
+	val, ok := p.store[id]
+	p.mux.RUnlock()
+	return val, ok
+}
+
 func (p *Audiences) GetStore(ID string) map[string]*Audience {
 	store := make(map[string]*Audience)
 	p.mux.RLock()

@@ -52,12 +52,12 @@ func (s *Forecasts) Set(users []ForecastUser, reach int64) (token string) {
 	return
 }
 
-func (s *Forecasts) Get(token string, start, results int) ([]ForecastUser, int, int64, bool) {
+func (s *Forecasts) Get(token string, start, results int, sortByAudience bool) ([]ForecastUser, int, int64, bool) {
 	s.l.RLock()
 	value, ok := s.m[token]
 	s.l.RUnlock()
 
-	return index(value.Users, start, results), len(value.Users), value.Reach, ok
+	return index(value.Users, start, results, sortByAudience), len(value.Users), value.Reach, ok
 }
 
 func (s *Forecasts) Delete(token string) {
@@ -115,6 +115,8 @@ type ForecastUser struct {
 
 	HasFacebook      bool   `json:"hasFacebook"`
 	FacebookUsername string `json:"fbUsername"`
+
+	InAudience bool `json:"inAudience,omitempty"`
 }
 
 func (user *ForecastUser) IsProfilePictureActive() bool {
@@ -124,10 +126,19 @@ func (user *ForecastUser) IsProfilePictureActive() bool {
 	return true
 }
 
-func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken string, indexStart, maxResults int) (influencers []ForecastUser, total int, reach int64, token string) {
+func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, audID string, indexStart, maxResults int) (influencers []ForecastUser, total int, reach int64, token string) {
+	// NOTE: Aud ID sent when UI wants to have existing members sorted at the top
+	existingMembers := make(map[string]bool)
+	if audID != "" && sortBy == "" {
+		aud, ok := s.Audiences.Get(audID)
+		if ok && len(aud.Members) > 0 {
+			existingMembers = aud.Members
+		}
+	}
+
 	if incomingToken != "" {
 		// If a token was passed and we have a value for it.. lets return that!
-		if infs, total, r, ok := s.Forecasts.Get(incomingToken, indexStart, maxResults); ok {
+		if infs, total, r, ok := s.Forecasts.Get(incomingToken, indexStart, maxResults, len(existingMembers) > 0); ok {
 			switch sortBy {
 			case "engagements":
 				sort.Slice(infs, func(i int, j int) bool {
@@ -295,6 +306,8 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 
 		user.StringFollowers = common.Commanize(user.Followers)
 
+		_, user.InAudience = existingMembers[user.Email]
+
 		if geo := inf.GetLatestGeo(); geo != nil {
 			if geo.State != "" && geo.Country != "" {
 				user.Geo = geo.State + ", " + geo.Country
@@ -408,6 +421,8 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 			user.MaxYield = fmt.Sprintf("$%0.2f", user.FromRate)
 			user.StringFollowers = common.Commanize(user.Followers)
 
+			_, user.InAudience = existingMembers[user.Email]
+
 			if geo := sc.Geo; geo != nil {
 				if geo.State != "" && geo.Country != "" {
 					user.Geo = geo.State + ", " + geo.Country
@@ -500,7 +515,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken str
 	total = len(influencers)
 
 	// Lets factor in the start and results index that may be passed in
-	influencers = index(influencers, indexStart, maxResults)
+	influencers = index(influencers, indexStart, maxResults, len(existingMembers) > 0)
 
 	return
 }
@@ -536,7 +551,7 @@ func getForecast(s *Server) gin.HandlerFunc {
 			results, _ = strconv.ParseInt(rs, 10, 64)
 		}
 
-		influencers, total, reach, token := getForecastForCmp(s, cmp, c.Query("sortBy"), c.Query("token"), int(start), int(results))
+		influencers, total, reach, token := getForecastForCmp(s, cmp, c.Query("sortBy"), c.Query("token"), c.Query("audienceID"), int(start), int(results))
 		if start != -1 && results != -1 { // keep the old behaviour
 			influencers = filterForecast(influencers, int(results))
 			misc.WriteJSON(c, 200, gin.H{"influencers": total, "reach": reach, "breakdown": influencers, "token": token})
@@ -560,7 +575,7 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		influencers, _, _, _ := getForecastForCmp(s, cmp, "", "", 0, 0)
+		influencers, _, _, _ := getForecastForCmp(s, cmp, "", "", "", 0, 0)
 
 		if len(cmp.Whitelist) == 0 {
 			// If no whitelist cap at 50
@@ -623,9 +638,24 @@ func filterForecast(infs []ForecastUser, bd int) (out []ForecastUser) {
 	return
 }
 
-func index(users []ForecastUser, start, results int) []ForecastUser {
+func index(users []ForecastUser, start, results int, sortByAudience bool) []ForecastUser {
 	if start == -1 || results == -1 || start > len(users) { // we're over the list, return empty
 		return nil
+	}
+
+	// The existing members of the audience must be trickled to the top
+	if sortByAudience {
+		sort.Slice(users, func(i, j int) bool {
+			a, b := users[i], users[j]
+			if a.InAudience {
+				return true
+			}
+			if b.InAudience {
+				return false
+			}
+
+			return false
+		})
 	}
 
 	end := start + results
