@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/boltdb/bolt"
@@ -169,8 +170,15 @@ func getUserAudiences(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		// If true.. only return audiences this user can edit
+		canEdit, _ := strconv.ParseBool(c.Query("canEdit"))
+
 		// Lets initialize with all the admin level audiences
-		baseAudience := s.Audiences.GetAdminStore("")
+		baseAudience := make(map[string]*common.Audience)
+		if !canEdit {
+			baseAudience = s.Audiences.GetAdminStore("")
+		}
+
 		if user.Advertiser != nil {
 			// This person is an advertiser! Lets get their advertiser level audiences
 			// and add it
@@ -178,9 +186,11 @@ func getUserAudiences(s *Server) gin.HandlerFunc {
 				baseAudience[k] = v
 			}
 
-			// Lets add their agency level audiences too
-			for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, true) {
-				baseAudience[k] = v
+			if !canEdit {
+				// Lets add their agency level audiences too
+				for k, v := range s.Audiences.GetStoreByFilter(user.Advertiser.AgencyID, true) {
+					baseAudience[k] = v
+				}
 			}
 		} else if user.AdAgency != nil {
 			// This person is an agency.. just add their agency audiences
