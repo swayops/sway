@@ -573,8 +573,10 @@ func TestDeals(t *testing.T) {
 		Breakdown   []*ForecastUser `json:"breakdown"`
 		Reach       int64           `json:"reach"`
 		Influencers int64           `json:"influencers"`
+		Token       string          `json:"token"`
 	}
-	r := rst.DoTesting(t, "POST", "/getForecast?breakdown=250", &cmp, &forecast)
+
+	r := rst.DoTesting(t, "POST", "/getForecast?start=0&results=1000", &cmp, &forecast)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!", string(r.Value))
 		return
@@ -593,6 +595,11 @@ func TestDeals(t *testing.T) {
 
 	if fInf.AvgEngs == 0 || fInf.Followers == 0 || fInf.ProfilePicture == "" || fInf.URL == "" {
 		t.Fatal("Bad forecast twitter data!")
+		return
+	}
+
+	if forecast.Token == "" {
+		t.Fatal("Bad forecast token!")
 		return
 	}
 
@@ -3131,7 +3138,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Lets get all scraps to verify values
-	var getScraps []*influencer.Scrap
+	var getScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -3139,6 +3146,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	if len(getScraps) != 3 {
+		log.Println("Number of scraps", len(getScraps))
 		t.Fatal("Wrong number of scraps!")
 		return
 	}
@@ -3173,7 +3181,7 @@ func TestScraps(t *testing.T) {
 	}
 
 	// Verify values again!
-	var lastScraps []*influencer.Scrap
+	var lastScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &lastScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4303,7 +4311,7 @@ func TestAttributer(t *testing.T) {
 		t.Fatal("Bad status code!")
 	}
 
-	var getScraps []*influencer.Scrap
+	var getScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &getScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -4354,7 +4362,7 @@ func TestAttributer(t *testing.T) {
 		return
 	}
 
-	var updatedScraps []*influencer.Scrap
+	var updatedScraps map[string]influencer.Scrap
 	r = rst.DoTesting(t, "GET", "/getScraps", nil, &updatedScraps)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
@@ -5731,14 +5739,49 @@ func TestAudiences(t *testing.T) {
 		return
 	}
 
-	// Create an audience
+	// Create an audience for an advertiser
+	members := map[string]bool{
+		"advertiser@seanjohn.com": true,
+		"advertiser@fubu.com  ":   true,
+	}
+	aud := common.Audience{
+		Name:    "My advertiser audience",
+		Members: members,
+	}
+
+	r = rst.DoTesting(t, "POST", "/advertiser/audience/123", &aud, nil)
+	if r.Status != 200 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Lets get that audience!
+	var audienceStore map[string]common.Audience
+	r = rst.DoTesting(t, "GET", "/getUserAudiences/123", nil, &audienceStore)
+	if r.Status != 200 || len(audienceStore) == 0 {
+		t.Fatal("Bad status code!")
+		return
+	}
+
+	// Create an admin audience
+	aud, ok := audienceStore["advertiser:123:1"]
+	if !ok {
+		t.Fatal("Failed to add adv audience!")
+		return
+	}
+
+	_, ok = aud.Members["advertiser@fubu.com"]
+	if !ok {
+		t.Fatal("Failed to trim email!")
+		return
+	}
 
 	// Emails should be trimmed!
-	members := map[string]bool{
+	members = map[string]bool{
 		"jOhn@seanjohn.com": true,
 		"blah@fubu.com  ":   true,
 	}
-	aud := common.Audience{
+	aud = common.Audience{
 		Name:    "My test audience",
 		Members: members,
 	}
@@ -5750,14 +5793,13 @@ func TestAudiences(t *testing.T) {
 	}
 
 	// Lets get that audience!
-	var audienceStore map[string]common.Audience
 	r = rst.DoTesting(t, "GET", "/audience", nil, &audienceStore)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	aud, ok := audienceStore["1"]
+	aud, ok = audienceStore["2"]
 	if !ok {
 		t.Fatal("Failed to add audience!")
 		return
@@ -5803,7 +5845,7 @@ func TestAudiences(t *testing.T) {
 		Link:         "http://www.cnn.com?s=t",
 		Task:         "POST THAT DOPE SHIT",
 		Tags:         []string{"#mmmm"},
-		Audiences:    []string{"1"},
+		Audiences:    []string{"2"},
 	}
 
 	var status Status
@@ -5820,7 +5862,7 @@ func TestAudiences(t *testing.T) {
 		return
 	}
 
-	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] != "1" {
+	if len(cmpLoad.Audiences) != 1 && cmpLoad.Audiences[0] != "2" {
 		t.Fatal("Failed to target audience!")
 		return
 	}

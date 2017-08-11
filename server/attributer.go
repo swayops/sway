@@ -43,10 +43,7 @@ func attributer(srv *Server, force bool) (int64, error) {
 	}
 
 	// Iterate over all scraps and add keywords for them (if they don't have any)
-	scraps, err := getAllScraps(srv)
-	if err != nil {
-		return updated, err
-	}
+	scraps := srv.Scraps.GetStore()
 
 	// Lets do batches of 500 so we don't max out API limits
 	var scrapsTouched int64
@@ -250,7 +247,7 @@ func getAllKeywords(srv *Server) (keywords []string) {
 		}
 	}
 
-	scraps, _ := getAllScraps(srv)
+	scraps := srv.Scraps.GetStore()
 	for _, sc := range scraps {
 		for _, kw := range sc.Keywords {
 			set[kw] = struct{}{}
@@ -266,10 +263,7 @@ func getAllKeywords(srv *Server) (keywords []string) {
 
 func assignGeo(srv *Server) (err error) {
 	// Iterate over all scraps and add geo for insta users!
-	scraps, err := getAllScraps(srv)
-	if err != nil {
-		return err
-	}
+	scraps := srv.Scraps.GetStore()
 
 	for _, sc := range scraps {
 		if sc.Geo != nil || sc.Fails > 3 {

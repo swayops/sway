@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -20,6 +21,8 @@ type Audience struct {
 	ImageURL  string `json:"imageUrl"`
 	ImageData string `json:"imageData,omitempty"` // this is input-only and never saved to the db
 
+	// Sent if UI wants to dump all users in based on a token
+	Token string `json:"token,omitempty"`
 }
 
 type Audiences struct {
@@ -66,11 +69,41 @@ func (p *Audiences) IsAllowed(id, email string) bool {
 	return allowed
 }
 
-func (p *Audiences) GetStore(ID string) map[string]*Audience {
+func (p *Audiences) Get(id string) (*Audience, bool) {
+	p.mux.RLock()
+	val, ok := p.store[id]
+	p.mux.RUnlock()
+	return val, ok
+}
+
+func (p *Audiences) GetAdminStore(ID string) map[string]*Audience {
+	// Returns admin audiences
 	store := make(map[string]*Audience)
 	p.mux.RLock()
 	for audID, aud := range p.store {
+		if strings.Contains(audID, "agency") || strings.Contains(audID, "advertiser") {
+			continue
+		}
+
 		if ID == "" || ID == aud.Id {
+			store[audID] = aud
+		}
+	}
+	p.mux.RUnlock()
+	return store
+}
+
+func (p *Audiences) GetStoreByFilter(id string, isAgency bool) map[string]*Audience {
+	store := make(map[string]*Audience)
+	p.mux.RLock()
+	for audID, aud := range p.store {
+		var key string
+		if isAgency {
+			key = "agency:" + id + ":"
+		} else {
+			key = "advertiser:" + id + ":"
+		}
+		if strings.HasPrefix(audID, key) {
 			store[audID] = aud
 		}
 	}

@@ -62,6 +62,15 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	// Keep a live struct for all scraps in the platform
+	srv.Scraps.Set(srv.db, srv.Cfg, getAllScraps(srv))
+	scrapsTicker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for range scrapsTicker.C {
+			srv.Scraps.Set(srv.db, srv.Cfg, getAllScraps(srv))
+		}
+	}()
+
 	// Run engine every X hours
 	runTicker := time.NewTicker(EngineRunTime * time.Hour)
 	go func() {
@@ -103,6 +112,10 @@ func newSwayEngine(srv *Server) error {
 
 			if err := misc.Request("GET", "https://swayops.com/c/fakeID", "", nil); err != nil {
 				srv.Alert("Error hitting Second Click URL!", err)
+			}
+
+			if err := misc.Ping("https://dash.swayops.com/api/v1/images/sway_logo.png"); err != nil {
+				srv.Alert("Error hitting Sway logo!", err)
 			}
 		}
 	}()
@@ -394,11 +407,13 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 
 				// Used for digest email!
 				// NOTE: Only email if spent is more than 50 cents
-				depletions = append(depletions, &Depleted{
-					Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
-					Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
-					PostURL:    deal.PostUrl,
-					Spent:      misc.TruncateFloat(spentDelta, 2)})
+				if spentDelta > 0.10 {
+					depletions = append(depletions, &Depleted{
+						Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
+						Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
+						PostURL:    deal.PostUrl,
+						Spent:      misc.TruncateFloat(spentDelta, 2)})
+				}
 			}
 
 			updatedStore = true

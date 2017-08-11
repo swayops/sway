@@ -7,8 +7,8 @@ import (
 	"log"
 	"math/rand"
 	"path/filepath"
+
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +22,6 @@ import (
 	"github.com/swayops/sway/internal/subscriptions"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
-	"github.com/swayops/sway/platforms/pdf"
 )
 
 ///////// Campaigns /////////
@@ -970,113 +969,6 @@ func putCampaign(s *Server) gin.HandlerFunc {
 		}
 
 		misc.WriteJSON(c, 200, misc.StatusOK(cmp.Id))
-	}
-}
-
-func getForecast(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Gets influencer count and reach for an incoming campaign struct
-		// NOTE: Ignores budget values
-
-		var (
-			cmp common.Campaign
-			err error
-		)
-
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
-			return
-		}
-
-		influencers, reach := getForecastForCmp(s, cmp, c.Query("sortBy"))
-		if bd, _ := strconv.ParseInt(c.Query("breakdown"), 10, 64); bd != 0 {
-			bd := int(bd)
-			if bd == -1 {
-				bd = len(influencers)
-			}
-			if bd > len(influencers) {
-				bd = len(influencers)
-			}
-
-			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach, "breakdown": filterForecast(influencers, bd)})
-		} else {
-			// Default to totals
-			misc.WriteJSON(c, 200, gin.H{"influencers": len(influencers), "reach": reach})
-		}
-	}
-}
-
-func filterForecast(infs []*ForecastUser, bd int) (out []*ForecastUser) {
-	for _, inf := range infs {
-		if len(out) >= bd {
-			return
-		}
-
-		if inf.IsProfilePictureActive() {
-			out = append(out, inf)
-		}
-	}
-	return
-}
-
-func getForecastExport(s *Server) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var (
-			cmp common.Campaign
-			err error
-		)
-
-		defer c.Request.Body.Close()
-		if err = json.NewDecoder(c.Request.Body).Decode(&cmp); err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr("Error unmarshalling request body:"+err.Error()))
-			return
-		}
-
-		influencers, _ := getForecastForCmp(s, cmp, "")
-
-		if len(cmp.Whitelist) == 0 {
-			// If no whitelist cap at 50
-			bd := 50
-			if bd > len(influencers) {
-				bd = len(influencers)
-			}
-
-			influencers = filterForecast(influencers, bd)
-		}
-
-		var numInfs int
-		if cmp.Perks != nil && cmp.Perks.Count != 0 {
-			numInfs = cmp.Perks.Count
-		} else if len(cmp.Whitelist) != 0 {
-			numInfs = len(cmp.Whitelist)
-		} else {
-			// Calculate based on avg influencer yield in our platform
-			yield := s.auth.Influencers.GetAvgYield()
-			numInfs = int(cmp.Budget / yield)
-			if numInfs < 3 && cmp.Budget > 100 {
-				numInfs = 3
-			}
-		}
-
-		load := map[string]interface{}{
-			"Influencers":         influencers,
-			"NumberOfInfluencers": strconv.Itoa(numInfs),
-			"LikelyEngagements":   fmt.Sprintf("%0.2f", cmp.Budget/(budget.INSTA_LIKE)),
-			"Budget":              fmt.Sprintf("$%0.2f", cmp.Budget),
-			"TwitterIcon":         TwitterIcon,
-			"YoutubeIcon":         YoutubeIcon,
-			"InstaIcon":           InstaIcon,
-			"FacebookIcon":        FacebookIcon,
-		}
-		tmpl := templates.ForecastExport.Render(load)
-
-		c.Header("Content-type", "application/octet-stream")
-		c.Header("Content-Disposition", fmt.Sprintf("attachment;Filename=%s.pdf", cmp.Name+"_forecast"))
-
-		if err := pdf.ConvertHTMLToPDF(tmpl, c.Writer, s.Cfg); err != nil {
-			misc.WriteJSON(c, 400, misc.StatusErr(err.Error()))
-		}
 	}
 }
 

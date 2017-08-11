@@ -3,6 +3,7 @@ package influencer
 import (
 	"log"
 	"math"
+	"strings"
 
 	"github.com/boltdb/bolt"
 
@@ -61,7 +62,7 @@ func (sc *Scrap) GetMatchingCampaign(campaigns map[string]common.Campaign, audie
 	// Get all campaigns that match the platform setting for the campaign
 	var considered []common.Campaign
 	for _, cmp := range campaigns {
-		if sc.Match(cmp, audiences, db, cfg, false) {
+		if sc.Match(cmp, audiences, db, cfg, nil, false) {
 			considered = append(considered, cmp)
 		}
 	}
@@ -84,6 +85,26 @@ func (sc *Scrap) GetProfilePicture() string {
 	}
 
 	return ""
+}
+
+func (sc *Scrap) IsSearchInUsername(p string) bool {
+	if sc.FBData != nil && strings.Contains(sc.FBData.Id, p) {
+		return true
+	}
+
+	if sc.InstaData != nil && strings.Contains(sc.InstaData.UserName, p) {
+		return true
+	}
+
+	if sc.TWData != nil && strings.Contains(sc.TWData.Id, p) {
+		return true
+	}
+
+	if sc.YTData != nil && strings.Contains(sc.YTData.UserName, p) {
+		return true
+	}
+
+	return false
 }
 
 func (sc *Scrap) GetAvgEngs() int64 {
@@ -161,7 +182,7 @@ func (sc *Scrap) IsProfilePictureActive() bool {
 	return true
 }
 
-func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, forecast bool) bool {
+func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bolt.DB, cfg *config.Config, store *budget.Store, forecast bool) bool {
 	maxYield := GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 
 	// Social Media Checks
@@ -184,29 +205,6 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 
 	if !socialMediaFound {
 		return false
-	}
-
-	if len(cmp.Keywords) > 0 {
-		kwFound := false
-	L1:
-		for _, kw := range cmp.Keywords {
-			for _, scKw := range sc.Keywords {
-				if common.IsExactMatch(kw, scKw) {
-					kwFound = true
-					break L1
-				}
-			}
-
-			if sc.InstaData != nil && sc.InstaData.Bio != "" {
-				if common.IsExactMatch(sc.InstaData.Bio, kw) {
-					kwFound = true
-					break L1
-				}
-			}
-		}
-		if !kwFound {
-			return false
-		}
 	}
 
 	if !geo.IsGeoMatch(cmp.Geos, sc.Geo) {
@@ -240,7 +238,7 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 	}
 
 	// Category Checks
-	if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 {
+	if len(cmp.Categories) > 0 || len(cmp.Audiences) > 0 || len(cmp.Keywords) > 0 {
 		catFound := false
 	L2:
 		for _, cat := range cmp.Categories {
@@ -257,6 +255,33 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 			for _, targetAudience := range cmp.Audiences {
 				if audiences.IsAllowed(targetAudience, sc.EmailAddress) {
 					// There was an audience target and they're  in it!
+					catFound = true
+					break
+				}
+			}
+		}
+
+		if !catFound {
+			for _, kw := range cmp.Keywords {
+				if catFound {
+					break
+				}
+
+				for _, scKw := range sc.Keywords {
+					if common.IsExactMatch(kw, scKw) {
+						catFound = true
+						break
+					}
+				}
+
+				if sc.InstaData != nil && sc.InstaData.Bio != "" {
+					if common.IsExactMatch(sc.InstaData.Bio, kw) {
+						catFound = true
+						break
+					}
+				}
+
+				if sc.IsSearchInUsername(kw) {
 					catFound = true
 					break
 				}
@@ -303,12 +328,18 @@ func (sc *Scrap) Match(cmp common.Campaign, audiences *common.Audiences, db *bol
 
 		// Optimization
 		if !cmp.IsProductBasedBudget() && len(cmp.Whitelist) == 0 && !cfg.Sandbox && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
-			store, _ := budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
-			if store.IsClosed(&cmp) {
+			var budgetStore *budget.Store
+			if forecast {
+				budgetStore = store
+			} else {
+				budgetStore, _ = budget.GetCampaignStoreFromDb(db, cfg, cmp.Id, cmp.AdvertiserId)
+			}
+
+			if budgetStore.IsClosed(&cmp) {
 				return false
 			}
 
-			min, max := cmp.GetTargetYield(store.Spendable)
+			min, max := cmp.GetTargetYield(budgetStore.Spendable)
 			if maxYield < min || maxYield > max || maxYield == 0 {
 				return false
 			}

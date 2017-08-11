@@ -18,6 +18,7 @@ import (
 	"github.com/swayops/sway/config"
 	"github.com/swayops/sway/internal/auth"
 	"github.com/swayops/sway/internal/common"
+	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 )
@@ -44,6 +45,8 @@ type Server struct {
 
 	Campaigns *common.Campaigns
 	Audiences *common.Audiences
+	Scraps    *influencer.Scraps
+	Forecasts *Forecasts
 
 	Categories []*InfCategory // List of available categories and their reach
 
@@ -101,6 +104,8 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		Audiences: common.NewAudiences(),
 		LimitSet:  common.NewLimitSet(),
 		ClickSet:  common.NewSet(),
+		Forecasts: NewForecasts(),
+		Scraps:    influencer.NewScraps(),
 		Stats:     NewStats(),
 	}
 
@@ -500,10 +505,27 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	adminGroup.GET("/forceEmail", forceEmail(srv))
 
 	// Audiences
-	adminGroup.POST("/audience", audience(srv))
+	// Agency audiences
+	agencyScopes := srv.auth.CheckScopes(scopes["adAgency"])
+	// POST method for agency audience
+	verifyGroup.POST("/agency/audience/:id", agencyScopes, agencyAudience(srv))
+	verifyGroup.GET("/getAgencyAudience/:audID", agencyScopes, getAudience(srv))
+	verifyGroup.DELETE("/agency/audience/:id/:audID", agencyScopes, delAgencyAudience(srv))
+
+	// Advertiser audiences
+	// POST method for advertiser audience
+	verifyGroup.POST("/advertiser/audience/:id", advScopes, advertiserAudience(srv))
+	verifyGroup.GET("/getAdvertiserAudience/:audID", advScopes, getAudience(srv))
+	verifyGroup.DELETE("/advertiser/audience/:id/:audID", advScopes, delAdvertiserAudience(srv))
+
+	// GET all relevant audiences for the user
+	verifyGroup.GET("/getUserAudiences/:id", advScopes, getUserAudiences(srv))
+
+	// Admin audiences
+	adminGroup.POST("/audience", adminAudience(srv))
 	adminGroup.DELETE("/audience/:id", delAudience(srv))
-	verifyGroup.GET("/audience", getAudiences(srv))
-	verifyGroup.GET("/audience/:id", getAudiences(srv))
+	adminGroup.GET("/audience", getAudiences(srv))
+	adminGroup.GET("/audience/:id", getAudiences(srv))
 }
 
 func (srv *Server) startEngine() error {

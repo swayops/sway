@@ -1415,32 +1415,30 @@ func getInventoryByState(s *Server) gin.HandlerFunc {
 			)
 		}
 
-		scraps, err := getAllScraps(s)
-		if err == nil {
-			for _, sc := range scraps {
-				if !geo.IsGeoMatch(targetGeo, sc.Geo) {
-					continue
-				}
-
-				tmp := &Inventory{Followers: sc.Followers}
-				if sc.Facebook {
-					tmp.Facebook = sc.Name
-				}
-
-				if sc.Instagram {
-					tmp.Instagram = sc.Name
-				}
-
-				if sc.YouTube {
-					tmp.YouTube = sc.Name
-				}
-
-				if sc.Twitter {
-					tmp.Twitter = sc.Name
-				}
-
-				inv = append(inv, tmp)
+		scraps := s.Scraps.GetStore()
+		for _, sc := range scraps {
+			if !geo.IsGeoMatch(targetGeo, sc.Geo) {
+				continue
 			}
+
+			tmp := &Inventory{Followers: sc.Followers}
+			if sc.Facebook {
+				tmp.Facebook = sc.Name
+			}
+
+			if sc.Instagram {
+				tmp.Instagram = sc.Name
+			}
+
+			if sc.YouTube {
+				tmp.YouTube = sc.Name
+			}
+
+			if sc.Twitter {
+				tmp.Twitter = sc.Name
+			}
+
+			inv = append(inv, tmp)
 		}
 
 		misc.WriteJSON(c, 200, inv)
@@ -1476,7 +1474,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			scraps, _ := getAllScraps(s)
+			scraps := s.Scraps.GetStore()
 			for _, sc := range scraps {
 				switch platform {
 				case "insta":
@@ -1526,7 +1524,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			scraps, _ := getAllScraps(s)
+			scraps := s.Scraps.GetStore()
 			for _, sc := range scraps {
 				maxYield := influencer.GetMaxYield(dummyCmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 				switch platform {
@@ -1589,7 +1587,7 @@ func getAllHandles(s *Server) gin.HandlerFunc {
 				}
 			}
 
-			scraps, _ := getAllScraps(s)
+			scraps := s.Scraps.GetStore()
 			for _, sc := range scraps {
 				switch platform {
 				case "insta":
