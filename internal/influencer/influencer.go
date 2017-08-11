@@ -755,18 +755,19 @@ func (inf *Influencer) Clean() *Influencer {
 }
 
 func (inf *Influencer) IsSearchInUsername(p string) bool {
-	if inf.Facebook != nil && strings.Contains(inf.Facebook.Id, p) {
+	p = strings.ToLower(p)
+	if inf.Facebook != nil && strings.Contains(strings.ToLower(inf.Facebook.Id), p) {
 		return true
 	}
 
-	if inf.Instagram != nil && strings.Contains(inf.Instagram.UserName, p) {
+	if inf.Instagram != nil && strings.Contains(strings.ToLower(inf.Instagram.UserName), p) {
 		return true
 	}
-	if inf.Twitter != nil && strings.Contains(inf.Twitter.Id, p) {
+	if inf.Twitter != nil && strings.Contains(strings.ToLower(inf.Twitter.Id), p) {
 		return true
 	}
 
-	if inf.YouTube != nil && strings.Contains(inf.YouTube.UserName, p) {
+	if inf.YouTube != nil && strings.Contains(strings.ToLower(inf.YouTube.UserName), p) {
 		return true
 	}
 
@@ -781,12 +782,6 @@ func (inf *Influencer) GetDescription() string {
 }
 
 func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
-	if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
-		return inf.Instagram.LastLocation
-	} else if inf.Twitter != nil && inf.Twitter.LastLocation != nil {
-		return inf.Twitter.LastLocation
-	}
-
 	if inf.Address != nil {
 		// Validity already been checked for state
 		// and country in the setAddress handler
@@ -795,6 +790,12 @@ func (inf *Influencer) GetLatestGeo() *geo.GeoRecord {
 			Country: inf.Address.Country,
 			Source:  "address",
 		}
+	}
+
+	if inf.Instagram != nil && inf.Instagram.LastLocation != nil {
+		return inf.Instagram.LastLocation
+	} else if inf.Twitter != nil && inf.Twitter.LastLocation != nil {
+		return inf.Twitter.LastLocation
 	}
 
 	if inf.Geo != nil {

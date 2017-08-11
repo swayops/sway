@@ -88,19 +88,20 @@ func (sc *Scrap) GetProfilePicture() string {
 }
 
 func (sc *Scrap) IsSearchInUsername(p string) bool {
-	if sc.FBData != nil && strings.Contains(sc.FBData.Id, p) {
+	p = strings.ToLower(p)
+	if sc.FBData != nil && strings.Contains(strings.ToLower(sc.FBData.Id), p) {
 		return true
 	}
 
-	if sc.InstaData != nil && strings.Contains(sc.InstaData.UserName, p) {
+	if sc.InstaData != nil && strings.Contains(strings.ToLower(sc.InstaData.UserName), p) {
 		return true
 	}
 
-	if sc.TWData != nil && strings.Contains(sc.TWData.Id, p) {
+	if sc.TWData != nil && strings.Contains(strings.ToLower(sc.TWData.Id), p) {
 		return true
 	}
 
-	if sc.YTData != nil && strings.Contains(sc.YTData.UserName, p) {
+	if sc.YTData != nil && strings.Contains(strings.ToLower(sc.YTData.UserName), p) {
 		return true
 	}
 
