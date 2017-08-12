@@ -116,17 +116,33 @@ const (
 	postURL = "https://twitter.com/%s/status/%s"
 )
 
-func (tw *Twitter) getTweets(endpoint string) (tws Tweets, err error) {
+func (tw *Twitter) getTweets(endpoint string) (Tweets, error) {
+	var (
+		tmpTweets Tweets
+		err       error
+	)
+
 	endpoint = fmt.Sprintf(timelineUrl, endpoint, tw.Id)
-	err = misc.HttpGetJson(tw.client, endpoint, &tws)
+	err = misc.HttpGetJson(tw.client, endpoint, &tmpTweets)
+	if err != nil {
+		return tmpTweets, err
+	}
+
 	now := int32(time.Now().Unix())
-	for _, t := range tws {
+	tws := Tweets{}
+	for _, t := range tmpTweets {
+		if t.RetweetedStatus != nil {
+			// Weed out retweets from things we consider
+			continue
+		}
+
 		t.LastUpdated = now
 		if t.User != nil {
 			t.PostURL = fmt.Sprintf(postURL, t.User.Id, t.Id)
 		}
+		tws = append(tws, t)
 	}
-	return
+	return tws, err
 }
 
 func (tw *Twitter) GetScore() float64 {
