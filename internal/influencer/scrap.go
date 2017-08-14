@@ -371,7 +371,7 @@ func (sc *Scrap) Email(cmp *common.Campaign, spendable float64, cfg *config.Conf
 		}
 
 		email := templates.ScrapFirstEmail.Render(map[string]interface{}{"Name": sc.Name, "Image": cmp.ImageURL, "Company": cmp.Company, "Campaign": cmp.Name, "email": sc.EmailAddress, "Payout": spendable, "Perks": perks, "Task": cmp.Task})
-		if resp, err := cfg.ReplyMailClient().SendMessage(email, "A few brands currently requesting you", "shahzil@swayops.com", sc.Name,
+		if resp, err := cfg.ReplyMailClient().SendMessage(email, "A few brands currently requesting you", sc.EmailAddress, sc.Name,
 			[]string{""}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			log.Println("Error emailing scrap!", err)
 			return false
