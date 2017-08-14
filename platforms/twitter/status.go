@@ -5,7 +5,7 @@ import (
 )
 
 func Status(cfg *config.Config) bool {
-	if id, err := New("twitter", cfg); err != nil || id == nil || id.Followers == 0 {
+	if id, err := New("kimkardashian", cfg); err != nil || id == nil || id.Followers == 0 {
 		return false
 	}
 
