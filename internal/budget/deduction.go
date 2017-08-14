@@ -3,18 +3,18 @@ package budget
 const (
 	// YouTube
 	YT_LIKE    = 0.23
-	YT_DISLIKE = 0.01
-	YT_VIEW    = 0.002 // $3 CPM
-	YT_COMMENT = 0.3
+	YT_DISLIKE = 0.04
+	YT_VIEW    = 0.003 // $3 CPM
+	YT_COMMENT = 0.35
 
 	// Facebook
-	FB_LIKE    = 0.13
+	FB_LIKE    = 0.18
 	FB_SHARE   = 0.17
 	FB_COMMENT = 0.17
 
 	// Instagram
-	INSTA_LIKE    = 0.18
-	INSTA_COMMENT = 0.29
+	INSTA_LIKE    = 0.26
+	INSTA_COMMENT = 0.35
 
 	// Twitter
 	TW_RETWEET  = 0.2
