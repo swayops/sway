@@ -5749,22 +5749,23 @@ func TestAudiences(t *testing.T) {
 		Members: members,
 	}
 
-	r = rst.DoTesting(t, "POST", "/advertiser/audience/123", &aud, nil)
+	r = rst.DoTesting(t, "POST", "/advertiser/audience/5", &aud, nil)
 	if r.Status != 200 {
 		t.Fatal("Bad status code!")
 		return
 	}
 
-	// Lets get that audience!
+	// Lets get that audience!z
 	var audienceStore map[string]common.Audience
-	r = rst.DoTesting(t, "GET", "/getUserAudiences/123", nil, &audienceStore)
+	r = rst.DoTesting(t, "GET", "/getUserAudiences/5", nil, &audienceStore)
 	if r.Status != 200 || len(audienceStore) == 0 {
+		log.Println(string(r.Value), r.Status)
 		t.Fatal("Bad status code!")
 		return
 	}
 
 	// Create an admin audience
-	aud, ok := audienceStore["advertiser:123:1"]
+	aud, ok := audienceStore["advertiser:5:1"]
 	if !ok {
 		t.Fatal("Failed to add adv audience!")
 		return
