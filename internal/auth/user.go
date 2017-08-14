@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -201,7 +202,7 @@ func (u *User) Type() Scope {
 }
 
 func (a *Auth) CreateUserTx(tx *bolt.Tx, u *User, password string) (err error) {
-	Log.Println("Email signing up:", u.Email)
+	log.Println("Email signing up:", u.Email)
 	u.Name = strings.TrimSpace(u.Name)
 	u.Email = misc.TrimEmail(u.Email)
 	log.Println("After trim", u.Email)
