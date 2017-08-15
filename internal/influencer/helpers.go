@@ -2,6 +2,7 @@ package influencer
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/swayops/sway/internal/budget"
@@ -37,6 +38,10 @@ func degradeRep(val int, rep float64) float64 {
 		rep = rep * 0.05
 	}
 	return rep
+}
+
+func clean(user string) string {
+	return strings.Replace(user, " ", "", -1)
 }
 
 func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Facebook, tw *twitter.Twitter, insta *instagram.Instagram) float64 {

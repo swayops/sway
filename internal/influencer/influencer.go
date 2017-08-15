@@ -192,22 +192,22 @@ func New(id, name, twitterId, instaId, fbId, ytId string, m, f bool, inviteCode,
 
 	inf.AgencyId = agencyId
 
-	err := inf.NewInsta(instaId, []string{}, cfg)
+	err := inf.NewInsta(clean(instaId), []string{}, cfg)
 	if err != nil {
 		return inf, err
 	}
 
-	err = inf.NewFb(fbId, cfg)
+	err = inf.NewFb(clean(fbId), cfg)
 	if err != nil {
 		return inf, err
 	}
 
-	err = inf.NewTwitter(twitterId, cfg)
+	err = inf.NewTwitter(clean(twitterId), cfg)
 	if err != nil {
 		return inf, err
 	}
 
-	err = inf.NewYouTube(ytId, []string{}, cfg)
+	err = inf.NewYouTube(clean(ytId), []string{}, cfg)
 	if err != nil {
 		return inf, err
 	}
