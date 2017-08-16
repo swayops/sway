@@ -1,6 +1,7 @@
 package influencer
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/boltdb/bolt"
@@ -38,6 +39,23 @@ func (p *Scraps) Get(id string) (Scrap, bool) {
 	p.mux.Unlock()
 
 	return scrap, ok
+}
+
+func (p *Scraps) GetKeywords(email, id string, sandbox bool) (keywords []string) {
+	p.mux.RLock()
+	for _, sc := range p.store {
+		if strings.EqualFold(sc.EmailAddress, email) && strings.EqualFold(sc.Name, id) && len(sc.Keywords) > 0 {
+			keywords = sc.Keywords
+			if sandbox {
+				// Lets prepend everything with a prefix so we know where the kw is coming
+				// from in tests
+				keywords = prepend(sc.Keywords)
+			}
+			break
+		}
+	}
+	p.mux.RUnlock()
+	return
 }
 
 func (p *Scraps) GetStore() map[string]Scrap {

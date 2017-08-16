@@ -2,7 +2,6 @@ package instagram
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/swayops/sway/config"
@@ -40,12 +39,10 @@ type Instagram struct {
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
-	log.Println("Entered", name, time.Now().Unix())
 	userId, err := getUserIdFromName(name, cfg)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Checkpoint 1", name, time.Now().Unix())
 
 	in := &Instagram{
 		UserName: name,
@@ -56,12 +53,10 @@ func New(name string, cfg *config.Config) (*Instagram, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println("Checkpoint 2", name, time.Now().Unix())
 
 	if in.Followers < 10 {
 		return nil, ErrEligible
 	}
-	log.Println("Exited", name, time.Now().Unix())
 
 	return in, nil
 }
@@ -73,7 +68,6 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
 	// 	return nil
 	// }
-	log.Println("Getting user info", in.UserName, time.Now().Unix())
 	if fl, link, dp, bio, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
@@ -86,7 +80,6 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	} else {
 		return err
 	}
-	log.Println("Getting post info", in.UserName, time.Now().Unix())
 
 	if pInfo, err := getPostInfo(in.UserId, cfg); err == nil {
 		in.AvgLikes = pInfo.Likes
@@ -110,7 +103,6 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	} else {
 		return err
 	}
-	log.Println("Exiting user info", in.UserName, time.Now().Unix())
 
 	in.LastUpdated = int32(time.Now().Unix())
 	return nil

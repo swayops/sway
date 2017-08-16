@@ -80,3 +80,11 @@ func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Faceboo
 
 	return 0
 }
+
+func prepend(keywords []string) []string {
+	out := []string{}
+	for _, kw := range keywords {
+		out = append(out, "old-"+kw)
+	}
+	return out
+}
