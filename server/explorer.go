@@ -677,9 +677,6 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		}
 
 		if deal.Mention != "" {
-			if deal.CampaignId == "28" {
-				deal.Mention = "athletetrainingandhealth"
-			}
 			consideredFacets += 1
 			if containsFold(post.Caption, deal.Mention) {
 				foundMention = true
