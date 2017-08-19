@@ -301,7 +301,7 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 	// Optimization to save us from pinging for influencers
 	// who are changed usernames and dont have any deals
 	if misc.WithinLast(inf.PrivateNotify, 48) && len(inf.ActiveDeals) == 0 {
-		continue
+		return false, nil
 	}
 
 	inf.setSwayRep()
