@@ -301,7 +301,6 @@ func (inf *Influencer) UpdateAll(cfg *config.Config) (private bool, err error) {
 	// Optimization to save us from pinging for influencers
 	// who are changed usernames and dont have any deals
 	if misc.WithinLast(inf.PrivateNotify, 48) && len(inf.ActiveDeals) == 0 {
-		log.Println("Bailing because theyre private", inf.PrivateNotify)
 		return false, nil
 	}
 
@@ -842,11 +841,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		return infDeals, rejections
 	}
 
-	// If the influencer hasn't been updated in the last 25 days.. ignore em!
-	if !misc.WithinLast(inf.LastSocialUpdate, 24*25) {
-		return infDeals, rejections
-	}
-
 	if !inf.Audited() && !cfg.Sandbox {
 		// If the user has no categories or gender.. this means
 		// the assign game hasn't gotten to them yet
@@ -1174,25 +1168,26 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Social Media Checks
 		// NOTE: Matches priority in GetMaxYield func
-		if cmp.Instagram && inf.Instagram != nil {
+		// Also checking to make sure the data has been updated in the last 25 days
+		if cmp.Instagram && inf.Instagram != nil && misc.WithinLast(inf.Instagram.LastUpdated, 24*25) {
 			if !common.IsInList(targetDeal.Platforms, platform.Instagram) {
 				targetDeal.Platforms = append(targetDeal.Platforms, platform.Instagram)
 			}
 		}
 
-		if cmp.YouTube && inf.YouTube != nil {
+		if cmp.YouTube && inf.YouTube != nil && misc.WithinLast(inf.YouTube.LastUpdated, 24*25) {
 			if !common.IsInList(targetDeal.Platforms, platform.YouTube) {
 				targetDeal.Platforms = append(targetDeal.Platforms, platform.YouTube)
 			}
 		}
 
-		if cmp.Twitter && inf.Twitter != nil {
+		if cmp.Twitter && inf.Twitter != nil && misc.WithinLast(inf.Twitter.LastUpdated, 24*25) {
 			if !common.IsInList(targetDeal.Platforms, platform.Twitter) {
 				targetDeal.Platforms = append(targetDeal.Platforms, platform.Twitter)
 			}
 		}
 
-		if cmp.Facebook && inf.Facebook != nil {
+		if cmp.Facebook && inf.Facebook != nil && misc.WithinLast(inf.Facebook.LastUpdated, 24*25) {
 			if !common.IsInList(targetDeal.Platforms, platform.Facebook) {
 				targetDeal.Platforms = append(targetDeal.Platforms, platform.Facebook)
 			}
