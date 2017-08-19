@@ -275,7 +275,11 @@ func updateInfluencers(s *Server) (int32, error) {
 			// we clear out engagement deltas anyway
 			// whenever we deplete budgets so don't want to stop
 			// the whole engine because of one influencer erroring
-			log.Println("Failed to update influencer "+infId, err)
+			if private {
+				log.Println("Failed to update private influencer "+infId, err)
+			} else {
+				log.Println("Failed to update influencer "+infId, err)
+			}
 
 			if private {
 				// We noticed that this influencer now has a private profile..
