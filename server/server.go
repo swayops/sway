@@ -332,6 +332,9 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	r.GET("/optout/:email", optoutScrap(srv))
 	r.GET("/value/:platform/:handle", influencerValue(srv))
 
+	// Key based auth
+	r.GET("/getContentFeed/:id", getAdvertiserContentFeed(srv, true))
+
 	verifyGroup := r.Group("", srv.auth.VerifyUser(false))
 	adminGroup := verifyGroup.Group("", srv.auth.CheckScopes(nil))
 
@@ -398,7 +401,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/subUsers/:id", advScopes, srv.auth.AddSubUserHandler)
 	verifyGroup.DELETE("/subUsers/:id/:email", srv.auth.DelSubUserHandler)
 
-	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv))
+	verifyGroup.GET("/getAdvertiserContentFeed/:id", getAdvertiserContentFeed(srv, false))
 	verifyGroup.GET("/advertiserBan/:id/:influencerId", advertiserBan(srv))
 	verifyGroup.GET("/billingInfo/:id", getBillingInfo(srv))
 	verifyGroup.GET("/getAdvertiserTimeline/:id", getAdvertiserTimeline(srv))

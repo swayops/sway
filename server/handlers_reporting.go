@@ -392,9 +392,14 @@ func (d *FeedCell) UseYT(yt *youtube.Post, profile *youtube.YouTube) {
 	}
 }
 
-func getAdvertiserContentFeed(s *Server) gin.HandlerFunc {
+func getAdvertiserContentFeed(s *Server, requireKey bool) gin.HandlerFunc {
 	// Retrieves all completed deals by advertiser
 	return func(c *gin.Context) {
+		if requireKey && c.Query("key") != "7d7e8c4486c8" {
+			misc.WriteJSON(c, 401, misc.StatusErr("Unauthorized"))
+			return
+		}
+
 		adv := s.auth.GetAdvertiser(c.Param("id"))
 		if adv == nil {
 			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
