@@ -352,8 +352,11 @@ type FeedCell struct {
 
 	Bonus bool `json:"bonus,omitempty"`
 
-	// Links to a DP for the social media profile
+	// Used by dash to display proper image
 	SocialImage string `json:"socialImage,omitempty"`
+
+	ProfilePicture string `json:"profilePicture,omitempty"`
+	PostPicture    string `json:"postPicture,omitempty"`
 }
 
 func (d *FeedCell) UseTweet(tw *twitter.Tweet, profile *twitter.Twitter) {
@@ -361,6 +364,8 @@ func (d *FeedCell) UseTweet(tw *twitter.Tweet, profile *twitter.Twitter) {
 	d.Published = int32(tw.CreatedAt.Unix())
 	d.URL = tw.PostURL
 	d.SocialImage = profile.ProfilePicture
+
+	d.ProfilePicture = profile.ProfilePicture
 }
 
 func (d *FeedCell) UseInsta(insta *instagram.Post, profile *instagram.Instagram) {
@@ -372,6 +377,9 @@ func (d *FeedCell) UseInsta(insta *instagram.Post, profile *instagram.Instagram)
 	} else {
 		d.SocialImage = profile.ProfilePicture
 	}
+
+	d.PostPicture = insta.Thumbnail
+	d.ProfilePicture = profile.ProfilePicture
 }
 
 func (d *FeedCell) UseFB(fb *facebook.Post, profile *facebook.Facebook) {
@@ -379,6 +387,8 @@ func (d *FeedCell) UseFB(fb *facebook.Post, profile *facebook.Facebook) {
 	d.Published = int32(fb.Published.Unix())
 	d.URL = fb.PostURL
 	d.SocialImage = profile.ProfilePicture
+
+	d.ProfilePicture = profile.ProfilePicture
 }
 
 func (d *FeedCell) UseYT(yt *youtube.Post, profile *youtube.YouTube) {
@@ -390,6 +400,9 @@ func (d *FeedCell) UseYT(yt *youtube.Post, profile *youtube.YouTube) {
 	} else {
 		d.SocialImage = profile.ProfilePicture
 	}
+
+	d.PostPicture = yt.Thumbnail
+	d.ProfilePicture = profile.ProfilePicture
 }
 
 func getAdvertiserContentFeed(s *Server, requireKey bool) gin.HandlerFunc {
