@@ -20,7 +20,7 @@ func imageSaver(srv *Server) {
 		var updated bool
 		for _, deal := range inf.CompletedDeals {
 			// If the url contains swayops.. means its been saved!
-			if deal.Instagram != nil && !strings.Contains(deal.Instagram.Thumbnail, "swayops") && misc.Ping(deal.Instagram.Thumbnail) == nil {
+			if deal.Instagram != nil && deal.Instagram.Thumbnail != "" && !strings.Contains(deal.Instagram.Thumbnail, "swayops") && misc.Ping(deal.Instagram.Thumbnail) == nil {
 				url, err := saveImageFromURL(srv, deal.Instagram.Thumbnail, deal)
 				if err != nil {
 					srv.Alert(fmt.Sprintf("Error saving image for %s: %s", inf.Id, deal.Instagram.Thumbnail), err)
@@ -28,7 +28,7 @@ func imageSaver(srv *Server) {
 				}
 				deal.Instagram.Thumbnail = url
 				updated = true
-			} else if deal.YouTube != nil && !strings.Contains(deal.YouTube.Thumbnail, "swayops") && misc.Ping(deal.YouTube.Thumbnail) == nil {
+			} else if deal.YouTube != nil && deal.YouTube.Thumbnail != "" && !strings.Contains(deal.YouTube.Thumbnail, "swayops") && misc.Ping(deal.YouTube.Thumbnail) == nil {
 				url, err := saveImageFromURL(srv, deal.YouTube.Thumbnail, deal)
 				if err != nil {
 					srv.Alert(fmt.Sprintf("Error saving image for %s: %s", inf.Id, deal.YouTube.Thumbnail), err)

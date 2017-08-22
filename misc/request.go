@@ -48,10 +48,6 @@ func Request(method, endpoint, reqData string, respData interface{}) (err error)
 }
 
 func Ping(endpoint string) error {
-	if endpoint == "" {
-		return nil
-	}
-
 	endpoint = strings.Replace(endpoint, " ", "%20", -1)
 
 	r, _ := http.NewRequest("GET", endpoint, nil)
