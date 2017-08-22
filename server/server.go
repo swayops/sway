@@ -136,6 +136,7 @@ func initializeDirs(cfg *config.Config) {
 	os.MkdirAll(cfg.LogsPath, 0700)
 	os.MkdirAll(filepath.Join(cfg.LogsPath, "invoices"), 0700)
 	os.MkdirAll(cfg.DBPath, 0700)
+	os.MkdirAll(filepath.Join(cfg.ImagesDir, "deal"), 0700)
 }
 
 func (srv *Server) initializeDBs(cfg *config.Config) error {

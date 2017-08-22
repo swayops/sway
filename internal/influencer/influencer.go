@@ -613,14 +613,6 @@ func (inf *Influencer) GetProfilePicture() string {
 func (inf *Influencer) IsProfilePictureActive() bool {
 	// Checks to see if any of the profile pictures are returning
 	// a 404
-
-	// We can skip this check if the influencer has no completed
-	// deals (since we only show profile picture and need to check
-	// it's validity when it shows up in an advertiser conten feed)
-	if len(inf.CompletedDeals) == 0 {
-		return true
-	}
-
 	if inf.Facebook != nil && inf.Facebook.ProfilePicture != "" {
 		if misc.Ping(inf.Facebook.ProfilePicture) != nil {
 			return false

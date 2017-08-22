@@ -130,6 +130,15 @@ func newSwayEngine(srv *Server) error {
 		}
 	}()
 
+	// Save pictures every 4 hours
+	imageTicker := time.NewTicker(4 * time.Hour)
+	go func() {
+		imageSaver(srv)
+		for range imageTicker.C {
+			imageSaver(srv)
+		}
+	}()
+
 	billingTicker := time.NewTicker(24 * time.Hour)
 	go func() {
 		if err := srv.billing(); err != nil {
