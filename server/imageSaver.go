@@ -3,12 +3,9 @@ package server
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/boltdb/bolt"
 
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/misc"
@@ -20,7 +17,7 @@ func imageSaver(srv *Server) {
 		var updated bool
 		for _, deal := range inf.CompletedDeals {
 			// If the url contains swayops.. means its been saved!
-			if deal.Instagram != nil && deal.Instagram.Thumbnail != "" && !strings.Contains(deal.Instagram.Thumbnail, "swayops") && misc.Ping(deal.Instagram.Thumbnail) == nil {
+			if deal.Instagram != nil && deal.Instagram.Thumbnail != "" && misc.Ping(deal.Instagram.Thumbnail) == nil {
 				url, err := saveImageFromURL(srv, deal.Instagram.Thumbnail, deal)
 				if err != nil {
 					srv.Alert(fmt.Sprintf("Error saving image for %s: %s", inf.Id, deal.Instagram.Thumbnail), err)
@@ -28,7 +25,7 @@ func imageSaver(srv *Server) {
 				}
 				deal.Instagram.Thumbnail = url
 				updated = true
-			} else if deal.YouTube != nil && deal.YouTube.Thumbnail != "" && !strings.Contains(deal.YouTube.Thumbnail, "swayops") && misc.Ping(deal.YouTube.Thumbnail) == nil {
+			} else if deal.YouTube != nil && deal.YouTube.Thumbnail != "" && misc.Ping(deal.YouTube.Thumbnail) == nil {
 				url, err := saveImageFromURL(srv, deal.YouTube.Thumbnail, deal)
 				if err != nil {
 					srv.Alert(fmt.Sprintf("Error saving image for %s: %s", inf.Id, deal.YouTube.Thumbnail), err)
@@ -41,14 +38,7 @@ func imageSaver(srv *Server) {
 
 		if updated {
 			// save influencer
-			if err := srv.db.Update(func(tx *bolt.Tx) error {
-				// Save the influencer since we just updated it's URL
-				if err := saveInfluencer(srv, tx, inf); err != nil {
-					log.Println("Errored saving influencer", err)
-					return err
-				}
-				return nil
-			}); err != nil {
+			if err := saveAllCompletedDeals(srv, inf); err != nil {
 				srv.Alert(fmt.Sprintf("Error saving image for %s", inf.Id), err)
 			}
 		}
