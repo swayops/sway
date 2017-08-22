@@ -404,3 +404,26 @@ func GetCampaign(cid string, db *bolt.DB, cfg *config.Config) *Campaign {
 
 	return &g
 }
+
+func GetCampaignDeal(cid, dealID string, db *bolt.DB, cfg *config.Config) *Deal {
+	var (
+		v   []byte
+		err error
+		g   Campaign
+	)
+
+	if err := db.View(func(tx *bolt.Tx) error {
+		v = tx.Bucket([]byte(cfg.Bucket.Campaign)).Get([]byte(cid))
+		return nil
+	}); err != nil {
+		return nil
+	}
+
+	if err = json.Unmarshal(v, &g); err != nil {
+		return nil
+	}
+
+	deal, _ := g.Deals[dealID]
+
+	return deal
+}

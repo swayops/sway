@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -16,6 +17,16 @@ func imageSaver(srv *Server) {
 	for _, inf := range srv.auth.Influencers.GetAll() {
 		var updated bool
 		for _, deal := range inf.CompletedDeals {
+			campaignDeal := common.GetCampaignDeal(deal.CampaignId, deal.Id, srv.db, srv.Cfg)
+			if campaignDeal == nil {
+				log.Println("No such deal", deal.CampaignId, deal.Id)
+				continue
+			}
+
+			if campaignDeal.Instagram != nil && deal.Instagram != nil {
+				deal.Instagram.Thumbnail = campaignDeal.Instagram.Thumbnail
+			}
+
 			// If the url contains swayops.. means its been saved!
 			if deal.Instagram != nil && deal.Instagram.Thumbnail != "" && misc.Ping(deal.Instagram.Thumbnail) == nil {
 				url, err := saveImageFromURL(srv, deal.Instagram.Thumbnail, deal)
