@@ -374,11 +374,11 @@ func (d *FeedCell) UseInsta(insta *instagram.Post, profile *instagram.Instagram)
 	d.URL = insta.PostURL
 	if insta.Thumbnail != "" && misc.Ping(insta.Thumbnail) == nil {
 		d.SocialImage = insta.Thumbnail
+		d.PostPicture = insta.Thumbnail
 	} else {
 		d.SocialImage = profile.ProfilePicture
 	}
 
-	d.PostPicture = insta.Thumbnail
 	d.ProfilePicture = profile.ProfilePicture
 }
 
@@ -397,11 +397,11 @@ func (d *FeedCell) UseYT(yt *youtube.Post, profile *youtube.YouTube) {
 	d.URL = yt.PostURL
 	if yt.Thumbnail != "" && misc.Ping(yt.Thumbnail) == nil {
 		d.SocialImage = yt.Thumbnail
+		d.PostPicture = yt.Thumbnail
 	} else {
 		d.SocialImage = profile.ProfilePicture
 	}
 
-	d.PostPicture = yt.Thumbnail
 	d.ProfilePicture = profile.ProfilePicture
 }
 
