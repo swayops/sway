@@ -420,14 +420,14 @@ func (inf *Influencer) UpdateCompletedDeals(cfg *config.Config, activeCampaigns 
 	)
 
 	for _, deal := range inf.CompletedDeals {
-		if _, ok = activeCampaigns[deal.CampaignId]; !ok {
-			// Update deals that aren't active anymore once in a blue moon
-			// just to save some requests
-			// if misc.Random(0, 100) > 10 {
-			// 90% of the time bail!
-			continue
-			// }
-		}
+		// if _, ok = activeCampaigns[deal.CampaignId]; !ok {
+		// 	// Update deals that aren't active anymore once in a blue moon
+		// 	// just to save some requests
+		// 	// if misc.Random(0, 100) > 10 {
+		// 	// 90% of the time bail!
+		// 	continue
+		// 	// }
+		// }
 
 		if deal.Tweet != nil {
 			if ban, err = deal.Tweet.UpdateData(cfg); err != nil {
