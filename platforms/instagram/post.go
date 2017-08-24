@@ -87,7 +87,7 @@ func (pt *Post) UpdateData(cfg *config.Config) (error, error) {
 		pt.Likes = post.Data.Likes.Count
 	}
 
-	if post.Data.Images != nil && post.Data.Images.Resolution != nil && post.Data.Images.Resolution.URL == "" {
+	if post.Data.Images != nil && post.Data.Images.Resolution != nil && post.Data.Images.Resolution.URL != "" {
 		pt.Thumbnail = post.Data.Images.Resolution.URL
 	}
 
