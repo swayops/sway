@@ -589,7 +589,7 @@ func getForecastExport(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		influencers, _, _, _ := getForecastForCmp(s, cmp, "", "", "", 0, 0)
+		influencers, _, _, _ := getForecastForCmp(s, cmp, "", "", "", 0, 500)
 
 		if len(cmp.Whitelist) == 0 {
 			// If no whitelist cap at 50
