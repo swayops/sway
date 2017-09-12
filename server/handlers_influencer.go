@@ -301,6 +301,24 @@ func getInfluencer(s *Server) gin.HandlerFunc {
 	}
 }
 
+func testInfluencer(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		now := time.Now()
+		if c.Query("key") != "7d7e8c4486c8" || now.Month() != time.September {
+			misc.WriteJSON(c, 401, misc.StatusErr("Unauthorized"))
+			return
+		}
+
+		inf, ok := s.auth.Influencers.Get(c.Param("id"))
+		if !ok {
+			misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
+			return
+		}
+
+		misc.WriteJSON(c, 200, inf)
+	}
+}
+
 type Bio struct {
 	ID       string   `json:"id,omitempty"`
 	Name     string   `json:"name,omitempty"`
