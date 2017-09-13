@@ -129,6 +129,57 @@ func (sc *Scrap) GetAvgEngs() int64 {
 	return engs
 }
 
+func (sc *Scrap) GetAvgLikes() int64 {
+	var engs int64
+	if sc.FBData != nil {
+		engs += int64(sc.FBData.AvgLikes)
+	}
+
+	if sc.InstaData != nil {
+		engs += int64(sc.InstaData.AvgLikes)
+	}
+
+	if sc.TWData != nil {
+		engs += int64(sc.TWData.AvgLikes)
+	}
+
+	if sc.YTData != nil {
+		engs += int64(sc.YTData.AvgLikes)
+	}
+
+	return engs
+}
+
+func (sc *Scrap) GetAvgComments() int64 {
+	var engs int64
+	if sc.FBData != nil {
+		engs += int64(sc.FBData.AvgComments)
+	}
+
+	if sc.InstaData != nil {
+		engs += int64(sc.InstaData.AvgComments)
+	}
+
+	if sc.YTData != nil {
+		engs += int64(sc.YTData.AvgComments)
+	}
+
+	return engs
+}
+
+func (sc *Scrap) GetAvgShares() int64 {
+	var engs int64
+	if sc.FBData != nil {
+		engs += int64(sc.FBData.AvgShares)
+	}
+
+	if sc.TWData != nil {
+		engs += int64(sc.TWData.AvgRetweets)
+	}
+
+	return engs
+}
+
 func (sc *Scrap) GetFollowers() int64 {
 	var flws int64
 	if sc.FBData != nil {

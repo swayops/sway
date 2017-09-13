@@ -93,7 +93,11 @@ type ForecastUser struct {
 	Description     string `json:"description"`
 	Followers       int64  `json:"followers"`
 	StringFollowers string `json:"stringFollowers"`
-	AvgEngs         int64  `json:"avgEngs"`
+
+	AvgEngs     int64 `json:"avgEngs"`
+	AvgLikes    int64 `json:"avgLikes,omitempty"`
+	AvgComments int64 `json:"avgComments,omitempty"`
+	AvgShares   int64 `json:"avgShares,omitempty"`
 
 	// Float representation of max yield
 	FromRate float64 `json:"fromRate"`
@@ -106,15 +110,19 @@ type ForecastUser struct {
 
 	HasTwitter      bool   `json:"hasTwitter"`
 	TwitterUsername string `json:"twUsername"`
+	TwitterReach    int64  `json:"twReach"`
 
 	HasInsta      bool   `json:"hasInsta"`
 	InstaUsername string `json:"instaUsername"`
+	InstaReach    int64  `json:"instaReach"`
 
 	HasYoutube      bool   `json:"hasYoutube"`
 	YoutubeUsername string `json:"ytUsername"`
+	YTReach         int64  `json:"ytReach"`
 
 	HasFacebook      bool   `json:"hasFacebook"`
 	FacebookUsername string `json:"fbUsername"`
+	FBReach          int64  `json:"fbReach"`
 
 	InAudience bool `json:"inAudience,omitempty"`
 }
@@ -297,6 +305,9 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			Name:        strings.Title(inf.Name),
 			Email:       inf.EmailAddress,
 			AvgEngs:     inf.GetAvgEngs(),
+			AvgLikes:    inf.GetAvgLikes(),
+			AvgShares:   inf.GetAvgShares(),
+			AvgComments: inf.GetAvgComments(),
 			Followers:   inf.GetFollowers(),
 			Description: inf.GetDescription(),
 			MaxYield:    fmt.Sprintf("$%0.2f", maxYield),
@@ -339,6 +350,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			user.URL = inf.YouTube.GetProfileURL()
 			user.HasYoutube = true
 			user.YoutubeUsername = inf.YouTube.UserName
+			user.YTReach = int64(inf.YouTube.Subscribers)
 		}
 
 		if cmp.Instagram && inf.Instagram != nil {
@@ -349,6 +361,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			user.URL = inf.Instagram.GetProfileURL()
 			user.HasInsta = true
 			user.InstaUsername = inf.Instagram.UserName
+			user.InstaReach = int64(inf.Instagram.Followers)
 		}
 
 		if cmp.Twitter && inf.Twitter != nil {
@@ -359,6 +372,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			user.URL = inf.Twitter.GetProfileURL()
 			user.HasTwitter = true
 			user.TwitterUsername = inf.Twitter.Id
+			user.TwitterReach = int64(inf.Twitter.Followers)
 		}
 
 		if cmp.Facebook && inf.Facebook != nil {
@@ -370,6 +384,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			user.URL = inf.Facebook.GetProfileURL()
 			user.HasFacebook = true
 			user.FacebookUsername = inf.Facebook.Id
+			user.FBReach = int64(inf.Facebook.Followers)
 		}
 
 		if !socialMediaFound {
@@ -417,6 +432,9 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 				Name:        strings.Title(sc.Name),
 				Email:       sc.EmailAddress,
 				AvgEngs:     sc.GetAvgEngs(),
+				AvgLikes:    sc.GetAvgLikes(),
+				AvgShares:   sc.GetAvgShares(),
+				AvgComments: sc.GetAvgComments(),
 				Followers:   sc.GetFollowers(),
 				Description: sc.GetDescription(),
 				Geo:         "N/A",
@@ -456,6 +474,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 				user.URL = sc.FBData.GetProfileURL()
 				user.HasFacebook = true
 				user.FacebookUsername = sc.FBData.Id
+				user.FBReach = int64(sc.FBData.Followers)
 			}
 
 			if sc.InstaData != nil {
@@ -465,6 +484,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 				user.URL = sc.InstaData.GetProfileURL()
 				user.HasInsta = true
 				user.InstaUsername = sc.InstaData.UserName
+				user.InstaReach = int64(sc.InstaData.Followers)
 			}
 
 			if sc.TWData != nil {
@@ -474,6 +494,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 				user.URL = sc.TWData.GetProfileURL()
 				user.HasTwitter = true
 				user.TwitterUsername = sc.TWData.Id
+				user.TwitterReach = int64(sc.TWData.Followers)
 			}
 
 			if sc.YTData != nil {
@@ -483,6 +504,7 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 				user.URL = sc.YTData.GetProfileURL()
 				user.HasYoutube = true
 				user.YoutubeUsername = sc.YTData.UserName
+				user.YTReach = int64(sc.YTData.Subscribers)
 			}
 
 			if _, dupe := unique[user.Email]; dupe {
@@ -534,10 +556,14 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 	return
 }
 
-func getForecast(s *Server) gin.HandlerFunc {
+func getForecast(s *Server, requireKey bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Gets influencer count and reach for an incoming campaign struct
 		// NOTE: Ignores budget values
+		if requireKey && c.Query("key") != "7d7e8c4486c8" {
+			misc.WriteJSON(c, 401, misc.StatusErr("Unauthorized"))
+			return
+		}
 
 		if deleteToken := c.Query("deleteToken"); deleteToken != "" {
 			// IF the UI is asking us to delete a token which is no longer in use.. delete it!

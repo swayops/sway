@@ -332,6 +332,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 
 	// Test endpoint.. delete later
 	r.GET("/inf/test/:id", testInfluencer(srv))
+	r.POST("/search", getForecast(srv, true))
 
 	r.GET("/optout/:email", optoutScrap(srv))
 	r.GET("/value/:platform/:handle", influencerValue(srv))
@@ -426,7 +427,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.POST("/uploadImage/:id/:bucket", uploadImage(srv))
 	verifyGroup.GET("/getDealsForCampaign/:id", getDealsForCampaign(srv))
 	verifyGroup.GET("/getTargetYield/:id", getTargetYield(srv))
-	verifyGroup.POST("/getForecast", getForecast(srv))
+	verifyGroup.POST("/getForecast", getForecast(srv, false))
 	verifyGroup.POST("/getForecastExport/:filename", getForecastExport(srv))
 	verifyGroup.GET("/inventory/:state", getInventoryByState(srv))
 	verifyGroup.GET("/getMatchesForKeyword/:kw", getMatchesForKeyword(srv))

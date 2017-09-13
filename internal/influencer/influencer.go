@@ -543,6 +543,60 @@ func (inf *Influencer) GetAvgEngs() int64 {
 	return engs
 }
 
+func (inf *Influencer) GetAvgLikes() int64 {
+	var engs int64
+
+	if inf.YouTube != nil {
+		engs += int64(inf.YouTube.AvgLikes)
+	}
+
+	if inf.Instagram != nil {
+		engs += int64(inf.Instagram.AvgLikes)
+	}
+
+	if inf.Twitter != nil {
+		engs += int64(inf.Twitter.AvgLikes)
+	}
+
+	if inf.Facebook != nil {
+		engs += int64(inf.Facebook.AvgLikes)
+	}
+
+	return engs
+}
+
+func (inf *Influencer) GetAvgComments() int64 {
+	var engs int64
+
+	if inf.YouTube != nil {
+		engs += int64(inf.YouTube.AvgComments)
+	}
+
+	if inf.Instagram != nil {
+		engs += int64(inf.Instagram.AvgComments)
+	}
+
+	if inf.Facebook != nil {
+		engs += int64(inf.Facebook.AvgComments)
+	}
+
+	return engs
+}
+
+func (inf *Influencer) GetAvgShares() int64 {
+	var engs int64
+
+	if inf.Twitter != nil {
+		engs += int64(inf.Twitter.AvgRetweets)
+	}
+
+	if inf.Facebook != nil {
+		engs += int64(inf.Facebook.AvgShares)
+	}
+
+	return engs
+}
+
 func (inf *Influencer) GetImages(cfg *config.Config) []string {
 	var urls []string
 	if inf.Instagram != nil {
