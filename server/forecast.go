@@ -556,6 +556,203 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 	return
 }
 
+func getForecastUser(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Gets specific forecast user for given ID
+		if c.Query("key") != "7d7e8c4486c8" {
+			misc.WriteJSON(c, 401, misc.StatusErr("Unauthorized"))
+			return
+		}
+
+		id := c.Param("id")
+		if id == "" {
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide valid ID"))
+			return
+		}
+
+		var user ForecastUser
+		if strings.HasPrefix(id, "sc") {
+			// Scrap User!
+			sc, ok := s.Scraps.Get(id)
+			if !ok {
+				misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
+				return
+			}
+
+			user := ForecastUser{
+				ID:          "sc-" + sc.Id,
+				Name:        strings.Title(sc.Name),
+				Email:       sc.EmailAddress,
+				AvgEngs:     sc.GetAvgEngs(),
+				AvgLikes:    sc.GetAvgLikes(),
+				AvgShares:   sc.GetAvgShares(),
+				AvgComments: sc.GetAvgComments(),
+				Followers:   sc.GetFollowers(),
+				Description: sc.GetDescription(),
+				Geo:         "N/A",
+				Gender:      "N/A",
+				Categories:  "N/A",
+			}
+			user.FromRate = influencer.GetMaxYield(nil, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+			user.ToRate = user.FromRate + (user.FromRate * 0.3)
+
+			user.MaxYield = fmt.Sprintf("$%0.2f", user.FromRate)
+			user.StringFollowers = common.Commanize(user.Followers)
+
+			if geo := sc.Geo; geo != nil {
+				if geo.State != "" && geo.Country != "" {
+					user.Geo = geo.State + ", " + geo.Country
+				} else if geo.State == "" && geo.Country != "" {
+					user.Geo = geo.Country
+				}
+			}
+
+			if sc.Male {
+				user.Gender = "M"
+			} else if sc.Female {
+				user.Gender = "F"
+			}
+
+			if len(sc.Categories) > 0 {
+				user.Categories = strings.Join(sc.Categories, ", ")
+			}
+
+			if sc.FBData != nil {
+				if sc.FBData.ProfilePicture != "" {
+					user.ProfilePicture = sc.FBData.ProfilePicture
+				}
+				user.URL = sc.FBData.GetProfileURL()
+				user.HasFacebook = true
+				user.FacebookUsername = sc.FBData.Id
+				user.FBReach = int64(sc.FBData.Followers)
+			}
+
+			if sc.InstaData != nil {
+				if sc.InstaData.ProfilePicture != "" {
+					user.ProfilePicture = sc.InstaData.ProfilePicture
+				}
+				user.URL = sc.InstaData.GetProfileURL()
+				user.HasInsta = true
+				user.InstaUsername = sc.InstaData.UserName
+				user.InstaReach = int64(sc.InstaData.Followers)
+			}
+
+			if sc.TWData != nil {
+				if sc.TWData.ProfilePicture != "" {
+					user.ProfilePicture = sc.TWData.ProfilePicture
+				}
+				user.URL = sc.TWData.GetProfileURL()
+				user.HasTwitter = true
+				user.TwitterUsername = sc.TWData.Id
+				user.TwitterReach = int64(sc.TWData.Followers)
+			}
+
+			if sc.YTData != nil {
+				if sc.YTData.ProfilePicture != "" {
+					user.ProfilePicture = sc.YTData.ProfilePicture
+				}
+				user.URL = sc.YTData.GetProfileURL()
+				user.HasYoutube = true
+				user.YoutubeUsername = sc.YTData.UserName
+				user.YTReach = int64(sc.YTData.Subscribers)
+			}
+
+		} else {
+			// Influencer!
+			inf, ok := s.auth.Influencers.Get(id)
+			if !ok {
+				misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
+				return
+			}
+
+			maxYield := influencer.GetMaxYield(nil, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+
+			user = ForecastUser{
+				ID:          inf.Id,
+				Name:        strings.Title(inf.Name),
+				Email:       inf.EmailAddress,
+				AvgEngs:     inf.GetAvgEngs(),
+				AvgLikes:    inf.GetAvgLikes(),
+				AvgShares:   inf.GetAvgShares(),
+				AvgComments: inf.GetAvgComments(),
+				Followers:   inf.GetFollowers(),
+				Description: inf.GetDescription(),
+				MaxYield:    fmt.Sprintf("$%0.2f", maxYield),
+				Geo:         "N/A",
+				Gender:      "N/A",
+				Categories:  "N/A",
+			}
+			user.FromRate = maxYield
+			user.ToRate = user.FromRate + (user.FromRate * 0.3)
+
+			user.StringFollowers = common.Commanize(user.Followers)
+
+			if geo := inf.GetLatestGeo(); geo != nil {
+				if geo.State != "" && geo.Country != "" {
+					user.Geo = geo.State + ", " + geo.Country
+				} else if geo.State == "" && geo.Country != "" {
+					user.Geo = geo.Country
+				}
+			}
+
+			if inf.Male {
+				user.Gender = "M"
+			} else if inf.Female {
+				user.Gender = "F"
+			}
+
+			if len(inf.Categories) > 0 {
+				user.Categories = strings.Join(inf.Categories, ", ")
+			}
+
+			// Social Media Checks
+			if inf.YouTube != nil {
+				if inf.YouTube.ProfilePicture != "" {
+					user.ProfilePicture = inf.YouTube.ProfilePicture
+				}
+				user.URL = inf.YouTube.GetProfileURL()
+				user.HasYoutube = true
+				user.YoutubeUsername = inf.YouTube.UserName
+				user.YTReach = int64(inf.YouTube.Subscribers)
+			}
+
+			if inf.Instagram != nil {
+				if inf.Instagram.ProfilePicture != "" {
+					user.ProfilePicture = inf.Instagram.ProfilePicture
+				}
+				user.URL = inf.Instagram.GetProfileURL()
+				user.HasInsta = true
+				user.InstaUsername = inf.Instagram.UserName
+				user.InstaReach = int64(inf.Instagram.Followers)
+			}
+
+			if inf.Twitter != nil {
+				if inf.Twitter.ProfilePicture != "" {
+					user.ProfilePicture = inf.Twitter.ProfilePicture
+				}
+				user.URL = inf.Twitter.GetProfileURL()
+				user.HasTwitter = true
+				user.TwitterUsername = inf.Twitter.Id
+				user.TwitterReach = int64(inf.Twitter.Followers)
+			}
+
+			if inf.Facebook != nil {
+				if inf.Facebook.ProfilePicture != "" {
+					user.ProfilePicture = inf.Facebook.ProfilePicture
+				}
+				user.URL = inf.Facebook.GetProfileURL()
+				user.HasFacebook = true
+				user.FacebookUsername = inf.Facebook.Id
+				user.FBReach = int64(inf.Facebook.Followers)
+			}
+
+		}
+
+		misc.WriteJSON(c, 200, user)
+
+	}
+}
+
 func getForecast(s *Server, requireKey bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Gets influencer count and reach for an incoming campaign struct

@@ -333,6 +333,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	// Test endpoint.. delete later
 	r.GET("/inf/test/:id", testInfluencer(srv))
 	r.POST("/search", getForecast(srv, true))
+	r.GET("/forecast/user/:id", getForecastUser(srv))
 
 	r.GET("/optout/:email", optoutScrap(srv))
 	r.GET("/value/:platform/:handle", influencerValue(srv))
