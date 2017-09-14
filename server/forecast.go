@@ -108,6 +108,9 @@ type ForecastUser struct {
 	Gender     string `json:"gender"`
 	Categories string `json:"categories"`
 
+	CategoriesArray []string `json:"catArray"`
+	KeywordsArray   []string `json:"kwArray"`
+
 	HasTwitter      bool   `json:"hasTwitter"`
 	TwitterUsername string `json:"twUsername"`
 	TwitterReach    int64  `json:"twReach"`
@@ -301,19 +304,21 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 		// }
 
 		user := ForecastUser{
-			ID:          inf.Id,
-			Name:        strings.Title(inf.Name),
-			Email:       inf.EmailAddress,
-			AvgEngs:     inf.GetAvgEngs(),
-			AvgLikes:    inf.GetAvgLikes(),
-			AvgShares:   inf.GetAvgShares(),
-			AvgComments: inf.GetAvgComments(),
-			Followers:   inf.GetFollowers(),
-			Description: inf.GetDescription(),
-			MaxYield:    fmt.Sprintf("$%0.2f", maxYield),
-			Geo:         "N/A",
-			Gender:      "N/A",
-			Categories:  "N/A",
+			ID:              inf.Id,
+			Name:            strings.Title(inf.Name),
+			Email:           inf.EmailAddress,
+			AvgEngs:         inf.GetAvgEngs(),
+			AvgLikes:        inf.GetAvgLikes(),
+			AvgShares:       inf.GetAvgShares(),
+			AvgComments:     inf.GetAvgComments(),
+			Followers:       inf.GetFollowers(),
+			Description:     inf.GetDescription(),
+			MaxYield:        fmt.Sprintf("$%0.2f", maxYield),
+			CategoriesArray: inf.Categories,
+			KeywordsArray:   inf.Keywords,
+			Geo:             "N/A",
+			Gender:          "N/A",
+			Categories:      "N/A",
 		}
 		user.FromRate = maxYield
 		user.ToRate = user.FromRate + (user.FromRate * 0.3)
@@ -428,18 +433,20 @@ func getForecastForCmp(s *Server, cmp common.Campaign, sortBy, incomingToken, au
 			}
 
 			user := ForecastUser{
-				ID:          "sc-" + sc.Id,
-				Name:        strings.Title(sc.Name),
-				Email:       sc.EmailAddress,
-				AvgEngs:     sc.GetAvgEngs(),
-				AvgLikes:    sc.GetAvgLikes(),
-				AvgShares:   sc.GetAvgShares(),
-				AvgComments: sc.GetAvgComments(),
-				Followers:   sc.GetFollowers(),
-				Description: sc.GetDescription(),
-				Geo:         "N/A",
-				Gender:      "N/A",
-				Categories:  "N/A",
+				ID:              "sc-" + sc.Id,
+				Name:            strings.Title(sc.Name),
+				Email:           sc.EmailAddress,
+				AvgEngs:         sc.GetAvgEngs(),
+				AvgLikes:        sc.GetAvgLikes(),
+				AvgShares:       sc.GetAvgShares(),
+				AvgComments:     sc.GetAvgComments(),
+				Followers:       sc.GetFollowers(),
+				Description:     sc.GetDescription(),
+				CategoriesArray: sc.Categories,
+				KeywordsArray:   sc.Keywords,
+				Geo:             "N/A",
+				Gender:          "N/A",
+				Categories:      "N/A",
 			}
 			user.FromRate = influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 			user.ToRate = user.FromRate + (user.FromRate * 0.3)
@@ -580,18 +587,20 @@ func getForecastUser(s *Server) gin.HandlerFunc {
 			}
 
 			user := ForecastUser{
-				ID:          "sc-" + sc.Id,
-				Name:        strings.Title(sc.Name),
-				Email:       sc.EmailAddress,
-				AvgEngs:     sc.GetAvgEngs(),
-				AvgLikes:    sc.GetAvgLikes(),
-				AvgShares:   sc.GetAvgShares(),
-				AvgComments: sc.GetAvgComments(),
-				Followers:   sc.GetFollowers(),
-				Description: sc.GetDescription(),
-				Geo:         "N/A",
-				Gender:      "N/A",
-				Categories:  "N/A",
+				ID:              "sc-" + sc.Id,
+				Name:            strings.Title(sc.Name),
+				Email:           sc.EmailAddress,
+				AvgEngs:         sc.GetAvgEngs(),
+				AvgLikes:        sc.GetAvgLikes(),
+				AvgShares:       sc.GetAvgShares(),
+				AvgComments:     sc.GetAvgComments(),
+				Followers:       sc.GetFollowers(),
+				Description:     sc.GetDescription(),
+				CategoriesArray: sc.Categories,
+				KeywordsArray:   sc.Keywords,
+				Geo:             "N/A",
+				Gender:          "N/A",
+				Categories:      "N/A",
 			}
 			user.FromRate = influencer.GetMaxYield(nil, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 			user.ToRate = user.FromRate + (user.FromRate * 0.3)
@@ -668,19 +677,21 @@ func getForecastUser(s *Server) gin.HandlerFunc {
 			maxYield := influencer.GetMaxYield(nil, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
 			user = ForecastUser{
-				ID:          inf.Id,
-				Name:        strings.Title(inf.Name),
-				Email:       inf.EmailAddress,
-				AvgEngs:     inf.GetAvgEngs(),
-				AvgLikes:    inf.GetAvgLikes(),
-				AvgShares:   inf.GetAvgShares(),
-				AvgComments: inf.GetAvgComments(),
-				Followers:   inf.GetFollowers(),
-				Description: inf.GetDescription(),
-				MaxYield:    fmt.Sprintf("$%0.2f", maxYield),
-				Geo:         "N/A",
-				Gender:      "N/A",
-				Categories:  "N/A",
+				ID:              inf.Id,
+				Name:            strings.Title(inf.Name),
+				Email:           inf.EmailAddress,
+				AvgEngs:         inf.GetAvgEngs(),
+				AvgLikes:        inf.GetAvgLikes(),
+				AvgShares:       inf.GetAvgShares(),
+				AvgComments:     inf.GetAvgComments(),
+				Followers:       inf.GetFollowers(),
+				Description:     inf.GetDescription(),
+				MaxYield:        fmt.Sprintf("$%0.2f", maxYield),
+				CategoriesArray: inf.Categories,
+				KeywordsArray:   inf.Keywords,
+				Geo:             "N/A",
+				Gender:          "N/A",
+				Categories:      "N/A",
 			}
 			user.FromRate = maxYield
 			user.ToRate = user.FromRate + (user.FromRate * 0.3)
