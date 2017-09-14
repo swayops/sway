@@ -578,8 +578,9 @@ func getForecastUser(s *Server) gin.HandlerFunc {
 		}
 
 		var user ForecastUser
-		if strings.HasPrefix(id, "sc") {
+		if strings.HasPrefix(id, "sc-") {
 			// Scrap User!
+			id = strings.TrimLeft(id, "sc-")
 			sc, ok := s.Scraps.Get(id)
 			if !ok {
 				misc.WriteJSON(c, 500, misc.StatusErr("Internal error"))
