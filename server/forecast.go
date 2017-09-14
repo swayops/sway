@@ -587,7 +587,7 @@ func getForecastUser(s *Server) gin.HandlerFunc {
 				return
 			}
 
-			user := ForecastUser{
+			user = ForecastUser{
 				ID:              "sc-" + sc.Id,
 				Name:            strings.Title(sc.Name),
 				Email:           sc.EmailAddress,
