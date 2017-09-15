@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -1100,4 +1101,10 @@ func getFollowersByEmail(s *Server) map[string]int64 {
 	}
 
 	return byEmail
+}
+
+var emailReg = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\s+?\b`)
+
+func stripEmail(str string) string {
+	return emailReg.ReplaceAllString(str, "")
 }

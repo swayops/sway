@@ -36,6 +36,7 @@ type Instagram struct {
 	LinkInBio string `json:"link,omitempty"`
 
 	ProfilePicture string `json:"profile_picture,omitempty"`
+	IsBusiness     bool   `json:"isBusiness,omitempty"`
 }
 
 func New(name string, cfg *config.Config) (*Instagram, error) {
@@ -68,7 +69,7 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 	// if misc.WithinLast(in.LastUpdated, misc.Random(21, 26)) {
 	// 	return nil
 	// }
-	if fl, link, dp, bio, err := getUserInfo(in.UserId, cfg); err == nil {
+	if fl, link, dp, bio, isBusiness, err := getUserInfo(in.UserId, cfg); err == nil {
 		if in.Followers > 0 {
 			// Make sure this isn't first run
 			in.FollowerDelta = (fl - in.Followers)
@@ -77,6 +78,7 @@ func (in *Instagram) UpdateData(cfg *config.Config, savePosts bool) error {
 		in.LinkInBio = link
 		in.ProfilePicture = dp
 		in.Bio = bio
+		in.IsBusiness = isBusiness
 	} else {
 		return err
 	}
