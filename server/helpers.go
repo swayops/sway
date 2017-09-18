@@ -1108,3 +1108,33 @@ var emailReg = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{
 func stripEmail(str string) string {
 	return emailReg.ReplaceAllString(str, "")
 }
+
+func emailAdvertiser(s *Server, user *auth.User, content, subject string) {
+	// Get list of users and their names
+	log.Println("SENDING", user.ID, content, subject)
+	if s.Cfg.ReplyMailClient() == nil {
+		return
+	}
+
+	// Holding email addresses we need to email
+	emails := []string{user.Email}
+	s.db.View(func(tx *bolt.Tx) error {
+		emails = append(emails, s.auth.ListSubUsersTx(tx, user.Advertiser.ID)...)
+		return nil
+	})
+
+	for _, email := range emails {
+		resp, err := s.Cfg.ReplyMailClient().SendMessage(content, subject, email, user.Name, []string{""})
+		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+			s.Alert(fmt.Sprintf("Failed to mail advertiser subject (%s): %s", subject, email), err)
+		} else {
+			if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
+				"tag": subject,
+				"id":  email,
+			}); err != nil {
+				log.Println("Failed to log email notification!", user.ID, subject)
+			}
+		}
+	}
+
+}

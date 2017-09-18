@@ -12,6 +12,7 @@ import (
 	"github.com/swayops/sway/internal/common"
 	"github.com/swayops/sway/internal/influencer"
 	"github.com/swayops/sway/internal/subscriptions"
+	"github.com/swayops/sway/internal/templates"
 	"github.com/swayops/sway/misc"
 	"github.com/swayops/sway/platforms"
 	"github.com/swayops/sway/platforms/facebook"
@@ -235,12 +236,12 @@ func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 		return urlErr
 	}
 
+	var (
+		cmp *common.Campaign
+	)
+
 	// Marks the deal as completed, and updates the campaign and influencer buckets
 	if err := srv.db.Update(func(tx *bolt.Tx) (err error) {
-		var (
-			cmp *common.Campaign
-		)
-
 		err = json.Unmarshal(tx.Bucket([]byte(srv.Cfg.Bucket.Campaign)).Get([]byte(d.CampaignId)), &cmp)
 		if err != nil {
 			log.Println("Error unmarshallign campaign", err)
@@ -300,6 +301,17 @@ func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 		return nil
 	}); err != nil {
 		return err
+	}
+
+	// Email the advertiser if this is their first deal
+	if cmp.GetCompletedCount() == 1 && !s.Cfg.Sandbox {
+		user := srv.auth.GetUser(cmp.AdvertiserId)
+		if user == nil || user.Advertiser == nil {
+			return nil
+		}
+
+		email := templates.NotifyFirstPostEmail.Render(map[string]interface{}{"Name": user.Advertiser.Name, "URL": d.PostUrl, "Campaign": fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)})
+		emailAdvertiser(srv, user, email, "First post has been made for your campaign: "+cmp.Name)
 	}
 
 	if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
