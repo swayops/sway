@@ -1111,7 +1111,6 @@ func stripEmail(str string) string {
 
 func emailAdvertiser(s *Server, user *auth.User, content, subject string) {
 	// Get list of users and their names
-	log.Println("SENDING", user.ID, content, subject)
 	if s.Cfg.ReplyMailClient() == nil {
 		return
 	}

@@ -303,8 +303,15 @@ func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 		return err
 	}
 
+	if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
+		"action": "approved",
+		"deal":   d,
+	}); err != nil {
+		log.Println("Failed to log appproved deal!", d.InfluencerId, d.CampaignId)
+	}
+
 	// Email the advertiser if this is their first deal
-	if cmp.GetCompletedCount() == 1 && !s.Cfg.Sandbox {
+	if cmp.GetCompletedCount() == 1 && !srv.Cfg.Sandbox {
 		user := srv.auth.GetUser(cmp.AdvertiserId)
 		if user == nil || user.Advertiser == nil {
 			return nil
@@ -312,13 +319,6 @@ func (srv *Server) CompleteDeal(d *common.Deal, completion int32) error {
 
 		email := templates.NotifyFirstPostEmail.Render(map[string]interface{}{"Name": user.Advertiser.Name, "URL": d.PostUrl, "Campaign": fmt.Sprintf("%s (%s)", cmp.Name, cmp.Id)})
 		emailAdvertiser(srv, user, email, "First post has been made for your campaign: "+cmp.Name)
-	}
-
-	if err := srv.Cfg.Loggers.Log("deals", map[string]interface{}{
-		"action": "approved",
-		"deal":   d,
-	}); err != nil {
-		log.Println("Failed to log appproved deal!", d.InfluencerId, d.CampaignId)
 	}
 
 	return nil
