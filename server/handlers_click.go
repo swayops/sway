@@ -153,8 +153,10 @@ func click(s *Server) gin.HandlerFunc {
 				"campaignId": foundDeal.CampaignId,
 				"uuid":       uuid,
 				"cookie":     cookie,
+				"ip":         c.Request.RemoteAddr,
+				"ua":         c.Request.UserAgent(),
 			}); err != nil {
-				log.Println("Failed to log click!", foundDeal.Id, foundDeal.CampaignId)
+				s.Alert("Failed to log click for "+foundDeal.Id+" in "+foundDeal.CampaignId, err)
 			}
 
 			if !s.Cfg.Sandbox {
