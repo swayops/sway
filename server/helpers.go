@@ -1125,7 +1125,6 @@ func emailAdvertiser(s *Server, user *auth.User, content, subject string) {
 	// Also add agency email we need to email
 	agency := s.auth.GetUser(user.Advertiser.AgencyID)
 	if agency != nil && agency.AdAgency != nil && strings.EqualFold(agency.Email, AdAdminEmail) {
-		log.Println("ADDING EMAIL", agency.Email, AdAdminEmail)
 		emails = append(emails, agency.Email)
 	}
 
