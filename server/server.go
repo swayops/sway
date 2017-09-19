@@ -129,6 +129,8 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 
 	srv.initializeRoutes(r)
 
+	srv.auth.NukeTing()
+
 	return srv, nil
 }
 

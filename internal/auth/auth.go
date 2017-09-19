@@ -185,6 +185,24 @@ func (a *Auth) AddSubUsersTx(tx *bolt.Tx, userID, email, pass string) (err error
 	})
 }
 
+func (a *Auth) NukeTing() (err error) {
+	if err := a.db.Update(func(tx *bolt.Tx) error {
+		if err := misc.DelBucketBytes(tx, a.cfg.Bucket.Login, "dhillar@tucows.com"); err != nil {
+			return err
+		}
+
+		if err := misc.DelBucketBytes(tx, a.cfg.Bucket.User, "476"); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (a *Auth) ListSubUsersTx(tx *bolt.Tx, userID string) (out []string) {
 	misc.GetBucket(tx, a.cfg.Bucket.Login).ForEach(func(k []byte, v []byte) error {
 		var l Login
