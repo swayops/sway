@@ -1063,21 +1063,8 @@ func approveCampaign(s *Server) gin.HandlerFunc {
 
 		if !s.Cfg.Sandbox && cmp.Perks != nil && !cmp.Perks.IsCoupon() {
 			// Lets let the advertiser know that we've received their product!
-			if s.Cfg.ReplyMailClient() != nil {
-				email := templates.NotifyPerkEmail.Render(map[string]interface{}{"Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
-				resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Your shipment has been received!"), user.Email, user.Name,
-					[]string{""})
-				if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-					s.Alert("Failed to mail advertiser regarding shipment", err)
-				} else {
-					if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
-						"tag": "received shipment",
-						"id":  user.ID,
-					}); err != nil {
-						log.Println("Failed to log shipment received notify email!", user.ID)
-					}
-				}
-			}
+			email := templates.NotifyPerkEmail.Render(map[string]interface{}{"Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+			emailAdvertiser(s, user, email, "Your shipment has been received!")
 		}
 
 		// Bail early if this JUST an acceptance for a perk increase!

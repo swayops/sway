@@ -327,19 +327,7 @@ func submitPost(s *Server) gin.HandlerFunc {
 		// Email the advertiser
 		if s.Cfg.ReplyMailClient() != nil && !s.Cfg.Sandbox {
 			email := templates.NotifySubmissionEmail.Render(map[string]interface{}{"Name": user.Name, "InfluencerName": found.InfluencerName, "CampaignName": found.CampaignName})
-			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("A submitted post by "+found.InfluencerName+" is awaiting your approval"), user.Email, user.Name,
-				[]string{""})
-			if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-				s.Alert("Failed to mail advertiser about post submission", err)
-			} else {
-				if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
-					"tag":   "post submission",
-					"advID": user.ID,
-					"infID": inf.Id,
-				}); err != nil {
-					log.Println("Failed to log advertiser post submission log!", user.ID)
-				}
-			}
+			emailAdvertiser(s, user, email, "A submitted post by "+found.InfluencerName+" is awaiting your approval")
 		}
 
 		s.Notify("Deal post submitted!", fmt.Sprintf("Influencer %s has submitted post for %s", infId, campaignId))
@@ -446,21 +434,8 @@ func assignDeal(s *Server) gin.HandlerFunc {
 						return
 					}
 
-					if s.Cfg.ReplyMailClient() != nil {
-						email := templates.NotifyEmptyPerkEmail.Render(map[string]interface{}{"ID": user.ID, "Campaign": cmp.Name, "Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
-						resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("You have no remaining perks for the campaign "+cmp.Name), user.Email, user.Name,
-							[]string{""})
-						if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-							s.Alert("Failed to mail advertiser regarding perks running out", err)
-						} else {
-							if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
-								"tag": "no more perks",
-								"id":  user.ID,
-							}); err != nil {
-								log.Println("Failed to log out of perks notify email!", user.ID)
-							}
-						}
-					}
+					email := templates.NotifyEmptyPerkEmail.Render(map[string]interface{}{"ID": cmp.Id, "Campaign": cmp.Name, "Perk": cmp.Perks.Name, "Name": user.Advertiser.Name})
+					emailAdvertiser(s, user, email, "You have no remaining perks for the campaign "+cmp.Name)
 				}
 
 				// If it's a coupon code.. we do not need admin approval

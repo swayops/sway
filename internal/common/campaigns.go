@@ -236,6 +236,17 @@ func (cmp *Campaign) GetPendingDetails() (float64, int) {
 	return pendingSpend, dealsEmpty
 }
 
+func (cmp *Campaign) GetCompletedCount() (count int) {
+	// Returns the number of deals completed
+	for _, deal := range cmp.Deals {
+		if deal.IsComplete() {
+			count++
+		}
+	}
+
+	return
+}
+
 func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 	// Lets figure out the number of available deals AND the approximate budget
 	// that is used up

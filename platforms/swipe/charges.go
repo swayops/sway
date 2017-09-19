@@ -192,6 +192,11 @@ func (c *CC) Check() error {
 		return ErrInvalidCardNumber
 	}
 
+	tmpUS := strings.ToLower(c.Country)
+	if tmpUS == "united states" || tmpUS == "united states of america" || tmpUS == "usa" {
+		c.Country = "US"
+	}
+
 	if len(c.Country) != 2 {
 		return ErrInvalidCountry
 	}

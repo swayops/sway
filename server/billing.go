@@ -129,18 +129,8 @@ func (s *Server) billing() error {
 
 		if s.Cfg.ReplyMailClient() != nil && !s.Cfg.Sandbox {
 			email := templates.NotifyBillingEmail.Render(map[string]interface{}{"Name": user.Name, "campaign": v})
-			resp, err := s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Sway Billing Notification for Advertiser "+user.Name), user.Email, user.Name,
-				[]string{""})
-			if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-				s.Alert("Failed to mail advertiser about billing notification", err)
-			} else {
-				if err := s.Cfg.Loggers.Log("email", map[string]interface{}{
-					"tag": "billing notification",
-					"id":  user.ID,
-				}); err != nil {
-					log.Println("Failed to log out of perks notify email!", user.ID)
-				}
-			}
+			emailAdvertiser(s, user, email, "Sway Billing Notification for Advertiser "+user.Name)
+
 			for _, admin := range mailingList {
 				// Email admins as well
 				s.Cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Sway Billing Notification for Advertiser "+user.Name), admin, user.Name,
