@@ -118,17 +118,17 @@ const notifySubmissionEmail = `
 </div>
 `
 
-const notifyFirstPost = `
+const notifyPost = `
 <div>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Congratulations! We are emailing to let you know that the first post for your campaign {{Campaign}} has been made! You can view the post at: {{URL}}
+		Congratulations! We are emailing to let you know that a post for your campaign {{Campaign}} has just been made! You can view the post at: {{URL}}
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Subsequent posts will be viewable in your advertiser dashboard at https://dash.swayops.com ! Let me know if you have any questions
+		You can also view stats and previous/subsequent posts in your advertiser dashboard at https://dash.swayops.com ! Let us know if you have any questions
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
@@ -148,5 +148,5 @@ var (
 	NotifyEmptyPerkEmail  = MustacheMust(notifyEmptyPerk)
 	NotifyBillingEmail    = MustacheMust(notifyBillingEmail)
 	NotifySubmissionEmail = MustacheMust(notifySubmissionEmail)
-	NotifyFirstPostEmail  = MustacheMust(notifyFirstPost)
+	NotifyPostEmail       = MustacheMust(notifyPost)
 )

@@ -1122,6 +1122,13 @@ func emailAdvertiser(s *Server, user *auth.User, content, subject string) {
 		return nil
 	})
 
+	// Also add agency email we need to email
+	agency := s.auth.GetUser(user.Advertiser.AgencyID)
+	if agency != nil && agency.AdAgency != nil && strings.EqualFold(agency.Email, AdAdminEmail) {
+		log.Println("ADDING EMAIL", agency.Email, AdAdminEmail)
+		emails = append(emails, agency.Email)
+	}
+
 	for _, email := range emails {
 		resp, err := s.Cfg.ReplyMailClient().SendMessage(content, subject, email, user.Name, []string{""})
 		if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
