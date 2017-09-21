@@ -514,8 +514,8 @@ func emailDeals(s *Server) (int32, error) {
 			log.Println("Error when saving influencer", err, inf.Id)
 		}
 
-		if infEmails > 20 {
-			// No more than 20 emails per run
+		if infEmails > 40 {
+			// No more than 40 emails per run
 			break
 		}
 	}
