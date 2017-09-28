@@ -271,7 +271,7 @@ func (cmp *Campaign) GetTargetYield(spendable float64) (float64, float64) {
 	var margin float64
 	if (float64(dealsEmpty) / float64(len(cmp.Deals))) > 0.7 {
 		// If less than 30% of the campaign has been filled.. lets be a bit more lenient
-		margin = 0.8 * target
+		margin = 0.82 * target
 	} else {
 		margin = 0.40 * target
 	}
