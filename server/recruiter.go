@@ -83,7 +83,24 @@ func emailScraps(srv *Server) (int32, error) {
 			continue
 		}
 
-		if sent := sc.Email(&cmp, spendable, srv.Cfg); !sent {
+		var dspFee, exchangeFee float64
+		fees, ok := srv.Campaigns.GetAdvertiserFees(cmp.AdvertiserId)
+		if ok {
+			dspFee = fees.DSP
+			exchangeFee = fees.Exchange
+		} else {
+			dspFee = -1
+			exchangeFee = -1
+		}
+
+		maxYield := influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
+		_, _, _, infPayout := budget.GetMargins(maxYield, dspFee, exchangeFee, -1)
+		likelyEarnings := misc.TruncateFloat(infPayout, 2)
+		if likelyEarnings <= 0 {
+			continue
+		}
+
+		if sent := sc.Email(&cmp, likelyEarnings, srv.Cfg); !sent {
 			continue
 		}
 		count += 1

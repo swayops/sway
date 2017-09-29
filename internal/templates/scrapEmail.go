@@ -16,7 +16,7 @@ const scrapFirstEmail = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b>Budget available for influencers:</b> ${{Payout}} <br/>
+		    	<b>Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
 		    	<b>Product perks?:</b> {{Perks}} <br/>
 		    	<b>Task description:</b> {{Task}} <br/>
 	    	</td>
@@ -61,7 +61,7 @@ const scrapDealOne = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b>Budget available for influencers:</b> ${{Payout}} <br/>
+		    	<b>Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
 		    	<b>Product perks?:</b> {{Perks}} <br/>
 		    	<b>Task description:</b> {{Task}} <br/>
 	    	</td>
