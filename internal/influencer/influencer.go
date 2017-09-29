@@ -870,7 +870,7 @@ func (inf *Influencer) IsAmerican() bool {
 	return false
 }
 
-func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, db *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, cfg *config.Config) ([]*common.Deal, map[string]string) {
+func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences *common.Audiences, db *bolt.DB, forcedCampaign, forcedDeal string, location *geo.GeoRecord, query bool, agencyFee float64, cfg *config.Config) ([]*common.Deal, map[string]string) {
 	// Iterates over all available deals in the system and matches them
 	// with the given influencer
 	// NOTE: The campaigns being passed only has campaigns with active
@@ -1147,7 +1147,17 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 		// Subtract default margins to give influencers an accurate likely earning value
 		// NOTE: Mimics logic in depleteBudget functionality of sway engine
-		_, _, _, infPayout := budget.GetMargins(maxYield, -1, -1, -1)
+		var dspFee, exchangeFee float64
+		fees, ok := campaigns.GetAdvertiserFees(cmp.AdvertiserId)
+		if ok {
+			dspFee = fees.DSP
+			exchangeFee = fees.Exchange
+		} else {
+			dspFee = -1
+			exchangeFee = -1
+		}
+
+		_, _, _, infPayout := budget.GetMargins(maxYield, dspFee, exchangeFee, agencyFee)
 
 		// Note: For query lookups, the most up-to date value is shown to influencers.
 		// However, we only save the LikelyEarnings value that is saved when the influencer
@@ -1155,9 +1165,6 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		if budgetStore != nil && !cmp.IsProductBasedBudget() {
 			// Generate likely earnings for the influencer
 			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
-			if inf.Id == "150" && cmp.Id == "30" {
-				targetDeal.LikelyEarnings = 871
-			}
 
 			// Generate pending spend (based on deals that are assigned
 			// and how much they should spend)
@@ -1290,7 +1297,7 @@ var (
 	ErrTimeout = errors.New("Last email too early")
 )
 
-func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, cfg *config.Config) (bool, error) {
+func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, agencyFee float64, cfg *config.Config) (bool, error) {
 	// Depending on the emails they've gotten already..
 	// send them a follow up email
 
@@ -1300,7 +1307,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 		return false, nil
 	}
 
-	deals, _ := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, cfg)
+	deals, _ := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, agencyFee, cfg)
 	if len(deals) == 0 {
 		return false, nil
 	}

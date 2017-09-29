@@ -6,13 +6,19 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	client    http.Client
 	ErrStatus = errors.New("non-200 status code")
+)
+
+var (
+	client = http.Client{
+		Timeout: 5 * time.Second,
+	}
 )
 
 func Request(method, endpoint, reqData string, respData interface{}) (err error) {

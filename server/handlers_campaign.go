@@ -326,9 +326,9 @@ func getRejections(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		campaigns := common.NewCampaigns()
+		campaigns := common.NewCampaigns(nil)
 		campaigns.SetCampaign(cmp.Id, *cmp)
-		_, rejections := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
+		_, rejections := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.getTalentAgencyFee(inf.AgencyId), s.Cfg)
 
 		misc.WriteJSON(c, 200, rejections)
 	}

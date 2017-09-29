@@ -23,11 +23,11 @@ func newSwayEngine(srv *Server) error {
 
 	// getActiveAdvertisers only returns advertisers which are on
 	// and have valid subscriptions!
-	srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
+	srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv), getFeesByAdv(srv))
 	cTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for range cTicker.C {
-			srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv))
+			srv.Campaigns.Set(srv.db, srv.Cfg, getActiveAdvertisers(srv), getActiveAdAgencies(srv), getFeesByAdv(srv))
 		}
 	}()
 
@@ -498,7 +498,7 @@ func emailDeals(s *Server) (int32, error) {
 			emailed bool
 			err     error
 		)
-		if emailed, err = inf.Email(s.Campaigns, s.Audiences, s.db, s.Cfg); err != nil {
+		if emailed, err = inf.Email(s.Campaigns, s.Audiences, s.db, s.getTalentAgencyFee(inf.AgencyId), s.Cfg); err != nil {
 			log.Println("Error emailing influencer!", err)
 			continue
 		}

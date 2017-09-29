@@ -170,7 +170,7 @@ func getDealsForInfluencer(s *Server) gin.HandlerFunc {
 		}
 
 		deals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, "", "",
-			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.Cfg)
+			geo.GetGeoFromCoords(lat, long, int32(time.Now().Unix())), false, s.getTalentAgencyFee(inf.AgencyId), s.Cfg)
 		misc.WriteJSON(c, 200, deals)
 	}
 }
@@ -206,7 +206,7 @@ func getDeal(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		deals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, campaignId, dealId, nil, true, s.Cfg)
+		deals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, campaignId, dealId, nil, true, s.getTalentAgencyFee(inf.AgencyId), s.Cfg)
 		if len(deals) != 1 {
 			misc.WriteJSON(c, 500, misc.StatusErr("Deal no longer available"))
 			return
@@ -371,7 +371,7 @@ func assignDeal(s *Server) gin.HandlerFunc {
 			dbg = true
 		}
 
-		currentDeals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, campaignId, dealId, nil, false, s.Cfg)
+		currentDeals, _ := inf.GetAvailableDeals(s.Campaigns, s.Audiences, s.db, campaignId, dealId, nil, false, s.getTalentAgencyFee(inf.AgencyId), s.Cfg)
 		for _, deal := range currentDeals {
 			if deal.CampaignId == campaignId && deal.Assigned == 0 && deal.InfluencerId == "" {
 				if dbg || deal.Id == dealId {

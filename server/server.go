@@ -100,7 +100,7 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		r:         r,
 		db:        db,
 		auth:      auth.New(db, cfg),
-		Campaigns: common.NewCampaigns(),
+		Campaigns: common.NewCampaigns(nil),
 		Audiences: common.NewAudiences(),
 		LimitSet:  common.NewLimitSet(),
 		ClickSet:  common.NewSet(),

@@ -283,20 +283,28 @@ type Campaigns struct {
 	store     map[string]Campaign
 	activeAdv map[string]bool
 	activeAg  map[string]bool
+	feesByAdv map[string]Fees // Cache created for the sake of GetAvailableDeals likely earnings lookup
 }
 
-func NewCampaigns() *Campaigns {
+type Fees struct {
+	DSP      float64
+	Exchange float64
+}
+
+func NewCampaigns(fees map[string]Fees) *Campaigns {
 	return &Campaigns{
-		store: make(map[string]Campaign),
+		store:     make(map[string]Campaign),
+		feesByAdv: fees,
 	}
 }
 
-func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool) {
+func (p *Campaigns) Set(db *bolt.DB, cfg *config.Config, adv, ag map[string]bool, feesByAdv map[string]Fees) {
 	cmps := getAllActiveCampaigns(db, cfg, adv, ag)
 	p.mux.Lock()
 	p.store = cmps
 	p.activeAdv = adv
 	p.activeAg = ag
+	p.feesByAdv = feesByAdv
 	p.mux.Unlock()
 }
 
@@ -357,6 +365,15 @@ func (p *Campaigns) GetAvailableDealCount() int32 {
 func (p *Campaigns) Get(id string) (Campaign, bool) {
 	p.mux.RLock()
 	val, ok := p.store[id]
+	p.mux.RUnlock()
+	return val, ok
+}
+
+func (p *Campaigns) GetAdvertiserFees(id string) (val Fees, ok bool) {
+	p.mux.RLock()
+	if p.feesByAdv != nil {
+		val, ok = p.feesByAdv[id]
+	}
 	p.mux.RUnlock()
 	return val, ok
 }

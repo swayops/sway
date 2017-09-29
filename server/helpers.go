@@ -639,6 +639,23 @@ func getActiveAdvertisers(s *Server) map[string]bool {
 	return out
 }
 
+func getFeesByAdv(s *Server) map[string]common.Fees {
+	out := make(map[string]common.Fees)
+	s.db.View(func(tx *bolt.Tx) error {
+		return s.auth.GetUsersByTypeTx(tx, auth.AdvertiserScope, func(u *auth.User) error {
+			adv := auth.GetAdvertiser(u)
+			if adv == nil || !adv.Status {
+				return nil
+			}
+
+			out[adv.ID] = common.Fees{DSP: adv.DspFee, Exchange: adv.ExchangeFee}
+
+			return nil
+		})
+	})
+	return out
+}
+
 func getActiveAdAgencies(s *Server) map[string]bool {
 	out := make(map[string]bool)
 	s.db.View(func(tx *bolt.Tx) error {
@@ -684,7 +701,7 @@ type DealOffer struct {
 }
 
 func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer {
-	campaigns := common.NewCampaigns()
+	campaigns := common.NewCampaigns(getFeesByAdv(s))
 	campaigns.SetCampaign(cmp.Id, *cmp)
 
 	influencerPool := []*DealOffer{}
@@ -695,7 +712,7 @@ func getDealsForCmp(s *Server, cmp *common.Campaign, pingOnly bool) []*DealOffer
 			continue
 		}
 
-		deals, _ := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.Cfg)
+		deals, _ := inf.GetAvailableDeals(campaigns, s.Audiences, s.db, "", "", nil, false, s.getTalentAgencyFee(inf.AgencyId), s.Cfg)
 		if len(deals) == 0 {
 			continue
 		}
