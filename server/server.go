@@ -436,6 +436,7 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/unassignDeal/:influencerId/:campaignId/:dealId", unassignDeal(srv))
 	verifyGroup.GET("/dirtyHack", dirtyHack(srv))
 	verifyGroup.GET("/getRejections/:campaignId/:influencerId", getRejections(srv))
+	verifyGroup.GET("/getCycle/:id", getCycle(srv))
 
 	r.Static("images", srv.Cfg.ImagesDir)
 

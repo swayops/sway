@@ -96,7 +96,7 @@ func emailScraps(srv *Server) (int32, error) {
 		maxYield := influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 		_, _, _, infPayout := budget.GetMargins(maxYield, dspFee, exchangeFee, -1)
 		likelyEarnings := misc.TruncateFloat(infPayout, 2)
-		if likelyEarnings <= 0 {
+		if likelyEarnings <= 0 && !srv.Cfg.Sandbox {
 			continue
 		}
 
@@ -107,6 +107,11 @@ func emailScraps(srv *Server) (int32, error) {
 		sc.SentEmails = append(sc.SentEmails, now)
 		if err := saveScrap(srv, sc); err != nil {
 			srv.Alert("Error saving scrap", err)
+		}
+
+		// Update counts for notifications by campaigns
+		if err := updateCampaignNotifications(srv, "sc-"+sc.Id, []string{cmp.Id}); err != nil {
+			log.Println("Error when saving notifications for scrap", err, sc.Id, cmp.Id)
 		}
 	}
 

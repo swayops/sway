@@ -280,6 +280,29 @@ func updateLastEmail(s *Server, id string) error {
 	return nil
 }
 
+func updateCampaignNotifications(s *Server, infID string, cids []string) error {
+	// Save the last email timestamp
+	for _, id := range cids {
+		cmp := common.GetCampaign(id, s.db, s.Cfg)
+		if cmp == nil {
+			continue
+		}
+
+		// Save the Campaign
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+			if !misc.Contains(cmp.Notifications, infID) {
+				cmp.Notifications = append(cmp.Notifications, infID)
+				return saveCampaign(tx, cmp, s)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func updatePrivateEmailNotification(s *Server, id string) error {
 	inf, ok := s.auth.Influencers.Get(id)
 	if !ok {

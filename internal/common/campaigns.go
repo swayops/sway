@@ -82,6 +82,9 @@ type Campaign struct {
 	RequiresSubmission bool `json:"reqSub,omitempty"` // Does the advertiser require submission?
 
 	Archived bool `json:"archived,omitempty"` // aka "deleted"
+
+	Notifications []string `json:"notifications,omitempty"` // List of influencers notified
+
 }
 
 type Range struct {
@@ -236,11 +239,36 @@ func (cmp *Campaign) GetPendingDetails() (float64, int) {
 	return pendingSpend, dealsEmpty
 }
 
+func (cmp *Campaign) GetAcceptedCount() (count int) {
+	// Returns the number of deals accepted
+	for _, deal := range cmp.Deals {
+		if deal.IsActive() {
+			count++
+		}
+	}
+
+	return
+}
+
 func (cmp *Campaign) GetCompletedCount() (count int) {
 	// Returns the number of deals completed
 	for _, deal := range cmp.Deals {
 		if deal.IsComplete() {
 			count++
+		}
+	}
+
+	return
+}
+
+func (cmp *Campaign) GetPerksSent() (count int) {
+	// Returns the number of perks sent
+	for _, d := range cmp.Deals {
+		if d.Perk != nil && d.InfluencerId != "" {
+			if d.Perk.Status {
+				// This deal is set to true meaning its been mailed!
+				count++
+			}
 		}
 	}
 
