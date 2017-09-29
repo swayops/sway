@@ -344,7 +344,7 @@ type Cycle struct {
 
 func getCycle(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		cmp := common.GetCampaign(c.Param("campaignId"), s.db, s.Cfg)
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
 		if cmp == nil {
 			misc.WriteJSON(c, 500, ErrCampaign)
 			return
