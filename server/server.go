@@ -119,13 +119,13 @@ func New(cfg *config.Config, r *gin.Engine) (*Server, error) {
 		return nil, err
 	}
 
-	srv.Categories = getAllCategories(srv)
-
 	go srv.auth.PurgeInvalidTokens()
 
 	if err = srv.startEngine(); err != nil {
 		return nil, err
 	}
+
+	srv.Categories = getAllCategories(srv)
 
 	srv.initializeRoutes(r)
 
