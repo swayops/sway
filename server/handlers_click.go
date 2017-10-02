@@ -59,6 +59,8 @@ func click(s *Server) gin.HandlerFunc {
 			foundDeal.Link = "https://www.amazon.com/gp/product/B01C2EFBZU?th=1"
 		}
 
+		// Make sure we always go to the campaign's saved link
+		foundDeal.Link = cmp.Link
 		if foundDeal.Link == "" {
 			misc.WriteJSON(c, 500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
