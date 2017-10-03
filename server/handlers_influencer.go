@@ -612,6 +612,35 @@ func skipGeo(s *Server) gin.HandlerFunc {
 	}
 }
 
+func skipYield(s *Server) gin.HandlerFunc {
+	// Skip max yield
+	return func(c *gin.Context) {
+		var (
+			infId = c.Param("influencerId")
+		)
+
+		inf, ok := s.auth.Influencers.Get(infId)
+		if !ok {
+			misc.WriteJSON(c, 500, misc.StatusErr(auth.ErrInvalidID.Error()))
+			return
+		}
+
+		cid := c.Params.ByName("campaignId")
+		if cid != "" && !misc.Contains(inf.GeoSkips, cid) {
+			inf.SkipYield = append(inf.SkipYield, cid)
+
+			if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+				return saveInfluencer(s, tx, inf)
+			}); err != nil {
+				misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
+				return
+			}
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(infId))
+	}
+}
+
 // func setSignature(s *Server) gin.HandlerFunc {
 // 	// Manually set sig id
 // 	return func(c *gin.Context) {

@@ -149,6 +149,10 @@ type Influencer struct {
 	// Stores whether the influencer has already been notified once about
 	// their profile going from public to private
 	PrivateNotify int32 `json:"privateNotify,omitempty"`
+
+	// List of campaign IDs that stores whether we want to skip the MAX_YIELD
+	// check for this given campaign
+	SkipYield []string `json:"skipYield,omitempty"`
 }
 
 type Strike struct {
@@ -1200,11 +1204,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
-			// Oh god
-			isBrook := inf.Id == "600" && cmp.Id == "30"
-			isHailey := inf.Id == "573" && cmp.Id == "30"
-
-			if !isBrook && !isHailey && !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
+			if !misc.Contains(inf.SkipYield, cmp.Id) && !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
 				// NOTE: Skip this for whitelisted campaigns and non-product perk campaigns!
 
 				// OPTIMIZATION: Goal is to distribute products and funds evenly
