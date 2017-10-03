@@ -1202,7 +1202,9 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
 			// Oh god
 			isBrook := inf.Id == "600" && cmp.Id == "30"
-			if !isBrook && !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
+			isHailey := inf.Id == "573" && cmp.Id == "30"
+
+			if !isBrook && !isHailey && !query && !cfg.Sandbox && len(cmp.Whitelist) == 0 && cmp.Perks != nil && cmp.Perks.GetType() == "Product" {
 				// NOTE: Skip this for whitelisted campaigns and non-product perk campaigns!
 
 				// OPTIMIZATION: Goal is to distribute products and funds evenly
