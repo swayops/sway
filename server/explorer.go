@@ -509,7 +509,7 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					reason = "required link"
 				}
 
-				if err := inf.DealRejection(reason, tw.PostURL, deal, srv.Cfg); err != nil {
+				if err := postIssue(deal, inf, srv, tw.PostURL, reason); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
 			}
@@ -653,7 +653,7 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 					reason = "link"
 				}
 
-				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
+				if err := postIssue(deal, inf, srv, post.PostURL, reason); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
 			}
@@ -798,7 +798,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 					reason = "link"
 				}
 
-				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
+				if err := postIssue(deal, inf, srv, post.PostURL, reason); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
 			}
@@ -944,7 +944,7 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					reason = "link"
 				}
 
-				if err := inf.DealRejection(reason, post.PostURL, deal, srv.Cfg); err != nil {
+				if err := postIssue(deal, inf, srv, post.PostURL, reason); err != nil {
 					log.Println("Error emailing rejection reason to influencer", err)
 				}
 			}
@@ -976,6 +976,26 @@ func pickupDeal(deal *common.Deal, inf influencer.Influencer, srv *Server) error
 	for _, infDeal := range inf.ActiveDeals {
 		if deal.Id == infDeal.Id {
 			infDeal.PickedUp = true
+			break
+		}
+	}
+
+	return saveAllActiveDeals(srv, inf)
+}
+
+func postIssue(deal *common.Deal, inf influencer.Influencer, srv *Server, postURL, reason string) error {
+	if deal.NotifiedRejection {
+		return nil
+	}
+
+	if err := inf.DealRejection(reason, postURL, deal, srv.Cfg); err != nil {
+		log.Println("Error emailing rejection reason to influencer", err)
+		return err
+	}
+
+	for _, infDeal := range inf.ActiveDeals {
+		if deal.Id == infDeal.Id {
+			infDeal.NotifiedRejection = true
 			break
 		}
 	}

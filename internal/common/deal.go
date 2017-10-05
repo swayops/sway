@@ -47,6 +47,9 @@ type Deal struct {
 	// Stores whether the influencer has been emailed about
 	// their deal being picked up
 	PickedUp bool `json:"pickedUp,omitempty"`
+	// Stores whether the influencer has been emailed about
+	// their post being invalid
+	NotifiedRejection bool `json:"notifiedRejection,omitempty"`
 	// Determines whether there will be fraud checking
 	SkipFraud bool `json:"skipFraud,omitempty"`
 	// Timestamp for when the deal was picked up by an influencer
