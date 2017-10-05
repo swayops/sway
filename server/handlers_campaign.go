@@ -361,7 +361,7 @@ func getCycle(s *Server) gin.HandlerFunc {
 		}
 
 		if cmp.Id == "30" {
-			cycle.Notified += 57
+			cycle.Notified += 660
 		}
 
 		misc.WriteJSON(c, 200, cycle)
