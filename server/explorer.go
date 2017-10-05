@@ -378,6 +378,10 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, tw := range inf.Twitter.LatestTweets {
+		if deal.Assigned > int32(tw.CreatedAt.Unix()) {
+			continue
+		}
+
 		postTags := tw.Hashtags()
 
 		var (
@@ -521,6 +525,10 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 	}
 
 	for _, post := range inf.Facebook.LatestPosts {
+		if deal.Assigned > int32(post.Published.Unix()) {
+			continue
+		}
+
 		postTags := post.Hashtags()
 
 		var (
@@ -663,6 +671,10 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 	rejections := make(map[string]string)
 
 	for _, post := range inf.Instagram.LatestPosts {
+		if deal.Assigned > post.Published {
+			continue
+		}
+
 		var (
 			foundHash, foundMention, foundLink bool
 			approvedFacets, consideredFacets   float64
@@ -802,6 +814,10 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 	}
 
 	for _, post := range inf.YouTube.LatestPosts {
+		if deal.Assigned > post.Published {
+			continue
+		}
+
 		postTags := post.Hashtags()
 
 		var (
