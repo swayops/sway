@@ -108,6 +108,11 @@ func emailScraps(srv *Server) (int32, error) {
 		if err := saveScrap(srv, sc); err != nil {
 			srv.Alert("Error saving scrap", err)
 		}
+
+		// Update counts for notifications by campaigns
+		if err := updateCampaignNotifications(srv, "sc-"+sc.Id, []string{cmp.Id}); err != nil {
+			log.Println("Error when saving notifications for scrap", err, sc.Id, cmp.Id)
+		}
 	}
 
 	return count, nil

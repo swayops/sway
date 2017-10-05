@@ -1302,19 +1302,20 @@ var (
 	ErrTimeout = errors.New("Last email too early")
 )
 
-func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, agencyFee float64, cfg *config.Config) (bool, error) {
+func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, agencyFee float64, cfg *config.Config) (bool, []string, error) {
 	// Depending on the emails they've gotten already..
 	// send them a follow up email
+	var cids []string
 
 	// If we sent this influencer a deal within the last 7 days..
 	// skip!
 	if misc.WithinLast(inf.LastEmail, 24*7) {
-		return false, nil
+		return false, cids, nil
 	}
 
 	deals, _ := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, agencyFee, cfg)
 	if len(deals) == 0 {
-		return false, nil
+		return false, cids, nil
 	}
 
 	ordered := OrderedDeals(deals)
@@ -1324,11 +1325,11 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 	}
 
 	if cfg.Sandbox {
-		return true, nil
+		return true, cids, nil
 	}
 
 	if cfg.ReplyMailClient() == nil {
-		return false, ErrEmail
+		return false, cids, ErrEmail
 	}
 
 	parts := strings.Split(inf.Name, " ")
@@ -1340,10 +1341,9 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 	email := templates.InfluencerEmail.Render(map[string]interface{}{"Name": firstName, "deal": OrderedDeals(ordered)})
 	if resp, err := cfg.ReplyMailClient().SendMessage(email, "Sway Brands requesting you!", inf.EmailAddress, inf.Name,
 		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-		return false, ErrEmail
+		return false, cids, ErrEmail
 	}
 
-	var cids []string
 	for _, d := range deals {
 		cids = append(cids, d.CampaignId)
 	}
@@ -1356,7 +1356,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 		log.Println("Failed to log newsletter!", inf.Id, cids)
 	}
 
-	return true, nil
+	return true, cids, nil
 }
 
 func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
