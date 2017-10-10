@@ -449,14 +449,21 @@ func (a *Auth) ResetHandler(c *gin.Context) {
 		return
 	}
 
+	var user *User
 	if err := a.db.Update(func(tx *bolt.Tx) error {
-		return a.ResetPasswordTx(tx, req.Token, req.Email, req.Password)
-	}); err != nil {
+		if err := a.ResetPasswordTx(tx, req.Token, req.Email, req.Password); err != nil {
+			return err
+		}
+		user = a.GetUserByEmailTx(tx, req.Email)
+		return nil
+	}); err != nil || user == nil {
 		misc.AbortWithErr(c, http.StatusBadRequest, err)
 		return
 	}
 
-	misc.WriteJSON(c, 200, misc.StatusOK(""))
+	misc.WriteJSON(c, 200, misc.StatusOKExtended(user.ID, gin.H{
+		"isInf": user.Influencer != nil,
+	}))
 }
 
 // this returns a perma API key for the logged in user, the user can pass ?renew=true to generate a new key.
