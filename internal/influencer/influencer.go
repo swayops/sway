@@ -1645,11 +1645,26 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		tags = append(tags, "#"+cmpTag)
 	}
 
+	requiredMentions := "None required"
+	if deal.Mention != "" {
+		requiredMentions = "@" + deal.Mention
+	}
+
+	requiredTags := "None required"
+	if len(deal.Tags) > 0 {
+		requiredTags = strings.Join(tags, ", ")
+	}
+
+	requiredLink := "None required"
+	if deal.ShortenedLink != "" {
+		requiredLink = deal.ShortenedLink
+	}
+
 	data := map[string]interface{}{
 		"Networks":     strings.Join(deal.Platforms, ", "),
-		"Link":         deal.ShortenedLink,
-		"Tags":         strings.Join(tags, ", "),
-		"Mentions":     "@" + deal.Mention,
+		"Link":         requiredLink,
+		"Tags":         requiredTags,
+		"Mentions":     requiredMentions,
 		"Name":         firstName,
 		"Campaign":     cmp.Name,
 		"Task":         cmp.Task,
