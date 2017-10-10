@@ -41,7 +41,7 @@ func degradeRep(val int, rep float64) float64 {
 }
 
 func clean(user string) string {
-	return strings.Replace(user, " ", "", -1)
+	return strings.TrimLeft(strings.Replace(user, " ", "", -1), "@")
 }
 
 func GetMaxYield(cmp *common.Campaign, yt *youtube.YouTube, fb *facebook.Facebook, tw *twitter.Twitter, insta *instagram.Instagram) float64 {
