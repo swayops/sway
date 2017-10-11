@@ -1404,6 +1404,39 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 	return nil
 }
 
+func (inf *Influencer) EmailAudit(cfg *config.Config) error {
+	// Email to tell user they have been approved audit
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.AuditEmail.Render(map[string]interface{}{"Name": firstName})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! You have passed admin approval"), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "inf audit",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log inf audit!", inf.Id)
+	}
+
+	return nil
+}
+
 func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error {
 	if cfg.Sandbox {
 		return nil

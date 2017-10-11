@@ -285,6 +285,8 @@ func setAudit(s *Server) gin.HandlerFunc {
 			return
 		}
 
+		go inf.EmailAudit(s.Cfg)
+
 		misc.WriteJSON(c, 200, misc.StatusOK(inf.Id))
 	}
 }
