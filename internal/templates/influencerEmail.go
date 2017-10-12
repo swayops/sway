@@ -288,7 +288,7 @@ const dealInstructionsEmail = `
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Thank you for accepting the deal for {{Campaign}}! The brand is excited to be working with you. <br>
-   Pleast DO NOT forget to hashtag #ad or #sponsored in order for your post to pass FTC compliance. Also if your campaign requires a link to be put in your caption or Instagram bio, please do this just before making your post to ensure you get paid for all clicks that occur.
+   <br>Pleast DO NOT forget to hashtag #ad or #sponsored in order for your post to pass FTC compliance. Also if your campaign requires a link to be put in your caption or Instagram bio, please do this just before making your post to ensure you get paid for all clicks that occur.
     <br><br>Here are some instructions on how to complete this deal:
 	</p>
 
