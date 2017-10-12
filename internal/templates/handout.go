@@ -10,17 +10,19 @@ const handoutTmpl = `
 
       Thank you for participating in this endorsement for {{Company}}. Please follow the deal details we have printed out below or you can find this info available to you within your Sway App at: https://inf.swayops.com/login <br><br>
 
-      <b>Deal Instructions:</b><br>
-   <ul style="font-size:16px;">
-      <li>{{Task}}</li>
-      <br>
-   </ul>
-
-   <b>Required items that must appear in your post:</b><br>
+    <b>Required items that must appear in your post:</b><br>
    <ul style="font-size:16px;">
       {{#Instructions}}
       <li>{{.}}</li>
       {{/Instructions}}
+      <br>
+   </ul>
+   <br>
+   Pleast DO NOT forget to hashtag #ad or #sponsored in order for your post to pass FTC compliance. Also if your campaign requires a link to be put in your caption or Instagram bio, please do this just before making your post to ensure you get paid for all clicks that occur.
+    <br><br>
+      <b>Deal Instructions:</b><br>
+   <ul style="font-size:16px;">
+      <li>{{Task}}</li>
       <br>
    </ul>
 

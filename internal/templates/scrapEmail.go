@@ -6,7 +6,7 @@ const scrapFirstEmail = `
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		I have a sponsored post opportunity for you and wanted to reach out. Our company makes software that helps social media influencers get paid for posts sub 15 minutes instead of spending hours negotiating and trading payment/ shipping details back and forth. Here is one of the deals you are currently eligible for:
+		I have a sponsored post opportunity for you and wanted to reach out. Sway makes software that helps social media influencers get paid for posts sub 15 minutes instead of spending hours negotiating and trading payment/ shipping details back and forth. Here is one of the deals you are currently eligible for:
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 
@@ -16,17 +16,19 @@ const scrapFirstEmail = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b>Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
-		    	<b>Product perks?:</b> {{Perks}} <br/>
-		    	<b>Task description:</b> {{Task}} <br/>
+				<b style="color:red;">Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
+				<small>This amount is an estimate based on your last 10 posts avg engagements. You are able to make more than this amount by delivering a post that obtains high engagemtns. Sway pays for Likes, Comments, Link clicks through your bio, and more!</small>
+				<br><br>
+		    	<b>Product perks/ swag?:</b> {{Perks}} <br/>
+		    	<b>Task description:</b> Please view task brief inside of the Sway app or web portal <br/>
 	    	</td>
 	    </tr>
 		</table>
-		
+
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access deals you simply need to sign up in our influencer app by <a href="https://inf.swayops.com/signup">Clicking Here</a> and hit the "Accept Endorsement" button inside of the deal you wish to participate in. Feel free to call or email me with any questions, we also have a full wiki on our website as well that explains how fast you get paid, how to calculate your average earnings, etc.
+		In order to access deals you simply need to sign up in our influencer app by <a href="http://sway.app.link/IXHPyJ1gmG">Clicking Here</a> and hit the "Accept Endorsement" button inside of the deal you wish to participate in. Feel free to call or email me with any questions, we also have a full wiki on our website as well that explains how fast you get paid, how to calculate your average earnings, etc.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		If this sounds like something that would interest you please let us know. You can see more info about how our app works at http://SwayOps.com/influencer/ , and if I don't hear from you I will ping you over email when the next brand requests you :) . You can also download our iPhone app from the store named "Sway iOS" to instantly get going.
@@ -40,7 +42,7 @@ const scrapFirstEmail = `
 		<br/>
 		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	<br><br>
-	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
+	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a>
 	</p>
 </div>
 `
@@ -61,17 +63,19 @@ const scrapDealOne = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b>Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
-		    	<b>Product perks?:</b> {{Perks}} <br/>
-		    	<b>Task description:</b> {{Task}} <br/>
+		    	<b style="color:red;">Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
+				<small>This amount is an estimate based on your last 10 posts avg engagements. You are able to make more than this amount by delivering a post that obtains high engagemtns. Sway pays for Likes, Comments, Link clicks through your bio, and more!</small>
+				<br><br>
+		    	<b>Product perks/ swag?:</b> {{Perks}} <br/>
+		    	<b>Task description:</b> Please view task brief inside of the Sway app or web portal <br/>
 	    	</td>
 	    </tr>
 		</table>
-		
+
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access deals you simply need to sign up in our influencer app by <a href="https://inf.swayops.com/signup">Clicking Here</a> and hit the "Accept Endorsement" button inside of the deal you wish to participate in. Feel free to call or email me with any questions, we also have a full wiki on our website as well that explains how fast you get paid, how to calculate your average earnings, etc.
+		In order to access deals you simply need to sign up in our influencer app by <a href="http://sway.app.link/IXHPyJ1gmG">Clicking Here</a> and hit the "Accept Endorsement" button inside of the deal you wish to participate in. Feel free to call or email me with any questions, we also have a full wiki on our website as well that explains how fast you get paid, how to calculate your average earnings, etc.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Very excited to work with you,<br/>
@@ -82,7 +86,7 @@ const scrapDealOne = `
 		<br/>
 		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	<br><br>
-	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
+	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a>
 	</p>
 
 </div>
@@ -104,16 +108,18 @@ const scrapDealTwo = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b>Budget available:</b> ${{Payout}} <br/>
-		    	<b>Product perks?:</b> {{Perks}} <br/>
-		    	<b>Task description:</b> {{Task}} <br/>
+		    	<b style="color:red;">Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
+				<small>This amount is an estimate based on your last 10 posts avg engagements. You are able to make more than this amount by delivering a post that obtains high engagemtns. Sway pays for Likes, Comments, Link clicks through your bio, and more!</small>
+				<br><br>
+		    	<b>Product perks/ swag?:</b> {{Perks}} <br/>
+		    	<b>Task description:</b> Please view task brief inside of the Sway app or web portal <br/>
 	    	</td>
 	    </tr>
 		</table>
-		
+
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		In order to access these you simply need to sign up in our influencer app <a href="https://inf.swayops.com/signup">https://inf.swayops.com/signup</a> and hit the "Accept Endorsement" button. Feel free to call or email me with any questions.
+		In order to access these you simply need to sign up in our <a href="http://sway.app.link/IXHPyJ1gmG">Influencer app</a> and hit the "Accept Endorsement" button. Feel free to call or email me with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
@@ -124,7 +130,7 @@ const scrapDealTwo = `
 		<br/>
 		Karlie@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
 	<br><br>
-	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a> 
+	Want to be taken off our influencer notification list?: <a href="https://dash.swayops.com/api/v1/optout/{{email}}">Click here</a>
 	</p>
 
 </div>

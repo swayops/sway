@@ -4,7 +4,7 @@ const (
 	// YouTube
 	YT_LIKE    = 0.23
 	YT_DISLIKE = 0.04
-	YT_VIEW    = 0.003 // $3 CPM
+	YT_VIEW    = 0.0015 // $1.50 CPM
 	YT_COMMENT = 0.35
 
 	// Facebook
