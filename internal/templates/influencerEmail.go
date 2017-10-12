@@ -287,7 +287,9 @@ const dealInstructionsEmail = `
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Thank you for accepting the deal for {{Campaign}}! The brand is excited to be working with you. Here are some instructions on how to complete this deal:
+		Thank you for accepting the deal for {{Campaign}}! The brand is excited to be working with you. <br>
+   <br>Pleast DO NOT forget to hashtag #ad or #sponsored in order for your post to pass FTC compliance. Also if your campaign requires a link to be put in your caption or Instagram bio, please do this just before making your post to ensure you get paid for all clicks that occur.
+    <br><br>Here are some instructions on how to complete this deal:
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
@@ -333,7 +335,7 @@ const dealInstructionsEmail = `
 	    	</td>
 	    </tr>
 		</table>
-		
+
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
@@ -367,9 +369,9 @@ const submissionInstructionsEmail = `
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
 		    	<b>Task description:</b> {{Task}} <br/>
 		    	<b>Instructions:</b> <br/>
-		    	1) Draft your post's caption and/or image and submit via the Influencer App <br/> 
-		    	2) Await advertiser's approval of your drafted post (you will be notified via email) <br/> 
-		    	3) Once approved, you may go ahead and post the approved draft to your social handle<br/> 
+		    	1) Draft your post's caption and/or image and submit via the Influencer App <br/>
+		    	2) Await advertiser's approval of your drafted post (you will be notified via email) <br/>
+		    	3) Once approved, you may go ahead and post the approved draft to your social handle<br/>
 
 				<br/>
 		    	<b>Please post to ONLY one of the following networks:</b> {{Networks}} <br/>
@@ -398,7 +400,7 @@ const submissionInstructionsEmail = `
 				{{^HasSchedule}}
 			    	<b>Days to complete:</b> {{Timeout}}<br/>
 				{{/HasSchedule}}
-		 		
+
 		 		<br/>
 		    	<b>Put this link in your bio/caption:</b> {{Link}}<br/>
 				<b>Hashtags to do:</b> {{Tags}}<br/>
@@ -407,7 +409,7 @@ const submissionInstructionsEmail = `
 	    	</td>
 	    </tr>
 		</table>
-		
+
 	</p>
 
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">

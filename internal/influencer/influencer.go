@@ -1690,7 +1690,7 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 	}
 
 	requiredTags := "None required"
-	if len(deal.Tags) > 0 {
+	if len(tags) > 0 {
 		requiredTags = strings.Join(tags, ", ")
 	}
 
