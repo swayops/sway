@@ -1188,10 +1188,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				continue
 			}
 
+			// If this dude is about to get less than $30 lets bail
+			if targetDeal.LikelyEarnings <= 30 && !cfg.Sandbox && !query {
+				rejections[cmp.Id] = "LIKELY_EARNINGS"
+				continue
+			}
+
 			if targetDeal.LikelyEarnings > availSpend && !query {
-				if availSpend/targetDeal.LikelyEarnings < 0.2 && !cfg.Sandbox {
+				if availSpend/targetDeal.LikelyEarnings < 0.4 && !cfg.Sandbox {
 					// If likely earnings are more than available spend.. and
-					// available spend is <20% of what you're supposed to be making..
+					// available spend is <40% of what you're supposed to be making..
 					// lets not offer the deal out of fear of insulting the influencer
 					rejections[cmp.Id] = "INSULT_SPEND"
 					continue
@@ -1302,19 +1308,20 @@ var (
 	ErrTimeout = errors.New("Last email too early")
 )
 
-func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, agencyFee float64, cfg *config.Config) (bool, error) {
+func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audiences, budgetDb *bolt.DB, agencyFee float64, cfg *config.Config) (bool, []string, error) {
 	// Depending on the emails they've gotten already..
 	// send them a follow up email
+	var cids []string
 
 	// If we sent this influencer a deal within the last 7 days..
 	// skip!
 	if misc.WithinLast(inf.LastEmail, 24*7) {
-		return false, nil
+		return false, cids, nil
 	}
 
 	deals, _ := inf.GetAvailableDeals(campaigns, audiences, budgetDb, "", "", nil, false, agencyFee, cfg)
 	if len(deals) == 0 {
-		return false, nil
+		return false, cids, nil
 	}
 
 	ordered := OrderedDeals(deals)
@@ -1324,11 +1331,11 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 	}
 
 	if cfg.Sandbox {
-		return true, nil
+		return true, cids, nil
 	}
 
 	if cfg.ReplyMailClient() == nil {
-		return false, ErrEmail
+		return false, cids, ErrEmail
 	}
 
 	parts := strings.Split(inf.Name, " ")
@@ -1340,10 +1347,9 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 	email := templates.InfluencerEmail.Render(map[string]interface{}{"Name": firstName, "deal": OrderedDeals(ordered)})
 	if resp, err := cfg.ReplyMailClient().SendMessage(email, "Sway Brands requesting you!", inf.EmailAddress, inf.Name,
 		[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
-		return false, ErrEmail
+		return false, cids, ErrEmail
 	}
 
-	var cids []string
 	for _, d := range deals {
 		cids = append(cids, d.CampaignId)
 	}
@@ -1356,7 +1362,7 @@ func (inf *Influencer) Email(campaigns *common.Campaigns, audiences *common.Audi
 		log.Println("Failed to log newsletter!", inf.Id, cids)
 	}
 
-	return true, nil
+	return true, cids, nil
 }
 
 func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
@@ -1393,6 +1399,39 @@ func (inf *Influencer) EmailDeal(deal *common.Deal, cfg *config.Config) error {
 		"cids": []string{deal.CampaignId},
 	}); err != nil {
 		log.Println("Failed to log email!", inf.Id, deal.CampaignId)
+	}
+
+	return nil
+}
+
+func (inf *Influencer) EmailAudit(cfg *config.Config) error {
+	// Email to tell user they have been approved audit
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.AuditEmail.Render(map[string]interface{}{"Name": firstName})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Congratulations! You have passed admin approval"), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "inf audit",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log inf audit!", inf.Id)
 	}
 
 	return nil
@@ -1645,11 +1684,26 @@ func (inf *Influencer) DealInstructions(cmp *common.Campaign, deal *common.Deal,
 		tags = append(tags, "#"+cmpTag)
 	}
 
+	requiredMentions := "None required"
+	if deal.Mention != "" {
+		requiredMentions = "@" + deal.Mention
+	}
+
+	requiredTags := "None required"
+	if len(deal.Tags) > 0 {
+		requiredTags = strings.Join(tags, ", ")
+	}
+
+	requiredLink := "None required"
+	if deal.ShortenedLink != "" {
+		requiredLink = deal.ShortenedLink
+	}
+
 	data := map[string]interface{}{
 		"Networks":     strings.Join(deal.Platforms, ", "),
-		"Link":         deal.ShortenedLink,
-		"Tags":         strings.Join(tags, ", "),
-		"Mentions":     "@" + deal.Mention,
+		"Link":         requiredLink,
+		"Tags":         requiredTags,
+		"Mentions":     requiredMentions,
 		"Name":         firstName,
 		"Campaign":     cmp.Name,
 		"Task":         cmp.Task,

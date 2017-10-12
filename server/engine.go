@@ -497,9 +497,10 @@ func emailDeals(s *Server) (int32, error) {
 		var (
 			emailed bool
 			err     error
+			cids    []string
 		)
-		if emailed, err = inf.Email(s.Campaigns, s.Audiences, s.db, s.getTalentAgencyFee(inf.AgencyId), s.Cfg); err != nil {
-			log.Println("Error emailing influencer!", err)
+		if emailed, cids, err = inf.Email(s.Campaigns, s.Audiences, s.db, s.getTalentAgencyFee(inf.AgencyId), s.Cfg); err != nil {
+			log.Println("Error emailing influencer!", err, cids)
 			continue
 		}
 
@@ -512,6 +513,11 @@ func emailDeals(s *Server) (int32, error) {
 		// Save the last email timestamp
 		if err := updateLastEmail(s, inf.Id); err != nil {
 			log.Println("Error when saving influencer", err, inf.Id)
+		}
+
+		// Update counts for notifications by campaigns
+		if err := updateCampaignNotifications(s, inf.Id, cids); err != nil {
+			log.Println("Error when saving notififications for campaign", err, inf.Id, cids)
 		}
 
 		if infEmails > 40 {

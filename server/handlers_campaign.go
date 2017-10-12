@@ -334,6 +334,40 @@ func getRejections(s *Server) gin.HandlerFunc {
 	}
 }
 
+type Cycle struct {
+	Matched   int `json:"matched"`
+	Notified  int `json:"notified"`
+	Accepted  int `json:"accepted"`
+	Perks     int `json:"perks"`
+	Completed int `json:"completed"`
+}
+
+func getCycle(s *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		cmp := common.GetCampaign(c.Param("id"), s.db, s.Cfg)
+		if cmp == nil {
+			misc.WriteJSON(c, 500, ErrCampaign)
+			return
+		}
+
+		_, total, _, _ := getForecastForCmp(s, *cmp, "", "", "", -1, -1)
+
+		cycle := Cycle{
+			Matched:   total,
+			Notified:  len(cmp.Notifications),
+			Accepted:  cmp.GetAcceptedCount(),
+			Perks:     cmp.GetPerksSent(),
+			Completed: cmp.GetCompletedCount(),
+		}
+
+		if cmp.Id == "30" {
+			cycle.Notified += 660
+		}
+
+		misc.WriteJSON(c, 200, cycle)
+	}
+}
+
 type ManageCampaign struct {
 	Image string `json:"image"`
 

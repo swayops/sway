@@ -452,7 +452,34 @@ const submissionApprovedEmail = `
 </div>
 `
 
+const auditEmailTmpl = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hi {{Name}},
+	</p>
+
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Congratulations!
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		I wanted to reach out and let you know that your account has just passed our internal audit. Your account with Sway is now activated and any deals you were notified about will now appear in your feed if they are still available. Let us know if you have any questions and thank you so much for signing up with Sway. We know influencers are extremely busy, our team will only reach out when we have new deals or something is critically needed. 	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Feel free to call or email me with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Regards,<br/>
+		~ The Sway notification system<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		Engage@SwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
 var (
+	AuditEmail                  = MustacheMust(auditEmailTmpl)
 	InfluencerEmail             = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail          = MustacheMust(infCmpEmail)
 	InfluencerHeadsUpEmail      = MustacheMust(headsUpEmail)
