@@ -569,7 +569,7 @@ func (d *Deal) GetInstructions() []string {
 	}
 
 	if d.Mention != "" {
-		instructions = append(instructions, "Mentions to do: "+d.Mention)
+		instructions = append(instructions, "Mentions to do: @"+d.Mention)
 	}
 
 	return instructions
