@@ -747,6 +747,7 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 		}
 
 		if deal.CampaignId == "31" && !containsFold(post.Caption, "goshly") {
+			log.Println("Found something", post.PostURL)
 			continue
 		}
 
