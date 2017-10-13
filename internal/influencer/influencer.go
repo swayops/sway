@@ -1453,7 +1453,7 @@ func (inf *Influencer) PostAlert(deal *common.Deal, cfg *config.Config) error {
 	}
 
 	email := templates.DealPostAlert.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
-	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Status on your post for %s", deal.Company), inf.EmailAddress, inf.Name,
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Checking in on your post for %s", deal.Company), inf.EmailAddress, inf.Name,
 		[]string{""})
 	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 		return ErrEmail

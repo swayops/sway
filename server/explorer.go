@@ -225,6 +225,11 @@ func explore(srv *Server) (int32, error) {
 				}
 			} else if !misc.WithinLast(deal.Assigned, influencer.TimeoutDays*24) {
 				// If the assigned date is OLDER than the last X days.. clear it!
+
+				// Temporary disable clearing deals
+				srv.Notify("Deal will be cleared!", "CHECK IT OUT: Trying to clear deal for "+deal.InfluencerId)
+				continue
+
 				if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 					return foundDeals, err
 				}
