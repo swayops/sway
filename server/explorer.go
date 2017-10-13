@@ -746,6 +746,10 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 			foundLink = true
 		}
 
+		if deal.CampaignId == "31" && !containsFold(post.Caption, "goshly") {
+			continue
+		}
+
 		if foundHash && foundMention && foundLink {
 			if !hasReqHash(post.Caption, post.Hashtags) {
 				if err := inf.DealRejection("hashtags (#ad)", post.PostURL, deal, srv.Cfg); err != nil {

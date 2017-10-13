@@ -101,8 +101,8 @@ func postCampaign(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if len(cmp.Tags) == 0 && cmp.Mention == "" && cmp.Link == "" {
-			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a required tag, mention or link"))
+		if len(cmp.Tags) == 0 && cmp.Mention == "" {
+			misc.WriteJSON(c, 400, misc.StatusErr("Please provide a required hashtag or mention"))
 			return
 		}
 
