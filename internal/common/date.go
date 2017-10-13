@@ -16,6 +16,10 @@ func GetDateFromTime(t time.Time) string {
 	return t.Format("2006-01-02")
 }
 
+func GetTimeFromDate(date string) (t time.Time, err error) {
+	return time.Parse("2006-01-02", date)
+}
+
 func GetDateRange(from, to time.Time) []string {
 	out := []string{}
 	diff := to.Sub(from).Hours() / 24

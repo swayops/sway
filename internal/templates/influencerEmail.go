@@ -89,7 +89,30 @@ const headsUpEmail = `
 		This is a system notification to let you know that you only have 7 days left to complete your Sway deal for {{Company}}. After the 7 days, we will unfortunately be forced to retract the deal from you!
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		If you would like to access the deal requirements, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> <br/> Feel free to call or email me our team with any questions.
+		If you would like to access the deal requirements, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> <br/> Feel free to call or email me or our team with any questions.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		All the best,<br/>
+		~ The Sway team<br/>
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		<img src="http://swayops.com/swayEmailLogo.png" alt="" height="40" />
+		<br/>
+		engageSwayOps.com | Office: 650-667-7929 | Address: 4461 Crossvine Dr, Prosper TX, 75078
+	</p>
+</div>
+`
+
+const dealPostAlert = `
+<div>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Hey {{Name}},
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		Checking in to see the status of your post for {{Company}}. Please let us know when you plan on posting and whether you have any questions or concerns regarding the post that needs to be made.
+	</p>
+	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
+		If you would like to access the deal requirements, please visit <a href="https://inf.swayops.com/login">https://inf.swayops.com/login</a> <br/> Feel free to call or email me or our team with any questions.
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		All the best,<br/>
@@ -483,6 +506,7 @@ var (
 	InfluencerEmail             = MustacheMust(infEmailTmpl)
 	InfluencerCmpEmail          = MustacheMust(infCmpEmail)
 	InfluencerHeadsUpEmail      = MustacheMust(headsUpEmail)
+	DealPostAlert               = MustacheMust(dealPostAlert)
 	InfluencerTimeoutEmail      = MustacheMust(timeOutEmail)
 	CheckEmail                  = MustacheMust(checkTmpl)
 	DealCompletionEmail         = MustacheMust(completionTmpl)

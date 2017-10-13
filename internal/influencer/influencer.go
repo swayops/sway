@@ -1437,6 +1437,39 @@ func (inf *Influencer) EmailAudit(cfg *config.Config) error {
 	return nil
 }
 
+func (inf *Influencer) PostAlert(deal *common.Deal, cfg *config.Config) error {
+	if cfg.Sandbox {
+		return nil
+	}
+
+	if cfg.ReplyMailClient() == nil {
+		return ErrEmail
+	}
+
+	parts := strings.Split(inf.Name, " ")
+	var firstName string
+	if len(parts) > 0 {
+		firstName = parts[0]
+	}
+
+	email := templates.DealPostAlert.Render(map[string]interface{}{"Name": firstName, "Company": deal.Company})
+	resp, err := cfg.ReplyMailClient().SendMessage(email, fmt.Sprintf("Status on your post for %s", deal.Company), inf.EmailAddress, inf.Name,
+		[]string{""})
+	if err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
+		return ErrEmail
+	}
+
+	if err := cfg.Loggers.Log("email", map[string]interface{}{
+		"tag":  "deal post alert",
+		"id":   inf.Id,
+		"cids": []string{deal.CampaignId},
+	}); err != nil {
+		log.Println("Failed to log deal post alert!", inf.Id, deal.CampaignId)
+	}
+
+	return nil
+}
+
 func (inf *Influencer) DealHeadsUp(deal *common.Deal, cfg *config.Config) error {
 	if cfg.Sandbox {
 		return nil

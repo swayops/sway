@@ -48,6 +48,12 @@ type Deal struct {
 	// their deal being picked up
 	PickedUp bool `json:"pickedUp,omitempty"`
 	// Stores whether the influencer has been emailed about
+	// their deal is waiting completion
+	PostAlerted bool `json:"postAlerted,omitempty"`
+	// Stores whether the influencer has been emailed about
+	// their deal is approaching timeout
+	HeadsUpAlert bool `json:"timeoutAlert,omitempty"`
+	// Stores whether the influencer has been emailed about
 	// their post being invalid
 	NotifiedRejection bool `json:"notifiedRejection,omitempty"`
 	// Determines whether there will be fraud checking
@@ -326,6 +332,17 @@ func (d *Deal) TotalStats() *Stats {
 	}
 
 	return total
+}
+
+func (d *Deal) GetPerkTS() int32 {
+	for date, data := range d.Reporting {
+		if data.Perks > 0 {
+			ts, _ := GetTimeFromDate(date)
+			return int32(ts.Unix())
+		}
+	}
+
+	return 0
 }
 
 func (d *Deal) Pay(inf, agency, dsp, exchange float64, agId string) {

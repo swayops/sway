@@ -43,11 +43,6 @@ func explore(srv *Server) (int32, error) {
 		return 0, err
 	}
 
-	// The influencer has 14 days to do the deal before it's put
-	// back into the pool
-	now := int32(time.Now().Unix())
-	minTs := now - (timeoutSeconds)
-
 	for _, deal := range activeDeals {
 		// Lets check to make sure the subscription is active before
 		// we start approving deals!
@@ -125,7 +120,6 @@ func explore(srv *Server) (int32, error) {
 		}
 
 		targetLink := trimURLPrefix(deal.ShortenedLink)
-
 		for _, mediaPlatform := range deal.Platforms {
 			if foundPost {
 				break
@@ -200,16 +194,37 @@ func explore(srv *Server) (int32, error) {
 
 		// Lets exclude timeouts for signal for now
 		if deal.Completed == 0 && !deal.PickedUp {
-			hoursSinceAssigned := (now - deal.Assigned) / 3600
-			if hoursSinceAssigned > 24*(influencer.TimeoutDays-7) && hoursSinceAssigned <= (24*(influencer.TimeoutDays-7))+EngineRunTime {
+			// If the perk was sent 7 days ago now.. lets check in with the influencer
+			// NOTE: logic here is such that we would only do this once (since we're checking to see if
+			// Assigned TS fell within engine run time)
+			var alertTS int32
+			if deal.Perk != nil && deal.Perk.Status {
+				// There was a perk and it's been sent! Lets get its TS
+				alertTS = deal.GetPerkTS()
+			} else {
+				alertTS = deal.Assigned
+			}
+
+			if alertTS > 0 {
+				// If the alert cutoff TS was between 7 days ago and 7 days - engine run time ago.. email!
+				if (misc.WithinLast(alertTS, 24*7) && !misc.WithinLast(alertTS, (24*7)-EngineRunTime)) || alertTS == 1507075200 {
+					// Lets check in with the influencer to see when they plan on making the post
+					if err := postAlert(deal, inf, srv); err != nil {
+						srv.Alert(fmt.Sprintf("Error emailing deal post alert to %s for deal %s", inf.Id, deal.Id), err)
+					}
+				}
+			}
+
+			// If the timeout cutoff TS (where we clear the deal) is in the next 7 days and 7 days + EngineRunTime.. email!
+			if misc.WithinHours(deal.Assigned+timeoutSeconds, 24*7, (24*7)+EngineRunTime) {
 				// Lets warn the influencer that they have 7 days left!
 				// NOTE.. the engine run time offset is so that it only runs once per engine
 				// run
-				if err := inf.DealHeadsUp(deal, srv.Cfg); err != nil {
+				if err := headsupAlert(deal, inf, srv); err != nil {
 					srv.Alert(fmt.Sprintf("Error emailing deal heads up to %s for deal %s", inf.Id, deal.Id), err)
 				}
-			} else if minTs > deal.Assigned {
-				// Ok lets time out UNLESS the deal has been picked up and is waiting admin approval!
+			} else if !misc.WithinLast(deal.Assigned, influencer.TimeoutDays*24) {
+				// If the assigned date is OLDER than the last X days.. clear it!
 				if err := clearDeal(srv, deal.Id, deal.InfluencerId, deal.CampaignId, true); err != nil {
 					return foundDeals, err
 				}
@@ -976,6 +991,44 @@ func pickupDeal(deal *common.Deal, inf influencer.Influencer, srv *Server) error
 	for _, infDeal := range inf.ActiveDeals {
 		if deal.Id == infDeal.Id {
 			infDeal.PickedUp = true
+			break
+		}
+	}
+
+	return saveAllActiveDeals(srv, inf)
+}
+
+func postAlert(deal *common.Deal, inf influencer.Influencer, srv *Server) error {
+	if deal.PostAlerted {
+		return nil
+	}
+
+	if err := inf.PostAlert(deal, srv.Cfg); err != nil {
+		return err
+	}
+
+	for _, infDeal := range inf.ActiveDeals {
+		if deal.Id == infDeal.Id {
+			infDeal.PostAlerted = true
+			break
+		}
+	}
+
+	return saveAllActiveDeals(srv, inf)
+}
+
+func headsupAlert(deal *common.Deal, inf influencer.Influencer, srv *Server) error {
+	if deal.HeadsUpAlert {
+		return nil
+	}
+
+	if err := inf.DealHeadsUp(deal, srv.Cfg); err != nil {
+		return err
+	}
+
+	for _, infDeal := range inf.ActiveDeals {
+		if deal.Id == infDeal.Id {
+			infDeal.HeadsUpAlert = true
 			break
 		}
 	}
