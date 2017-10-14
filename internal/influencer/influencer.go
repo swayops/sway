@@ -1169,6 +1169,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 		if budgetStore != nil && !cmp.IsProductBasedBudget() {
 			// Generate likely earnings for the influencer
 			targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+			log.Println("WHAT ARE WE GETTING", infPayout)
 			if inf.Id == "150" && cmp.Id == "30" {
 				targetDeal.LikelyEarnings = 871
 			}
@@ -1179,6 +1180,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 
 			// Subtract pending spend remaining spendable
 			availSpend := budgetStore.Spendable - pendingSpend
+			log.Println("SECOND STOP", availSpend, pendingSpend)
 
 			// If we are expected to spend all of spendable
 			// given the people who are in the deal.. lets bail (unless
@@ -1206,6 +1208,7 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// This is to ensure we don't have a situation where we display
 				// likely earnings as being over the "Total" value when the influencer
 				// queries for assigned deals
+				log.Println("ACCOUNTING", availSpend)
 				targetDeal.LikelyEarnings = availSpend * 0.7
 			}
 
