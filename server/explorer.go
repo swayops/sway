@@ -1005,6 +1005,13 @@ func pickupDeal(deal *common.Deal, inf influencer.Influencer, srv *Server) error
 		}
 	}
 
+	if err := srv.Cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "picked up deal alert",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log email notification!", inf.Id)
+	}
+
 	return saveAllActiveDeals(srv, inf)
 }
 
@@ -1024,6 +1031,13 @@ func postAlert(deal *common.Deal, inf influencer.Influencer, srv *Server) error 
 		}
 	}
 
+	if err := srv.Cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "post alert",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log email notification!", inf.Id)
+	}
+
 	return saveAllActiveDeals(srv, inf)
 }
 
@@ -1041,6 +1055,13 @@ func headsupAlert(deal *common.Deal, inf influencer.Influencer, srv *Server) err
 			infDeal.HeadsUpAlert = true
 			break
 		}
+	}
+
+	if err := srv.Cfg.Loggers.Log("email", map[string]interface{}{
+		"tag": "heads up alert",
+		"id":  inf.Id,
+	}); err != nil {
+		log.Println("Failed to log email notification!", inf.Id)
 	}
 
 	return saveAllActiveDeals(srv, inf)
