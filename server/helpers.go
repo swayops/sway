@@ -948,6 +948,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 		id         = c.Param("id")
 		su         auth.SpecUser
 		changePass = false
+		isAdmin    = user != nil && user.Admin
 	)
 
 	if err := misc.BindJSON(c, &incUser); err != nil {
@@ -1004,7 +1005,7 @@ func saveUserHelper(s *Server, c *gin.Context, userType string) {
 			if subEmail := auth.SubUser(c); subEmail != "" {
 				email = subEmail
 			}
-			if err := s.auth.ChangePasswordTx(tx, email, incUser.OldPass, incUser.Pass, false); err != nil {
+			if err := s.auth.ChangePasswordTx(tx, email, incUser.OldPass, incUser.Pass, isAdmin); err != nil {
 				return err
 			}
 			user = s.auth.GetUserTx(tx, id) // always reload after changing the password
