@@ -485,37 +485,52 @@ func forceRefund(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		var err error
-		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
-			st, err := budget.GetAdvertiserStore(tx, s.Cfg, "9")
+		influencerId := "587"
+		campaignId := "30"
+		dealId := "060311091c13190ba54fcd0cc33f71a8"
+		inf, ok := s.auth.Influencers.Get(influencerId)
+		if !ok {
+			misc.WriteJSON(c, 500, misc.StatusErr("NOMAS"))
+			return
+		}
+
+		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
+
+			var (
+				cmp  common.Campaign
+				deal *common.Deal
+				ok   bool
+			)
+			err = json.Unmarshal(tx.Bucket([]byte(s.Cfg.Bucket.Campaign)).Get([]byte(campaignId)), &cmp)
 			if err != nil {
 				return err
 			}
 
-			store, ok := st["30"]
-			if !ok {
-				return budget.ErrNotFound
+			if deal, ok = cmp.Deals[dealId]; ok {
+				// Flush all attribuets for the deal
+				deal = deal.ConvertToClear()
+				delete(cmp.Deals, dealId)
 			}
 
-			newStore := &budget.Store{
-				Spent:     0,
-				Charges:   store.Charges,
-				Spendable: 5000,
-				NextBill:  store.NextBill,
+			// Append to the influencer's cancellations and remove from active
+
+			var completed []*common.Deal
+			for _, deal := range inf.CompletedDeals {
+				if deal.Id != dealId {
+					completed = append(completed, deal)
+				}
 			}
 
-			st["30"] = newStore
+			inf.PendingPayout = 0
+			inf.CompletedDeals = completed
 
-			var b []byte
-			if b, err = json.Marshal(&st); err != nil {
-				return err
+			// Save the Influencer
+			if err = saveInfluencer(s, tx, inf); err != nil {
+				return
 			}
 
-			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Budget, "9", b); err != nil {
-				return err
-			}
-
-			return nil
+			// Save the campaign
+			return saveCampaign(tx, &cmp, s)
 		}); err != nil {
 			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
