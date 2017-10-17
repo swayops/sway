@@ -307,6 +307,33 @@ func (a *Auth) GetUserTx(tx *bolt.Tx, userID string) *User {
 	return nil
 }
 
+func (a *Auth) ChangeLoginTx(tx *bolt.Tx, userID, newEmail string) error {
+	newEmail = misc.TrimEmail(newEmail)
+	lB := misc.GetBucket(tx, a.cfg.Bucket.Login)
+	if len(lB.Get([]byte(newEmail))) > 0 {
+		return ErrEmailExists
+	}
+	u := a.GetUserTx(tx, userID)
+	if u == nil {
+		return ErrInvalidID
+	}
+
+	// the login info, contains the user id and password
+	loginInfo := a.GetLoginTx(tx, u.Email)
+	if loginInfo == nil || loginInfo.UserID != userID {
+		return ErrInvalidEmail
+	}
+
+	lB.Delete([]byte(u.Email))
+
+	u.Email = newEmail
+	if err := misc.PutTxJson(tx, a.cfg.Bucket.Login, u.Email, loginInfo); err != nil {
+		return err
+	}
+
+	return u.Store(a, tx)
+}
+
 func (a *Auth) GetUser(userID string) (u *User) {
 	a.db.View(func(tx *bolt.Tx) error {
 		u = a.GetUserTx(tx, userID)

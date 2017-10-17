@@ -116,6 +116,32 @@ func putAdmin(s *Server) gin.HandlerFunc {
 	}
 }
 
+func changeLogin(srv *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			newLogin struct {
+				Email string `json:"email"`
+			}
+			id = c.Param("id")
+		)
+
+		if err := c.BindJSON(&newLogin); err != nil || newLogin.Email == "" {
+			log.Println(err)
+			misc.AbortWithErr(c, 400, auth.ErrInvalidEmail)
+			return
+		}
+
+		if err := srv.db.Update(func(tx *bolt.Tx) error {
+			return srv.auth.ChangeLoginTx(tx, id, newLogin.Email)
+		}); err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+
+		misc.WriteJSON(c, 200, misc.StatusOK(id))
+	}
+}
+
 func removeSubUser(srv *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -130,7 +156,8 @@ func removeSubUser(srv *Server) gin.HandlerFunc {
 			misc.AbortWithErr(c, 400, err)
 			return
 		}
-		misc.WriteJSON(c, 200, id)
+
+		misc.WriteJSON(c, 200, misc.StatusOK(id))
 	}
 }
 
