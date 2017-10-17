@@ -119,7 +119,7 @@ func putAdmin(s *Server) gin.HandlerFunc {
 func removeSubUser(srv *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
-		if err := srv.db.View(func(tx *bolt.Tx) error {
+		if err := srv.db.Update(func(tx *bolt.Tx) error {
 			user := srv.auth.GetUserTx(tx, id)
 			if user == nil || user.SubUser == "" {
 				return auth.ErrInvalidUserID
