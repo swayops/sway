@@ -125,7 +125,7 @@ func removeSubUser(srv *Server) gin.HandlerFunc {
 				return auth.ErrInvalidUserID
 			}
 			user.SubUser = ""
-			return misc.GetTxJson(tx, srv.Cfg.Bucket.User, id, user)
+			return misc.PutTxJson(tx, srv.Cfg.Bucket.User, id, user)
 		}); err != nil {
 			misc.AbortWithErr(c, 400, err)
 			return
