@@ -282,6 +282,7 @@ func ReplenishSpendable(tx *bolt.Tx, cfg *config.Config, cmp *common.Campaign, i
 		Spent:     store.Spent,
 		Charges:   store.Charges,
 		Spendable: spendable,
+		NextBill:  store.NextBill,
 	}
 
 	if !isIO && !cmp.IsProductBasedBudget() {
@@ -322,8 +323,9 @@ func ClearSpendable(tx *bolt.Tx, cfg *config.Config, cmp *common.Campaign) (floa
 
 	// Save everything except the spendable! It's 0 now muahahaha
 	newStore := &Store{
-		Spent:   store.Spent,
-		Charges: store.Charges,
+		Spent:    store.Spent,
+		Charges:  store.Charges,
+		NextBill: store.NextBill,
 	}
 
 	st[cmp.Id] = newStore

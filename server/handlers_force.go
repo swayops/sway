@@ -478,31 +478,49 @@ func forceDeduction(s *Server) gin.HandlerFunc {
 	}
 }
 
-func forceAthlete(s *Server) gin.HandlerFunc {
+func forceRefund(s *Server) gin.HandlerFunc {
 	// Really hacky please ignore
 	return func(c *gin.Context) {
 		if !isSecureAdmin(c, s) {
 			return
 		}
 
-		cmp := common.GetCampaign("28", s.db, s.Cfg)
-		if cmp == nil {
-			misc.WriteJSON(c, 500, ErrCampaign)
+		var err error
+		if err = s.db.Update(func(tx *bolt.Tx) (err error) {
+			st, err := budget.GetAdvertiserStore(tx, s.Cfg, "9")
+			if err != nil {
+				return err
+			}
+
+			store, ok := st["30"]
+			if !ok {
+				return budget.ErrNotFound
+			}
+
+			newStore := &budget.Store{
+				Spent:     0,
+				Charges:   store.Charges,
+				Spendable: 5000,
+				NextBill:  store.NextBill,
+			}
+
+			st["30"] = newStore
+
+			var b []byte
+			if b, err = json.Marshal(&st); err != nil {
+				return err
+			}
+
+			if err = misc.PutBucketBytes(tx, s.Cfg.Bucket.Budget, "9", b); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			misc.WriteJSON(c, 500, misc.StatusErr(err.Error()))
 			return
 		}
 
-		// Save the Campaign
-		if err := s.db.Update(func(tx *bolt.Tx) (err error) {
-			// Add fresh deals for this month
-			deal, _ := cmp.Deals["997b11071a120c01060d157e44645f9f"]
-			deal.Mention = sanitizeMention("athletetrainingandhealth")
-			deal.Task = cmp.Task
-			cmp.Deals["997b11071a120c01060d157e44645f9f"] = deal
-			return saveCampaign(tx, cmp, s)
-		}); err != nil {
-			misc.WriteJSON(c, 500, err)
-			return
-		}
 		misc.WriteJSON(c, 200, misc.StatusOK(""))
 
 	}
