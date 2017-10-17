@@ -405,6 +405,16 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 							log.Println("Failed to log appproved deal!", cDeal.InfluencerId, cDeal.CampaignId)
 						}
 					}
+
+					// Used for digest email!
+					// NOTE: Only email if spent is more than 50 cents
+					if spentDelta > 0.10 {
+						depletions = append(depletions, &Depleted{
+							Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
+							Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
+							PostURL:    deal.PostUrl,
+							Spent:      misc.TruncateFloat(spentDelta, 2)})
+					}
 				}
 
 				// infPayout = what the influencer will be earning (not including agency fee)
@@ -418,15 +428,6 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 					s.Alert("Failed to save completed deals", err)
 				}
 
-				// Used for digest email!
-				// NOTE: Only email if spent is more than 50 cents
-				if spentDelta > 0.10 {
-					depletions = append(depletions, &Depleted{
-						Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
-						Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
-						PostURL:    deal.PostUrl,
-						Spent:      misc.TruncateFloat(spentDelta, 2)})
-				}
 			}
 
 			updatedStore = true
