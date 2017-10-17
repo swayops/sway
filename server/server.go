@@ -632,7 +632,7 @@ func (srv *Server) Fraud(cid, infId, url string, reasons []string) {
 	})
 
 	for _, addr := range mailingList {
-		if resp, err := srv.Cfg.MailClient().SendMessage(email, fmt.Sprintf("Fraud detected for campaign %s and influencer id %s", cid, infId), addr, "Important Person",
+		if resp, err := srv.Cfg.MailClient().SendMessage(email, fmt.Sprintf("Approval required for campaign %s and influencer id %s", cid, infId), addr, "Important Person",
 			[]string{}); err != nil || len(resp) != 1 || resp[0].RejectReason != "" {
 			log.Println("Error sending fraud email!")
 		}

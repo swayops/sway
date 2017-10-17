@@ -486,8 +486,8 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					return nil
 				}
 
-				// Before returning the post.. lets check for some fraud
-				var fraud []string
+				// Lets ALWAYS ask for approval!
+				fraud := []string{"Standard approval"}
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
@@ -625,8 +625,8 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 					return nil
 				}
 
-				// Before returning the post.. lets check for some fraud
-				var fraud []string
+				// Lets ALWAYS ask for approval!
+				fraud := []string{"Standard approval"}
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
@@ -773,8 +773,8 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 					return nil
 				}
 
-				// Before returning the post.. lets check for some fraud
-				var fraud []string
+				// Lets ALWAYS ask for approval!
+				fraud := []string{"Standard approval"}
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {
@@ -921,8 +921,8 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 					return nil
 				}
 
-				// Before returning the post.. lets check for some fraud
-				var fraud []string
+				// Lets ALWAYS ask for approval!
+				fraud := []string{"Standard approval"}
 
 				// Does it have any fraud hashtags?
 				for _, tg := range hashBlacklist {

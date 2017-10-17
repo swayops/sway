@@ -5,7 +5,7 @@ const fraudTmpl = `
    <p style="font-size:16px; color:#000000; margin:0 0 12px 0;">
       ATTN: Admin <br><br>
 
-   The deal explorer found the following fraud/ dishonesty for the post at <a href="{{URL}}">{{URL}}</a> for Campaign {{CampaignID}} and Influencer {{InfluencerID}}<br>
+   The deal explorer found the following reasons for the post at <a href="{{URL}}">{{URL}}</a> for Campaign {{CampaignID}} and Influencer {{InfluencerID}} possibly being rejected:<br>
    <ul style="font-size:16px; color:#000000; margin:0 0 12px 0;">
       {{#Reasons}}
       <li>{{.}}</li>
