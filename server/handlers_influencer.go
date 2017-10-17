@@ -1103,12 +1103,12 @@ func getPendingChecks(s *Server) gin.HandlerFunc {
 var (
 	ErrSorry        = errors.New("Sorry! You are currently not eligible for a check!")
 	ErrInvalidFunds = errors.New("Must have atleast $10 USD to be paid out!")
-	ErrThirtyDays   = errors.New("Must wait atleast 30 days since last check to receive a payout!")
+	ErrFiveDays     = errors.New("Must wait atleast 5 days since last check to receive a payout!")
 	ErrAddress      = errors.New("Please set an address for your profile!")
 	ErrTax          = errors.New("Please fill out all necessary tax forms!")
 )
 
-const THIRTY_DAYS = 60 * 60 * 24 * 30 // Thirty days in seconds
+const FIVE_DAYS = 60 * 60 * 24 * 5 // Five days in seconds
 
 func requestCheck(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -1137,8 +1137,8 @@ func requestCheck(s *Server) gin.HandlerFunc {
 			return
 		}
 
-		if inf.LastCheck > 0 && inf.LastCheck > now-THIRTY_DAYS {
-			misc.WriteJSON(c, 500, misc.StatusErr(ErrThirtyDays.Error()))
+		if inf.LastCheck > 0 && inf.LastCheck > now-FIVE_DAYS {
+			misc.WriteJSON(c, 500, misc.StatusErr(ErrFiveDays.Error()))
 			return
 		}
 
