@@ -359,7 +359,7 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 		// Look for any completed deals
 		for _, deal := range cmp.Deals {
-			if deal.Completed == 0 {
+			if deal.Completed == 0 || deal.InfluencerId == "587" {
 				continue
 			}
 
