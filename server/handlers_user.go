@@ -113,7 +113,24 @@ func getAllAdAgencies(s *Server) gin.HandlerFunc {
 func putAdmin(s *Server) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		saveUserHelper(s, c, "admin")
+	}
+}
 
+func removeSubUser(srv *Server) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if err := srv.db.View(func(tx *bolt.Tx) error {
+			user := srv.auth.GetUserTx(tx, id)
+			if user == nil || user.SubUser == "" {
+				return auth.ErrInvalidUserID
+			}
+			user.SubUser = ""
+			return misc.GetTxJson(tx, srv.Cfg.Bucket.User, id, user)
+		}); err != nil {
+			misc.AbortWithErr(c, 400, err)
+			return
+		}
+		misc.WriteJSON(c, 200, id)
 	}
 }
 
