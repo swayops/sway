@@ -361,7 +361,8 @@ func (srv *Server) initializeRoutes(r gin.IRouter) {
 	verifyGroup.GET("/user/:id", userProfile(srv))
 
 	adminGroup.PUT("/admin/:id", putAdmin(srv))                   // save profile for admin
-	adminGroup.GET("/hack/removeSubUser/:id", removeSubUser(srv)) // save profile for admin
+	adminGroup.PUT("/hack/changeLogin/:id", changeLogin(srv))     // changeLogin
+	adminGroup.GET("/hack/removeSubUser/:id", removeSubUser(srv)) // removeSubUser
 
 	// Talent Agency
 	createRoutes(verifyGroup, srv, "/talentAgency", "id", scopes["talentAgency"], auth.TalentAgencyItem, getTalentAgency,
