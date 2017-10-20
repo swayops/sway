@@ -519,14 +519,15 @@ func findTwitterMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			return tw
 		} else {
-			if deal.Mention != "" && foundMention {
-				// If you have one attribute missing.. we'll email you telling you what
-				// it was
+			if consideredFacets == 3 && approvedFacets == 2 {
+				// If we considered 3 things AND you got approved for 2 of them.. email
 				var reason string
 				if !foundHash {
-					reason = "hashtags"
+					reason = "required hashtags: " + strings.Join(deal.Tags, ", ")
 				} else if !foundLink {
-					reason = "required link"
+					reason = "required link: " + deal.ShortenedLink
+				} else if !foundMention {
+					reason = "required mention: " + deal.Mention
 				}
 
 				if err := postIssue(deal, inf, srv, tw.PostURL, reason); err != nil {
@@ -663,14 +664,15 @@ func findFacebookMatch(srv *Server, inf influencer.Influencer, deal *common.Deal
 
 			return post
 		} else {
-			if deal.Mention != "" && foundMention {
-				// If you have one attribute missing.. we'll email you telling you what
-				// it was
+			if consideredFacets == 3 && approvedFacets == 2 {
+				// If we considered 3 things AND you got approved for 2 of them.. email
 				var reason string
 				if !foundHash {
-					reason = "hashtags"
+					reason = "required hashtags: " + strings.Join(deal.Tags, ", ")
 				} else if !foundLink {
-					reason = "link"
+					reason = "required link: " + deal.ShortenedLink
+				} else if !foundMention {
+					reason = "required mention: " + deal.Mention
 				}
 
 				if err := postIssue(deal, inf, srv, post.PostURL, reason); err != nil {
@@ -813,14 +815,15 @@ func findInstagramMatch(srv *Server, inf influencer.Influencer, deal *common.Dea
 
 			return post
 		} else {
-			if deal.Mention != "" && foundMention {
-				// If you have one attribute missing.. we'll email you telling you what
-				// it was
+			if consideredFacets == 3 && approvedFacets == 2 {
+				// If we considered 3 things AND you got approved for 2 of them.. email
 				var reason string
 				if !foundHash {
-					reason = "hashtags"
+					reason = "required hashtags: " + strings.Join(deal.Tags, ", ")
 				} else if !foundLink {
-					reason = "link"
+					reason = "required link: " + deal.ShortenedLink
+				} else if !foundMention {
+					reason = "required mention: " + deal.Mention
 				}
 
 				if err := postIssue(deal, inf, srv, post.PostURL, reason); err != nil {
@@ -959,14 +962,15 @@ func findYouTubeMatch(srv *Server, inf influencer.Influencer, deal *common.Deal,
 
 			return post
 		} else {
-			if deal.Mention != "" && foundMention {
-				// If you have one attribute missing.. we'll email you telling you what
-				// it was
+			if consideredFacets == 3 && approvedFacets == 2 {
+				// If we considered 3 things AND you got approved for 2 of them.. email
 				var reason string
 				if !foundHash {
-					reason = "hashtags"
+					reason = "required hashtags: " + strings.Join(deal.Tags, ", ")
 				} else if !foundLink {
-					reason = "link"
+					reason = "required link: " + deal.ShortenedLink
+				} else if !foundMention {
+					reason = "required mention: " + deal.Mention
 				}
 
 				if err := postIssue(deal, inf, srv, post.PostURL, reason); err != nil {
