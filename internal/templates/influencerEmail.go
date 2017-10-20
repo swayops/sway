@@ -249,7 +249,7 @@ const dealRejectionEmail = `
 		Hi {{Name}},
 	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
-		Your most recent deal post ( {{url}} ) is missing a required item. Unfortunately our engine can't pickup your completed deal because of this. Please double check that you included the required <b>{{reason}}</b> in your post and the system will automatically authorize your post.	</p>
+		Your most recent deal post ( {{url}} ) is missing a required item. Unfortunately our engine can't pickup your completed deal because of this. Please double check that you included the <b>{{reason}}</b> in your post and the system will automatically authorize your post.	</p>
 	<p style="font-size:14px; color:#000000; margin:0 0 12px 0;">
 		Regards,<br/>
 		~ Karlie M<br/>
