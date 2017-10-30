@@ -196,12 +196,12 @@ func getBillingInfo(s *Server) gin.HandlerFunc {
 
 func assignLikelyEarnings(s *Server) gin.HandlerFunc {
 	// Handler to port over currently active deals to have
-	// LikelyEarnings stored (since that's stored via the
+	// Earnings stored (since that's stored via the
 	// assignDeal function)
 	return func(c *gin.Context) {
 		for _, inf := range s.auth.Influencers.GetAll() {
 			for _, deal := range inf.ActiveDeals {
-				if deal.LikelyEarnings == 0 {
+				if deal.Earnings == 0 {
 					cmp := common.GetCampaign(deal.CampaignId, s.db, s.Cfg)
 					if cmp == nil {
 						log.Println("campaign not found")
@@ -209,7 +209,7 @@ func assignLikelyEarnings(s *Server) gin.HandlerFunc {
 					}
 					maxYield := influencer.GetMaxYield(cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 					_, _, _, infPayout := budget.GetMargins(maxYield, -1, -1, -1)
-					deal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+					deal.Earnings = misc.TruncateFloat(infPayout, 2)
 				}
 			}
 			if len(inf.ActiveDeals) > 0 {

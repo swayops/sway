@@ -44,10 +44,13 @@ func forceApproveAny(s *Server) gin.HandlerFunc {
 				found = deal
 			}
 		}
+
 		if found == nil {
 			misc.WriteJSON(c, 500, misc.StatusErr(ErrDealNotFound.Error()))
 			return
 		}
+
+		found.MaxYield = float64(misc.Random(50, 150)) // Testing purposes
 
 		var err error
 		for _, pf := range found.Platforms {
@@ -158,6 +161,8 @@ func forceApprovePost(s *Server) gin.HandlerFunc {
 			misc.WriteJSON(c, 500, misc.StatusErr("no available deals left for this campaign"))
 			return
 		}
+
+		foundDeal.MaxYield = float64(misc.Random(50, 150)) // Testing purposes
 
 		store, _ := budget.GetCampaignStoreFromDb(s.db, s.Cfg, campaignId, cmp.AdvertiserId)
 		if store.IsClosed(&cmp) {

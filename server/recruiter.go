@@ -95,12 +95,12 @@ func emailScraps(srv *Server) (int32, error) {
 
 		maxYield := influencer.GetMaxYield(&cmp, sc.YTData, sc.FBData, sc.TWData, sc.InstaData)
 		_, _, _, infPayout := budget.GetMargins(maxYield, dspFee, exchangeFee, -1)
-		likelyEarnings := misc.TruncateFloat(infPayout, 2)
-		if likelyEarnings <= 0 && !srv.Cfg.Sandbox {
+		earnings := misc.TruncateFloat(infPayout, 2)
+		if earnings <= 0 && !srv.Cfg.Sandbox {
 			continue
 		}
 
-		if sent := sc.Email(&cmp, likelyEarnings, srv.Cfg); !sent {
+		if sent := sc.Email(&cmp, earnings, srv.Cfg); !sent {
 			continue
 		}
 		count += 1
