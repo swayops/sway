@@ -98,8 +98,8 @@ type Deal struct {
 	// when the deal was assigned
 	Spendable float64 `json:"spendable,omitempty"`
 	// Field set by GetAvailableDeals specifying how much the influencer
-	// COULD earn on this deal
-	LikelyEarnings float64 `json:"likelyEarnings,omitempty"`
+	// WILL earn on this deal
+	Earnings float64 `json:"likelyEarnings,omitempty"`
 
 	// Keyed on DAY.. showing stats calculated by DAY
 	Reporting map[string]*Stats `json:"stats,omitempty"`
@@ -112,6 +112,11 @@ type Deal struct {
 	To   int64 `json:"toTime,omitempty"`
 
 	TermsAndConditions string `json:"terms"`
+
+	// MaxYield calculated at deal offer time
+	MaxYield float64 `json:"maxYield"`
+	// Has this deal been deducted from spendable?
+	Paid bool `json:"paid,omitempty"`
 }
 
 type Submission struct {
@@ -363,25 +368,78 @@ func (d *Deal) Pay(inf, agency, dsp, exchange float64, agId string) {
 	data.AgencyId = agId
 }
 
-func (d *Deal) Incr(likes, dislikes, comments, shares, views int32) {
-	if d.Reporting == nil {
-		d.Reporting = make(map[string]*Stats)
+func (deal *Deal) IncrementStats() {
+	if deal.Reporting == nil {
+		deal.Reporting = make(map[string]*Stats)
 	}
 	key := GetDate()
-	data, ok := d.Reporting[key]
+	data, ok := deal.Reporting[key]
 	if !ok {
 		data = &Stats{}
-		d.Reporting[key] = data
+		deal.Reporting[key] = data
 	}
-	data.Likes += likes
-	data.Dislikes += dislikes
-	data.Comments += comments
-	data.Shares += shares
-	if views > 0 {
-		data.Views += views
-	} else {
+
+	var (
+		shares, likes, comments, views int32
+	)
+
+	// We will use this to determine how many engs we have already tracked
+	total := deal.TotalStats()
+
+	if deal.Tweet != nil {
+		// Considering retweets as shares and favorites as likes!
+
+		// Subtracting all the engagements we have already recorded!
+		shares = int32(deal.Tweet.Retweets) - total.Shares
+		likes = int32(deal.Tweet.Favorites) - total.Likes
+
+		data.Shares += shares
+		data.Likes += likes
+
+		// Estimate views if there are none
+		data.Views += GetViews(likes, 0, shares)
+
+		// store.deductSpendable(float64(shares) * TW_RETWEET)
+		// store.deductSpendable(float64(likes) * TW_FAVORITE)
+	} else if deal.Facebook != nil {
+		// Subtracting all the engagements we have already recorded!
+		likes = int32(deal.Facebook.Likes) - total.Likes
+		shares = int32(deal.Facebook.Shares) - total.Shares
+		comments = int32(deal.Facebook.Comments) - total.Comments
+
+		data.Likes += likes
+		data.Shares += shares
+		data.Comments += comments
+
 		// Estimate views if there are none
 		data.Views += GetViews(likes, comments, shares)
+
+		// store.deductSpendable(float64(likes) * FB_LIKE)
+		// store.deductSpendable(float64(shares) * FB_SHARE)
+		// store.deductSpendable(float64(comments) * FB_COMMENT)
+	} else if deal.Instagram != nil {
+		likes = int32(deal.Instagram.Likes) - total.Likes
+		comments = int32(deal.Instagram.Comments) - total.Comments
+
+		data.Likes += likes
+		data.Comments += comments
+
+		// Estimate views if there are none
+		data.Views += GetViews(likes, comments, 0)
+		// store.deductSpendable(float64(likes) * INSTA_LIKE)
+		// store.deductSpendable(float64(comments) * INSTA_COMMENT)
+	} else if deal.YouTube != nil {
+		views = int32(deal.YouTube.Views) - total.Views
+		likes = int32(deal.YouTube.Likes) - total.Likes
+		comments = int32(deal.YouTube.Comments) - total.Comments
+
+		data.Views += views
+		data.Likes += likes
+		data.Comments += comments
+
+		// store.deductSpendable(float64(views) * YT_VIEW)
+		// store.deductSpendable(float64(likes) * YT_LIKE)
+		// store.deductSpendable(float64(comments) * YT_COMMENT)
 	}
 }
 
@@ -602,7 +660,7 @@ func (d *Deal) ConvertToClear() *Deal {
 	d.Reporting = nil
 	d.Perk = nil
 	d.Spendable = 0
-	d.LikelyEarnings = 0
+	d.Earnings = 0
 	d.InfluencerName = ""
 
 	return d

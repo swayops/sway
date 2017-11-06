@@ -336,11 +336,6 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 	// go over completed deals..
 	// Iterate over all
 
-	var (
-		spentDelta float64
-		m          *budget.Metrics
-	)
-
 	depletions := []*Depleted{}
 
 	// Iterate over all active campaigns
@@ -354,12 +349,10 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 			continue
 		}
 
-		updatedStore := false
-
 		dspFee, exchangeFee := getAdvertiserFees(s.auth, cmp.AdvertiserId)
 		// Look for any completed deals
 		for _, deal := range cmp.Deals {
-			if deal.Completed == 0 || deal.InfluencerId == "587" {
+			if deal.Completed == 0 {
 				continue
 			}
 
@@ -369,58 +362,65 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 				continue
 			}
 
-			agencyFee := s.getTalentAgencyFee(inf.AgencyId)
-			store, spentDelta, m = budget.AdjustStore(store, deal)
 			// Save the influencer since pending payout has been increased
-
-			dspMarkup, exchangeMarkup, agencyPayout, infPayout := budget.GetMargins(spentDelta, dspFee, exchangeFee, agencyFee)
-
-			inf.PendingPayout += infPayout
 
 			// Update payment values for this completed deal
 			// THIS IS WHAT WE'LL USE FOR BILLING!
 			for _, cDeal := range inf.CompletedDeals {
 				if cDeal.Id == deal.Id {
-					cDeal.Incr(m.Likes, m.Dislikes, m.Comments, m.Shares, m.Views)
-					cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
-					cDeal.ApproveAllClicks()
-
-					// Log the incrs!
-					if infPayout+agencyPayout+dspMarkup+exchangeMarkup > 0 {
-						if err := s.Cfg.Loggers.Log("stats", map[string]interface{}{
-							"action":     "deplete",
-							"infId":      cDeal.InfluencerId,
-							"dealId":     cDeal.Id,
-							"campaignId": cDeal.CampaignId,
-							"agencyId":   inf.AgencyId,
-							"stats":      m,
-							"payouts": map[string]float64{
-								"inf":      infPayout,
-								"agency":   agencyPayout,
-								"dsp":      dspMarkup,
-								"exchange": exchangeMarkup,
-							},
-							"store": store,
-						}); err != nil {
-							log.Println("Failed to log appproved deal!", cDeal.InfluencerId, cDeal.CampaignId)
+					if !cDeal.Paid {
+						// If we haven't paid for it yet.. pay for it!
+						if deal.MaxYield == 0 {
+							s.Notify("No max yield for influencer: "+inf.Id, "Get it checked")
+							log.Println("BAILING")
+							continue
 						}
-					}
 
-					// Used for digest email!
-					// NOTE: Only email if spent is more than 50 cents
-					if spentDelta > 0.10 {
+						// Get margins based off max yield value saved at GetAvailableDeals time
+						dspMarkup, exchangeMarkup, agencyPayout, infPayout := budget.GetMargins(deal.MaxYield, dspFee, exchangeFee, s.getTalentAgencyFee(inf.AgencyId))
+
+						// Give the influencer the payout
+						inf.PendingPayout += infPayout
+
+						// Store the payments
+						cDeal.Pay(infPayout, agencyPayout, dspMarkup, exchangeMarkup, inf.AgencyId)
+
+						// Deduct payments from store
+						store = budget.DeductSpendable(store, deal.MaxYield)
+						cDeal.Paid = true
+
+						// Log the incrs!
+						if infPayout+agencyPayout+dspMarkup+exchangeMarkup > 0 {
+							if err := s.Cfg.Loggers.Log("stats", map[string]interface{}{
+								"action":     "deplete",
+								"infId":      cDeal.InfluencerId,
+								"dealId":     cDeal.Id,
+								"campaignId": cDeal.CampaignId,
+								"agencyId":   inf.AgencyId,
+								"payouts": map[string]float64{
+									"inf":      infPayout,
+									"agency":   agencyPayout,
+									"dsp":      dspMarkup,
+									"exchange": exchangeMarkup,
+								},
+								"store": store,
+							}); err != nil {
+								log.Println("Failed to log appproved deal!", cDeal.InfluencerId, cDeal.CampaignId)
+							}
+						}
+
+						// Used for digest email!
 						depletions = append(depletions, &Depleted{
 							Influencer: fmt.Sprintf("%s (%s)", deal.InfluencerName, deal.InfluencerId),
 							Campaign:   fmt.Sprintf("%s (%s)", deal.CampaignName, deal.CampaignId),
 							PostURL:    deal.PostUrl,
-							Spent:      misc.TruncateFloat(spentDelta, 2)})
+							Spent:      misc.TruncateFloat(deal.MaxYield, 2)})
 					}
-				}
 
-				// infPayout = what the influencer will be earning (not including agency fee)
-				// agencyPayout = what the talent agency will be earning
-				// dspMarkup = what the DSP fee is for this transaction
-				// exchangeMarkup = what the exchange fee is for this transaction
+					// Increment stats for this deal
+					cDeal.IncrementStats()
+					cDeal.ApproveAllClicks()
+				}
 
 				// Save the deal in influencers and campaigns
 				if err := saveAllCompletedDeals(s, inf); err != nil {
@@ -429,17 +429,12 @@ func depleteBudget(s *Server) ([]*Depleted, error) {
 				}
 
 			}
-
-			updatedStore = true
 		}
 
-		if updatedStore {
-			// Save the store since it's been updated
-			if err := budget.SaveStore(s.db, s.Cfg, store, &cmp); err != nil {
-				s.Alert("Failed to save budget store", err)
-			}
+		// Save the store since it's been updated
+		if err := budget.SaveStore(s.db, s.Cfg, store, &cmp); err != nil {
+			s.Alert("Failed to save budget store", err)
 		}
-
 	}
 
 	return depletions, nil

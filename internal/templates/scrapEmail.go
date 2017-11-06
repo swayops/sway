@@ -16,7 +16,7 @@ const scrapFirstEmail = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-				<b style="color:red;">Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
+				<b style="color:red;">Your earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
 				<small>This amount is an estimate based on your last 10 posts avg engagements. You are able to make more than this amount by delivering a post that obtains high engagemtns. Sway pays for Likes, Comments, Link clicks through your bio, and more!</small>
 				<br><br>
 		    	<b>Product perks/ swag?:</b> {{Perks}} <br/>
@@ -63,7 +63,7 @@ const scrapDealOne = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b style="color:red;">Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
+		    	<b style="color:red;">Your earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
 				<small>This amount is an estimate based on your last 10 posts avg engagements. You are able to make more than this amount by delivering a post that obtains high engagemtns. Sway pays for Likes, Comments, Link clicks through your bio, and more!</small>
 				<br><br>
 		    	<b>Product perks/ swag?:</b> {{Perks}} <br/>
@@ -108,7 +108,7 @@ const scrapDealTwo = `
 	    	<td align="left" valign="left">
 		    	<b>Brand name:</b> {{Company}} <br/>
 		    	<b>Campaign name:</b> {{Campaign}} <br/>
-		    	<b style="color:red;">Your likely earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
+		    	<b style="color:red;">Your earnings based on your real followers/avg engagements:</b> ${{Payout}} <br/>
 				<small>This amount is an estimate based on your last 10 posts avg engagements. You are able to make more than this amount by delivering a post that obtains high engagemtns. Sway pays for Likes, Comments, Link clicks through your bio, and more!</small>
 				<br><br>
 		    	<b>Product perks/ swag?:</b> {{Perks}} <br/>

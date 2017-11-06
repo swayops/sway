@@ -131,8 +131,15 @@ func addDealsToCampaign(cmp *common.Campaign, s *Server, tx *bolt.Tx, spendable 
 		// This function is only called on campaign creation, update and on billing day,
 		// So if it's a goal based campaign, lets replenish deals!
 
-		// Default goal of spendable divided by 5 (so 5 deals per campaign)
-		maxDeals = int(spendable / 5)
+		if spendable < 100 {
+			maxDeals = 3
+		} else if spendable >= 100 && spendable < 1000 {
+			maxDeals = 5
+		} else if spendable >= 1000 && spendable < 10000 {
+			maxDeals = 6
+		} else {
+			maxDeals = 7
+		}
 	}
 
 	if maxDeals == 0 && s.Cfg.Sandbox {

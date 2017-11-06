@@ -23,17 +23,20 @@ const (
 	CLICK = 0.6
 )
 
-func (store *Store) deductSpendable(val float64) {
+func DeductSpendable(store *Store, val float64) *Store {
 	if store.Spendable <= 0 || val <= 0 {
-		return
+		return store
 	}
 
-	precalc := store.Spendable - val
-	if precalc < 0 {
+	if store.Spendable >= val {
+		// We have enough spendable to deduct fully
+		store.Spent += val
+		store.Spendable -= val
+	} else {
+		// This value goes over our spendable
+		store.Spent += store.Spendable
 		store.Spendable = 0
-		return
 	}
 
-	store.Spendable = precalc
-	return
+	return store
 }

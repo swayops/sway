@@ -499,7 +499,7 @@ func TestDeals(t *testing.T) {
 			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
-			TwitterId:  "breakingnews",
+			TwitterId:  "mlb",
 		},
 	}
 
@@ -513,7 +513,7 @@ func TestDeals(t *testing.T) {
 	cmp := common.Campaign{
 		Status:       true,
 		AdvertiserId: adv.ExpID,
-		Budget:       5000.5,
+		Budget:       500000.5,
 		Name:         "Get the supplies Rick",
 		Twitter:      true,
 		Male:         true,
@@ -611,7 +611,7 @@ func TestDeals(t *testing.T) {
 			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
-			TwitterId:  "CNN",
+			TwitterId:  "nba",
 			Categories: []string{"business"},
 			BrandSafe:  "t",
 		},
@@ -4444,7 +4444,7 @@ func TestForceApprove(t *testing.T) {
 			Male:       true,
 			Geo:        &geo.GeoRecord{},
 			InviteCode: common.GetCodeFromID(ag.ExpID),
-			TwitterId:  "justinbieber",
+			TwitterId:  "cnn",
 		},
 	}
 
@@ -5551,7 +5551,7 @@ func TestProductBudget(t *testing.T) {
 	inf := getSignupUser()
 	inf.InfluencerLoad = &auth.InfluencerLoad{ // ugly I know
 		InfluencerLoad: influencer.InfluencerLoad{
-			TwitterId: "cnn",
+			TwitterId: "nba",
 			Address: &lob.AddressLoad{
 				AddressOne: "8 Saint Elias",
 				City:       "Trabuco Canyon",

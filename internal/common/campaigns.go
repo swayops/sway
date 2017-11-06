@@ -222,7 +222,7 @@ func (cmp *Campaign) GetPendingDetails() (float64, int) {
 			// Value is set when the influencer was first
 			// offered the deal.. we assume they will complete
 			// it and reach their likely earnings!
-			pendingSpend += deal.LikelyEarnings
+			pendingSpend += deal.Earnings
 		} else if deal.IsComplete() && misc.WithinLast(deal.Completed, 6) {
 			// If the deal completed within the last 6 hours.. the post
 			// will not have reached it's full potential yet.. so the target
@@ -230,7 +230,7 @@ func (cmp *Campaign) GetPendingDetails() (float64, int) {
 			// its avg engagements). As a result of the inflation, we'll have one less empty
 			// deal and the SAME spendable.. so for the first 6 hours lets subtract influencer's full
 			// likely earnings value
-			pendingSpend += deal.LikelyEarnings
+			pendingSpend += deal.Earnings
 		} else if deal.IsAvailable() {
 			dealsEmpty += 1
 		}

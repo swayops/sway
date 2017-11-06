@@ -1141,10 +1141,10 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			}
 		}
 
-		maxYield := GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
+		targetDeal.MaxYield = GetMaxYield(&cmp, inf.YouTube, inf.Facebook, inf.Twitter, inf.Instagram)
 
 		// Lets see if max yield falls into target range for the campaign
-		if cmp.PriceTarget != nil && !cmp.PriceTarget.InRange(maxYield) && !query {
+		if cmp.PriceTarget != nil && !cmp.PriceTarget.InRange(targetDeal.MaxYield) && !query {
 			rejections[cmp.Id] = "PRICE_TARGET"
 			continue
 		}
@@ -1161,12 +1161,12 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			exchangeFee = -1
 		}
 
-		_, _, _, infPayout := budget.GetMargins(maxYield, dspFee, exchangeFee, agencyFee)
+		_, _, _, infPayout := budget.GetMargins(targetDeal.MaxYield, dspFee, exchangeFee, agencyFee)
 		if budgetStore != nil && !cmp.IsProductBasedBudget() {
 			// Generate likely earnings for the influencer
-			// Note: For query lookups, the LikelyEarnings at assignDeal time is the one shown
-			if !query || targetDeal.LikelyEarnings == 0 {
-				targetDeal.LikelyEarnings = misc.TruncateFloat(infPayout, 2)
+			// Note: For query lookups, the Earnings at assignDeal time is the one shown
+			if !query || targetDeal.Earnings == 0 {
+				targetDeal.Earnings = misc.TruncateFloat(infPayout, 2)
 			}
 
 			// Generate pending spend (based on deals that are assigned
@@ -1176,33 +1176,16 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 			// Subtract pending spend remaining spendable
 			availSpend := budgetStore.Spendable - pendingSpend
 
-			// If we are expected to spend all of spendable
-			// given the people who are in the deal.. lets bail (unless
-			// it's a query.. in which case we shoudl always show the deal)
-			if availSpend <= 10 && !cfg.Sandbox && !query {
+			if availSpend <= 0 && !cfg.Sandbox && !query {
 				rejections[cmp.Id] = "AVAIL_SPEND"
 				continue
 			}
 
-			// If this dude is about to get less than $30 lets bail
-			if targetDeal.LikelyEarnings <= 30 && !cfg.Sandbox && !query {
-				rejections[cmp.Id] = "LIKELY_EARNINGS"
+			// If the total $$$ this influencer will generate is above available spend..
+			// BAIL!
+			if targetDeal.MaxYield > availSpend && !cfg.Sandbox && !query {
+				rejections[cmp.Id] = "OUT_OF_RANGE"
 				continue
-			}
-
-			if targetDeal.LikelyEarnings > availSpend && !query {
-				if availSpend/targetDeal.LikelyEarnings < 0.4 && !cfg.Sandbox {
-					// If likely earnings are more than available spend.. and
-					// available spend is <40% of what you're supposed to be making..
-					// lets not offer the deal out of fear of insulting the influencer
-					rejections[cmp.Id] = "INSULT_SPEND"
-					continue
-				}
-
-				// This is to ensure we don't have a situation where we display
-				// likely earnings as being over the "Total" value when the influencer
-				// queries for assigned deals
-				targetDeal.LikelyEarnings = availSpend * 0.7
 			}
 
 			targetDeal.Spendable = misc.TruncateFloat(budgetStore.Spendable, 2)
@@ -1214,8 +1197,8 @@ func (inf *Influencer) GetAvailableDeals(campaigns *common.Campaigns, audiences 
 				// many funds we have left
 
 				min, max := cmp.GetTargetYield(targetDeal.Spendable)
-				if maxYield < min || maxYield > max || maxYield == 0 {
-					rejections[cmp.Id] = fmt.Sprintf("MAX_YIELD Min: %02f, Max: %02f, Yield: %02f", min, max, maxYield)
+				if targetDeal.MaxYield < min || targetDeal.MaxYield > max || targetDeal.MaxYield == 0 {
+					rejections[cmp.Id] = fmt.Sprintf("MAX_YIELD Min: %02f, Max: %02f, Yield: %02f", min, max, targetDeal.MaxYield)
 					continue
 				}
 			}
